@@ -1,0 +1,32 @@
+This is a "local port repository" for use with MacPorts on Linux, overriding ports from the main repository. At this point it contains ports that are not already and have no current business being in my generic "MacStrop" repository. The difference with the official ports will likely be limited mostly to removed dependencies, making ports accept dependencies from the host.
+
+The principal actor in this *non-supported* (by official MacPorts; it breaks the reproducible build principle) is port:pkgconfig. The port version provided here has a +proxy variant that makes ${prefix}/bin/pkg-config a proxy (wrapper) of the host pkg-config command, configured to look first in the MacPorts pkgconfig directory before searching in the host pkgconfig repository/ies.
+This way, pkg-config will still find and serve dependencies from MacPorts first if they exist, falling back to the host if necessary and possible. Thus, a port that declares a dependency on port:foo will still build against "foo" in MacPorts, but if the dependency declaration is dropped, the host "foo" will be used (if available; else an error ensues). Of course this applies only to dependencies found through pkg-config ...
+For the rest, this repository will mostly contain ports which declare certain dependencies only on Mac OS X, like port:botan which gets its python2.7 build dependency from the host.
+
+To "install", clone to a location of choice. My original is in the root of the MacPorts prefix: /opt/local/linux-ports; let's say you want to do the same:
+
+%> sudo -u macports git clone --depth=1 --no-single-branch http://github.com/RJVB/lnxports.git /opt/local/linux-ports
+
+Then, edit ${prefix}/etc/macports/sources.conf (${prefix} is where MacPorts is installed; by default it's /opt/local). Towards the end of the file, add a line *above* the line that has [default] at the end:
+
+file:///opt/local/linux-ports
+
+(you'll probably also want to put it above the line reading file:///opt/local/site-ports if you use my other repository)
+
+and save the file. If you do not want this repository to be updated automatically whenever you do port selfupdate or port sync, you'll want to add [nosync] at the end of the line(s) you added.
+
+Now, do
+
+%> (cd /opt/local/linux-ports ; portindex)
+
+and the new ports will be available. Ports that are in my repository but are also in the default repository will override those in the default repository (and all other repositories listed after linux-ports in sources.conf). If you use the aforementioned [nosync] option, you'll have to update the tree yourself. In that case you may have to do `portindex -f` at least periodically, to account for changes like removed variants or subports.
+
+NB: this repository also contains PortGroup definitions. These apply only to the ports in the local repository. If you want them to apply to all ports (e.g. qt4-1.0.tcl or qt5-1.0.tcl and qmake5-1.0.tcl), you'll have to copy the corresponding files from the _resources directory to the one in the default port tree. You will have to do this again after each selfupdate.
+
+A note about upgrades: I am not very religous at all in bumping the Portfile revision variable each time I change something. Any port can be reinstalled ("upgraded") even without that revbumping with the command
+`port -ns upgrade --force foo`
+(the -n is strongly advisable here; without it all ports which `foo` depends on would be reinstalled).
+
+Legal disclaimer (FWIW):
+Many of the files in this repositories are more or less verbatim copies of files available elsewhere. I have neither removed nor added copyright or license information/claims. The commit history will make it clear which portfiles and patches have been authored by me. Those are explicitly put in the public domain, for use in any way seen fit, including incorporation (of code in the patch files) in commercially available software (like Qt) as long as a reference is made to my original authorship. Contact me in case of doubt or necessity.
