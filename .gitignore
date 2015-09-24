@@ -1,0 +1,13 @@
+*.kdev4
+*.orig
+macports-current
+macports-svn
+lastSync
+Portfile.lastSync
+aqua/qt5-mac-angel
+*/*/files/*-git
+*/*/files/*-svn
+*.tar.bz2
+*.zip
+.DS_Store
+PortIndex*
