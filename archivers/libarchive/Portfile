@@ -23,6 +23,11 @@ checksums        rmd160  77c42598b754996481c1fa45c71eca5a428a094c \
 depends_lib      port:bzip2 port:zlib path:lib/libssl.dylib:openssl port:libxml2 port:xz \
                  port:lzo2 port:libiconv
 
+if {${os.platform} eq "linux"} {
+    patchfiles-append \
+                 patch-configure-wchar_t-detection.diff
+}
+
 configure.args   --enable-bsdtar=shared --enable-bsdcpio=shared \
                  --disable-silent-rules --without-nettle
 
