@@ -42,6 +42,11 @@ if {${os.platform} eq "darwin"} {
                     patch-Include-pyport.h.diff \
                     omit-local-site-packages.patch
 } else {
+    PortGroup       compiler_blacklist_versions 1.0
+    compiler.blacklist-append \
+    				cc
+    compiler.whitelist-append \
+    				clang
     patchfiles      patch-Makefile.pre.in.diff \
                     patch-setup.py.diff \
                     patch-setup.py-disabled_modules.diff \
@@ -68,11 +73,16 @@ if {${os.platform} eq "darwin"} {
     configure.args  --enable-framework=${frameworks_dir} \
                     --enable-ipv6
 } else {
-    configure.args  --enable-ipv6
+    # emit --enable-shared instead of --enable-framework
+    configure.args  --enable-shared \
+    				--enable-ipv6
 }
 
 configure.cppflags-append -I${prefix}/include/db48
 configure.ldflags-append -L${prefix}/lib/db48
+if {${os.platform} eq "linux"} {
+    configure.ldflags-append -Wl,-R,${prefix}/lib/db48
+}
 
 configure.ccache    no
 
@@ -94,6 +104,9 @@ post-patch {
 
 post-configure {
     reinplace "s;/* #undef PY_FORMAT_LONG_LONG */;#define PY_FORMAT_LONG_LONG \"ll\";" pyconfig.h
+    if {${os.platform} eq "linux"} {
+        reinplace "s|-L. -lpython\$\(VERSION\)|\$\(LDLIBRARY\)|g" ${worksrcpath}/Makefile
+    }
 }
 
 build.target        all
@@ -127,17 +140,23 @@ post-destroot {
         file delete ${destroot}${framewpath}/${dir}
     }
 
-    ln -s ${framewdir}/share/man/man1/python${branch}.1 ${destroot}${prefix}/share/man/man1/
-    ln -s ${framewdir}/Python ${destroot}${prefix}/lib/libpython${branch}.dylib
+    if {![file exists ${destroot}${prefix}/share/man/man1/]} {
+        ln -s ${framewdir}/share/man/man1/python${branch}.1 ${destroot}${prefix}/share/man/man1/
+    }
+    if {[file exists ${framewdir}/Python ]} {
+        ln -s ${framewdir}/Python ${destroot}${prefix}/lib/libpython${branch}.dylib
+    }
 
     foreach unversionedFile {2to3 2to3-2 idle idle2 pydoc pydoc2 python python2 python-config python2-config pythonw pythonw2 smtpd.py smtpd2.py} {
         delete ${destroot}${prefix}/bin/${unversionedFile}
     }
 
     # remove -arch flags from the config
-    reinplace -E {s|-arch [a-z0-9_]+||g} \
-        ${destroot}${framewdir}/lib/python${branch}/config/Makefile \
-        ${destroot}${framewdir}/lib/python${branch}/_sysconfigdata.py
+    if {${os.platform} eq "darwin"} {
+        reinplace -E {s|-arch [a-z0-9_]+||g} \
+            ${destroot}${framewdir}/lib/python${branch}/config/Makefile \
+            ${destroot}${framewdir}/lib/python${branch}/_sysconfigdata.py
+    }
 }
 
 platform darwin {

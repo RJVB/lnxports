@@ -209,7 +209,7 @@ default destroot.cmd    {"${python.bin} setup.py [python_get_defaults setup_args
 default destroot.destdir {"--prefix=[python_get_defaults setup_prefix] --root=${destroot}"}
 
 proc python_get_defaults {var} {
-    global python.version python.branch prefix python.prefix
+    global python.version python.branch prefix python.prefix os.platform
     switch -- $var {
         prefix {
             global build_arch frameworks_dir
@@ -223,7 +223,7 @@ proc python_get_defaults {var} {
             return $ret
         }
         bin {
-            if {${python.version} != 24} {
+            if {${os.platform} eq "darwin" && ${python.version} != 24} {
                 return "${python.prefix}/bin/python${python.branch}"
             } else {
                 return "${prefix}/bin/python${python.branch}"
