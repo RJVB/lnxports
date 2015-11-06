@@ -14,9 +14,9 @@ set major           [lindex [split $version .] 0]
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          lang
 license             PSF
-platforms           darwin
+platforms           darwin linux
 
-maintainers         jwa openmaintainer
+maintainers         gmail.com:rjvbertin jwa openmaintainer
 
 description         An interpreted, object-oriented programming language
 long_description    Python is an interpreted, interactive, object-oriented \
@@ -31,7 +31,8 @@ use_xz				yes
 checksums           rmd160  eb003de9bb52fc2c6a2d2e3dcb816ba0c56751d0 \
                     sha256  1cd3730781b91caf0fa1c4d472dc29274186480161a150294c42ce9b5c5effc0
 
-patchfiles          patch-Makefile.pre.in.diff \
+if {${os.platform} eq "darwin"} {
+    patchfiles      patch-Makefile.pre.in.diff \
                     patch-setup.py.diff \
                     patch-setup.py-disabled_modules.diff \
                     patch-Lib-cgi.py.diff \
@@ -40,6 +41,16 @@ patchfiles          patch-Makefile.pre.in.diff \
                     patch-libedit.diff \
                     patch-Include-pyport.h.diff \
                     omit-local-site-packages.patch
+} else {
+    patchfiles      patch-Makefile.pre.in.diff \
+                    patch-setup.py.diff \
+                    patch-setup.py-disabled_modules.diff \
+                    patch-Lib-cgi.py.diff \
+                    patch-Lib-ctypes-macholib-dyld.py.diff \
+                    patch-libedit.diff \
+                    patch-Include-pyport.h.diff \
+                    omit-local-site-packages.patch
+}
 
 depends_lib         port:gettext \
                     port:zlib \
@@ -52,9 +63,13 @@ depends_lib         port:gettext \
 depends_run         port:python_select \
                     port:python2_select
 
-# disable-ipv6 for now, getaddrinfo-function missing
-configure.args      --enable-framework=${frameworks_dir} \
+if {${os.platform} eq "darwin"} {
+    # disable-ipv6 for now, getaddrinfo-function missing
+    configure.args  --enable-framework=${frameworks_dir} \
                     --enable-ipv6
+} else {
+    configure.args  --enable-ipv6
+}
 
 configure.cppflags-append -I${prefix}/include/db48
 configure.ldflags-append -L${prefix}/lib/db48
