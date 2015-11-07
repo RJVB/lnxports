@@ -6,9 +6,19 @@ PortGroup           select 1.0
 
 name                python27
 epoch               2
-# Remember to keep py27-tkinter and py27-gdbm's versions sync'd with this
-version             2.7.10
-revision            3
+if {${os.platform} eq "linux"} {
+#     This port is too complicated to get right on Linux, adding in the fact
+#     that Python itself doesn't really support building in a non-default
+#     prefix there (rpath hacks required).
+#     Thus, we just install a wrapper to the system python2.7 that prepends
+#     our own site-packages directory to the path.
+    maintainers     gmail.com:rjvbertin
+    version         [exec /usr/bin/python2.7 -c "import sys ; print '%d.%d.%d' %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro)"]
+} else {
+    # Remember to keep py27-tkinter and py27-gdbm's versions sync'd with this
+    version             2.7.10
+    revision            3
+}
 
 set major           [lindex [split $version .] 0]
 set branch          [join [lrange [split ${version} .] 0 1] .]
@@ -16,17 +26,46 @@ categories          lang
 license             PSF
 platforms           darwin linux
 
-maintainers         gmail.com:rjvbertin jwa openmaintainer
+maintainers-append  jwa openmaintainer
 
 description         An interpreted, object-oriented programming language
 long_description    Python is an interpreted, interactive, object-oriented \
                     programming language.
 
 homepage            http://www.python.org/
+
+if {${os.platform} eq "linux"} {
+    depends_run     port:python_select \
+                    port:python2_select
+    set pythonNoDot python[string map {. {}} $branch]
+    select.entries  [list python python-$pythonNoDot $pythonNoDot] \
+                    [list python2 python2-$pythonNoDot $pythonNoDot]
+
+    distfiles
+    installs_libs   no
+    supported_archs noarch
+    use_configure   no
+    build           {}
+    destroot {
+        xinstall -m 755 ${filespath}/python-wrapper.sh ${destroot}${prefix}/bin/python${branch}
+        reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/python${branch}
+        reinplace "s|@SUFFIX@|${branch}|g" ${destroot}${prefix}/bin/python${branch}
+        reinplace "s|@BRANCH@|${branch}|g" ${destroot}${prefix}/bin/python${branch}
+        xinstall -m 755 ${filespath}/python-wrapper.sh ${destroot}${prefix}/bin/python${major}
+        reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/python${major}
+        reinplace "s|@SUFFIX@|${major}|g" ${destroot}${prefix}/bin/python${major}
+        reinplace "s|@BRANCH@|${branch}|g" ${destroot}${prefix}/bin/python${major}
+        xinstall -m 755 -d ${destroot}${prefix}/lib/python${branch}/site-packages
+        touch ${destroot}${prefix}/lib/python${branch}/site-packages/placeholder
+    }
+} else {
+
+# the original portfile payload. Still contains some modifications to make it build on Linux
+
 master_sites        ${homepage}ftp/python/${version}/
 
 distname            Python-${version}
-use_xz				yes
+use_xz              yes
 
 checksums           rmd160  eb003de9bb52fc2c6a2d2e3dcb816ba0c56751d0 \
                     sha256  1cd3730781b91caf0fa1c4d472dc29274186480161a150294c42ce9b5c5effc0
@@ -41,6 +80,14 @@ if {${os.platform} eq "darwin"} {
                     patch-libedit.diff \
                     patch-Include-pyport.h.diff \
                     omit-local-site-packages.patch
+    depends_lib     port:gettext \
+                    port:zlib \
+                    path:lib/libssl.dylib:openssl \
+                    port:sqlite3 \
+                    port:db48 \
+                    port:ncurses \
+                    port:bzip2 \
+                    port:libedit
 } else {
     PortGroup       compiler_blacklist_versions 1.0
     compiler.blacklist-append \
@@ -57,14 +104,6 @@ if {${os.platform} eq "darwin"} {
                     omit-local-site-packages.patch
 }
 
-depends_lib         port:gettext \
-                    port:zlib \
-                    path:lib/libssl.dylib:openssl \
-                    port:sqlite3 \
-                    port:db48 \
-                    port:ncurses \
-                    port:bzip2 \
-                    port:libedit
 depends_run         port:python_select \
                     port:python2_select
 
@@ -197,3 +236,5 @@ livecheck.type          regex
 #livecheck.url           ${homepage}download/releases/
 livecheck.url           ${homepage}downloads/
 livecheck.regex         Python (${branch}(?:\\.\\d+)*)
+
+}
