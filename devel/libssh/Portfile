@@ -51,12 +51,21 @@ configure.args-append \
                     -DWITH_GCRYPT=OFF \
                     -DWITH_INTERNAL_DOC=OFF \
                     -DWITH_LIBZ=ON \
-                    -DWITH_GSSAPI=OFF
+                    -DWITH_GSSAPI=OFF \
+                    -DWITH_NACL=OFF
 
 variant kerberos5 description {Enable GSSApi/Kerberos support} {
-    depends_lib-append      port:kerberos5
+    if {${os.platform} eq "darwin"} {
+        depends_lib-append  port:kerberos5
+    }
     configure.args-replace  -DWITH_GSSAPI=OFF \
                             -DWITH_GSSAPI=ON
+}
+
+variant nacl description {Enabled NaCL (libsodium) support} {
+    depends_lib-append  port:libsodium
+    configure.args-replace  -DWITH_NACL=OFF \
+                            -DWITH_NACL=ON
 }
 
 livecheck.type      regex
