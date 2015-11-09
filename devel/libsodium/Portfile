@@ -5,9 +5,9 @@ PortSystem          1.0
 PortGroup           github 1.0
 PortGroup           muniversal 1.0
 
-github.setup        jedisct1 libsodium 1.0.3
+github.setup        jedisct1 libsodium 1.0.6
 
-# Stealth update (v1.0.3)
+# Stealth update (v1.0.6)
 dist_subdir         ${name}/${version}_1
 
 categories          devel security
@@ -21,16 +21,34 @@ description         Portable and packageable NaCl-based crypto library
 long_description    libsodium is a library for network communication, \
                     encryption, decryption, signatures, etc.
 
-checksums           rmd160  c7d2931ebcd896372e8a27eecb6a4b71c9dd6c72 \
-                    sha256  bc8218fa70d838db4e3a5498418b126152253989a295d04b6bcdb940a373196e
+checksums           rmd160  b52999d56ceebcb4735926f02578f3494e8ca01d \
+                    sha256  17fa02382e4ec6328f2857984c7fc40bae52e4aae52c0763205d1bf40a4f1183
 
 depends_build-append \
-                    port:autoconf \
-                    port:automake \
                     port:libtool
+if {${os.platform} eq "darwin"} {
+    depends_build-append \
+                    port:autoconf \
+                    port:automake
+}
 
 pre-configure {
     system -W ${worksrcpath} "./autogen.sh"
+}
+
+variant LTO description {build with link-time optimisation} {}
+if {[variant_isset LTO]} {
+    if {[string match *clang* ${configure.compiler}]} {
+        configure.cflags-append \
+                    -flto
+        configure.ldflags-append \
+                    ${configure.optflags} -flto
+    } else {
+        configure.cflags-append \
+                    -ftracer -flto -fuse-linker-plugin -ffat-lto-objects
+        configure.ldflags-append \
+                    ${configure.optflags} -ftracer -flto -fuse-linker-plugin
+    }
 }
 
 test.run            yes
