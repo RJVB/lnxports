@@ -51,5 +51,12 @@ if {[variant_isset LTO]} {
     }
 }
 
+post-destroot {
+    # make us a drop-in replacement for NaCL
+    ln -s sodium ${destroot}${prefix}/include/nacl
+    ln -s libsodium.a ${destroot}${prefix}/lib/libnacl.a
+    ln -s libsodium.la ${destroot}${prefix}/lib/libnacl.la
+}
+
 test.run            yes
 test.target         check
