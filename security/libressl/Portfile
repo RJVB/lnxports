@@ -32,6 +32,14 @@ patchfiles \
 
 use_autoreconf  yes
 autoreconf.args -fvi
+if {${os.platform} eq "linux"} {
+    depends_build-delete \
+        port:autoconf port:automake
+    post-destroot {
+        ln -s libcrypto.so.35 ${destroot}${prefix}/lib/libcrypto.so.1.0.0
+        ln -s libssl.so.35 ${destroot}${prefix}/lib/libssl.so.1.0.0
+    }
+}
 
 configure.args \
     --disable-silent-rules \
