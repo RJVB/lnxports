@@ -24,7 +24,8 @@ checksums               md5     00b516f4704d4a7cb50a1d97e6e8e15b \
 
 patchfiles              patch-Makefile-man.diff \
                         patch-Makefile-links.diff \
-                        patch-Makefile-so.diff
+                        patch-Makefile-so.diff \
+                        patch-Makefile-configopts.diff
 
 use_configure           no
 
@@ -32,8 +33,15 @@ use_parallel_build      yes
 
 variant universal {}
 
-build.args              CC="${configure.cc} [get_canonical_archflags cc]" \
-                        PREFIX=${prefix}
+if {${os.platform} eq "linux"} {
+    configure.cflags-append \
+                        -fPIC
+}
+# build.args              CC="${configure.cc} [get_canonical_archflags cc]"
+build.args-append       CC="${configure.cc}" \
+                        PREFIX=${prefix} \
+                        MPCFLAGS="${configure.cflags}" \
+                        LDFLAGS="${configure.ldflags}"
 
 destroot.destdir        PREFIX=${destroot}${prefix}
 
