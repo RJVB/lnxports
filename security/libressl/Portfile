@@ -33,11 +33,17 @@ patchfiles \
 use_autoreconf  yes
 autoreconf.args -fvi
 if {${os.platform} eq "linux"} {
+    variant fake_abicompat description {Really a rather bad idea} {
+        notes-append "You installed symlinks pretending the libressl is ABI compatible with OpenSSL. \
+            That isn't really the case, and thus a rather bad idea."
+    }
     depends_build-delete \
         port:autoconf port:automake
     post-destroot {
-        ln -s libcrypto.so.35 ${destroot}${prefix}/lib/libcrypto.so.1.0.0
-        ln -s libssl.so.35 ${destroot}${prefix}/lib/libssl.so.1.0.0
+        if {[variant_isset fake_abicompat]} {
+            ln -s libcrypto.so.35 ${destroot}${prefix}/lib/libcrypto.so.1.0.0
+            ln -s libssl.so.35 ${destroot}${prefix}/lib/libssl.so.1.0.0
+        }
     }
 }
 
