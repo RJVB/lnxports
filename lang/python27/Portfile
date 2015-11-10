@@ -35,6 +35,7 @@ long_description    Python is an interpreted, interactive, object-oriented \
 homepage            http://www.python.org/
 
 if {${os.platform} eq "linux"} {
+    PortGroup       python 1.0
     depends_run     port:python_select \
                     port:python2_select
     set pythonNoDot python[string map {. {}} $branch]
@@ -57,6 +58,9 @@ if {${os.platform} eq "linux"} {
         reinplace "s|@BRANCH@|${branch}|g" ${destroot}${prefix}/bin/python${major}
         xinstall -m 755 -d ${destroot}${prefix}/lib/python${branch}/site-packages
         touch ${destroot}${prefix}/lib/python${branch}/site-packages/placeholder
+        xinstall -m 755 -d ${destroot}${python.prefix}/bin
+        xinstall -m 755 -d ${destroot}${python.libdir}
+        ln -s ../../../../../../../lib/python${branch}/site-packages ${destroot}${python.libdir}/site-packages
     }
 } else {
 
