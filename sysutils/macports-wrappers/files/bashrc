@@ -1,0 +1,8 @@
+. $HOME/.bashrc
+
+# red
+#PS1="${PS1%\\\$*}\[\033[01;31m\][MacPorts]\[\033[00m\]\$${PS1##*$}"
+
+# nocolor
+#PS1="${PS1%\\\$*}[MacPorts]\$${PS1##*$}"
+PS1="[MacPorts] $PS1"

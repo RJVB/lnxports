@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec mp-exec `dirname $0`/qmake "$@"

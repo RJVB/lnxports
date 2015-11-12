@@ -1,0 +1,78 @@
+## MACPORTS ENVIRONMENT SETUP
+##
+## This is the runtime environment part. All variables that are only to
+## be used at build time go to build_environment.rc
+ 
+prepend() { [ -d "$2" ] && eval $1=\"$2\$\{$1:+':'\$$1\}\" && export $1 ; }
+
+## Qt
+## Install location for Qt in neon, and the neon base path
+export MACPORTS_PROJECT_NAME="macports"
+export MPDIR="@PREFIX@"
+export QTDIR=$MPDIR
+
+## KDE
+export KDEDIR=$QTDIR
+export KF5=$QTDIR
+prepend PATH $KF5/bin
+export PATH
+
+export KDEHOME=$HOME/.${MACPORTS_PROJECT_NAME}-kde/
+export KDETMP=/tmp/${MACPORTS_PROJECT_NAME}-kde-$USER
+export KDEVARTMP=/var/tmp/${MACPORTS_PROJECT_NAME}-kde-$USER
+mkdir -p $KDETMP
+mkdir -p $KDEVARTMP
+prepend KDEDIRS $KDEDIR
+export KDEDIRS
+
+#prepend QT_PLUGIN_PATH /usr/lib/qt4/plugins
+prepend QT_PLUGIN_PATH $KF5/share/qt/plugins/kf5
+prepend QT_PLUGIN_PATH $KF5/share/qt/plugins
+prepend QT_PLUGIN_PATH $KF5/lib/qt5/plugins
+export QT_PLUGIN_PATH
+
+# QML2 stuff
+prepend QML2_IMPORT_PATH $KF5/lib/x86_64-linux-gnu/qml
+prepend QML2_IMPORT_PATH $KF5/lib/qml
+export QML2_IMPORT_PATH
+
+## Make manpages from neon visible
+export MANPATH=$MPDIR/share/man/:$MANPATH
+
+## DBus
+## only set DBUS related variables if you compiled dbus on your own
+## (which is really discouraged). if you use the distro provided dbus,
+## skip this variable. Uncomment it if necessary.
+#export DBUSDIR=$KF5
+#prepend PKG_CONFIG_PATH $DBUSDIR/lib/pkgconfig
+ 
+## XDG
+## put these seperate, needed for e.g. akonadi
+## refer to http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html
+mkdir -p $KDEHOME/local/share
+export XDG_DATA_HOME=$KDEHOME/local/share
+mkdir -p $KDEHOME/config
+export XDG_CONFIG_HOME=$KDEHOME/config
+mkdir -p $KDEHOME/cache
+export XDG_CACHE_HOME=$KDEHOME/cache
+export XDG_DATA_DIRS=$KF5/share:$XDG_DATA_DIRS:/usr/share
+export XDG_CONFIG_DIRS=$KF5/etc/xdg:$XDG_CONFIG_DIRS:/etc/xdg
+
+## We need this for Mono/GAC libraries at runtime, so that apps dont crash
+export MONO_GAC_PREFIX=$MPDIR
+ 
+## make the debug output prettier
+export KDE_COLOR_DEBUG=1
+export QTEST_COLORED=1
+
+## Required for non standard installation path of cursors
+export XCURSOR_PATH=$MPDIR/share/icons
+
+## Uncomment the following lines if DBus does not work. DBus is not
+## working if, when you run `dbus-uuidgen --ensure && qdbus`, you get an error.
+#
+# alias dbusstart="eval `PATH=$DBUSDIR/bin \
+#  $DBUSDIR/bin/dbus-launch --auto-syntax`"
+#
+
+## vim: syntax=sh
