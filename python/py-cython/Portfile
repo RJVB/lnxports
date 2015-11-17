@@ -39,6 +39,11 @@ if {${name} ne ${subport}} {
             special_methods.html ${destroot}${python.prefix}/share/doc/cython
         xinstall -m 644 -W ${worksrcpath} INSTALL.txt README.txt \
             ToDo.txt USAGE.txt ${destroot}${python.prefix}/share/doc/cython
+        if {${os.platform} eq "linux"} {
+            foreach b [glob -nocomplain ${destroot}${python.prefix}/bin/*] {
+                reinplace "s|/usr/bin/python|${prefix}/bin/python|g" ${b}
+            }
+        }
     }
 
     depends_run         port:cython_select
