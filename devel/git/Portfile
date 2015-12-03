@@ -259,6 +259,7 @@ platform linux {
                     --with-python="${prefix}/bin/python2.7"
     }
     post-configure {
+        # normally libintl is not expected to be external on Linux
         reinplace "s|^EXTLIBS =$|EXTLIBS = -lintl|g" ${worksrcpath}/Makefile
     }
     build.args      V=1
