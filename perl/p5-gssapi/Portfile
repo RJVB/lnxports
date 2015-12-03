@@ -20,7 +20,7 @@ long_description    This module gives access to the routines of the \
 checksums           sha1    c857485532e92e266a75b56ed247284f94b2d3d4 \
                     rmd160  849d01d39851ec2726559d4f2b92832758a333ad
 
-if {${perl5.major} != ""} {
+if {${perl5.major} != "" && ${os.platform} eq "darwin"} {
     depends_lib-append \
                     port:kerberos5
 }
