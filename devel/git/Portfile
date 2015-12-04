@@ -241,12 +241,14 @@ platform darwin 8 {
 
 default_variants    +doc +pcre
 platform darwin {
-    default_variants    +doc +pcre +credential_osxkeychain
+    default_variants \
+                    +doc +pcre +credential_osxkeychain
 }
 
 platform linux {
     use_configure   yes
     pre-configure {
+        # recreate the configure script with the build.args collected above
         system -W ${worksrcpath} "make ${build.args} configure"
     }
     configure.args  --prefix=${prefix} --with-curl --with-openssl --with-iconv=${prefix} --with-perl="${prefix}/bin/perl${perl5.major}"
