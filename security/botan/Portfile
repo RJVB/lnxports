@@ -19,8 +19,24 @@ homepage            http://botan.randombit.net/
 master_sites        http://files.randombit.net/botan/
 distfiles           Botan-${version}.tgz
 worksrcdir          Botan-${version}
-checksums           rmd160  2412c33938442ffff6eca67c2db4c7a2a55b2a41 \
+
+    checksums       rmd160  2412c33938442ffff6eca67c2db4c7a2a55b2a41 \
                     sha256  487d27d3a081ae403cf87c0fc78c2a64183f001b48f9feb87e8de1e16fba8df2
+
+subport botan111 {
+    version         1.11.10
+    long_description-append \
+                    This installs botan 1.11.10
+    distfiles       Botan-${version}.tgz
+    worksrcdir      Botan-${version}
+    checksums       rmd160  5e064e044acb4892908d500b62ea7d1a0cd00139 \
+                    sha256  cb8794d1c5692ec851dbd599fc90d87d5474b8e86518e6f0157994a417b8a519
+}
+
+if {${subport} eq "name"} {
+    configure.args-append \
+                    --with-openssl
+}
 
 depends_lib         path:lib/libssl.dylib:openssl port:zlib port:bzip2
 
@@ -32,7 +48,8 @@ if {${os.platform} eq "darwin"} {
 } else {
     configure.cmd   python2.7 ./configure.py
 }
-configure.args      --docdir=share/doc --with-openssl --with-zlib --with-bzip2
+# configure.args      --docdir=share/doc --with-openssl --with-zlib --with-bzip2
+configure.args      --docdir=share/doc --with-zlib --with-bzip2
 
 if {[string match *clang* ${configure.compiler}]} {
   configure.args-append --cc=clang
