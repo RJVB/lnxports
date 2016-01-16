@@ -62,10 +62,12 @@ if {![variant_exists qt5kde]} {
     # define a variant that will be set default when port:qt5-kde or port:qt5-kde-devel is
     # installed. This means that a user doing a new install (or upgrade) of a port depending
     # on Qt5 and with port:qt5-kde installed will request a variant the build bots should not
-    # consider a default variant. This should protect against pulling in a binary build against
-    # the wrong Qt5 port.
+    # consider a default variant. This meant to protect against pulling in a binary build against
+    # the wrong Qt5 port, which was relevant in the time of port:qt5-mac, and hopefully no
+    # longer now that port:qt5 installs to the same place as we do (but as an all-inclusive prefix).
     variant qt5kde description {default variant set for port:qt5-kde* and ports that depend on them} {}
 }
+# it should no longer be necessary to set qt5kde but we will continue to do so for now.
 default_variants        +qt5kde
 
 # standard Qt5 name. This should be just "qt5" (or qt53 for instance when more
@@ -144,37 +146,37 @@ if {![info exists building_qt5] || ![info exists name] \
     set qt5_is_concurrent   1
 }
 
-set qt_dir              ${prefix}/libexec/${qt_name}
-set qt_dir_rel          libexec/${qt_name}
-set qt_includes_dir     ${prefix}/include/${qt_name}
-set qt_libs_dir         ${qt_dir}/lib
-set qt_frameworks_dir   ${qt_dir}/Library/Frameworks
+set qt_dir                  ${prefix}/libexec/${qt_name}
+set qt_dir_rel              libexec/${qt_name}
+set qt_includes_dir         ${prefix}/include/${qt_name}
+set qt_libs_dir             ${qt_dir}/lib
+set qt_frameworks_dir       ${qt_dir}/Library/Frameworks
 set qt_frameworks_dir_rel   ${qt_dir_rel}/Library/Frameworks
-set qt_bins_dir         ${qt_dir}/bin
+set qt_bins_dir             ${qt_dir}/bin
 set qt_cmake_module_dir     ${prefix}/lib/cmake
 set qt_archdata_dir         ${qt_dir}
 set qt_sysconf_dir          ${prefix}/etc/${qt_name}
-set qt_data_dir         ${prefix}/share/${qt_name}
+set qt_data_dir             ${prefix}/share/${qt_name}
 set qt_plugins_dir          ${prefix}/share/${qt_name}/plugins
 set qt_mkspecs_dir          ${prefix}/share/${qt_name}/mkspecs
 set qt_imports_dir          ${prefix}/share/${qt_name}/imports
 set qt_qml_dir              ${prefix}/share/${qt_name}/qml
-set qt_translations_dir ${prefix}/share/${qt_name}/translations
-set qt_tests_dir        ${prefix}/share/${qt_name}/tests
+set qt_translations_dir     ${prefix}/share/${qt_name}/translations
+set qt_tests_dir            ${prefix}/share/${qt_name}/tests
 set qt_docs_dir             ${prefix}/share/doc/${qt_name}
 
-set qt_qmake_cmd        ${qt_dir}/bin/qmake
-set qt_moc_cmd          ${qt_dir}/bin/moc
-set qt_uic_cmd          ${qt_dir}/bin/uic
-set qt_lrelease_cmd     ${qt_dir}/bin/lrelease
+set qt_qmake_cmd            ${qt_dir}/bin/qmake
+set qt_moc_cmd              ${qt_dir}/bin/moc
+set qt_uic_cmd              ${qt_dir}/bin/uic
+set qt_lrelease_cmd         ${qt_dir}/bin/lrelease
 
 if {${os.platform} eq "darwin"} {
-    set qt_apps_dir     ${applications_dir}/Qt5
+    set qt_apps_dir         ${applications_dir}/Qt5
 } else {
-    set qt_apps_dir     ${qt_bins_dir}
+    set qt_apps_dir         ${qt_bins_dir}
 }
-set qt_examples_dir     ${qt_apps_dir}/examples
-set qt_demos_dir        ${qt_apps_dir}/demos
+set qt_examples_dir         ${qt_apps_dir}/examples
+set qt_demos_dir            ${qt_apps_dir}/demos
 
 global qt_qmake_spec
 global qt_qmake_spec_32
@@ -262,6 +264,13 @@ if {${os.platform} eq "darwin"} {
 
 # allow for depending on either qt5[-mac] or qt5[-mac]-devel or qt5[-mac]*-kde, simultaneously
 
+set qt5_stubports   {qtbase qtdeclarative qtserialport qtsensors qtwebkit \
+                qtquick1 qtwebchannel qtimageformats qtsvg qtmacextras \
+                qtlocation qtxmlpatterns qtcanvas3d qtgraphicaleffects qtmultimedia \
+                qtscript qt3d qtconnectivity qttools qtquickcontrols qtenginio \
+                qtwebkit-examples qtwebsockets qttranslations docs mysql-plugin \
+                sqlite-plugin}
+
 if {![info exists building_qt5]} {
     if {${os.platform} eq "darwin"} {
 
@@ -271,17 +280,22 @@ if {![info exists building_qt5]} {
         global qt5_dependency
         if {[info exists qt5_is_concurrent]} {
             if {[file exists ${qt_frameworks_dir}/QtCore.framework/QtCore]} {
-                set qt5_dependency path:libexec/${qt_name}/Library/Frameworks/QtCore.framework/QtCore:qt5-kde
+                set qt5_pathlibspec path:libexec/${qt_name}/Library/Frameworks/QtCore.framework/QtCore
             } else {
-                set qt5_dependency path:libexec/${qt_name}/lib/libQtCore.${qt_libs_ext}:qt5-kde
+                set qt5_pathlibspec path:libexec/${qt_name}/lib/libQtCore.${qt_libs_ext}
             }
         } else {
             if {[file exists ${qt_frameworks_dir}/QtCore.framework/QtCore]} {
-                set qt5_dependency path:Library/Frameworks/QtCore.framework/QtCore:qt5-kde
+                set qt5_pathlibspec path:Library/Frameworks/QtCore.framework/QtCore
             } else {
-                set qt5_dependency path:lib/libQtCore.${qt_libs_ext}:qt5-kde
+                set qt5_pathlibspec path:lib/libQtCore.${qt_libs_ext}
             }
         }
+        set qt5_dependency ${qt5_pathlibspec}:qt5-kde
+        depends_lib-append ${qt5_dependency}
+    } elseif {${os.platform} eq "linux"} {
+        set qt5_pathlibspec path:libexec/${qt_name}/lib/libQt5Core.${qt_libs_ext}
+        set qt5_dependency ${qt5_pathlibspec}:qt5-kde
         depends_lib-append ${qt5_dependency}
     }
 }
@@ -297,7 +311,12 @@ if {![info exists building_qt5] && [variant_exists LTO] && [variant_isset LTO]} 
     configure.cxxflags-append   -flto
     configure.objcflags-append  -flto
     configure.objcxxflags-append  -flto
-    configure.ldflags-append    ${configure.optflags} -flto
+    # ${configure.optflags} is a list, and that can lead to strange effects
+    # in certain situations if we don't treat it as such here.
+    foreach opt ${configure.optflags} {
+        configure.ldflags-append ${opt}
+    }
+    configure.ldflags-append    -flto
     # assume any compiler not clang will be gcc
     if {![string match "*clang*" ${configure.compiler}]} {
         configure.cflags-append         -fuse-linker-plugin -ffat-lto-objects
@@ -400,3 +419,32 @@ if {![info exists building_qt5]} {
 #     global version
 #     return [join [lrange [split ${version} .] 0 1] .]
 # }
+
+# provide a variant to prune provided translations
+PortGroup   locale_select 1.0
+# Qt translations don't go into ${prefix}/opt/local/share/locale:
+post-destroot {
+    if {![info exists keep_languages]} {
+        if {[file exists ${prefix}/etc/macports/locales.tcl] && [file exists ${destroot}${qt_translations_dir}]} {
+            if {[catch {source "${prefix}/etc/macports/locales.tcl"} err]} {
+                ui_error "Error reading ${prefix}/etc/macports/locales.tcl: $err"
+                return -code error "Error reading ${prefix}/etc/macports/locales.tcl"
+            }
+        }
+    }
+    if {[info exists keep_languages]} {
+        foreach l [glob -nocomplain ${destroot}${qt_translations_dir}/*.qm] {
+            set langcomps [split [file rootname [file tail ${l}]] _]
+            set simplelang [lindex ${langcomps} end]
+            set complang [join [lrange ${langcomps} end-1 end] _]
+            if {[lsearch -exact ${keep_languages} ${simplelang}] ne "-1"} {
+                ui_debug "won't delete ${l} (${simplelang})"
+            } elseif {[lsearch -exact ${keep_languages} ${complang}] ne "-1"} {
+                ui_debug "won't delete ${l} (${complang})"
+            } else {
+                ui_debug "rm ${l}"
+                file delete -force ${l}
+            }
+        }
+    }
+}
