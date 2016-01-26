@@ -34,8 +34,6 @@ if {${subport} ne "${name}-qt5"} {
     PortGroup			qt4 1.0
     patchfiles-append   patch-xxdiffpro.diff
     conflicts           "${name}-qt5"
-#     configure.pre_args-append \
-#                         QMAKEOPTS="QMAKE_CFLAGS=\"${configure.cflags}\" QMAKE_CXXFLAGS=\"${configure.cxxflags}\""
 } else {
     PortGroup			qt5 1.0
     patchfiles-append   qt5/patch-xxdiffpro.diff \
@@ -43,23 +41,23 @@ if {${subport} ne "${name}-qt5"} {
                         qt5/patch-use-qt5.diff \
                         qt5/patch-restore-style.diff
     conflicts           ${name}
-#     if {[variant_isset LTO]} {
-#         configure.pre_args-append \
-#                         QMAKEOPTS="-config ltcg QMAKE_CFLAGS=\"${configure.cflags}\" QMAKE_CXXFLAGS=\"${configure.cxxflags}\""
-#     } else {
-#         configure.pre_args-append \
-#                         QMAKEOPTS="QMAKE_CFLAGS=\"${configure.cflags}\" QMAKE_CXXFLAGS=\"${configure.cxxflags}\""
-#     }
 }
 
 configure.dir       ${workpath}/build
 configure.cmd       make
 configure.pre_args-append \
-                    QMAKE=${qt_qmake_cmd}
+                    QMAKE=${qt_qmake_cmd} QMAKEOPTS="-spec ${qt_qmake_spec}"
 build.dir           ${configure.dir}
 #use_parallel_build  no
 
 patchfiles-append   patch-Makefiles.diff
+
+# MacPorts base can add -stdlib=libc++ to configure.cxxflags, in which case it also has
+# to be added to configure.ldflags
+if {![string match "*stdc=libc++*" ${configure.cxxflags}]} {
+    configure.ldflags-append \
+                    -stdlib=libc++
+}
 
 post-patch {
     reinplace "s|@@CFLAGS@@|${configure.cflags}|g" ${worksrcpath}/src/xxdiff.pro

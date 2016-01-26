@@ -1,6 +1,6 @@
 diff -r b193168bad98 src/xxdiff.pro
---- a/src/xxdiff.pro	Wed Apr 15 14:02:15 2015 -0400
-+++ b/src/xxdiff.pro	Tue Jan 26 11:02:25 2016 +0100
+--- src/xxdiff.pro	Wed Apr 15 14:02:15 2015 -0400
++++ src/xxdiff.pro	Tue Jan 26 11:02:25 2016 +0100
 @@ -29,8 +29,9 @@
  TEMPLATE = app
  CONFIG -= debug
