@@ -30,14 +30,12 @@ checksums               rmd160  8ad5e9936c66ced9ad4ffc5012484a38f4a15cee \
 configure.args \
     --without-ssl
 
-depends_build           bin:makeinfo:texinfo \
-                        bin:pod2man:perl5 \
+depends_build           bin:pod2man:perl5 \
                         port:pkgconfig
 
 depends_lib \
     port:libidn \
     port:gettext \
-    port:nettle \
     port:pcre
 
 patchfiles              nawk.patch \
@@ -61,7 +59,7 @@ variant test description {Add dependencies needed to run tests} {
 }
 
 variant ssl description {Build with SSL support using GnuTLS} {
-    depends_lib-append      port:gnutls
+#     depends_lib-append      port:gnutls
     configure.args-delete   --without-ssl
 }
 
