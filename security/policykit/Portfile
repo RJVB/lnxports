@@ -25,16 +25,12 @@ checksums           rmd160  661b0a678f7c770c213404db3af604935fdb25bc \
 
 depends_build-append \
                     port:pkgconfig \
-                    port:intltool \
-                    port:gtk-doc \
-                    port:autoconf \
-                    port:automake \
                     port:libtool
 
-depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
-                    port:mozjs17
+# depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
+#                     port:mozjs17
 
-gobject_introspection yes
+# gobject_introspection yes
 
 patchfiles          patch-configure.ac.diff \
                     patch-getline.diff
@@ -58,11 +54,11 @@ configure.cmd       ./autogen.sh
 configure.cflags-append -I/usr/include
 configure.ldflags-append -L/usr/lib
 
+#                     --with-polkitd-user=polkitd
 configure.args      --with-authfw=pam \
                     --with-pam-prefix=/etc/pam.d \
                     --with-pam-module-dir=/usr/lib/pam \
-                    --with-polkitd-user=polkitd \
-                    --with-mozjs=mozjs-17.0 \
+                    --with-mozjs=mozjs185 \
                     --enable-systemd=no \
                     --disable-silent-rules \
                     --disable-test \
@@ -77,7 +73,7 @@ variant docs description {Build API docs using gtk-doc} {
         depends_build-append  port:gtk-doc
 }
 
-add_users           polkitd group=polkitd realname=Policy\ Kit
+# add_users           polkitd group=polkitd realname=Policy\ Kit
 
 livecheck.type      regex
 livecheck.url       ${master_sites}
