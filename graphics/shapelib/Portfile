@@ -27,13 +27,11 @@ variant universal {}
 
 build.target        all shptree.o
 
-build.args          CC=${configure.cc} CFLAGS="${configure.cflags} [get_canonical_archflags]"
+build.args          CC=${configure.cc} CFLAGS="${configure.cflags} [get_canonical_archflags] -fPIC"
 
 post-build {
-    set libcmd "${configure.cc} [get_canonical_archflags] -dynamiclib -all_load \
-        -install_name ${prefix}/lib/libshp.${version}.dylib \
-        -compatibility_version ${version} \
-        -o libshp.${version}.dylib shpopen.o shptree.o \
+    set libcmd "${configure.cc} [get_canonical_archflags] -fPIC -shared \
+        -o libshp.so.${version} shpopen.o shptree.o \
         dbfopen.o safileio.o"
     ui_info $libcmd
     system -W ${worksrcpath} $libcmd
@@ -44,7 +42,7 @@ destroot.target
 
 post-destroot {
     xinstall -m 644 -c -W ${worksrcpath} shapefil.h ${destroot}${prefix}/include
-    xinstall -m 644 -c -W ${worksrcpath} libshp.${version}.dylib ${destroot}${prefix}/lib
-    ln -s libshp.${version}.dylib ${destroot}${prefix}/lib/libshp.${libver}.dylib
-    ln -s libshp.${version}.dylib ${destroot}${prefix}/lib/libshp.dylib
+    xinstall -m 644 -c -W ${worksrcpath} libshp.so.${version} ${destroot}${prefix}/lib
+    ln -s libshp.so.${version} ${destroot}${prefix}/lib/libshp.so.${libver}
+    ln -s libshp.so.${version} ${destroot}${prefix}/lib/libshp.so
 }
