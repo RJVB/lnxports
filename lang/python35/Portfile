@@ -53,7 +53,8 @@ compiler.blacklist      *llvm-gcc-4.2
 
 # ensurepip arg may be removed later, now conflicts with pip and setuptools
 # packages
-configure.args          --enable-ipv6 \
+configure.args          --enable-shared \
+                        --enable-ipv6 \
                         --with-computed-gotos \
                         --with-ensurepip=no
 
