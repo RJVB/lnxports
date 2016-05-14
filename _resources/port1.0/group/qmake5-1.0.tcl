@@ -1,6 +1,5 @@
 # -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
-# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
-# $Id: qmake-1.0.tcl 106930 2013-06-12 03:13:56Z ryandesign@macports.org $
+# $Id: qmake5-1.0.tcl 145157 2016-01-27 04:47:20Z mcalhoun@macports.org $
 
 #
 # Copyright (c) 2013 The MacPorts Project
@@ -50,12 +49,15 @@ if {![info exists qt5.using_kde]} {
 
 if {${qt5.using_kde}} {
 
-    configure.cmd                   ${qt_qmake_cmd} -r
+    #configure.cmd                   ${qt_qmake_cmd} -r
+    configure.cmd                   ${qt_qmake_cmd}
     configure.pre_args-replace      --prefix=${prefix} PREFIX=${prefix}
     configure.universal_args-delete --disable-dependency-tracking
 
     # qmake defaults to -mmacosx-version-min=10.6, which implies stdlib is libstdc++, which caused problems
     #    (see https://trac.macports.org/wiki/FAQ#libcpp)
+    # override QMAKE_MACOSX_DEPLOYMENT_TARGET set in ${prefix}/libexec/qt5/mkspecs/macx-clang/qmake.conf
+    # see #50249
     configure.pre_args-append       "QMAKE_MACOSX_DEPLOYMENT_TARGET=${macosx_deployment_target}"
 
     if {[variant_exists universal] && [variant_isset universal]} {
@@ -107,6 +109,10 @@ if {${qt5.using_kde}} {
         }
     }
 
+    # override QMAKE_MACOSX_DEPLOYMENT_TARGET set in ${prefix}/libexec/qt5/mkspecs/macx-clang/qmake.conf
+    # see #50249
+    configure.args-append QMAKE_MACOSX_DEPLOYMENT_TARGET=${macosx_deployment_target}
+
     if {![info exists qt5_qmake_request_no_debug]} {
         variant debug description {Build both release and debug libraries} {}
 
@@ -139,3 +145,21 @@ if {${qt5.using_kde}} {
     }
 
 }
+
+# override C++11 flags set in ${prefix}/libexec/qt5/mkspecs/common/clang-mac.conf
+#    so value of ${configure.cxx_stdlib} can always be used
+if {${configure.cxx_stdlib} ne ""} {
+    if {${configure.cxx_stdlib} ne "libc++"} {
+        configure.args-append \
+            QMAKE_CXXFLAGS_CXX11-=-stdlib=libc++ \
+            QMAKE_LFLAGS_CXX11-=-stdlib=libc++   \
+            QMAKE_CXXFLAGS_CXX11+=-stdlib=${configure.cxx_stdlib} \
+            QMAKE_LFLAGS_CXX11+=-stdlib=${configure.cxx_stdlib}
+    }
+    # ensure ${configure.cxx_stdlib} is used for C++ stdlib
+    configure.args-append \
+        QMAKE_CXXFLAGS+=-stdlib=${configure.cxx_stdlib} \
+        QMAKE_LFLAGS+=-stdlib=${configure.cxx_stdlib}
+}
+
+# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;

@@ -36,6 +36,7 @@
 PortGroup               cmake 1.0
 # set qt5.prefer_kde      1
 PortGroup               qt5-kde 1.0
+PortGroup               active_variants 1.1
 
 ########################################################################
 # Projects including the 'kf5' port group can optionally set
@@ -73,23 +74,25 @@ if { ![ info exists kf5.project ] } {
 
 # KF5 frameworks current version, which is the same for all frameworks
 if {![info exists kf5.version]} {
-    set kf5.version     5.17.0
+    set kf5.version     5.20.0
+    # kf5.latest_version is supposed to be used only in the KF5-Frameworks Portfile
+    # when updating it to the new version (=kf5.latest_version).
     set kf5.latest_version \
-                        5.17.0
+                        5.20.0
 }
 
 # KF5 Applications version
 if {![ info exists kf5.release ]} {
-    set kf5.release     15.12.0
+    set kf5.release     16.04.0
     set kf5.latest_release \
-                        15.12.1
+                        16.04.1
 }
 
 # KF5 Plasma version
 if {![ info exists kf5.plasma ]} {
-    set kf5.plasma      5.5.1
+    set kf5.plasma      5.6.4
     set kf5.latest_plasma \
-                        5.5.1
+                        5.6.4
 }
 
 platforms               darwin linux
@@ -106,7 +109,9 @@ configure.cppflags-delete -I${prefix}/include
 # setup all KF5 ports to build in a separate directory from the source:
 cmake.out_of_source     yes
 
-use_xz                  yes
+if {![info exists kf5.dont_use_xz]} {
+    use_xz              yes
+}
 
 set kf5.pyversion       2.7
 set kf5.pybranch        [join [lrange [split ${kf5.pyversion} .] 0 1] ""]
@@ -119,6 +124,30 @@ if {${os.platform} eq "darwin"} {
     set kf5.pythondep   bin:python:python27
 }
 
+variant nativeQSP conflicts qspXDG description {use the native Apple-style QStandardPaths locations} {}
+
+if {![file exists ${qt_includes_dir}/QtCore/qextstandardpaths.h]} {
+    default_variants    +nativeQSP
+}
+
+if {![variant_isset nativeQSP]} {
+    configure.cppflags-append \
+                        -DQT_USE_EXTSTANDARDPATHS -DQT_EXTSTANDARDPATHS_XDG_DEFAULT=true
+}
+
+# A transitional procedure that adds definitions that are likely to become the default
+proc kf5.use_QExtStandardPaths {} {
+# 20160324 : remove payload because -DQT_EXTSTANDARDPATHS_XDG_DEFAULT=true is becoming the default
+#     # 20160214 : switch from QStandardPaths to the experimental QExtStandardPaths
+#     configure.cppflags-append \
+#                     -DQT_USE_EXTSTANDARDPATHS
+#     # configure QExtStandardPaths to use the QSP/XDG mode set by the QSP activator.
+#     # alternatives are false (use native QSP) and true (use XDG-compliant QS).
+#     # This will be set to "true" if it is decided to dump the QSP activator.
+#     configure.cppflags-append \
+#                     -DQT_EXTSTANDARDPATHS_XDG_DEFAULT=runtime
+}
+
 # TODO:
 #
 # Phonon added as library dependency here as most, if not all KDE
@@ -129,6 +158,8 @@ if {${os.platform} eq "darwin"} {
 
 # This is used by all KF5 frameworks
 depends_lib-append      path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
+
+# configure.args-append   -G "\"CodeBlocks - Unix Makefiles\""
 
 # Use directory set by qt5-kde or qt5-mac
 configure.args-append   -DECM_MKSPECS_INSTALL_DIR=${qt_mkspecs_dir}
@@ -168,12 +199,12 @@ if {${os.platform} eq "darwin"} {
 } elseif {${os.platform} eq "linux"} {
     set kf5.applications_dir \
                         ${prefix}/bin
-    set kf5.libexec_dir ${prefix}/lib/${os.arch}-linux-gnu/libexec
+    set kf5.libexec_dir ${prefix}/lib/${build_arch}-linux-gnu/libexec
     configure.args-delete \
-                        -DCMAKE_INSTALL_RPATH=${prefix}/lib
+                        -DCMAKE_INSTALL_RPATH="${prefix}/lib"
     configure.args-append \
                         -DCMAKE_PREFIX_PATH=${prefix} \
-                        -DCMAKE_INSTALL_RPATH="${prefix}/lib/${os.arch}-linux-gnu\;${prefix}/lib"
+                        -DCMAKE_INSTALL_RPATH="${prefix}/lib/${build_arch}-linux-gnu\;${prefix}/lib"
 }
 set kf5.docs_dir        ${prefix}/share/doc/kf5
 
@@ -184,6 +215,10 @@ variant docs description {build and install the documentation, for use with Qt's
                         -DBUILD_doc=OFF \
                         -DBUILD_docs=OFF
     if {${subport} ne "kf5-kapidox"} {
+        if {${subport} ne "kf5-kdoctools"} {
+            kf5.depends_frameworks \
+                        kdoctools
+        }
         if {[info exists kf5.allow_docs_generation]} {
             kf5.depends_build_frameworks \
                         kapidox
@@ -207,9 +242,13 @@ variant docs description {build and install the documentation, for use with Qt's
     }
 }
 if {![variant_isset docs]} {
-    pre-patch {
-        reinplace "/add_subdirectory.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
-        reinplace "/add_subdirectory.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+    # 20160325 : do this in the post-patch so patches around the targeted won't need to be
+    # specific for +docs and -docs !
+    post-patch {
+        if {[file exists ${worksrcpath}/CMakeLists.txt]} {
+            reinplace "/add_subdirectory.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+            reinplace "/add_subdirectory.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+        }
     }
 }
 
@@ -217,7 +256,7 @@ if {${os.platform} eq "darwin"} {
    set kf5.libs_dir    ${prefix}/lib
    set kf5.libs_ext    dylib
 } elseif {${os.platform} eq "linux"} {
-   set kf5.libs_dir    ${prefix}/lib/${os.arch}-linux-gnu
+   set kf5.libs_dir    ${prefix}/lib/${build_arch}-linux-gnu
    set kf5.libs_ext    so
 }
 
@@ -363,11 +402,12 @@ if {[info exists kf5.project]} {
 }
 
 proc kf5.use_latest {lversion} {
-    global kf5.latest_release kf5.latest_version kf5.latest_plasma kf5.project kf5.set_project
+    global kf5.latest_release kf5.latest_version kf5.latest_plasma kf5.project kf5.set_project kf5.branch
     global version
     upvar #0 kf5.version v
     upvar #0 kf5.release r
     upvar #0 kf5.plasma p
+    upvar #0 kf5.branch b
     switch -nocase ${lversion} {
         kf5.version     {set v ${kf5.latest_version}}
         kf5.release     {set r ${kf5.latest_release}}
@@ -380,6 +420,10 @@ proc kf5.use_latest {lversion} {
             return -code error "Illegal argument to kf5.use_latest"
         }
     }
+    # be sure that kf5.branch is set correctly too
+    set b               [join [lrange [split ${v} .] 0 1] .]
+    # and ditto for the paths.
+    kf5.set_paths
     unset version
     if {[info exists kf5.project]} {
         kf5.set_project ${kf5.project}
@@ -430,7 +474,7 @@ proc kf5.framework_dependency {name {library 0} {soversion 5}} {
     upvar #0 kf5.${name}_dep dep
     upvar #0 kf5.${name}_lib lib
     if {${library} ne 0} {
-        global os.platform os.arch
+        global os.platform build_arch
         if {${os.platform} eq "darwin"} {
             set kf5.lib_path    lib
             if {${soversion} ne ""} {
@@ -439,7 +483,7 @@ proc kf5.framework_dependency {name {library 0} {soversion 5}} {
                 set kf5.lib_ext dylib
             }
         } elseif {${os.platform} eq "linux"} {
-            set kf5.lib_path    lib/${os.arch}-linux-gnu
+            set kf5.lib_path    lib/${build_arch}-linux-gnu
             if {${soversion} ne ""} {
                 set kf5.lib_ext so.5
             } else {
@@ -483,8 +527,21 @@ proc kf5.depends_frameworks {first args} {
     # join ${first} and (the optional) ${args}
     set args [linsert $args[set list {}] 0 ${first}]
     foreach f ${args} {
+        set kdep [kf5.framework_dependency ${f}]
+        if {![catch {set nativeQSP [active_variants "${kdep}" nativeQSP]}]} {
+            global subport
+            if {${nativeQSP}} {
+                # dependency is built for native QSP locations but the dependent port wants XDG locations
+                if {([variant_isset qspXDG] || ![variant_isset nativeQSP])} {
+                    ui_msg "Warning: ${subport} potential mismatch with kf5-${f}+nativeQSP"
+                }
+            } elseif {[variant_isset nativeQSP]} {
+                # dependency is built for XDG QSP locations but the dependent port wants to use native locations
+                ui_msg "Warning: ${subport}+nativeQSP potential mismatch with kf5-${f} (-nativeQSP)"
+            }
+        }
         depends_lib-append \
-                        [kf5.framework_dependency ${f}]
+                        ${kdep}
         platform darwin {
             if {[lsearch {"baloo" "kactivities" "kdbusaddons" "kded" "kdelibs4support-devel" "kglobalaccel" "kio"
                             "kservice" "kwallet" "kwalletmanager" "plasma-framework"} ${f}] ne "-1"} {
@@ -501,6 +558,7 @@ proc kf5.depends_frameworks {first args} {
         kf5.has_translations
     }
 }
+
 # the equivalent to kf5.depends_frameworks for declaring build dependencies.
 proc kf5.depends_build_frameworks {first args} {
     # join ${first} and (the optional) ${args}
@@ -537,7 +595,7 @@ kf5.framework_dependency    kidletime libKF5IdleTime
 set kf5.kimageformats_dep   port:kf5-kimageformats
 kf5.framework_dependency    kitemmodels libKF5ItemModels
 kf5.framework_dependency    kplotting libKF5Plotting
-set kf5.oxygen-icons_dep    path:share/icons/oxygen/index.theme:kf5-oxygen-icons
+set kf5.oxygen-icons_dep    path:share/icons/oxygen/index.theme:kf5-oxygen-icons5
 kf5.framework_dependency    solid libKF5Solid
 kf5.framework_dependency    sonnet libKF5SonnetCore
 kf5.framework_dependency    threadweaver libKF5ThreadWeaver
@@ -598,7 +656,9 @@ proc kf5.link_icons {iconDir category iconName destination} {
     foreach icon [glob -nocomplain ${iconDir}/*/${category}/${iconName}] {
         set ifile [strsed ${icon} "s|${iconDir}/||"]
         set ifile [strsed ${ifile} "s|x\[0-9\]*/${category}/|-|"]
-        ln -s ${icon} ${destination}/${ifile}
+        if {![file exists ${destination}/${ifile}]} {
+            ln -s ${icon} ${destination}/${ifile}
+        }
     }
 }
 
@@ -615,9 +675,55 @@ proc kf5.rename_icons {iconDir category iconOld iconNew {destination 0}} {
         set ext [strsed ${ipath} "s|.*${iconOld}\.||"]
         # remove the original icon name
         set ipath [strsed ${ipath} "s|${iconOld}\.${ext}||"]
-        file rename ${icon} ${destination}/${ipath}${iconNew}.${ext}
+        if {[file exists ${icon}]} {
+            # remove dest. file if already present
+            file delete -force ${destination}/${ipath}${iconNew}.${ext}
+            file rename ${icon} ${destination}/${ipath}${iconNew}.${ext}
+        }
     }
 }
 
+# check how the named framework is installed, +qspXDG or
+# (in some future) +nativeQSP
+# use of this procedure requires the active_variants 1.1 PortGroup!
+proc kf5.check_qspXDG {name} {
+    if {![catch {set nativeQSP [active_variants "kf5-${name}" nativeQSP]}]
+            && ![catch {set qspXDG [active_variants "kf5-${name}" qspXDG]}]} {
+        if {${nativeQSP}} {
+            ui_debug "kf5-${name} is installed +nativeQSP; check_qspXDG returns false"
+            return no
+        } elseif {${qspXDG}} {
+            ui_debug "kf5-${name} is installed +qspQSP; check_qspXDG returns true"
+            return yes
+        }
+    }
+    return no
+}
+
+# create a wrapper script in ${prefix}/bin for an application bundle in kf5.applications_dir
+proc kf5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""}} {
+    global kf5.applications_dir destroot prefix os.platform
+    if {${os.platform} eq "darwin"} {
+        if {${bundlename} eq ""} {
+            set bundlename ${wrappername}
+        }
+        if {${bundleexec} eq ""} {
+            set bundleexec ${bundlename}
+        }
+        system "echo \"#!/bin/sh\nexport KDE_SESSION_VERSION=5\nexec \\\"${kf5.applications_dir}/${bundlename}.app/Contents/MacOS/${bundleexec}\\\" \\\"\\\$\@\\\"\" > ${destroot}${prefix}/bin/${wrappername}"
+    } else {
+        # no app bundles on this platform, but provide the same API by pretending there are.
+        # If unset, use kf5.project to guess the exec. name because evidently we cannot
+        # symlink ${wrappername} onto itself.
+        if {${bundlename} eq ""} {
+            set bundlename ${kf5.project}
+        }
+        if {${bundleexec} eq ""} {
+            set bundleexec ${bundlename}
+        }
+        system "echo \"#!/bin/sh\nexport KDE_SESSION_VERSION=5\nexec \\\"${kf5.applications_dir}/${bundleexec}\\\" \\\"\\\$\@\\\"\" > ${destroot}${prefix}/bin/${wrappername}"
+    }
+    system "chmod 755 ${destroot}${prefix}/bin/${wrappername}"
+}
 
 # kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
