@@ -8,7 +8,7 @@ version             4.9.0
 license             {LGPL-2.1 LGPL-3}
 maintainers         michaelld openmaintainer
 description         Cross Platform Multimedia API used by KDE4
-platforms           darwin
+platforms           darwin linux
 homepage            http://phonon.kde.org
 master_sites        kde:stable/${name}/${version}
 use_xz              yes
@@ -77,17 +77,17 @@ patchfiles-append   patch-cmake_FindPhononInternal.cmake.diff
 patchfiles-append   patch-cmake_PhononMacros.cmake.diff
 
 variant pulseaudio description "Build Phonon with additional support for PulseAudio" {
-    configure.args-append \
-        -DWITH_PulseAudio=ON \
-        -DPHONON_PULSESUPPORT=YES
     # on Linux it seems we'd better use the host's PulseAudio libs because it's a system service there
-    if {${os.platform} eq "darwin"} {
+    platform darwin {
         depends_lib-append port:pulseaudio
         configure.args-append \
             -DPULSEAUDIO_INCLUDE_DIR=${prefix}/include \
             -DPULSEAUDIO_LIBRARY=${prefix}/lib/libpulse.dylib \
             -DPULSEAUDIO_MAINLOOP_LIBRARY=${prefix}/lib/libpulse-mainloop-glib.dylib
     }
+    configure.args-append \
+        -DWITH_PulseAudio=ON \
+        -DPHONON_PULSESUPPORT=YES
 }
 
 platform linux {
@@ -184,6 +184,6 @@ platform darwin {
     configure.ldflags-append -F${qt_frameworks_dir}
 }
 
-livecheck.type		regex
-livecheck.url		http://www.gtlib.gatech.edu/pub/kde/stable/${name}/
-livecheck.regex		"\(\\d+(?:\\.\\d+)*)\/"
+livecheck.type      regex
+livecheck.url       http://www.gtlib.gatech.edu/pub/kde/stable/${name}/
+livecheck.regex     "\(\\d+(?:\\.\\d+)*)\/"
