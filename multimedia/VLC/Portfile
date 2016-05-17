@@ -65,13 +65,6 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
     checksums           rmd160  8c6d4194da37210fe409c965f430898fbe7f2416 \
                         sha256  b9d7587d35f13c3c981964c8cc8b03f1c7c8edf528be476b3ca1d2efedd5bf5b
 
-    # Enable HFS compression.
-    if {[file exists ${prefix}/bin/bsdtar]} {
-#         depends_extract-append      port:libarchive
-        extract.post_args \
-                        "| ${prefix}/bin/bsdtar -x --hfsCompression"
-    }
-
     depends_build       port:pkgconfig
 
 platform darwin {
@@ -144,6 +137,8 @@ platform darwin {
                         port:x265
 }
 
+platform linux {
+# platform dependencies for Ubuntu 14.04 :
 # liba52-0.7.4-dev libaa1-dev libasound2-dev libass-dev libavahi-client-dev libavc1394-dev libbluray-dev libcaca-dev libcddb2-dev libcdio-dev libchromaprint-dev libcrystalhd-dev libdc1394-22-dev libdca-dev libdirac-dev libdirectfb-dev libdvbpsi-dev libdvdnav-dev libdvdread-dev libfaad-dev libflac-dev libfluidsynth-dev libfreerdp-dev libfreetype6-dev libfribidi-dev libgl1-mesa-dev libgnutls28-dev libgtk2.0-dev libidn11-dev libiso9660-dev libjack-dev libkate-dev liblircclient-dev liblivemedia-dev liblua5.2-dev libmad0-dev libmatroska-dev libmodplug-dev libmpcdec-dev libmpeg2-4-dev libmtp-dev libncursesw5-dev libnotify-dev libogg-dev libomxil-bellagio-dev libopus-dev libpng-dev libpulse-dev libqt4-dev libraw1394-dev libresid-builder-dev librsvg2-dev libsamplerate0-dev libschroedinger-dev libsdl-image1.2-dev libsdl1.2-dev libshout3-dev libsidplay2-dev libsmbclient-dev libspeex-dev libspeexdsp-dev libssh2-1-dev libtag1-dev libtar-dev libtheora-dev libtwolame-dev libudev-dev libupnp-dev libv4l-dev libva-dev libvcdinfo-dev libvorbis-dev libx11-dev libx264-dev libxcb-composite0-dev libxcb-keysyms1-dev libxcb-randr0-dev libxcb-shm0-dev libxcb-xv0-dev libxcb1-dev libxext-dev libxinerama-dev libxml2-dev libxpm-dev libzvbi-dev lua5.2 oss4-dev zlib1g-dev
 #
 # from  ppa:rjvbertin/misc :
@@ -151,6 +146,10 @@ platform darwin {
 # libavformat-ffmpeg-opti-dev
 # libpostproc-ffmpeg-opti-dev
 # libswscale-ffmpeg-opti-dev
+	depends_lib-append	port:libdvdread \
+					port:libdvdnav
+}
+
     variant ffmpeg_in_opt description {use ffmpeg from /opt/ffmpeg} {}
 
     pre-fetch {
@@ -278,7 +277,7 @@ platform darwin {
                         --enable-a52 --enable-faad --enable-flac --enable-live555 \
                         --enable-opus --enable-vorbis --enable-ogg --enable-mad --enable-libass \
                         --enable-dca --enable-png --disable-quicktime --enable-twolame \
-                        --enable-speex --enable-theora --enable-x264 --enable-x265 --enable-postproc \
+                        --enable-speex --enable-theora --enable-x264 --enable-postproc \
                         --disable-gst-decode --enable-avcodec --enable-avformat --enable-swscale \
                         --disable-fluidsynth --enable-schroedinger --enable-vpx
 
@@ -330,7 +329,7 @@ platform darwin {
     default_variants-append     +dbus
 
     variant qtkit description {Enable qtcapture and qtaudio} {
-        configure.args-replace  --disable-macosx-qtkit --enable-macosx-qtkit
+#         configure.args-replace  --disable-macosx-qtkit --enable-macosx-qtkit
     }
 
     variant svg description {Enable SVG rendering and decoding support} {
@@ -357,21 +356,21 @@ platform darwin {
     default_variants-append     +pulse
 
     variant x11 {
-        depends_lib-append \
-            port:xorg-libX11 \
-            port:xorg-libXau \
-            port:xorg-libXdmcp \
-            port:xorg-libXext \
-            port:xorg-libXrandr \
-            port:xorg-libxcb \
-            port:xrender \
-            port:XviD \
-            port:mesa \
-            port:xorg-libXinerama \
-            port:xorg-libXv \
-            port:xorg-libXxf86vm \
-            port:xorg-xcb-util \
-            port:xorg-xcb-util-keysyms
+#         depends_lib-append \
+#             port:xorg-libX11 \
+#             port:xorg-libXau \
+#             port:xorg-libXdmcp \
+#             port:xorg-libXext \
+#             port:xorg-libXrandr \
+#             port:xorg-libxcb \
+#             port:xrender \
+#             port:XviD \
+#             port:mesa \
+#             port:xorg-libXinerama \
+#             port:xorg-libXv \
+#             port:xorg-libXxf86vm \
+#             port:xorg-xcb-util \
+#             port:xorg-xcb-util-keysyms
 
         configure.args-delete   --without-x --disable-xvideo --disable-xcb \
                                 --x-includes=${destroot} --x-libraries=${destroot}
@@ -521,6 +520,12 @@ platform darwin {
                 notes-append "The Qt interface modules for VLC are currently dysfunctional. If you encounter bugs with them, please file them with VLC and not MacPorts."
             }
             system "${prefix}/lib/vlc/vlc-cache-gen -f ${prefix}/lib/vlc"
+        }
+    }
+    platform linux {
+        post-patch {
+            # To trick configure
+            file mkdir "${worksrcpath}/contrib/lib"
         }
     }
 }
