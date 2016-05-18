@@ -151,7 +151,8 @@ platform linux {
     configure.ldflags-append \
                         -Wl,-rpath=${prefix}/lib
     configure.args-append \
-                        --enable-rpath
+                        --enable-rpath \
+                        --enable-dependency-tracking
     pre-configure {
         if {[file exists /usr/lib/libvlccore.so] || [file exists /usr/lib/libvlc.so]} {
             ui_error "Uninstall the libvlc-dev and/or libvlccore-dev packages or their equivalent"
