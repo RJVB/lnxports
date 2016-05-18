@@ -146,8 +146,18 @@ platform linux {
 # libavformat-ffmpeg-opti-dev
 # libpostproc-ffmpeg-opti-dev
 # libswscale-ffmpeg-opti-dev
-	depends_lib-append	port:libdvdread \
-					port:libdvdnav
+    depends_lib-append  port:libdvdread \
+                        port:libdvdnav
+    configure.ldflags-append \
+                        -Wl,-rpath=${prefix}/lib
+    configure.args-append \
+                        --enable-rpath
+    pre-configure {
+        if {[file exists /usr/lib/libvlccore.so] || [file exists /usr/lib/libvlc.so]} {
+            ui_error "Uninstall the libvlc-dev and/or libvlccore-dev packages or their equivalent"
+            return -code error "Conflicting libraries /usr/lib/libvlc.so and/or /usr/lib/libvlccore.so are present"
+        }
+    }
 }
 
     variant ffmpeg_in_opt description {use ffmpeg from /opt/ffmpeg} {}
@@ -526,6 +536,13 @@ platform linux {
         post-patch {
             # To trick configure
             file mkdir "${worksrcpath}/contrib/lib"
+        }
+        post-destroot {
+            xinstall -m 755 -d ${destroot}${prefix}/share/kde4/apps/solid
+            file rename ${destroot}/usr/share/kde4/apps/solid/actions ${destroot}${prefix}/share/kde4/apps/solid/
+            foreach d [glob -nocomplain ${destroot}${prefix}/share/kde4/apps/solid/*.desktop] {
+                reinplace "s|Exec=vlc|Exec=${prefix}/bin/vlc|g" ${d}
+            }
         }
     }
 }
