@@ -166,7 +166,13 @@ platform linux {
                         -Wl,-rpath=${prefix}/lib
     configure.args-append \
                         --enable-rpath \
-                        --enable-dependency-tracking
+                        --enable-dependency-tracking \
+                        --disable-vdpau
+    variant vdpau description {enable VDPAU support} {
+        configure.args-replace \
+                        --disable-vdpau \
+                        --enable-vdpau
+    }
     pre-configure {
         if {[file exists /usr/lib/libvlccore.so] || [file exists /usr/lib/libvlc.so]} {
             ui_error "Uninstall the libvlc-dev and/or libvlccore-dev packages or their equivalent"
