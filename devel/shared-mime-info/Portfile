@@ -33,11 +33,11 @@ depends_lib         port:libxml2
 # add an entry for Objective C++
 patchfiles-append   patch-add-objc++-def.diff
 
-post-patch {
-    xinstall -m 755 ${filespath}/autogen.sh ${worksrcpath}
-}
-
-configure.cmd       ./autogen.sh
+#post-patch {
+#    xinstall -m 755 ${filespath}/autogen.sh ${worksrcpath}
+#}
+#
+#configure.cmd       ./autogen.sh
 
 use_parallel_build  no
 
