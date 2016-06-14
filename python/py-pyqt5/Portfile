@@ -57,8 +57,12 @@ if {![info exists qt5.depends_component]} {
 }
 
 if {${name} ne ${subport}} {
-    depends_lib-append port:py${python.version}-sip \
-        port:dbus-python${python.version}
+    platform darwin {
+        depends_lib-append port:py${python.version}-sip \
+            port:dbus-python${python.version}
+    } else {
+        depends_lib-append port:py${python.version}-sip
+    }
 
     qt5.depends_component \
                        qt5
@@ -66,12 +70,20 @@ if {${name} ne ${subport}} {
     use_configure      yes
     configure.pre_args
     configure.cmd      "${python.bin} configure.py"
-    configure.args-append  -q ${qt_qmake_cmd} --verbose --confirm-license \
-        --sip=${prefix}/bin/sip-${python.branch} \
-        --dbus=${python.include}/dbus-1.0 \
-        --designer-plugindir=${qt_plugins_dir}/designer/Py${python.version}Qt5 \
-        --qml-plugindir=${qt_plugins_dir}/Py${python.version}Qt5 \
-        --disable=QtWebEngineCore --disable=QtWebEngineWidgets
+    platform darwin {
+        configure.args-append  -q ${qt_qmake_cmd} --verbose --confirm-license \
+            --sip=${prefix}/bin/sip-${python.branch} \
+            --dbus=${python.include}/dbus-1.0 \
+            --designer-plugindir=${qt_plugins_dir}/designer/Py${python.version}Qt5 \
+            --qml-plugindir=${qt_plugins_dir}/Py${python.version}Qt5 \
+            --disable=QtWebEngineCore --disable=QtWebEngineWidgets
+    } else {
+        configure.args-append  -q ${qt_qmake_cmd} --verbose --confirm-license \
+            --sip=${prefix}/bin/sip-${python.branch} \
+            --designer-plugindir=${qt_plugins_dir}/designer/Py${python.version}Qt5 \
+            --qml-plugindir=${qt_plugins_dir}/Py${python.version}Qt5 \
+            --disable=QtWebEngineCore --disable=QtWebEngineWidgets
+    }
 
     variant qtwebengine description {include QtWebEngine support} {
         qt5.depends_component \
