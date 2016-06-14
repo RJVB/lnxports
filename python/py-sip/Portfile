@@ -60,17 +60,16 @@ if {${name} ne ${subport}} {
                         sha256 f1dc5c81c07a9ad97edcd4a0af964a41e420024ba7ca165afd2b351efd249cb6
 
     patchfiles          patch-siputils.py.diff \
-                        patch-specs_macx-g++.diff \
                         patch-configure.py.diff
 
     use_configure       yes
-    pre-configure {
-        # Ensure correct compilers are used
-        reinplace "s|@CC@|${configure.cc}|" \
-            ${worksrcpath}/specs/macx-g++
-        reinplace "s|@CXX@|${configure.cxx}|" \
-            ${worksrcpath}/specs/macx-g++
-    }
+#     pre-configure {
+#         # Ensure correct compilers are used
+#         reinplace "s|@CC@|${configure.cc}|" \
+#             ${worksrcpath}/specs/macx-g++
+#         reinplace "s|@CXX@|${configure.cxx}|" \
+#             ${worksrcpath}/specs/macx-g++
+#     }
 
     post-configure {
         # fix sip bin name
@@ -82,51 +81,50 @@ if {${name} ne ${subport}} {
     configure.pre_args  -d ${python.bin} \
                         -e ${python.include} \
                         -v ${prefix}/share/sip \
-                        -p macx-g++ \
                         --bindir=${prefix}/bin \
                         --destdir=${python.pkgd} \
                         --incdir=${python.include} \
                         --sipdir=${prefix}/share/${subport}
 
-    # always add some arch flags, since the user might have overridden
-    # the default arch build (e.g., ticket #44086).
+#     # always add some arch flags, since the user might have overridden
+#     # the default arch build (e.g., ticket #44086).
+# 
+#     python.add_archflags    no
+#     if {[variant_isset universal]} {
+# 
+#         foreach arch ${configure.universal_archs} {
+#             configure.args-append   "--arch=${arch}"
+#         }
+#         configure.universal_args
+#         configure.post_args LFLAGS="-F${frameworks_dir} -L${prefix}/lib \
+#                                     ${configure.universal_ldflags}"
+#         configure.post_args-append  CFLAGS="${configure.universal_cflags}"
+#         configure.post_args-append  CXXFLAGS="${configure.universal_cxxflags}"
+# 
+#     } else {
+# 
+#         configure.args-append       "--arch=${configure.build_arch}"
+#         configure.post_args LFLAGS="-F${frameworks_dir} -L${prefix}/lib \
+#                                     ${configure.ld_archflags}"
+#         configure.post_args-append  CFLAGS="${configure.cc_archflags}"
+#         configure.post_args-append  CXXFLAGS="${configure.cxx_archflags}"
+# 
+#     }
 
-    python.add_archflags    no
-    if {[variant_isset universal]} {
-
-        foreach arch ${configure.universal_archs} {
-            configure.args-append   "--arch=${arch}"
-        }
-        configure.universal_args
-        configure.post_args LFLAGS="-F${frameworks_dir} -L${prefix}/lib \
-                                    ${configure.universal_ldflags}"
-        configure.post_args-append  CFLAGS="${configure.universal_cflags}"
-        configure.post_args-append  CXXFLAGS="${configure.universal_cxxflags}"
-
-    } else {
-
-        configure.args-append       "--arch=${configure.build_arch}"
-        configure.post_args LFLAGS="-F${frameworks_dir} -L${prefix}/lib \
-                                    ${configure.ld_archflags}"
-        configure.post_args-append  CFLAGS="${configure.cc_archflags}"
-        configure.post_args-append  CXXFLAGS="${configure.cxx_archflags}"
-
-    }
-
-    if {[vercmp ${xcodeversion} 4.3] < 0} {
-        set sdk_dir ${developer_dir}/SDKs
-    } else {
-        set sdk_dir ${developer_dir}/Platforms/MacOSX.platform/Developer/SDKs
-    }
-
-    switch ${os.major} {
-        8   { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.4u.sdk" }
-        9   { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.5.sdk" }
-        10  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.6.sdk" }
-        11  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.7.sdk" }
-        12  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.8.sdk" }
-        13  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.9.sdk" }
-    }
+#     if {[vercmp ${xcodeversion} 4.3] < 0} {
+#         set sdk_dir ${developer_dir}/SDKs
+#     } else {
+#         set sdk_dir ${developer_dir}/Platforms/MacOSX.platform/Developer/SDKs
+#     }
+# 
+#     switch ${os.major} {
+#         8   { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.4u.sdk" }
+#         9   { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.5.sdk" }
+#         10  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.6.sdk" }
+#         11  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.7.sdk" }
+#         12  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.8.sdk" }
+#         13  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.9.sdk" }
+#     }
 
     build.cmd           make
     build.target        all
