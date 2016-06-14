@@ -30,7 +30,9 @@ maintainers             jwa openmaintainer
 
 description             An interpreted, object-oriented programming language
 long_description        Python is an interpreted, interactive, object-oriented \
-                        programming language.
+                        programming language. This port installs a wrapper/proxy \
+                        for the system python 3.4 interpreter. Python package ports \
+                        will be installed under the MacPorts prefix.
 
 homepage                http://www.python.org/
 
@@ -63,6 +65,7 @@ if {${os.platform} eq "linux"} {
         xinstall -m 755 -d ${destroot}${python.prefix}/bin
         xinstall -m 755 -d ${destroot}${python.libdir}
         ln -s ../../../../../../../lib/python${branch}/site-packages ${destroot}${python.libdir}/site-packages
+        ln -s /usr/lib/python${branch}/compileall.py ${destroot}${python.libdir}
     }
 } else {
 # OS X/Darwin
