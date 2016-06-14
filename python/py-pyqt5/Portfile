@@ -80,6 +80,9 @@ if {${name} ne ${subport}} {
     } else {
         configure.args-append  -q ${qt_qmake_cmd} --verbose --confirm-license \
             --sip=${prefix}/bin/sip-${python.branch} \
+            --sip-incdir=${python.include} \
+            -b ${prefix}/bin \
+            -d ${python.pkgd} \
             --designer-plugindir=${qt_plugins_dir}/designer/Py${python.version}Qt5 \
             --qml-plugindir=${qt_plugins_dir}/Py${python.version}Qt5 \
             --disable=QtWebEngineCore --disable=QtWebEngineWidgets
@@ -116,6 +119,12 @@ if {${name} ne ${subport}} {
         configure.universal_args-delete --disable-dependency-tracking
         set merger_configure_args(i386)   "--spec=${qt_qmake_spec_32}"
         set merger_configure_args(x86_64) "--spec=${qt_qmake_spec_64}"
+    }
+
+    post-destroot {
+        if {[file exist ${destroot}/usr/lib/python3/dist-packages/dbus]} {
+            file rename ${destroot}/usr/lib/python3/dist-packages/dbus ${destroot}${python.pkgd}
+        }
     }
 
     livecheck.type     none
