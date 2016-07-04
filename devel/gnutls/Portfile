@@ -33,13 +33,20 @@ use_xz          yes
 depends_build   port:gettext \
                 port:pkgconfig
 
-depends_lib     port:gmp \
+platform darwin {
+    depends_lib port:gmp \
                 port:libidn \
                 port:libtasn1 \
                 port:p11-kit \
                 port:nettle \
                 path:share/curl/curl-ca-bundle.crt:curl-ca-bundle \
                 port:zlib
+}
+platform linux {
+    depends_lib port:nettle \
+                port:libtasn1 \
+                port:p11-kit
+}
 
 patchfiles      patch-tests-pkcs11-pkcs11-mock.c.diff
 
@@ -49,8 +56,10 @@ post-patch {
 }
 
 # use autoreconf to update glibtool to correctly handle -std
-use_autoreconf  yes
-autoreconf.args -fvi
+platform darwin {
+	use_autoreconf  yes
+	autoreconf.args -fvi
+}
 
 configure.args  --disable-guile \
                 --disable-silent-rules \

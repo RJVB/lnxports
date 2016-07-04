@@ -21,11 +21,20 @@ checksums           rmd160  eb72fa079c985801b2ecc91846aaaf51816af824 \
 
 depends_build       port:pkgconfig
 
-depends_lib         port:desktop-file-utils \
+platform darwin {
+    depends_lib     port:desktop-file-utils \
                     port:gettext \
                     port:libtasn1 \
                     port:libffi \
                     port:libxslt
+}
+
+platform darwin {
+    depends_lib     port:gettext \
+                    port:libtasn1 \
+                    port:libffi \
+                    port:libxslt
+}
 
 depends_run         path:share/curl/curl-ca-bundle.crt:curl-ca-bundle
 

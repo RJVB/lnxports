@@ -25,17 +25,14 @@ distname            ffmpeg-${version}
 checksums           rmd160  5b61b6b0521d39ca31dcfb7fff1dfa26d9e7667a \
                     sha256  40611e329bc354592c6f8f1deb033c31b91f80e91f5707ca4f9afceca78d8e62
 
-depends_build       port:pkgconfig \
-                    port:gmake
+depends_build       port:pkgconfig
 
 # libvpx is static only so can be considered a build dependency (#47934)
 
 depends_build-append \
                     port:libvpx
 
-depends_lib         port:lame \
-                    port:libiconv \
-                    port:openjpeg15 \
+depends_lib         port:libiconv \
                     port:xz \
                     port:zlib
 
@@ -49,7 +46,7 @@ depends_lib         port:lame \
 #                     port:freetype \
 #                     port:bzip2
 
-build.cmd           ${prefix}/bin/gmake
+#build.cmd           ${prefix}/bin/gmake
 build.env-append    V=1
 
 #
@@ -87,6 +84,12 @@ configure.args      --prefix=${FFMPEG_VLC_PREFIX} \
                     --disable-libxcb --disable-libxcb-shm --disable-libxcb-xfixes --disable-libxcb-shape \
                     --enable-shared --disable-static --enable-pthreads \
                     --cc=${configure.cc}
+platform linux {
+    configure.args-append \
+                    --enable-vaapi \
+                    --enable-vdpau \
+				--enable-rpath
+}
 
 # this is the old gpl2 variant. VLC is GPL2'ed, so we can just as well build ffmpeg
 # with these components.
@@ -104,8 +107,8 @@ configure.args-append \
 configure.env-append \
                     ASFLAGS='[get_canonical_archflags]'
 if {${build_arch} eq "x86_64"} {
-    depends_build-append \
-                    port:yasm
+#    depends_build-append \
+#                    port:yasm
     configure.args-append \
                     --enable-yasm
 }

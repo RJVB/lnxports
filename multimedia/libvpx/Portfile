@@ -49,8 +49,6 @@ patchfiles-append   patch-Makefile.diff
 #               ^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 compiler.blacklist  {clang < 500}
 
-# As of 1.3.0: doesn't handle shared libraries or debug properly on darwin;
-# doesn't install docs or examples correctly, so disable them.
 configure.args      --enable-vp8 \
                     --enable-vp9 \
                     --enable-internal-stats \
@@ -58,7 +56,7 @@ configure.args      --enable-vp8 \
                     --enable-postproc \
                     --enable-multithread \
                     --enable-runtime-cpu-detect \
-                    --disable-install-docs \
+				--enable-shared \
                     --disable-debug-libs \
                     --disable-examples \
                     --disable-unit-tests
