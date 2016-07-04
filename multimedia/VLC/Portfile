@@ -193,7 +193,10 @@ platform linux {
     }
 }
 
-    variant ffmpeg_in_opt description {use ffmpeg from /opt/ffmpeg} {}
+    variant ffmpeg_in_opt description {use ffmpeg from /opt/ffmpeg} {
+        PortGroup       conflicts_build 1.0
+        conflicts-build port:ffmpeg
+    }
 
     pre-fetch {
         if {${os.platform} eq "darwin" && ${os.major} < 10} {
