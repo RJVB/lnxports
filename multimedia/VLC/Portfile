@@ -155,7 +155,7 @@ platform linux {
 # libbluray-dev libcaca-dev libcddb2-dev libcdio-dev libchromaprint-dev libcrystalhd-dev
 # libdc1394-22-dev libdca-dev libdirac-dev libdirectfb-dev libdvbpsi-dev libdvdnav-dev
 # libdvdread-dev libfaad-dev libflac-dev libfluidsynth-dev libfreerdp-dev libfreetype6-dev
-# libfribidi-dev libgl1-mesa-dev libgnutls28-dev libgtk2.0-dev libidn11-dev libiso9660-dev
+# libfribidi-dev libgl1-mesa-dev libgtk2.0-dev libidn11-dev libiso9660-dev
 # libjack-dev libkate-dev liblircclient-dev liblivemedia-dev liblua5.2-dev libmad0-dev
 # libmatroska-dev libmodplug-dev libmpcdec-dev libmpeg2-4-dev libmtp-dev libncursesw5-dev
 # libnotify-dev libogg-dev libomxil-bellagio-dev libopus-dev libpng-dev libpulse-dev
@@ -173,7 +173,8 @@ platform linux {
 # libpostproc-ffmpeg-opti-dev
 # libswscale-ffmpeg-opti-dev
     depends_lib-append  port:libdvdread \
-                        port:libdvdnav
+                        port:libdvdnav \
+                        port:gnutls
     configure.ldflags-append \
                         -Wl,-rpath=${prefix}/lib
     configure.args-append \
@@ -195,7 +196,7 @@ platform linux {
 
     variant ffmpeg_in_opt description {use ffmpeg from /opt/ffmpeg} {
         PortGroup       conflicts_build 1.0
-        conflicts-build port:ffmpeg
+        conflicts_build port:ffmpeg
     }
 
     pre-fetch {
@@ -251,9 +252,13 @@ platform linux {
     patchfiles          buildfix-package.mak.patch \
                         configure.ac-no-arch.patch \
                         PR-34741-no__clang_version__.patch \
-                        static_assert.patch \
                         no-sparkle.patch \
-                        patch-vlc-no-O4.diff
+                        patch-vlc-no-O4.diff \
+				    patch-vlc-gcc6-buildfixes.diff
+    if {![variant_isset ffmpeg_in_opt]} {
+        patchfiles-append \
+				    patch-ffmpegVLC.diff
+    }
 
     post-patch {
         reinplace "s:librsvg-2/librsvg:librsvg:" \
@@ -275,26 +280,27 @@ platform linux {
                         reinplace "s|${dir}/|${dir}-VLC/|g" ${cf}
                     }
                 }
-                reinplace "s|libpostproc/|libpostproc-VLC/|g" ${worksrcpath}/modules/video_filter/postproc.c
                 reinplace "s|${dir}/|${dir}-VLC/|g" ${worksrcpath}/configure.ac ${worksrcpath}/configure
-                reinplace "s|HAVE_LIBAVUTIL_AV|HAVE_LIBAVUTIL_VLC_AV|g" \
-                        ${worksrcpath}/modules/codec/avcodec/avcommon.h \
-                        ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
-                reinplace "s|HAVE_LIBAVFORMAT_AV|HAVE_LIBAVFORMAT_VLC_AV|g" \
-                        ${worksrcpath}/modules/codec/avcodec/avcommon.h \
-                        ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
-                reinplace "s|HAVE_LIBAVCODEC_AV|HAVE_LIBAVCODEC_VLC_AV|g" \
-                        ${worksrcpath}/modules/codec/avcodec/avcommon.h \
-                        ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
-                reinplace "s|HAVE_LIBSWSCALE_SW|HAVE_LIBSWSCALE_VLC_SW|g" \
-                        ${worksrcpath}/modules/codec/avcodec/avcommon.h \
-                        ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
             }
+            reinplace "s|postproc/|postproc-VLC/|g" ${worksrcpath}/configure.ac ${worksrcpath}/configure
+            reinplace "s|libpostproc/|libpostproc-VLC/|g" ${worksrcpath}/modules/video_filter/postproc.c
+            reinplace "s|HAVE_LIBAVUTIL_AV|HAVE_LIBAVUTIL_VLC_AV|g" \
+                ${worksrcpath}/modules/codec/avcodec/avcommon.h \
+                ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
+            reinplace "s|HAVE_LIBAVFORMAT_AV|HAVE_LIBAVFORMAT_VLC_AV|g" \
+                ${worksrcpath}/modules/codec/avcodec/avcommon.h \
+                ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
+            reinplace "s|HAVE_LIBAVCODEC_AV|HAVE_LIBAVCODEC_VLC_AV|g" \
+                ${worksrcpath}/modules/codec/avcodec/avcommon.h \
+                ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
+            reinplace "s|HAVE_LIBSWSCALE_SW|HAVE_LIBSWSCALE_VLC_SW|g" \
+                ${worksrcpath}/modules/codec/avcodec/avcommon.h \
+                ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
         }
     }
-    post-configure {
-        system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-static_assert.diff"
-    }
+    #post-configure {
+    #    system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-static_assert.diff"
+    #}
 
     use_autoreconf      yes
     autoreconf.cmd      ./bootstrap
@@ -333,7 +339,8 @@ platform linux {
                         --with-contrib=${worksrcpath}/contrib \
                         --disable-debug --disable-update-check --enable-gnutls \
                         --disable-notify --disable-dbus --enable-lua \
-                        --disable-gnomevfs --disable-growl --disable-macosx-vlc-app
+                        --disable-gnomevfs --disable-growl --disable-macosx-vlc-app \
+				    --disable-atmo
 
     # Input Plugins
     configure.args-append \
