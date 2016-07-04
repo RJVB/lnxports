@@ -53,7 +53,7 @@ supported_archs         x86_64
 ###################  ports VLC and libVLC  ###################
 ##
 if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
-    version             2.2.3
+    version             2.2.4
     license             GPL-2
 
     platforms           darwin
@@ -62,13 +62,23 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
     distname            vlc-${version}
     use_xz              yes
 
-    checksums           rmd160  8c6d4194da37210fe409c965f430898fbe7f2416 \
-                        sha256  b9d7587d35f13c3c981964c8cc8b03f1c7c8edf528be476b3ca1d2efedd5bf5b
+#     checksums           rmd160  8c6d4194da37210fe409c965f430898fbe7f2416 \
+#                         sha256  b9d7587d35f13c3c981964c8cc8b03f1c7c8edf528be476b3ca1d2efedd5bf5b
+    checksums           rmd160  2fe178bb9a4b2ad5ca0294d3e52ceb992b22e8ee \
+                        sha256  1632e91d2a0087e0ef4c3fb4c95c3c2890f7715a9d1d43ffd46329f428cf53be
+
+    # Enable HFS compression.
+    if {[file exists ${prefix}/bin/bsdtar]} {
+#         depends_extract-append      port:libarchive
+        extract.post_args \
+                        "| ${prefix}/bin/bsdtar -x --hfsCompression"
+    }
 
     depends_build       port:pkgconfig
 
 platform darwin {
-    depends_lib         port:a52dec \
+    depends_lib         path:${FFMPEG_VLC_PREFIX}/lib/libavcodec.dylib:ffmpeg-VLC \
+                        port:a52dec \
                         port:avahi \
                         port:bzip2 \
                         port:faad2 \
@@ -236,6 +246,7 @@ platform linux {
     patchfiles          buildfix-package.mak.patch \
                         configure.ac-no-arch.patch \
                         PR-34741-no__clang_version__.patch \
+                        static_assert.patch \
                         no-sparkle.patch \
                         patch-vlc-no-O4.diff
 
@@ -248,10 +259,37 @@ platform linux {
                 ${worksrcpath}/configure.ac \
                 ${worksrcpath}/modules/access/Makefile.am
         }
+        # patch source using ffmpeg to use the correct header file locations
+        if {![variant_isset ffmpeg_in_opt]} {
+            foreach dir {libavcodec libavformat libavresample libavutil libpostproc libswresample libswscale} {
+                foreach module {access codec/avcodec demux/avformat hw/vdpau packetizer video_chroma} {
+                    foreach cf [glob -nocomplain ${worksrcpath}/modules/${module}/*.c] {
+                        reinplace "s|${dir}/|${dir}-VLC/|g" ${cf}
+                    }
+                    foreach cf [glob -nocomplain ${worksrcpath}/modules/${module}/*.h] {
+                        reinplace "s|${dir}/|${dir}-VLC/|g" ${cf}
+                    }
+                }
+                reinplace "s|libpostproc/|libpostproc-VLC/|g" ${worksrcpath}/modules/video_filter/postproc.c
+                reinplace "s|${dir}/|${dir}-VLC/|g" ${worksrcpath}/configure.ac ${worksrcpath}/configure
+                reinplace "s|HAVE_LIBAVUTIL_AV|HAVE_LIBAVUTIL_VLC_AV|g" \
+                        ${worksrcpath}/modules/codec/avcodec/avcommon.h \
+                        ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
+                reinplace "s|HAVE_LIBAVFORMAT_AV|HAVE_LIBAVFORMAT_VLC_AV|g" \
+                        ${worksrcpath}/modules/codec/avcodec/avcommon.h \
+                        ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
+                reinplace "s|HAVE_LIBAVCODEC_AV|HAVE_LIBAVCODEC_VLC_AV|g" \
+                        ${worksrcpath}/modules/codec/avcodec/avcommon.h \
+                        ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
+                reinplace "s|HAVE_LIBSWSCALE_SW|HAVE_LIBSWSCALE_VLC_SW|g" \
+                        ${worksrcpath}/modules/codec/avcodec/avcommon.h \
+                        ${worksrcpath}/modules/codec/avcodec/avcommon_compat.h
+            }
+        }
     }
-#     post-configure {
-#         system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-static_assert.diff"
-#     }
+    post-configure {
+        system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-static_assert.diff"
+    }
 
     use_autoreconf      yes
     autoreconf.cmd      ./bootstrap
