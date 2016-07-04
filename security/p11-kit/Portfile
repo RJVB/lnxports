@@ -1,0 +1,39 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
+# $Id: Portfile 147918 2016-04-20 04:36:21Z ryandesign@macports.org $
+
+PortSystem          1.0
+
+name                p11-kit
+version             0.23.2
+license             Permissive
+description         Provides a way to load and enumerate PKCS#11 modules and a standard \
+                    configuration setup for installing PKCS#11 modules in such a way that \
+                    they're discoverable.
+long_description    ${description}
+maintainers         devans openmaintainer
+categories          security
+platforms           darwin
+homepage            https://p11-glue.freedesktop.org/p11-kit.html
+master_sites        https://p11-glue.freedesktop.org/releases/
+
+checksums           rmd160  eb72fa079c985801b2ecc91846aaaf51816af824 \
+                    sha256  ba726ea8303c97467a33fca50ee79b7b35212964be808ecf9b145e9042fdfaf0
+
+depends_build       port:pkgconfig
+
+depends_lib         port:desktop-file-utils \
+                    port:gettext \
+                    port:libtasn1 \
+                    port:libffi \
+                    port:libxslt
+
+depends_run         path:share/curl/curl-ca-bundle.crt:curl-ca-bundle
+
+patchfiles          patch-common-compat.c.diff
+
+configure.args      --with-trust-paths=${prefix}/share/curl/curl-ca-bundle.crt:${prefix}/etc/openssl \
+                    --disable-silent-rules
+
+livecheck.type      regex
+livecheck.url       [lindex ${master_sites} 0]
+livecheck.regex     "${name}-(\\d+(?:\\.\\d+)*)${extract.suffix}"
