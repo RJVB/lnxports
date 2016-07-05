@@ -88,7 +88,8 @@ platform linux {
     configure.args-append \
                     --enable-vaapi \
                     --enable-vdpau \
-				--enable-rpath
+				--enable-rpath \
+				--disable-stripping
 }
 
 # this is the old gpl2 variant. VLC is GPL2'ed, so we can just as well build ffmpeg
