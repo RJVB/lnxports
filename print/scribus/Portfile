@@ -34,6 +34,7 @@ depends_build-append \
                     path:bin/perl:perl5
 
 depends_lib-append \
+				port:podofo \
                     port:expat \
                     port:libiconv \
                     port:libxml2 \
