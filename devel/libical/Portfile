@@ -1,0 +1,67 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# $Id: Portfile 142556 2015-11-15 09:45:06Z mk@macports.org $
+
+PortSystem          1.0
+PortGroup           cmake 1.0
+PortGroup           github 1.0
+
+cmake.out_of_source yes
+
+name                libical
+
+if {${subport} eq "${name}"} {
+    github.setup    libical libical 2.0.0 v
+    conflicts       libical-devel
+} else {
+    # libical-devel:
+    github.setup    libical libical 1b8338520a39d6a168855389b31224a205672d0b
+    version         2.0.0.115
+    conflicts       libical
+}
+
+categories          devel
+license             {LGPL-2.1 MPL-1}
+maintainers         nomaintainer
+description         An implementation of iCalendar protocols and data formats
+long_description    ${description}
+platforms           darwin
+homepage            https://github.com/libical
+
+subport libical-devel {
+    description-append \
+                    . Follows the development version.
+    long_description \
+                    ${description}
+}
+
+if {${subport} eq "${name}"} {
+    # v 2.0.0
+    checksums       rmd160  1901573af1fb57be8feca3b3dd9db758c3e136ee \
+                    sha256  c9c076153867cd6ebac23febb276036597443eabd30ba4534d38950a2cbb889e
+} else {
+    # v2.0.0-115-g1b83385
+    checksums       rmd160  a0eaea0741f81e7e39bad1e1bd211d6ef35278d9 \
+                    sha256  0e2723b2d8f843fc66dca76ec83578c06a9767ba59d3525a0d15896f13acccfb
+
+    maintainers     gmail.com:rjvbertin openmaintainer
+    distname        ${name}-git
+}
+
+depends_lib-append \
+                    port:glib2 \
+                    port:libxml2
+
+variant docs description {install the API documentation} {
+    depends_build-append \
+                    port:doxygen
+}
+
+patch.pre_args      -p1
+
+if {![variant_isset docs]} {
+    patchfiles-append \
+                    patch-nodocs.diff
+}
+
+livecheck.url       https://github.com/libical/libical/releases
+livecheck.regex     "${name}-(\\d+(?:\\.\\d+)*)${extract.suffix}"
