@@ -48,7 +48,6 @@ if {${subport} eq "${name}"} {
 }
 
 depends_lib-append \
-                    port:glib2 \
                     port:libxml2
 
 variant docs description {install the API documentation} {
