@@ -1,0 +1,71 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# $Id: Portfile  $
+
+PortSystem          1.0
+
+set llvm_version    3.9
+name                llvm-${llvm_version}
+maintainers         gmail.com:rjvbertin
+version             ${llvm_version}.0
+
+categories          lang
+license             NCSA
+platforms           linux
+
+description         A wrapper for the system llvm-${llvm_version} packages
+long_description    ${description}. Install at least v${llvm_version}.0 of libllvm, llvm, llvm-dev and llvm-runtime, or their equivalents.
+
+subport clang-${llvm_version} {
+    description \
+                    A wrapper for the system clang-${llvm_version} packages
+    long_description \
+                    ${description}. Install at least v${llvm_version}.0 of libclang1, clang, libclang-common-dev and libclang-dev,\
+                    or their equivalents.
+    depends_lib-append \
+                    port:llvm-${llvm_version}
+}
+
+subport lldb-${llvm_version} {
+    description \
+                    A wrapper for the system lldb-${llvm_version} packages
+    long_description \
+                    ${description}. Install at least v${llvm_version}.0 of liblldb, liblldb-dev, python-lldb and lldb,\
+                    or their equivalents.
+    depends_lib-append \
+                    port:llvm-${llvm_version} \
+                    port:clang-${llvm_version}
+}
+
+homepage            http://www.llvm.org/
+
+distfiles
+installs_libs   no
+supported_archs noarch
+use_configure   no
+build           {}
+
+set llvm_suffix -mp-${llvm_version}
+
+if {${subport} eq "llvm-${llvm_version}"} {    
+    destroot {
+        ln -s /usr/lib/llvm-${llvm_version} ${destroot}${prefix}/libexec
+        foreach bin [glob /usr/lib/llvm-${llvm_version}/bin/llvm*] {
+            set bname [file tail ${bin}]
+            ln -s ${bin} ${destroot}${prefix}/bin/${bname}${llvm_suffix}
+        }
+    }
+} elseif {${subport} eq "clang-${llvm_version}"} {    
+    destroot {
+        foreach bin [glob /usr/lib/llvm-${llvm_version}/bin/clang*] {
+            set bname [file tail ${bin}]
+            ln -s ${bin} ${destroot}${prefix}/bin/${bname}${llvm_suffix}
+        }
+    }
+} elseif {${subport} eq "lldb-${llvm_version}"} {    
+    destroot {
+        foreach bin [glob /usr/lib/llvm-${llvm_version}/bin/lldb*] {
+            set bname [file tail ${bin}]
+            ln -s ${bin} ${destroot}${prefix}/bin/${bname}${llvm_suffix}
+        }
+    }
+}
