@@ -27,6 +27,10 @@ depends_build-append \
 
 if {${os.platform} ne "linux"} {
     depends_lib     port:policykit
+} else {
+    variant policykit description {install and depend on port:policykit instead of the host's copy} {
+        depends_lib port:policykit
+    }
 }
 
 subport polkit-qt5 {
