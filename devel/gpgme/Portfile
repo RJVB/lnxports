@@ -25,9 +25,11 @@ use_bzip2           yes
 checksums           rmd160  0ce3451911bba6dcce7b120f9c8387cd41e3f514 \
                     sha256  b09de4197ac280b102080e09eaec6211d081efff1963bf7821cf8f4f9916099d
 
-depends_lib         port:gnupg2 \
-                    port:pth \
-                    port:libgpg-error \
+# depends_lib         port:gnupg2 \
+#                     port:pth \
+#                     port:libgpg-error \
+#                     port:libassuan
+depends_lib         port:libgpg-error \
                     port:libassuan
 
 use_parallel_build  no
@@ -41,10 +43,6 @@ post-patch {
 }
 
 configure.args      --enable-static
-
-post-configure {
-    reinplace "s|CC -dynamiclib|CC -dynamiclib [get_canonical_archflags]|g" ${worksrcpath}/libtool
-}
 
 test.run            yes
 test.target         check
