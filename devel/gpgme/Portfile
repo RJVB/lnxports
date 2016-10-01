@@ -1,10 +1,11 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 139788 2015-08-26 21:24:03Z devans@macports.org $
+# $Id: Portfile 153382 2016-09-29 18:43:43Z devans@macports.org $
 
 PortSystem          1.0
 
 name                gpgme
-version             1.6.0
+version             1.7.0
+revision            1
 categories          devel security crypto
 license             {LGPL-2.1+ GPL-3+}
 maintainers         devans openmaintainer
@@ -22,11 +23,15 @@ homepage            http://www.gnupg.org/related_software/gpgme/
 master_sites        gnupg
 use_bzip2           yes
 
-checksums           rmd160  0ce3451911bba6dcce7b120f9c8387cd41e3f514 \
-                    sha256  b09de4197ac280b102080e09eaec6211d081efff1963bf7821cf8f4f9916099d
+checksums           rmd160  3159142bd912fe482566a78f48d19fe6a4d3221e \
+                    sha256  71f55fed0f2b3eaf7a606e59772aa645ce3ffff322d361ce359951b3f755cc48
 
-# depends_lib         port:gnupg2 \
-#                     port:pth \
+# either gnupg2 (the default) or gnupg21 is needed for running the unit tests
+# and at runtime but does not link directly with gpgme
+depends_build       port:pkgconfig \
+                    bin:gpg2:gnupg2
+
+# depends_lib         port:pth \
 #                     port:libgpg-error \
 #                     port:libassuan
 depends_lib         port:libgpg-error \
@@ -34,7 +39,7 @@ depends_lib         port:libgpg-error \
 
 use_parallel_build  no
 
-patchfiles          patch-tests-gpg-Makefile.in.diff
+patchfiles          patch-tests-gpg-Makefile.am.diff
 
 post-patch {
     reinplace "s|thread_modules=\"\"|thread_modules=\"pthread\"|" ${worksrcpath}/src/gpgme-config.in
@@ -42,7 +47,33 @@ post-patch {
     reinplace "s|@GPGSM@|${prefix}/bin/gpgsm|" ${worksrcpath}/src/gpgme-config.in
 }
 
-configure.args      --enable-static
+# enable cl cpp language bindings for now to avoid opportunistic failures (#52341)
+# TODO: add bindings for python and qt
+
+lappend languages cl
+
+# cpp bindings require libc++
+
+platform darwin {
+    depends_run         path:bin/gpg2:gnupg2
+
+    use_autoreconf      yes
+    autoreconf.args     -fvi
+
+    if {${configure.cxx_stdlib} eq "libc++"} {
+        lappend languages cpp
+    }
+    post-configure {
+        reinplace "s|CC -dynamiclib|CC -dynamiclib [get_canonical_archflags]|g" ${worksrcpath}/libtool
+    }
+}
+platform linux {
+    lappend languages cpp
+}
+
+configure.args      --enable-languages="${languages}" \
+                    --enable-static \
+                    --includedir=${prefix}/include/gpgme
 
 test.run            yes
 test.target         check
@@ -52,6 +83,8 @@ post-destroot {
     xinstall -m 644 -W ${worksrcpath} AUTHORS COPYING COPYING.LESSER \
         ChangeLog INSTALL NEWS README THANKS TODO \
         ${destroot}${prefix}/share/doc/${name}
+    reinplace "s|/include/gpgme++|/include/gpgme/gpgme++|g" ${destroot}${prefix}/lib/cmake/Gpgmepp/GpgmeppConfig.cmake
+    ln -s gpgme/gpgme.h ${destroot}${prefix}/include
 }
 
 livecheck.type      regex
