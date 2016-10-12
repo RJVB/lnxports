@@ -1,0 +1,12 @@
+--- orig.configure.ac	2016-10-12 15:46:04.882107421 +0200
++++ configure.ac	2016-10-12 15:47:52.154109484 +0200
+@@ -63,7 +63,8 @@
+   ])
+ ])
+ 
+-LT_LIB_M
++#LT_LIB_M
++#AC_SEARCH_LIBS(log, m)
+ AS_IF([ test x"$enable_readline" != xno ],[
+   AC_CHECK_HEADERS([readline/readline.h],[
+     sLIBS=$LIBS
