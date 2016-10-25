@@ -118,9 +118,9 @@ if {![variant_isset universal]} {
 
 ####################
 # it shouldn't be necessary to record variants in the archive name
-set archname ${subport}@${version}-dev.tar.bz2
+set archname ${name}@${version}-dev.tar.bz2
 # this could go into the software images directory
-set archdir ${destroot}${prefix}/var/devcontent
+set archdir ${prefix}/var/devcontent
 
 proc create_devport_content {first {args 0}} {
     global destroot prefix archname archdir
@@ -131,14 +131,13 @@ proc create_devport_content {first {args 0}} {
     foreach a ${rawargs} {
         set args "${args} ./${a}"
     }
-    xinstall -m 755 -d ${archdir}
-    if {[catch {system -W ${destroot} "bsdtar -cjvf ${archdir}/${archname} ${args}"} err]} {
-        ui_error "Failure creating ${archdir}/${archname} for ${args}: ${err}"
-        file delete -force ${archdir}/${archname}
+    xinstall -m 755 -d ${destroot}${archdir}
+    if {[catch {system -W ${destroot} "bsdtar -cjvf ${destroot}${archdir}/${archname} ${args}"} err]} {
+        ui_error "Failure creating ${destroot}${archdir}/${archname} for ${args}: ${err}"
+        file delete -force ${destroot}${archdir}/${archname}
     } else {
         foreach a ${args} {
-            ui_info "cleaning out ${destroot}${a}"
-            file delete -force ${destroot}${a}
+            file delete -force ${destroot}/${a}
         }
     }
 }
@@ -169,6 +168,7 @@ proc create_devport {dependency} {
         checksum {}
         extract {}
         use_configure   no
+        patchfiles
         build {}
         destroot {
             unpack_devport_content
