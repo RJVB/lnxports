@@ -4,6 +4,7 @@
 PortSystem          1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           muniversal 1.0
+PortGroup           preserve_runtime_libraries 1.0
 
 # Since libvpx installs a static library only, increase the revision of
 # dependents when updating libvpx to a new version so they'll be rebuilt.
@@ -56,7 +57,7 @@ configure.args      --enable-vp8 \
                     --enable-postproc \
                     --enable-multithread \
                     --enable-runtime-cpu-detect \
-				--enable-shared \
+                    --enable-shared \
                     --disable-debug-libs \
                     --disable-examples \
                     --disable-unit-tests
@@ -112,6 +113,77 @@ if {![variant_isset universal]} {
         configure.args-append $merger_configure_args(${build_arch})
     } else {
         configure.args-append --target=${os.arch}-${os.platform}-gcc
+    }
+}
+
+####################
+# it shouldn't be necessary to record variants in the archive name
+set archname ${subport}@${version}-dev.tar.bz2
+# this could go into the software images directory
+set archdir ${destroot}${prefix}/var/devcontent
+
+proc create_devport_content {first {args 0}} {
+    global destroot prefix archname archdir
+    # join ${first} and (the optional) ${args}
+    set rawargs [linsert $args[set list {}] 0 ${first}]
+    set args ""
+    # convert the arguments to local-relative:
+    foreach a ${rawargs} {
+        set args "${args} ./${a}"
+    }
+    xinstall -m 755 -d ${archdir}
+    if {[catch {system -W ${destroot} "bsdtar -cjvf ${archdir}/${archname} ${args}"} err]} {
+        ui_error "Failure creating ${archdir}/${archname} for ${args}: ${err}"
+        file delete -force ${archdir}/${archname}
+    } else {
+        foreach a ${args} {
+            ui_info "cleaning out ${destroot}${a}"
+            file delete -force ${destroot}${a}
+        }
+    }
+}
+
+proc unpack_devport_content {} {
+    global destroot prefix archname archdir
+    if {[file exists ${archdir}/${archname}]} {
+        if {[catch {system -W ${destroot} "bsdtar -xvf ${archdir}/${archname}"} err]} {
+            ui_error "Failure unpacking ${archdir}/${archname}: ${err}"
+        }
+    } else {
+        ui_error "The port's content doesn't exists (${archdir}/${archname})!"
+        return -code error "Missing content"
+    }
+}
+
+proc create_devport {dependency} {
+    global name long_description
+    subport ${name}-dev {
+        description     "Development headers and libraries for ${name}"
+        depends_lib-append \
+                        ${dependency}
+        long_description ${long_description}\nThis installs the development headers and libraries.
+        installs_libs   yes
+        supported_archs noarch
+        distfiles
+        fetch {}
+        checksum {}
+        extract {}
+        use_configure   no
+        build {}
+        destroot {
+            unpack_devport_content
+        }
+    }
+}
+
+####################
+
+create_devport port:${name}
+
+post-destroot {
+    preserve_libraries  ${prefix}/lib libvpx.so.*
+    if {${subport} eq "${name}"} {
+        create_devport_content ${prefix}/include/vpx ${prefix}/lib/libvpx.a ${prefix}/lib/libvpx.so
     }
 }
 
