@@ -1,12 +1,13 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 # $Id: Portfile 139225 2015-08-07 22:24:56Z jeremyhu@macports.org $
+# $Id: Portfile 153177 2016-09-26 12:10:57Z cal@macports.org $
 
 PortSystem          1.0
 PortGroup           muniversal 1.0
 
 name                openssl
 epoch               1
-version             1.0.2d
+version             1.0.2j
 
 # Please revbump these ports when updating OpenSSL.
 #  - freeradius (#43461)
@@ -25,28 +26,35 @@ long_description    The OpenSSL Project is a collaborative effort to \
                     Security (TLS v1) protocols as well as \
                     a full-strength general purpose cryptography \
                     library.
-homepage            http://www.openssl.org
+homepage            https://www.openssl.org
 
-conflicts           libressl
+conflicts           libressl libressl-devel
 
 depends_lib         port:zlib
 
-master_sites        http://www.openssl.org/source
-checksums           md5     38dd619b2e77cbac69b99f52a053d25a \
-                    sha1    d01d17b44663e8ffa6a33a5a30053779d9593c3d \
-                    rmd160  a4389911e5f7436dc2f52e4968eb613a11e33027 \
-                    sha256  671c36487785628a703374c652ad2cebea45fa920ae5681515df25d9f2c9a8c8
+# See https://www.openssl.org/source/mirror.html
+master_sites        ${homepage}/source \
+                    ftp://gd.tuwien.ac.at/infosys/security/openssl/source/ \
+                    http://openssl.skazkaforyou.com/source/ \
+                    http://mirror.switch.ch/ftp/mirror/openssl/source/ \
+                    ftp://ftp.fi.muni.cz/pub/openssl/source/ \
+                    ftp://ftp.pca.dfn.de/pub/tools/net/openssl/source/ \
+                    http://artfiles.org/openssl.org/source/ \
+                    ftp://ftp.linux.hr/pub/openssl/source/ \
+                    ftp://guest.kuria.katowice.pl/pub/openssl/source/
+
+checksums           sha1    bdfbdb416942f666865fa48fe13c2d0e588df54f \
+                    rmd160  d5be416caf523f3496323dbd05547144348e7854 \
+                    sha256  e7aff292be21c259c6af26469c7a9b3ba26e9abaaffd325e3dccc9785256c431
 
 if {${os.platform} eq "darwin"} {
     patchfiles      install-headers-HFS+.patch \
                     parallel-building.patch \
-                    remove-duplicate-bn_print-doc.patch \
-                    x86_64-asm-on-i386.patch
+                    remove-duplicate-bn_print-doc.patch 
     configure.perl  /usr/bin/perl
     configure.cmd   ./Configure
 } else {
-    patchfiles      parallel-building.patch \
-                    x86_64-asm-on-i386.patch
+    patchfiles      parallel-building.patch
     configure.cmd   ./config
 }
 
@@ -71,7 +79,6 @@ if {${os.platform} eq "darwin"} {
         x86_64  darwin64-x86_64-cc
     }
 }
-
 platform darwin {
     # Don't use i386 assembly on Tiger (#38015, #43303).
     if {${os.major} <= 8} {
