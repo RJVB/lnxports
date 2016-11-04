@@ -4,7 +4,7 @@ PortSystem          1.0
 PortGroup           muniversal 1.0
 
 name                libjpeg-turbo
-conflicts           jpeg mozjpeg
+conflicts           mozjpeg
 
 version             1.5.0
 categories          graphics
@@ -32,25 +32,24 @@ checksums           md5     3fc5d9b6a8bce96161659ae7a9939257 \
                     rmd160  5ec39b43d6ab39864739ea4009a22c59cb5924cf \
                     sha256  9f397c31a67d2b00ee37597da25898b03eb282ccd87b135a50a69993b6a2035f
 
-depends_build       port:nasm
+# depends_build       port:nasm
 
 use_autoreconf          yes
 autoreconf.args-append  --force
 
 configure.args      --disable-silent-rules \
-                    --with-jpeg8 \
-                    NASM=${prefix}/bin/nasm
+                    --with-jpeg8
 
-array set merger_host {
-    x86_64  x86_64-apple-darwin
-    i386    i686-apple-darwin
-    ppc64   powerpc64-apple-darwin
-    ppc     powerpc-apple-darwin
-}
-if {![variant_isset universal]
-        && [info exists merger_host(${configure.build_arch})]} {
-    configure.args-append --host=$merger_host(${configure.build_arch})
-}
+# array set merger_host {
+#     x86_64  x86_64-apple-darwin
+#     i386    i686-apple-darwin
+#     ppc64   powerpc64-apple-darwin
+#     ppc     powerpc-apple-darwin
+# }
+# if {![variant_isset universal]
+#         && [info exists merger_host(${configure.build_arch})]} {
+#     configure.args-append --host=$merger_host(${configure.build_arch})
+# }
 
 test.run            yes
 
