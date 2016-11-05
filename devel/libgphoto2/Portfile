@@ -24,10 +24,15 @@ checksums           rmd160  bfd0ecd78161d7202e999efb38714e6c7a33dad1 \
 
 depends_build       port:pkgconfig
 
-depends_lib         port:jpeg \
+depends_lib         path:lib/libjpeg.la:jpeg \
                     port:libiconv \
                     port:libxml2 \
+                    port:libtool \
+                    port:libusb-compat \
+                    port:libexif \
                     port:libtool
+
+patchfiles-append   patch-jpeg_memsrcdest.diff
 
 configure.args      --disable-nls \
                     --with-drivers=all \
