@@ -6,9 +6,9 @@ PortGroup           muniversal 1.0
 
 name                mlt
 epoch               3
-version             6.2.0
+version             6.4.1
 categories          multimedia
-maintainers         dennedy.org:dan
+maintainers         gmail.com:rjvbertin dennedy.org:dan openmaintainer
 license             GPL-2+
 
 description         Open source multimedia framework - core libraries
@@ -25,30 +25,17 @@ homepage            http://www.mltframework.org/
 master_sites        sourceforge:project/mlt/mlt
 platforms           darwin
 
-checksums           rmd160  3d9fb67e6d90aae844b0187f31df351c8bae8fd1 \
-                    sha256  5acdc8760cc28b19e9dc291f66cbe3faa2bc5e8d53e2de3ef543eb5be0feb9f4
+checksums           rmd160  647cdad41974b93c5745a358e1129f2ed5f6e577 \
+                    sha256  d3a992f3e67463e68630cb0b455d408a2a12f4da7a19e46807fa08a79f09b2b6
 
-# subport qt5-${name} {
-#     replaced_by     ${name}-qt5
-#     PortGroup       obsolete 1.0
-#     description     ${description} - Qt5 version
-#     long_description \
-#                     ${description}
-# }
-# 
-# subport ${name}-qt5 {
-#     description     ${description} - Qt5 version
-#     long_description \
-#                     ${long_description} Built against Qt5.
-# }
-subport qt5-${name} {
+subport ${name}-qt5 {
     description     ${description} - Qt5 version
     long_description \
                     ${long_description} Built against Qt5.
 }
 
 if {${subport} eq "${name}"} {
-    conflicts       ${name}-qt5 qt5-${name}
+    conflicts       ${name}-qt5
     PortGroup       qt4 1.0
 } else {
     conflicts       ${name}
@@ -59,6 +46,7 @@ platform darwin {
     depends_build-append \
                     port:git \
                     port:doxygen
+
     depends_lib-append \
                     port:atk \
                     port:frei0r-plugins \
@@ -72,15 +60,22 @@ platform darwin {
                     port:libexif
 }
 platform linux {
-    configure.env-append \
-                    PKG_CONFIG_PATH=/opt/ffmpeg/lib/pkgconfig
+    depends_build-append \
+                    port:git
+
+    depends_lib-append \
+                    path:lib/libavcodec.dylib:ffmpeg \
+                    port:libsamplerate \
+                    port:libvorbis \
+                    port:libxml2 \
+                    port:libexif
 }
 
 # NB: qt-includedir can and should be set to ${qt_includes_dir},
 # not ${qt_includes_dir}/Qt !!
 configure.args-append \
                     --enable-gpl \
-                    --qt-libdir=${qt_libs_dir} \
+                    --qt-libdir=${qt_frameworks_dir} \
                     --qt-includedir=${qt_includes_dir} \
                     --disable-jackrack \
                     --disable-mmx \
@@ -93,40 +88,20 @@ platform darwin 10 {
     }
 }
 
-configure.cflags-append     "-I${prefix}/include"
-configure.cflags-append     "-I${qt_includes_dir}"
+set compflags       "-I${prefix}/include -I${qt_includes_dir} -Wl,-rpath=${prefix}/lib/${build_arch}-linux-gnu"
+foreach o ${compflags} {
+    configure.cflags-append     "${o}"
+    configure.cxxflags-append   "${o}"
+}
 configure.ldflags-delete    "-L${prefix}/lib"
-configure.ldflags-append    -Wl,-rpath=${prefix}/lib -Wl,-rpath=${qt_libs_dir}
 
-# This is no longer required?
-# post-patch {
-#     reinplace -W ${worksrcpath}/src "s|__DARWIN__|__APPLE__|g" \
-#                             framework/mlt_factory.c \
-#                             framework/mlt_properties.c \
-#                             framework/mlt_property.c \
-#                             framework/mlt_property.h \
-#                             melt/melt.c \
-#                             mlt++/MltProperties.cpp \
-#                             mlt++/MltProperties.h \
-#                             modules/decklink/common.cpp \
-#                             modules/decklink/common.h \
-#                             modules/frei0r/factory.c \
-#                             modules/jackrack/plugin.c \
-#                             modules/jackrack/plugin_mgr.c \
-#                             modules/opengl/factory.c \
-#                             modules/opengl/filter_glsl_manager.cpp \
-#                             modules/plusgpl/utils.c \
-#                             modules/plusgpl/utils.h \
-#                             modules/sdl/consumer_sdl.c \
-#                             modules/sdl/consumer_sdl_audio.c \
-#                             modules/sdl/consumer_sdl_osx.h \
-#                             modules/sdl/consumer_sdl_still.c \
-#                             modules/videostab/stab/estimate.c \
-#                             tests/test_filter/test_filter.cpp \
-#                             tests/test_properties/test_properties.cpp
-# }
-
-build.args-append           CC="${configure.cc}" CXX="${configure.cxx}" CPP="${configure.cpp}"
+configure.ldflags-append    "-Wl,-rpath=${prefix}/lib/${build_arch}-linux-gnu"
+if {${subport} eq "${name}-qt5"} {
+    configure.cflags-append     "-Wl,rpath=${qt_libs_dir}"
+    configure.cxxflags-append   "-Wl,-rpath=${qt_libs_dir}"
+    configure.ldflags-append    "-Wl,-rpath=${qt_libs_dir}"
+}
+build.args-append           CC="${configure.cc}" CXX="${configure.cxx}" CPP="${configure.cpp} V=1 VERBOSE=1"
 
 if {[variant_isset universal]} {
     foreach arch ${configure.universal_archs} {
@@ -135,15 +110,18 @@ if {[variant_isset universal]} {
         lappend merger_build_env(${arch})   {*}"LDFLAGS='${configure.ldflags} -L${worksrcpath}-${arch}/src/framework -L${prefix}/lib -arch ${arch}'"
     }
 } else {
+    configure.env-append                    CFLAGS="${configure.cflags} [get_canonical_archflags cc]"
+    configure.env-append                    CXXFLAGS="${configure.cxxflags} [get_canonical_archflags cxx]"
+    configure.env-append                    LDFLAGS="${configure.ldflags} -L${worksrcpath}/src/framework -L${prefix}/lib [get_canonical_archflags ld]"
     build.env-append                        CFLAGS="${configure.cflags} [get_canonical_archflags cc]"
     build.env-append                        CXXFLAGS="${configure.cxxflags} [get_canonical_archflags cxx]"
     build.env-append                        LDFLAGS="${configure.ldflags} -L${worksrcpath}/src/framework -L${prefix}/lib [get_canonical_archflags ld]"
 }
 
-variant gtk2 description {include the gtk2 module (for additional image and text producers)} {
-    configure.args-delete   --disable-gtk2
-    depends_lib-append      port:gtk2
-}
+# variant gtk2 description {include the gtk2 module (for additional image and text producers)} {
+#     configure.args-delete   --disable-gtk2
+#     depends_lib-append      port:gtk2
+# }
 
 livecheck.type      regex
 livecheck.url       http://sourceforge.net/projects/${name}/files/
