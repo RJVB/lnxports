@@ -110,7 +110,30 @@ if {${subport} eq "${name}"} {
                     port:ncurses \
                     port:portaudio
 
-    #configure.args  --disable-pulse-support
+    configure.args-append \
+                    --disable-dependency-tracking \
+                    --enable-ladspa
+
+    # support for JACK makes JACK output the default and requires the daemon to be running
+    variant jack description {enable JACK support} {
+        depends_lib-append \
+                    port:jack
+    }
+    if {![variant_isset jack]} {
+        configure.args-append \
+                    --disable-jack-support
+    }
+
+    variant dbus description {enable D-Bus support} {
+#         depends_lib-append \
+#                     port:dbus
+    }
+    if {![variant_isset dbus]} {
+        configure.args-append \
+                    --disable-dbus-support
+    }
+    default_variants-append \
+                    +dbus
 
     livecheck.type  sourceforge
     livecheck.regex /${name}-(\[0-9.\]+)${extract.suffix}
