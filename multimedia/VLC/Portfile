@@ -256,21 +256,22 @@ platform linux {
                         PR-34741-no__clang_version__.patch \
                         no-sparkle.patch \
                         patch-vlc-no-O4.diff \
-				    patch-vlc-gcc6-buildfixes.diff
+				    patch-vlc-gcc6-buildfixes.diff \
+                        patch-soundfont-path.diff
     if {![variant_isset ffmpeg_in_opt]} {
         patchfiles-append \
 				    patch-ffmpegVLC.diff
     }
 
     post-patch {
-        reinplace "s:librsvg-2/librsvg:librsvg:" \
-            ${worksrcpath}/modules/text_renderer/svg.c
-
         if {[string match *clang* ${configure.cxx}] && ${configure.cxx_stdlib} == "libc++"} {
             reinplace "s:-lstdc\+\+:-lc++:" \
                 ${worksrcpath}/configure.ac \
                 ${worksrcpath}/modules/access/Makefile.am
         }
+
+        reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/modules/codec/fluidsynth.c
+
         # patch source using ffmpeg to use the correct header file locations
         if {![variant_isset ffmpeg_in_opt]} {
             foreach dir {libavcodec libavformat libavresample libavutil libpostproc libswresample libswscale} {
@@ -399,10 +400,8 @@ platform linux {
                         --enable-upnp
 
     # 20150209: Jack really would require a newer variant than what's currently in MacPorts
-    variant jack description {Enable jack (and fluidsynth) plugins for audio output} {
-#         depends_lib-append      port:jack port:portaudio
-#         configure.args-delete   --disable-jack --disable-fluidsynth
-#         configure.args-append   --enable-jack --enable-fluidsynth
+    variant jack description {Enable jack plugin for audio output} {
+        depends_lib-append      port:jack port:portaudio
         configure.args-delete   --disable-jack
         configure.args-append   --enable-jack
     }
@@ -620,6 +619,9 @@ platform linux {
             }
         }
     }
+# outcomment when the port:fluid-soundfont* ports have been made available
+#     notes-append "MIDI support requires installing one or more SoundFont files,\
+#         in ${prefix}/share/sounds/sf2, for instance from one of the port:fluid-soundfont-* ports"
 }
 
 ##
