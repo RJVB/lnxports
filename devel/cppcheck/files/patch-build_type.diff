@@ -1,0 +1,59 @@
+--- cmake/orig.options.cmake	2016-01-09 14:50:01.000000000 +0100
++++ cmake/options.cmake	2016-12-10 09:55:53.864709802 +0100
+@@ -1,7 +1,7 @@
+ #------------------------------------------------------
+ # Build type
+ #------------------------------------------------------
+-set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel" CACHE STRING "Configs" FORCE)
++set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo;MinSizeRel;MacPorts" CACHE STRING "Configs" FORCE)
+ if(DEFINED CMAKE_BUILD_TYPE)
+    SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS ${CMAKE_CONFIGURATION_TYPES})
+ endif()
+--- cmake/orig.compileroptions.cmake	2016-01-09 14:50:01.000000000 +0100
++++ cmake/compileroptions.cmake	2016-12-10 10:13:37.065752160 +0100
+@@ -5,16 +5,16 @@
+ if (USE_CLANG)
+     set (CMAKE_C_COMPILER_ID            "Clang")
+     set (CMAKE_CXX_COMPILER_ID          "Clang")
+-    set (CMAKE_C_COMPILER               "/usr/bin/clang")
+-    set (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
++    #set (CMAKE_C_COMPILER               "/usr/bin/clang")
++    #set (CMAKE_CXX_COMPILER             "/usr/bin/clang++")
+ 
+-    set (CMAKE_C_FLAGS                  "-std=c99")
+-    set (CMAKE_C_FLAGS_DEBUG            "-g")
+-    set (CMAKE_C_FLAGS_RELEASE          "-O2")
++    #set (CMAKE_C_FLAGS                  "-std=c99")
++    #set (CMAKE_C_FLAGS_DEBUG            "-g")
++    #set (CMAKE_C_FLAGS_RELEASE          "-O2")
+ 
+-    set (CMAKE_CXX_FLAGS                "")
+-    set (CMAKE_CXX_FLAGS_DEBUG          "-g")
+-    set (CMAKE_CXX_FLAGS_RELEASE        "-O2")
++    #set (CMAKE_CXX_FLAGS                "")
++    #set (CMAKE_CXX_FLAGS_DEBUG          "-g")
++    #set (CMAKE_CXX_FLAGS_RELEASE        "-O2")
+ endif()
+ 
+ if (USE_ANALYZE)
+--- cmake/orig.compilerDefinitions.cmake	2016-01-09 14:50:01.000000000 +0100
++++ cmake/compilerDefinitions.cmake	2016-12-10 10:19:27.740766131 +0100
+@@ -5,5 +5,9 @@
+     if (HAVE_RULES)
+         add_definitions(-DHAVE_RULES -DTIXML_USE_STL)
+     endif()
+-    add_definitions(-DCFGDIR="${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}")
++    if (CFGDIR)
++        add_definitions(-DCFGDIR="${CFGDIR}")
++    else ()
++        add_definitions(-DCFGDIR="${CMAKE_INSTALL_PREFIX}/share/${PROJECT_NAME}")
++    endif()
+ endif()
+--- orig.CMakeLists.txt	2016-01-09 14:50:01.000000000 +0100
++++ CMakeLists.txt	2016-12-10 10:49:22.979837653 +0100
+@@ -1,4 +1,4 @@
+-project(CppCheck)
++project(cppcheck)
+ cmake_minimum_required(VERSION 2.8)
+ 
+ include(GNUInstallDirs)

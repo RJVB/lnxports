@@ -1,0 +1,11 @@
+--- test/orig.CMakeLists.txt	2016-01-09 14:50:01.000000000 +0100
++++ test/CMakeLists.txt	2016-12-10 10:00:38.558721145 +0100
+@@ -8,7 +8,7 @@
+ 
+     add_executable(testrunner ${hdrs} ${srcs} $<TARGET_OBJECTS:lib_objs> $<TARGET_OBJECTS:cli_objs> $<TARGET_OBJECTS:tinyxml_objs>)
+     if (HAVE_RULES)
+-        target_link_libraries(testunner pcre)
++        target_link_libraries(testrunner pcre)
+     endif()
+ 
+     add_custom_target(copy_cfg ALL
