@@ -1,0 +1,141 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# $Id$
+
+PortSystem          1.0
+
+name                fpc
+version             3.0.0
+categories          lang
+platforms           darwin
+license             GPL-2 LGPL-2
+maintainers         takeshi gmail.com:rjvbertin openmaintainer
+description         free pascal
+long_description    Open source compiler for Pascal and Object Pascal
+homepage            http://www.freepascal.org
+master_sites        sourceforge:freepascal
+
+set bin             fpc-3.0.0.x86_64-linux.tar
+set src             fpcbuild-3.0.0.tar.gz
+distfiles           ${src}
+checksums           rmd160  07a8692836f7e85d6333f7e3074a69aa107ed2d4 \
+                    sha256  c952a6f1fc9a32da7a3f77c309e64fa1b536516e4fae16ff58ac10d5ece85dd4
+
+universal_variant   no
+
+set fpcbasepath     ${prefix}/libexec/${name}-${version}
+
+subport "chmcmd-${name}" {
+    description         The FPC Pascal htmlhelp (CHM) compiler
+    long_description    chmcmd is an cross-platform utility to generate compressed HTML (.chm)\
+                        documentation, written in Free Pascal
+#     distfiles           ${src}
+#     checksums           rmd160  e921a79d1898b959ee71909d6cd2f036b00477bd \
+#                         sha256  d5913b1d5d3d13190ae7ee72c305d5da49ac2ddc1b375b814751ef09ae5c80ec
+#     depends_build-append \
+#                     port:${name}
+#     extract.post_args-append \
+#                     ${name}build-${version}/fpcsrc/packages/chm \
+#                     ${name}build-${version}/fpcsrc/packages/fcl-xml \
+#                     ${name}build-${version}/fpcsrc/packages/fcl-base \
+#                     ${name}build-${version}/fpcsrc/packages/fcl-process \
+#                     ${name}build-${version}/fpcsrc/packages/fpmkunit \
+#                     ${name}build-${version}/fpcsrc/packages/hash \
+#                     ${name}build-${version}/fpcsrc/packages/iconvenc \
+#                     ${name}build-${version}/fpcsrc/packages/libtar \
+#                     ${name}build-${version}/fpcsrc/packages/paszlib \
+#                     ${name}build-${version}/fpcsrc/packages/univint \
+#                     ${name}build-${version}/fpcsrc/rtl
+#     worksrcdir      ${name}build-${version}/fpcsrc/packages/chm
+#     configure.cmd   ${fpcbasepath}/bin/fpcmake
+#     configure.pre_args
+#     configure.args  -r -v -T all
+#     configure.post_args
+#     build.env       PREFIX=${prefix} \
+#                     CPU_TARGET=${build_arch} \
+#                     OS_TARGET=${os.platform}
+#     build.target    all
+#     build.post_args-append \
+#                     V=1 VERBOSE=1
+#     post-configure {
+#         xinstall -m 755 -d ${build.dir}/units/${build_arch}-darwin/
+#     }
+#     destroot {
+#         xinstall -m 755 ${build.dir}/chmcmd ${destroot}${prefix}/bin
+#     }
+    distfiles           ${bin}
+    checksums           rmd160  07a8692836f7e85d6333f7e3074a69aa107ed2d4 \
+                        sha256  c952a6f1fc9a32da7a3f77c309e64fa1b536516e4fae16ff58ac10d5ece85dd4
+    worksrcdir          ${name}-${version}.x86_64-linux
+
+    extract.suffix      .tar
+    extract.cmd         cat
+    extract.pre_args
+
+    use_configure       no
+    build {
+        system -W ${worksrcpath} "tar -xf binary.x86_64-linux.tar units-chm.x86_64-linux.tar.gz"
+        system -W ${worksrcpath} "tar -xf units-chm.x86_64-linux.tar.gz bin/chmcmd"
+    }
+    destroot {
+        xinstall -m 755 ${build.dir}/bin/chmcmd ${destroot}${prefix}/bin
+    }
+}
+
+if {${subport} eq "${name}"} {
+
+    distfiles           ${bin}
+    checksums           rmd160  07a8692836f7e85d6333f7e3074a69aa107ed2d4 \
+                        sha256  c952a6f1fc9a32da7a3f77c309e64fa1b536516e4fae16ff58ac10d5ece85dd4
+    worksrcdir          ${name}-${version}.x86_64-linux
+
+    extract.suffix      .tar
+    extract.cmd         cat
+    extract.pre_args
+
+    patchfiles-append   patch-install.diff
+    post-patch {
+        reinplace "s|@DESTROOT@@FPCBASEPATH@|${destroot}${fpcbasepath}|g" ${worksrcpath}/install.sh
+    }
+
+    use_configure       no
+    build {}
+    pre-destroot {
+        xinstall -m 755 -d ${destroot}${fpcbasepath}
+    }
+    destroot.cmd        ./install.sh
+
+    post-destroot {
+        # fix:
+        file delete -force ${destroot}${fpcbasepath}/bin/ppcx64
+        ln -s ${fpcbasepath}/lib/${name}/${version}/ppcx64 ${destroot}${fpcbasepath}/bin
+        foreach b [glob -nocomplain ${destroot}${fpcbasepath}/bin/*] {
+            set n [file tail ${b}]
+            if {${n} ne "chmcmd"} {
+                ln -s ${fpcbasepath}/bin/${n} ${destroot}${prefix}/bin
+            }
+        }
+        # generate a configuration file
+        xinstall -d ${destroot}${fpcbasepath}/etc
+        system "
+            ${destroot}${fpcbasepath}/bin/fpcmkcfg \
+                -d basepath=${fpcbasepath}/lib/${name}/${version} \
+                -o ${destroot}${fpcbasepath}/etc/fpc.cfg
+        "
+        ln -s ${fpcbasepath}/man/man1/fpc.1.gz ${destroot}${prefix}/share/man/man1
+        ln -s ${fpcbasepath}/man/man5/fpc.cfg.5.gz ${destroot}${prefix}/share/man/man5
+    }
+
+    notes "
+        The compiler fpc looks for the fpc.cfg file in the following places: \n\
+        - The current directory. \n\
+        - Home directory, looks for .fpc.cfg \n\
+        - The directory specified in the environment variable PPC_CONFIG_PATH, \n\
+          and if it's not set under compilerdir/../etc. \n\
+        - If it is not yet found: in /etc. \n\
+        \n\
+        All the files of fpc are installed in ${fpcbasepath} and \n\
+        the executables are installed in ${fpcbasepath}/bin. \n\
+        The fpc.cfg is installed in ${fpcbasepath}/etc to make fpc find fpc.cfg. \n\
+        To customize, use ~/.fpc.cfg or /etc/fpc.cfg and call ${fpcbasepath}/bin/fpc directly.
+    " 
+}

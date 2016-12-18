@@ -1,0 +1,155 @@
+--- orig.install.sh	2015-11-20 16:50:48.000000000 +0100
++++ install.sh	2016-12-18 11:20:40.040512094 +0100
+@@ -128,11 +128,11 @@
+   echo "Installing compiler and RTL for $FPCTARGET..."
+   unztarfromtar "$BINARYTAR" "${CROSSPREFIX}base.$1.tar.gz" "$PREFIX"
+ 
+-  if [ -f "binutils-${CROSSPREFIX}$1.tar.gz" ]; then
+-    if yesno "Install Cross binutils"; then
+-      unztar "binutils-${CROSSPREFIX}$1.tar.gz" "$PREFIX"
+-    fi
+-  fi
++#  if [ -f "binutils-${CROSSPREFIX}$1.tar.gz" ]; then
++#    if yesno "Install Cross binutils"; then
++#      unztar "binutils-${CROSSPREFIX}$1.tar.gz" "$PREFIX"
++#    fi
++#  fi
+ 
+   # Install symlink
+   rm -f "$EXECDIR/ppc${PPCSUFFIX}"
+@@ -183,12 +183,12 @@
+     chmod u=srx,g=rx,o=rx "$PREFIX/bin/grab_vcsa"
+   fi
+ 
+-  ide=`$TAR -tf $BINARYTAR | grep "${CROSSPREFIX}ide.$1.tar.gz"`
+-  if [ "$ide" = "${CROSSPREFIX}ide.$1.tar.gz" ]; then
+-    if yesno "Install Textmode IDE"; then
+-      unztarfromtar "$BINARYTAR" "${CROSSPREFIX}ide.$1.tar.gz" "$PREFIX"
+-    fi
+-  fi
++#  ide=`$TAR -tf $BINARYTAR | grep "${CROSSPREFIX}ide.$1.tar.gz"`
++#  if [ "$ide" = "${CROSSPREFIX}ide.$1.tar.gz" ]; then
++#    if yesno "Install Textmode IDE"; then
++#      unztarfromtar "$BINARYTAR" "${CROSSPREFIX}ide.$1.tar.gz" "$PREFIX"
++#    fi
++#  fi
+ 
+   rm -f *."$1".tar.gz
+ }
+@@ -246,12 +246,7 @@
+      fi
+   ;;
+   *)
+-     # Install in /usr/local or /usr ?
+-     if checkpath /usr/local/bin; then
+-         PREFIX=/usr/local
+-     else
+-         PREFIX=/usr
+-     fi
++  	PREFIX=@DESTROOT@@FPCBASEPATH@
+   ;;
+ esac
+ 
+@@ -265,7 +260,7 @@
+      ask "Install prefix (/boot/common or /boot/home/config) " PREFIX
+   ;;
+   *)
+-     ask "Install prefix (/usr or /usr/local) " PREFIX
++     #ask "Install prefix (/usr or /usr/local) " PREFIX
+   ;;
+ esac
+ 
+@@ -304,54 +299,55 @@
+ do
+   target=`echo $f | sed 's+^.*binary\.\(.*\)\.tar$+\1+'`
+   cross=`echo $f | sed 's+binary\..*\.tar$++'`
++  echo "target=${target} cross=${cross}"
+ 
+   # cross install?
+-  if [ "$cross" != "" ]; then
+-    if [ "`which fpc 2>/dev/null`" = '' ]; then
+-      echo "No native FPC found."
+-      echo "For a proper installation of a cross FPC the installation of a native FPC is required."
+-      exit 1
+-    else
+-      if [ `fpc -iV` != "$VERSION" ]; then
+-        echo "Warning: Native and cross FPC doesn't match; this could cause problems"
+-      fi
+-    fi
+-  fi
++#  if [ "$cross" != "" ]; then
++#    if [ "`which fpc 2>/dev/null`" = '' ]; then
++#      echo "No native FPC found."
++#      echo "For a proper installation of a cross FPC the installation of a native FPC is required."
++#      exit 1
++#    else
++#      if [ `fpc -iV` != "$VERSION" ]; then
++#        echo "Warning: Native and cross FPC doesn't match; this could cause problems"
++#      fi
++#    fi
++#  fi
+   installbinary "$target" "$cross"
+ done
+ 
+ echo Done.
+ echo
+ 
+-# Install the documentation. Optional.
+-if [ -f doc-pdf.tar.gz ]; then
+-  if yesno "Install documentation"; then
+-    echo Installing documentation in "$DOCDIR" ...
+-    makedirhierarch "$DOCDIR"
+-    unztar doc-pdf.tar.gz "$DOCDIR" "--strip 1"
+-    echo Done.
+-  fi
+-fi
+-echo
+-
+-# Install the demos. Optional.
+-if [ -f demo.tar.gz ]; then
+-  if yesno "Install demos"; then
+-    ask "Install demos in" DEMODIR
+-    echo Installing demos in "$DEMODIR" ...
+-    makedirhierarch "$DEMODIR"
+-    unztar demo.tar.gz "$DEMODIR"
+-    echo Done.
+-  fi
+-fi
+-echo
++## Install the documentation. Optional.
++#if [ -f doc-pdf.tar.gz ]; then
++#  if yesno "Install documentation"; then
++#    echo Installing documentation in "$DOCDIR" ...
++#    makedirhierarch "$DOCDIR"
++#    unztar doc-pdf.tar.gz "$DOCDIR" "--strip 1"
++#    echo Done.
++#  fi
++#fi
++#echo
++#
++## Install the demos. Optional.
++#if [ -f demo.tar.gz ]; then
++#  if yesno "Install demos"; then
++#    ask "Install demos in" DEMODIR
++#    echo Installing demos in "$DEMODIR" ...
++#    makedirhierarch "$DEMODIR"
++#    unztar demo.tar.gz "$DEMODIR"
++#    echo Done.
++#  fi
++#fi
++#echo
+ 
+ # Install /etc/fpc.cfg, this is done using the samplecfg script
+-if [ "$cross" = "" ]; then
+-  "$LIBDIR/samplecfg" "$LIBDIR"
+-else
+-  echo "No fpc.cfg created because a cross installation has been done."
+-fi
++#if [ "$cross" = "" ]; then
++#  "$LIBDIR/samplecfg" "$LIBDIR"
++#else
++#  echo "No fpc.cfg created because a cross installation has been done."
++#fi
+ 
+ # The End
+ echo
