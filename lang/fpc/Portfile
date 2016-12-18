@@ -107,12 +107,11 @@ if {${subport} eq "${name}"} {
     post-destroot {
         # fix:
         file delete -force ${destroot}${fpcbasepath}/bin/ppcx64
+        file delete -force ${destroot}${fpcbasepath}/bin/chmcmd
         ln -s ${fpcbasepath}/lib/${name}/${version}/ppcx64 ${destroot}${fpcbasepath}/bin
         foreach b [glob -nocomplain ${destroot}${fpcbasepath}/bin/*] {
             set n [file tail ${b}]
-            if {${n} ne "chmcmd"} {
-                ln -s ${fpcbasepath}/bin/${n} ${destroot}${prefix}/bin
-            }
+            ln -s ${fpcbasepath}/bin/${n} ${destroot}${prefix}/bin
         }
         # generate a configuration file
         xinstall -d ${destroot}${fpcbasepath}/etc
