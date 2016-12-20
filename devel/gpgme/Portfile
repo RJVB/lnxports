@@ -1,14 +1,14 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 153382 2016-09-29 18:43:43Z devans@macports.org $
+# $Id$
 
 PortSystem          1.0
 
 name                gpgme
 version             1.7.0
-revision            1
+revision            2
 categories          devel security crypto
 license             {LGPL-2.1+ GPL-3+}
-maintainers         devans openmaintainer
+maintainers         schenkel.net:leonardo devans openmaintainer
 description         A library for easy acces to GnuPG.
 long_description    GnuPG Made Easy (GPGME) is a library designed to make access \
                     to GnuPG easier for applications. It provides a High-Level \
@@ -72,8 +72,7 @@ platform linux {
 }
 
 configure.args      --enable-languages="${languages}" \
-                    --enable-static \
-                    --includedir=${prefix}/include/gpgme
+                    --enable-static
 
 test.run            yes
 test.target         check
@@ -83,8 +82,19 @@ post-destroot {
     xinstall -m 644 -W ${worksrcpath} AUTHORS COPYING COPYING.LESSER \
         ChangeLog INSTALL NEWS README THANKS TODO \
         ${destroot}${prefix}/share/doc/${name}
-    reinplace "s|/include/gpgme++|/include/gpgme/gpgme++|g" ${destroot}${prefix}/lib/cmake/Gpgmepp/GpgmeppConfig.cmake
-    ln -s gpgme/gpgme.h ${destroot}${prefix}/include
+}
+
+# deactivate kdepimlibs4 earlier than 4.14.3_4 to avoid
+# activation conflict on ${prefix}/include/gpgme++/*
+
+pre-activate {
+    if {![catch {set installed [lindex [registry_active kdepimlibs4] 0]}]} {
+        set _version [lindex $installed 1]
+        set _revision [lindex $installed 2]
+        if {[vercmp $_version 4.14.3] < 0 || ([vercmp $_version 4.14.3] == 0 && $_revision < 4)} {
+            registry_deactivate_composite kdepimlibs4 "" [list ports_nodepcheck 1]
+        }
+    }
 }
 
 livecheck.type      regex
