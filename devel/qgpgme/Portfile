@@ -39,8 +39,6 @@ use_parallel_build  yes
 # do everything as usual, except for the destroot step which is done from the lang/qt subdir
 destroot.dir        ${worksrcpath}/lang/qt
 
-ui_msg "worksrcdir=${worksrcdir} worksrcpath=${worksrcpath} configure.dir=${configure.dir} build.dir=${build.dir} destroot.dir=${destroot.dir}"
-
 patchfiles          patch-tests-gpg-Makefile.am.diff
 
 post-patch {
