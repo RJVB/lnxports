@@ -7,8 +7,7 @@ set qt5.prefer_kde  1
 PortGroup           qt5 1.0
 
 name                qgpgme
-version             1.7.0
-revision            2
+version             1.8.0
 categories          devel security crypto
 license             GPL-2+
 maintainers         gmail.com:rjvbertin mk openmaintainer
@@ -18,28 +17,29 @@ long_description    QGpgME is the Qt5 wrapper for GnuPG Made Easy (GPGME).
 platforms           darwin linux
 
 homepage            http://www.gnupg.org/related_software/gpgme/
-master_sites        gnupg
+master_sites        gnupg:gpgme
 use_bzip2           yes
 
 distname            gpgme-${version}
 # we use the same distfiles as port:gpgme:
 dist_subdir         gpgme
-checksums           rmd160  3159142bd912fe482566a78f48d19fe6a4d3221e \
-                    sha256  71f55fed0f2b3eaf7a606e59772aa645ce3ffff322d361ce359951b3f755cc48
+checksums           rmd160  b21a322ddbaf160538267cf201aeec207b8287f6 \
+                    sha256  596097257c2ce22e747741f8ff3d7e24f6e26231fa198a41b2a072e62d1e5d33
 
 # either gnupg2 (the default) or gnupg21 is needed for running the unit tests
-# and at runtime but does not link directly with gpgme
+# and at runtime but nothing from gnupg2 links directly with qgpgme
 depends_build       port:pkgconfig \
                     bin:gpg2:gnupg2
 
+# this is not actually how things work currently, we actually build
+# much of gpgme again. However, depending on port:gpgme will ensure
+# that all dependencies are there, and simplifies the depspec (maintenance).
 depends_lib         port:gpgme
 
 use_parallel_build  yes
 
 # do everything as usual, except for the destroot step which is done from the lang/qt subdir
 destroot.dir        ${worksrcpath}/lang/qt
-
-ui_msg "worksrcdir=${worksrcdir} worksrcpath=${worksrcpath} configure.dir=${configure.dir} build.dir=${build.dir} destroot.dir=${destroot.dir}"
 
 patchfiles          patch-tests-gpg-Makefile.am.diff
 
@@ -49,7 +49,8 @@ post-patch {
     reinplace "s|@GPGSM@|${prefix}/bin/gpgsm|" ${worksrcpath}/src/gpgme-config.in
 }
 
-lappend languages qt
+# cpp bindings require libc++ which we can rely on thanks to the cxx11 portgroup
+lappend languages cpp qt
 
 # cpp bindings require libc++
 
@@ -76,8 +77,8 @@ patchfiles-append   patch-libqgpgme-name.diff
 
 patchfiles-append   patch-missing-prototypes.diff
 
-configure.args      --enable-languages="${languages}" \
-                    --enable-static
+configure.args      --disable-dependency-tracking \
+                    --enable-languages="${languages}"
 
 test.run            yes
 test.target         check
