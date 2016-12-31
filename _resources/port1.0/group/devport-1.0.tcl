@@ -39,14 +39,16 @@ namespace eval dev {
     set archdir ${prefix}/var/devcontent
 }
 
-proc create_devport_content {first {args 0}} {
+options devport_content
+default devport_content ""
+
+proc create_devport_content {} {
     global destroot prefix
-    # join ${first} and (the optional) ${args}
-    set rawargs [linsert $args[set list {}] 0 ${first}]
+    set rawargs [option devport_content]
     set args ""
     # convert the arguments to local-relative:
     foreach a ${rawargs} {
-        set args "${args} ./${a}"
+        set args "${args} .${a}"
     }
     xinstall -m 755 -d ${destroot}${dev::archdir}
     if {[catch {system -W ${destroot} "bsdtar -cjvf ${destroot}${dev::archdir}/${dev::archname} ${args}"} err]} {

@@ -27,7 +27,8 @@ checksums               rmd160  29a5f29d186fe2aece5c450fd1a743b819c02c5b \
 # https://trac.macports.org/ticket/31167
 compiler.blacklist-append   {clang < 211.10.1}
 
-configure.cppflags      -no-cpp-precomp
+# gcc doesn't like this option:
+# configure.cppflags      -no-cpp-precomp
 
 configure.args          ac_cv_prog_AWK=/usr/bin/awk \
                         ac_cv_path_GREP=/usr/bin/grep \
@@ -63,36 +64,40 @@ PortGroup devport 1.0
 
 create_devport port:${name}
 
-post-destroot {
-    if {[file exists ${destroot}${prefix}/lib/charset.alias]} {
-        delete ${destroot}${prefix}/lib/charset.alias
-    }
-    if {[file exists ${destroot}${prefix}/share/locale/locale.alias]} {
-        delete ${destroot}${prefix}/share/locale/locale.alias
-    }
-    xinstall -m 644 -W ${worksrcpath} \
-        AUTHORS \
-        COPYING \
-        ChangeLog \
-        ChangeLog.0 \
-        DEPENDENCIES \
-        HACKING \
-        NEWS \
-        README \
-        THANKS \
-        ${destroot}${prefix}/share/doc/${name}
-    if {${subport} eq "${name}"} {
-        options devcontent
-        foreach h [glob -nocomplain ${destroot}${prefix}/include/*.h] {
-            devcontent-append [string map [list ${destroot} ""] ${h}]
+if {${subport} eq "${name}"} {
+    post-destroot {
+        if {[file exists ${destroot}${prefix}/lib/charset.alias]} {
+            delete ${destroot}${prefix}/lib/charset.alias
         }
-        foreach h [glob -nocomplain ${destroot}${prefix}/lib/*.a] {
-            devcontent-append [string map [list ${destroot} ""] ${h}]
+        if {[file exists ${destroot}${prefix}/share/locale/locale.alias]} {
+            delete ${destroot}${prefix}/share/locale/locale.alias
         }
-        foreach h [glob -nocomplain ${destroot}${prefix}/lib/*.so] {
-            devcontent-append [string map [list ${destroot} ""] ${h}]
+        xinstall -m 644 -W ${worksrcpath} \
+            AUTHORS \
+            COPYING \
+            ChangeLog \
+            ChangeLog.0 \
+            DEPENDENCIES \
+            HACKING \
+            NEWS \
+            README \
+            THANKS \
+            ${destroot}${prefix}/share/doc/${name}
+        if {${subport} eq "${name}"} {
+            foreach h [glob -nocomplain ${destroot}${prefix}/include/*.h] {
+                devport_content-append [string map [list ${destroot} ""] ${h}]
+            }
+            foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.a] {
+                devport_content-append [string map [list ${destroot} ""] ${h}]
+            }
+            foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.la] {
+                devport_content-append [string map [list ${destroot} ""] ${h}]
+            }
+            foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*\[a-zA-Z\].so] {
+                devport_content-append [string map [list ${destroot} ""] ${h}]
+            }
+            create_devport_content
         }
-        create_devport_content ${devcontent}
     }
 }
 
