@@ -1,5 +1,4 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 147737 2016-04-13 19:19:13Z michaelld@macports.org $
 
 PortSystem          1.0
 PortGroup           python 1.0
@@ -21,7 +20,7 @@ long_description \
 
 homepage            http://www.riverbankcomputing.co.uk/software/sip/intro
 
-version             4.18
+version             4.19
 
 # from siplib/sip.h.in:
 #
@@ -32,7 +31,8 @@ version             4.18
 # removed or the order changed then the major number must be
 # incremented and the minor number set to 0.
 #
-# SIP 4.18.0 provides SIP API 11.3
+# SIP 4.19[.0] provides SIP API 12.0
+# SIP 4.18.[0-1] provides SIP API 11.3
 # SIP 4.17.0 provides SIP API 11.2
 # SIP 4.16.[8-9] provides SIP API 11.2
 #  -> BUT: the change is to the private API, not the public one.
@@ -43,7 +43,7 @@ version             4.18
 set branch          [join [lrange [split ${version} .] 0 1] .]
 set patch           [lindex [split ${version} .] 2]
 
-python.versions     27 34 35
+python.versions     27 34 35 36
 python.default_version 27
 
 if {${name} ne ${subport}} {
@@ -56,11 +56,14 @@ if {${name} ne ${subport}} {
         distname        sip-${version}
     }
 
-    checksums           rmd160 77aabe2970b2ec2ae9e10d2bbfae898515ac2b0d \
-                        sha256 f1dc5c81c07a9ad97edcd4a0af964a41e420024ba7ca165afd2b351efd249cb6
+    checksums           rmd160 260c814e0ed4aa5ea90a8ac1f9100e7b9452ae21 \
+                        sha256 014bf55f653e0d8bcc582705ef4fbd61e0859a36e959ab46d8fa060cdf0b5e27
 
     patchfiles          patch-siputils.py.diff \
                         patch-configure.py.diff
+
+    # temporary patch to fix struct variable name generation
+    patchfiles-append   patch-sipgen_gencode.c.diff
 
     use_configure       yes
 #     pre-configure {
