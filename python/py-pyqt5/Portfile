@@ -159,6 +159,10 @@ if {${name} ne ${subport}} {
         if {[file exist ${destroot}/usr/lib/python3/dist-packages/dbus]} {
             file rename ${destroot}/usr/lib/python3/dist-packages/dbus ${destroot}${python.pkgd}
         }
+        if {[file exists ${destroot}/usr/share/sip]} {
+            xinstall -m 755 -d ${destroot}${python.pkgd}/../../../share
+            file rename ${destroot}/usr/share/sip ${destroot}${python.pkgd}/../../../share
+        }
     }
 }
 
