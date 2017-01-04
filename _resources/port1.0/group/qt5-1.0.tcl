@@ -1,9 +1,7 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
-# $Id: qt5-1.0.tcl 113952 2015-06-11 16:30:53Z gmail.com:rjvbertin $
-# $Id: qt5-1.0.tcl 113952 2013-11-26 18:01:53Z michaelld@macports.org $
 
 # Copyright (c) 2014 The MacPorts Project
+# Copyright (c) 2015, 2016 R.J.V. Bertin
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -44,8 +42,9 @@
 
 # Check what Qt5 installation flavour already exists, or if not if the port calling us
 # indicated a preference. If not, use the default/mainstream port:qt5 .
-if {[file exists ${prefix}/include/qt5/QtCore/QtCore]
-        && ![info exists qt5.prefer_default]} {
+# Also use qt5-kde if we're on 10.6 because qt5-kde provides a fallback to Qt 5.3.2 on that OS version
+if {([file exists ${prefix}/include/qt5/QtCore/QtCore]
+        && ![info exists qt5.prefer_default]) || ${os.major} == 10} {
     # Qt5 has been installed through port:qt5-kde and is not the be reinstalled the other way
     ui_debug "Qt5 is provided by port:qt5-kde"
     PortGroup   qt5-kde 1.0
@@ -77,10 +76,18 @@ if {[file exists ${prefix}/include/qt5/QtCore/QtCore]
     set qt5.using_kde   no
 }
 
-if {!${qt5.using_kde} && [info exists qt5.prefer_kde]} {
-    # this is a port that prefers port:qt5-kde and thus expects most of Qt5 to be installed
-    # through that single port rather than enumerate all components it depends on.
-    depends_lib-append  port:qt5
+if {!${qt5.using_kde}} {
+    if {[info exists qt5.prefer_kde]} {
+        # this is a port that prefers port:qt5-kde and thus expects most of Qt5 to be installed
+        # through that single port rather than enumerate all components it depends on.
+        depends_lib-append  port:qt5
+    }
+    if {![info exists qt_cmake_defines]} {
+        # the Qt5 PortGroups used to define a variable that is no longer provided by qt5-mac-1.0.tcl;
+        # set it to an empty value so that it can be referenced without side-effects.
+        global qt_cmake_defines
+        set qt_cmake_defines ""
+    }
 }
 
 proc qt_branch {} {
@@ -92,21 +99,64 @@ proc qt_branch {} {
 # into the appropriate subports for the Qt5 flavour installed
 # e.g. qt5.depends_component qtbase qtsvg qtdeclarative
 proc qt5.depends_component {first args} {
-    global qt5_component_lib
-    global qt5.using_kde
+    global qt5_component_lib qt5.using_kde os.major
     # join ${first} and (the optional) ${args}
     set args [linsert $args[set list {}] 0 ${first}]
+    # select the Qt5 port prefix, depending on which Qt5 port is installed
+    set is_qt5kde [expr [info exists qt5.using_kde] && ${qt5.using_kde}]
+    if {${is_qt5kde} == 1 || ${os.major} == 10} {
+        # We have port:qt5-kde or we're on OS X 10.6 which only gets Qt 5.3.2 from that port
+        set qt5pprefix  "qt5-kde"
+    } elseif {${os.major} == 11} {
+        set qt5pprefix  "qt55"
+    } else {
+        set qt5pprefix  "qt5"
+    }
     foreach comp ${args} {
-        if {${qt5.using_kde}} {
-            set portname "qt5-kde-${comp}"
-        } else {
-            set portname "qt5-${comp}"
+        set done true
+        switch ${comp} {
+            "qt5" {
+                if {${is_qt5kde} == 1} {
+                    global qt5_dependency
+                    # qt5-kde-1.0.tcl exports the exact dependency expression in a variable
+                    depends_lib-append ${qt5_dependency}
+                } else {
+                    depends_lib-append port:${qt5pprefix}
+                }
+            }
+            "qtwebkit" -
+            "qtwebengine" -
+            "qtwebview" {
+                # these components are never stub subports
+                set done false
+            }
+            default {
+                # these components are included port:qt5-kde (and provided as additional stub subports)
+                if {${is_qt5kde} == 0} {
+                    set done false
+                }
+            }
         }
-        if {[info exists qt5_component_lib] && [info exists qt5_component_lib(${comp})]} {
-            # an explicit dependency pattern was given, e.g. path:foo
-            depends_lib-append "$qt5_component_lib(${comp}):${portname}"
-        } else {
-            depends_lib-append port:${portname}
+        if {!${done}} {
+            set portname "${qt5pprefix}-${comp}"
+            if {[info exists qt5_component_lib] && [info exists qt5_component_lib(${comp})]} {
+                # an explicit dependency pattern was given, e.g. path:foo
+                depends_lib-append "$qt5_component_lib(${comp}):${portname}"
+            } else {
+                depends_lib-append port:${portname}
+            }
         }
     }
 }
+
+# Ports that want to provide a universal variant need to use the muniversal PortGroup explicitly.
+universal_variant no
+
+global available_qt_versions
+set available_qt_versions {
+    qt5
+    qt55
+    qt5-kde
+}
+
+# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;

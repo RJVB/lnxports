@@ -1,9 +1,8 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
-# $Id: qt5-1.0.tcl 113952 2015-06-11 16:30:53Z gmail.com:rjvbertin $
-# $Id: qt5-1.0.tcl 113952 2013-11-26 18:01:53Z michaelld@macports.org $
 
 # Copyright (c) 2014 The MacPorts Project
+# Copyright (c) 2013-11-26 michaelld@macports.org
+# Copyright (c) 2015, 2016 R.J.V. Bertin
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -43,26 +42,58 @@
 # Define qt5.depends_qtwebengine before including the portgroup to add
 # a dependency on qt5-kde-qtwebengine .
 
-if { ![exists universal_variant] || [option universal_variant] } {
-    PortGroup muniversal 1.0
-    #universal_archs_supported i386 x86_64
+# shameless copy from the qt5-mac 1.0 PortGroup
+# Qt has what is calls reference configurations, which are said to be thoroughly tested
+# Qt also has configurations which are occasionally tested
+# see http://doc.qt.io/qt-5/supported-platforms.html#reference-configurations
+global qt5_min_tested_version
+global qt5_max_tested_version
+global qt5_min_reference_version
+global qt5_max_reference_version
+set qt5_min_tested_version     12
+set qt5_max_tested_version     15
+set qt5_min_reference_version  12
+set qt5_max_reference_version  15
+
+if {[tbool just_want_qt5_version_info]} {
+    return
 }
 
-# check for +debug variant of this port, and make sure Qt was
-# installed with +debug as well; if not, error out.
-platform darwin {
-    pre-extract {
-        if {[variant_exists debug] && \
-            [variant_isset debug] && \
-           ![info exists building_qt5]} {
-            if {![file exists ${qt_frameworks_dir}/QtCore.framework/QtCore_debug]} {
-                return -code error "\n\nERROR:\n\
-In order to install this port as +debug,
-Qt5 must also be installed with +debug.\n"
-            }
+if {[file exists ${prefix}/libexec/qt5/plugins]
+        && [file type ${prefix}/libexec/qt5/plugins] eq "directory"} {
+    # Qt5 has been installed through port:qt5, which leads to certain incompatibilities
+    # which do not need to be declared otherwise. The header Qt5 PortGroup has similar
+    # checks and provisions, but since ports can also include us directly we have to
+    # repeat them here.
+    conflicts-append qt5-qtbase
+    if {[info exists building_qt5]} {
+        PortGroup conflicts_build 1.0
+        conflicts_build-append qt5-qtbase
+        ui_info "Qt5 has been installed through port:qt5 or its subports; you cannot build ${subport}"
+        pre-fetch {
+            return -code error "Deactivate the conflicting port:qt5 (subports) first!"
         }
+        pre-configure {
+            return -code error "Deactivate the conflicting port:qt5 (subports) first!"
+        }
+    } else {
+        ui_info "Qt5 has been installed through port:qt5 or its subports; you can build but not install ${subport}"
     }
 }
+if {[info exists qt5.using_kde] && !${qt5.using_kde}} {
+    # checks if the other Qt5 PortGroup has already been included.
+    # NB: this works only when that happened through the qt5-1.0.tcl!
+    ui_error "qt5-kde-1.0.tcl is being imported after qt5-mac-1.0.tcl"
+    return -code error "importing 2 incompatible Qt5 PortGroups"
+}
+
+namespace eval qt5 {
+    # our directory:
+    variable currentportgroupdir [file dirname [dict get [info frame 0] file]]
+}
+
+# Ports that want to provide a universal variant need to use the muniversal PortGroup explicitly.
+universal_variant no
 
 if {![variant_exists qt5kde]} {
     # define a variant that will be set default when port:qt5-kde or port:qt5-kde-devel is
@@ -192,15 +223,19 @@ global qt_qmake_spec_32
 global qt_qmake_spec_64
 
 PortGroup                   compiler_blacklist_versions 1.0
-PortGroup                   macports_clang_selection 1.0
 if {${os.platform} eq "darwin"} {
     compiler.whitelist      clang
 #     compiler.whitelist      clang macports-clang-3.7 macports-clang-3.6 macports-clang-3.5 macports-clang-3.4
 }
 compiler.blacklist-append   macports-llvm-gcc-4.2 llvm-gcc-4.2
 compiler.blacklist-append   gcc-4.2 apple-gcc-4.2 gcc-4.0
-# compiler.blacklist-append   macports-clang-3.1 macports-clang-3.0 macports-clang-3.2 macports-clang-3.3
 compiler.blacklist-append   {clang < 500}
+platform darwin {
+    if {${os.major} >= 13} {
+        compiler.blacklist-append *gcc*
+    }
+}
+
 # # starting with the one-but-newest macports-clang in the whitelist, check it it is
 # # installed and blacklist the other values so that the automatic selection mechanism
 # # will select the installed whitelisted version.
@@ -213,13 +248,17 @@ compiler.blacklist-append   {clang < 500}
 #         }
 #     }
 # }
-if {${os.platform} eq "darwin"} {
-    if {${os.platform} > 10} {
-        whitelist_macports_clang_versions   {3.7 3.6 3.5 3.4}
-    } else {
-        whitelist_macports_clang_versions   {3.5 3.4}
+
+if {[file exists ${qt5::currentportgroupdir}/macports_clang_selection-1.0.tcl]} {
+    PortGroup               macports_clang_selection 1.0
+    if {${os.platform} eq "darwin"} {
+        if {${os.platform} > 10} {
+            whitelist_macports_clang_versions   {3.7 3.6 3.5 3.4}
+        } else {
+            whitelist_macports_clang_versions   {3.5 3.4}
+        }
+        blacklist_macports_clang_versions       {< 3.4}
     }
-    blacklist_macports_clang_versions       {< 3.4}
 }
 
 # set Qt understood arch types, based on user preference
@@ -257,9 +296,12 @@ set qt_host_data_dir   ${prefix}/share/${qt_name}
 global qt_cmake_defines
 set qt_cmake_defines    \
     "-DQT_QT_INCLUDE_DIR=${qt_includes_dir} \
-     -DQT_QMAKESPEC=${qt_qmake_spec} \
      -DQT_ZLIB_LIBRARY=${prefix}/lib/libz.dylib \
      -DQT_PNG_LIBRARY=${prefix}/lib/libpng.dylib"
+if {${qt_qmake_spec} ne ""} {
+    set qt_cmake_defines \
+        "${qt_cmake_defines} -DQT_QMAKESPEC=${qt_qmake_spec}"
+}
 
 if {${os.platform} eq "darwin"} {
     # extensions on shared libraries
@@ -273,55 +315,58 @@ if {${os.platform} eq "darwin"} {
 
 # allow for depending on either qt5[-mac] or qt5[-mac]-devel or qt5[-mac]*-kde, simultaneously
 
-set qt5_stubports   {qtbase qtdeclarative qtserialport qtsensors \
+if {[info exists building_qt5]} {
+    set qt5_stubports \
+                {qtbase qtdeclarative qtserialbus qtserialport qtsensors \
                 qtquick1 qtwebchannel qtimageformats qtsvg qtmacextras \
                 qtlocation qtxmlpatterns qtcanvas3d qtgraphicaleffects qtmultimedia \
                 qtscript qt3d qtconnectivity qttools qtquickcontrols qtenginio \
-                qtwebkit-examples qtwebsockets qttranslations docs mysql-plugin \
-                sqlite-plugin}
-
-if {![info exists building_qt5]} {
-    if {${os.platform} eq "darwin"} {
-
-        # see if the framework install exists, and if so depend on it;
-        # if not, depend on the library version
-
-        global qt5_dependency
-#         if {[info exists qt5_is_concurrent]} {
-            if {[file exists ${qt_frameworks_dir}/QtCore.framework/QtCore]} {
-                set qt5_pathlibspec path:libexec/${qt_name}/Library/Frameworks/QtCore.framework/QtCore
-            } else {
-                set qt5_pathlibspec path:libexec/${qt_name}/lib/libQtCore.${qt_libs_ext}
-            }
-#         } else {
-#             if {[file exists ${qt_frameworks_dir}/QtCore.framework/QtCore]} {
-#                 set qt5_pathlibspec path:Library/Frameworks/QtCore.framework/QtCore
-#             } else {
-#                 set qt5_pathlibspec path:lib/libQtCore.${qt_libs_ext}
-#             }
-#         }
-        set qt5_dependency ${qt5_pathlibspec}:qt5-kde
-        depends_lib-append ${qt5_dependency} \
-                path:libexec/${qt_name}/Library/Frameworks/QtWebKit.framework/QtWebKit:qt5-kde-qtwebkit
-        if {[info exists qt5.depends_qtwebengine] && ${qt5.depends_qtwebengine}} {
-            depends_lib-append \
-                path:libexec/${qt_name}/Library/Frameworks/QtWebEngineCore.framework/QtWebEngineCore:qt5-kde-qtwebengine
-        }
-    } elseif {${os.platform} eq "linux"} {
-        set qt5_pathlibspec path:libexec/${qt_name}/lib/libQt5Core.${qt_libs_ext}
-        set qt5_dependency ${qt5_pathlibspec}:qt5-kde
-        depends_lib-append ${qt5_dependency} \
-                path:libexec/${qt_name}/lib/libQt5WebKit.${qt_libs_ext}:qt5-kde-qtwebkit
-        if {[info exists qt5.depends_qtwebengine] && ${qt5.depends_qtwebengine}} {
-            depends_lib-append \
-                path:libexec/${qt_name}/lib/libQt5WebEngineCore.${qt_libs_ext}:qt5-kde-qtwebengine
-        }
+                qtwebkit-examples qtwebsockets qttranslations mysql-plugin \
+                sqlite-plugin \
+                docs
+    }
+    # new in 5.7.1: qtcharts qtdatavis3d qtgamepad qtpurchasing qtscxml
+    # removed in 5.7: qtenginio (kept as stubport for 1 or 2 versions)
+    if {[vercmp ${version} 5.7.0] >= 0} {
+        lappend qt5_stubports qtcharts qtdatavis3d qtgamepad qtpurchasing qtscxml
     }
 }
 
+global qt5_dependency
+global qt5webkit_dependency
 if {${os.platform} eq "darwin"} {
-    variant LTO description {Build with Link-Time Optimisation (LTO) (currently not 100% compatible with SSE4+ and 3DNow intrinsics)} {}
-} else {
+    # see if the framework install exists, and if so depend on it;
+    # if not, depend on the library version
+    if {[file exists ${qt_frameworks_dir}/QtCore.framework/QtCore]} {
+        set qt5_pathlibspec path:libexec/${qt_name}/Library/Frameworks/QtCore.framework/QtCore
+    } else {
+        set qt5_pathlibspec path:libexec/${qt_name}/lib/libQtCore.${qt_libs_ext}
+    }
+    set qt5_dependency ${qt5_pathlibspec}:qt5-kde
+    if {[file exists ${qt_frameworks_dir}/QtWebKit.framework/QtWebKit]} {
+        set qt5_pathlibspec path:libexec/${qt_name}/Library/Frameworks/QtWebKit.framework/QtWebKit
+    } else {
+        set qt5_pathlibspec path:libexec/${qt_name}/lib/libQtWebKit.${qt_libs_ext}
+    }
+    set qt5webkit_dependency ${qt5_pathlibspec}:qt5-kde-qtwebkit
+    set qt5webengine_dependency \
+                        path:libexec/${qt_name}/Library/Frameworks/QtWebEngineCore.framework/QtWebEngineCore:qt5-kde-qtwebengine
+} elseif {${os.platform} eq "linux"} {
+    set qt5_pathlibspec path:libexec/${qt_name}/lib/libQt5Core.${qt_libs_ext}
+    set qt5_dependency ${qt5_pathlibspec}:qt5-kde
+    set qt5webkit_dependency path:libexec/${qt_name}/lib/libQt5WebKit.${qt_libs_ext}:qt5-kde-qtwebkit
+    set qt5webengine_dependency \
+                        path:libexec/${qt_name}/lib/libQt5WebEngineCore.${qt_libs_ext}:qt5-kde-qtwebengine
+}
+if {![info exists building_qt5]} {
+    depends_lib-append ${qt5_dependency}
+    if {[info exists qt5.depends_qtwebengine] && ${qt5.depends_qtwebengine}} {
+        depends_lib-append \
+                        ${qt5webengine_dependency}
+    }
+}
+
+if {![info exists QT53] || !${QT53}} {
     variant LTO description {Build with Link-Time Optimisation (LTO) (experimental)} {}
 }
 
@@ -355,7 +400,9 @@ if {![info exists building_qt5]} {
         MOC=${qt_moc_cmd}
 
     if { ![option universal_variant] || ![variant_isset universal] } {
-        configure.env-append QMAKESPEC=${qt_qmake_spec}
+        if {${qt_qmake_spec} ne ""} {
+            configure.env-append QMAKESPEC=${qt_qmake_spec}
+        }
     } else {
         set merger_configure_env(i386)   "QMAKESPEC=${qt_qmake_spec_32}"
         set merger_configure_env(x86_64) "QMAKESPEC=${qt_qmake_spec_64}"
@@ -382,7 +429,9 @@ if {![info exists building_qt5]} {
         MOC=${qt_moc_cmd}
 
     if { ![option universal_variant] || ![variant_isset universal] } {
-        build.env-append QMAKESPEC=${qt_qmake_spec}
+        if {${qt_qmake_spec} ne ""} {
+            build.env-append QMAKESPEC=${qt_qmake_spec}
+        }
     } else {
         set merger_build_env(i386)   "QMAKESPEC=${qt_qmake_spec_32}"
         set merger_build_env(x86_64) "QMAKESPEC=${qt_qmake_spec_64}"
@@ -420,7 +469,9 @@ if {![info exists building_qt5]} {
         MOC=${qt_moc_cmd}
 
     if { ![option universal_variant] || ![variant_isset universal] } {
-        build.env-append QMAKESPEC=${qt_qmake_spec}
+        if {${qt_qmake_spec} ne ""} {
+            build.env-append QMAKESPEC=${qt_qmake_spec}
+        }
     } else {
         set destroot_build_env(i386)   "QMAKESPEC=${qt_qmake_spec_32}"
         set destroot_build_env(x86_64) "QMAKESPEC=${qt_qmake_spec_64}"
@@ -434,40 +485,127 @@ if {![info exists building_qt5]} {
     }
 }
 
-# proc qt_branch {} {
-#     global version
-#     return [join [lrange [split ${version} .] 0 1] .]
-# }
-
 # provide a variant to prune provided translations
-PortGroup   locale_select 1.0
-# Qt translations don't go into ${prefix}/opt/local/share/locale:
-post-destroot {
-    if {![info exists keep_languages]} {
-        if {[file exists ${prefix}/etc/macports/locales.tcl] && [file exists ${destroot}${qt_translations_dir}]} {
-            if {[catch {source "${prefix}/etc/macports/locales.tcl"} err]} {
-                ui_error "Error reading ${prefix}/etc/macports/locales.tcl: $err"
-                return -code error "Error reading ${prefix}/etc/macports/locales.tcl"
+# make this optional so the locale_select portgroup doesn't need to be made public/official
+# the easy way to do that would be to catch the PortGroup statement
+# but that will print warnings for everyone who doesn't have the
+# the PortGroup installed. Other solution: check for
+# [info exist ::env(MACPORTS_QT5KDE_LANGSELECT)] && $::env(MACPORTS_QT5KDE_LANGSELECT)
+# Easy solution: check if the config file exists because without that the feature is disabled anyway.
+if {[file exists ${prefix}/etc/macports/locales.tcl]} {
+    PortGroup   locale_select 1.0
+    # Qt translations don't go into ${prefix}/opt/local/share/locale:
+    post-destroot {
+        if {![info exists keep_languages]} {
+            if {[file exists ${destroot}${qt_translations_dir}]} {
+                if {[catch {source "${prefix}/etc/macports/locales.tcl"} err]} {
+                    ui_error "Error reading ${prefix}/etc/macports/locales.tcl: $err"
+                    return -code error "Error reading ${prefix}/etc/macports/locales.tcl"
+                }
             }
         }
-    }
-    if {[info exists keep_languages]} {
-        foreach l [glob -nocomplain ${destroot}${qt_translations_dir}/*.qm] {
-            set langcomps [split [file rootname [file tail ${l}]] _]
-            set simplelang [lindex ${langcomps} end]
-            set complang [join [lrange ${langcomps} end-1 end] _]
-            if {[lsearch -exact ${keep_languages} ${simplelang}] ne "-1"} {
-                ui_debug "won't delete ${l} (${simplelang})"
-            } elseif {[lsearch -exact ${keep_languages} ${complang}] ne "-1"} {
-                ui_debug "won't delete ${l} (${complang})"
-            } else {
-                ui_debug "rm ${l}"
-                file delete -force ${l}
+        if {[info exists keep_languages]} {
+            foreach l [glob -nocomplain ${destroot}${qt_translations_dir}/*.qm] {
+                set langcomps [split [file rootname [file tail ${l}]] _]
+                set simplelang [lindex ${langcomps} end]
+                set complang [join [lrange ${langcomps} end-1 end] _]
+                if {[lsearch -exact ${keep_languages} ${simplelang}] ne "-1"} {
+                    ui_debug "won't delete ${l} (${simplelang})"
+                } elseif {[lsearch -exact ${keep_languages} ${complang}] ne "-1"} {
+                    ui_debug "won't delete ${l} (${complang})"
+                } else {
+                    ui_debug "rm ${l}"
+                    file delete -force ${l}
+                }
             }
         }
     }
 }
 
-# array set qt5_component_lib {
-#     qtwebkit path:libexec/${qt_name}/Library/Frameworks/QtWebKitCore.framework/QtWebKitCore
-# }
+# convenience function for revision management
+proc revbump_for_version {r v {p 0}} {
+    global version revision subport os.platform
+    if {${p} eq 0 || ${os.platform} eq ${p}} {
+        if {[vercmp ${version} ${v}] > 0} {
+            ui_error "remove revbump (revision ${r}) for ${subport}"
+            pre-configure {
+                return -code error "remove revbump (revision ${r}) for ${subport}"
+            }
+        }
+        uplevel set revision ${r}
+    }
+}
+
+# create a wrapper script in ${prefix}/bin for an application bundle in qt_apps_dir
+options qt5.wrapper_env_additions
+default qt5.wrapper_env_additions ""
+
+proc qt5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""} {appdir ""}} {
+    global qt_apps_dir destroot prefix os.platform qt5.wrapper_env_additions subport
+    if {${appdir} eq ""} {
+        set appdir ${qt_apps_dir}
+    }
+    xinstall -m 755 -d ${destroot}${prefix}/bin
+    if {![catch {set fd [open "${destroot}${prefix}/bin/${wrappername}" "w"]} err]} {
+        # this wrapper exists to a large extent to improve integration of "pure" qt5
+        # apps with KF5 apps, in particular through the use of the KDE platform theme plugin
+        # Hence the reference to KDE things in the preamble.
+        puts ${fd} "#!/bin/sh\n\
+            if \[ -r ~/.kf5.env \] ;then\n\
+            \t. ~/.kf5.env\n\
+            else\n\
+            \texport KDE_SESSION_VERSION=5\n\
+            fi"
+        set wrapper_env_additions "[join ${qt5.wrapper_env_additions}]"
+        if {${wrapper_env_additions} ne ""} {
+            puts ${fd} "# Additional env. variables specified by port:${subport} :"
+            puts ${fd} "export ${wrapper_env_additions}"
+            puts ${fd} "#"
+        }
+        if {${os.platform} eq "darwin"} {
+            if {${bundlename} eq ""} {
+                set bundlename ${wrappername}
+            }
+            if {${bundleexec} eq ""} {
+                set bundleexec ${bundlename}
+            }
+            puts ${fd} "exec \"${appdir}/${bundlename}.app/Contents/MacOS/${bundleexec}\" \"\$\@\""
+        } else {
+            global qt_libs_dir
+            # no app bundles on this platform, but provide the same API by pretending there are.
+            # If unset, use ${subport} to guess the exec. name because evidently we cannot
+            # symlink ${wrappername} onto itself.
+            if {${bundlename} eq ""} {
+                set bundlename ${subport}
+            }
+            if {${bundleexec} eq ""} {
+                set bundleexec ${bundlename}
+            }
+            puts ${fd} "export LD_LIBRARY_PATH=\$\{LD_LIBRARY_PATH\}:${prefix}/lib:${qt_libs_dir}"
+            puts ${fd} "exec \"${appdir}/${bundleexec}\" \"\$\@\""
+        }
+        close ${fd}
+        system "chmod 755 ${destroot}${prefix}/bin/${wrappername}"
+    } else {
+        ui_error "Failed to (re)create \"${destroot}${prefix}/bin/${wrappername}\" : ${err}"
+        return -code error ${err}
+    }
+}
+
+###############################################################################
+# define the qt5_component_lib array element-by-element instead of in a table;
+# using a table wouldn't allow the use of variables (they wouldn't be expanded)
+platform darwin {
+    array set qt5_component_lib [list \
+        qtwebkit        path:libexec/${qt_name}/Library/Frameworks/QtWebKit.framework/QtWebKit \
+        qtwebengine     path:libexec/${qt_name}/Library/Frameworks/QtWebEngine.framework/QtWebEngine \
+    ]
+}
+platform linux {
+    array set qt5_component_lib [list \
+        qtwebkit        path:libexec/${qt_name}/lib/libQt5WebKit.${qt_libs_ext} \
+        qtwebengine     path:libexec/${qt_name}/lib/libQt5WebEngineCore.${qt_libs_ext} \
+    ]
+}
+
+# kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
