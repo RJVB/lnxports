@@ -2,7 +2,7 @@
 
 # Copyright (c) 2014 The MacPorts Project
 # Copyright (c) 2013-11-26 michaelld@macports.org
-# Copyright (c) 2015, 2016 R.J.V. Bertin
+# Copyright (c) 2015-2017 R.J.V. Bertin
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -88,6 +88,10 @@ if {[info exists qt5.using_kde] && !${qt5.using_kde}} {
 }
 
 namespace eval qt5 {
+    if {[info exists dont_include_twice] && [info exists currentportgroupdir]} {
+        ui_debug "not including qt5-kde-1.0.tcl again"
+        return
+    }
     # our directory:
     variable currentportgroupdir [file dirname [dict get [info frame 0] file]]
 }
@@ -218,7 +222,8 @@ if {${os.platform} eq "darwin"} {
 set qt_examples_dir         ${qt_apps_dir}/examples
 set qt_demos_dir            ${qt_apps_dir}/demos
 
-global qt_qmake_spec
+# global qt_qmake_spec
+options qt_qmake_spec
 global qt_qmake_spec_32
 global qt_qmake_spec_64
 
@@ -266,22 +271,27 @@ options qt_arch_types
 default qt_arch_types {[string map {i386 x86} [get_canonical_archs]]}
 
 if {${os.platform} eq "darwin"} {
-    set qt_qmake_spec_32 macx-clang-32
-    set qt_qmake_spec_64 macx-clang
+    set qt_qmake_spec_32        macx-clang-32
+    set qt_qmake_spec_64        macx-clang
 } elseif {${os.platform} eq "linux"} {
-    set qt_qmake_spec_32 linux-g++
-    set qt_qmake_spec_64 linux-g++-64
+    set qt_qmake_spec_32        linux-g++
+    set qt_qmake_spec_64        linux-g++-64
     compiler.blacklist-append   clang
 }
 
-if { ![option universal_variant] || ![variant_isset universal] } {
-    if { ${build_arch} eq "i386" } {
-        set qt_qmake_spec ${qt_qmake_spec_32}
+default qt_qmake_spec           {[qt5::get_default_spec]}
+
+proc qt5::get_default_spec {} {
+    global build_arch qt_qmake_spec_32 qt_qmake_spec_64
+    if { ![option universal_variant] || ![variant_isset universal] } {
+        if { ${build_arch} eq "i386" } {
+            set qt_qmake_spec   ${qt_qmake_spec_32}
+        } else {
+            set qt_qmake_spec   ${qt_qmake_spec_64}
+        }
     } else {
-        set qt_qmake_spec ${qt_qmake_spec_64}
+        set qt_qmake_spec       ""
     }
-} else {
-    set qt_qmake_spec ""
 }
 
 # standard PKGCONFIG path
@@ -315,21 +325,21 @@ if {${os.platform} eq "darwin"} {
 
 # allow for depending on either qt5[-mac] or qt5[-mac]-devel or qt5[-mac]*-kde, simultaneously
 
-if {[info exists building_qt5]} {
-    set qt5_stubports \
-                {qtbase qtdeclarative qtserialbus qtserialport qtsensors \
-                qtquick1 qtwebchannel qtimageformats qtsvg qtmacextras \
-                qtlocation qtxmlpatterns qtcanvas3d qtgraphicaleffects qtmultimedia \
-                qtscript qt3d qtconnectivity qttools qtquickcontrols qtenginio \
-                qtwebkit-examples qtwebsockets qttranslations mysql-plugin \
-                sqlite-plugin \
-                docs
-    }
-    # new in 5.7.1: qtcharts qtdatavis3d qtgamepad qtpurchasing qtscxml
-    # removed in 5.7: qtenginio (kept as stubport for 1 or 2 versions)
-    if {[vercmp ${version} 5.7.0] >= 0} {
-        lappend qt5_stubports qtcharts qtdatavis3d qtgamepad qtpurchasing qtscxml
-    }
+set qt5.kde_stubports \
+            {qtbase qtdeclarative qtserialbus qtserialport qtsensors \
+            qtquick1 qtwebchannel qtimageformats qtsvg qtmacextras \
+            qtlocation qtxmlpatterns qtcanvas3d qtgraphicaleffects qtmultimedia \
+            qtscript qt3d qtconnectivity qttools qtquickcontrols qtenginio \
+            qtwebkit-examples qtwebsockets qttranslations mysql-plugin \
+            sqlite-plugin \
+            docs
+}
+# new in 5.7.1: qtcharts qtdatavis3d qtgamepad qtpurchasing qtscxml
+# removed in 5.7: qtenginio (kept as stubport for 1 or 2 versions)
+if {![info exists building_qt5] || [vercmp ${version} 5.7.0] >= 0} {
+    # these stubports are added to the list for dependents, but not for port:qt5*-kde itself
+    # this allows to define them only in port:qt5-kde, not qt56-kde .
+    lappend qt5.kde_stubports qtcharts qtdatavis3d qtgamepad qtpurchasing qtscxml
 }
 
 global qt5_dependency
@@ -451,12 +461,14 @@ if {![info exists building_qt5]} {
 depends_build-append    port:pkgconfig
 
 # standard destroot environment
-if { ![option universal_variant] || ![variant_isset universal] } {
-    destroot.env-append \
-        INSTALL_ROOT=${destroot}
-} else {
-    foreach arch ${configure.universal_archs} {
-        lappend merger_destroot_env($arch) INSTALL_ROOT=${workpath}/destroot-${arch}
+pre-destroot {
+    if { ![option universal_variant] || ![variant_isset universal] } {
+        destroot.env-append \
+            INSTALL_ROOT=${destroot}
+    } else {
+        foreach arch ${configure.universal_archs} {
+            lappend merger_destroot_env($arch) INSTALL_ROOT=${workpath}/destroot-${arch}
+        }
     }
 }
 
@@ -599,13 +611,78 @@ platform darwin {
     array set qt5_component_lib [list \
         qtwebkit        path:libexec/${qt_name}/Library/Frameworks/QtWebKit.framework/QtWebKit \
         qtwebengine     path:libexec/${qt_name}/Library/Frameworks/QtWebEngine.framework/QtWebEngine \
+        qtwebview       path:libexec/${qt_name}/Library/Frameworks/QtWebView.framework/QtWebView \
     ]
 }
 platform linux {
     array set qt5_component_lib [list \
         qtwebkit        path:libexec/${qt_name}/lib/libQt5WebKit.${qt_libs_ext} \
         qtwebengine     path:libexec/${qt_name}/lib/libQt5WebEngineCore.${qt_libs_ext} \
+        qtwebview       path:libexec/${qt_name}/lib/libQt5WebView.${qt_libs_ext} \
     ]
+}
+
+# a procedure for declaring dependencies on Qt5 components, which will expand them
+# into the appropriate subports for the Qt5 flavour installed
+# e.g. qt5.depends_component qtbase qtsvg qtdeclarative
+proc qt5::depends_component_p {deptype args} {
+    global qt5_component_lib qt5.using_kde os.major qt5.kde_stubports version
+    # select the Qt5 port prefix, depending on which Qt5 port is installed
+    set is_qt5kde [expr [info exists qt5.using_kde] && ${qt5.using_kde}]
+    if {${is_qt5kde} == 1 || ${os.major} == 10} {
+        # We have port:qt5-kde or we're on OS X 10.6 which only gets Qt 5.3.2 from that port
+        set qt5pprefix  "qt5-kde"
+    } elseif {${os.major} == 11} {
+        set qt5pprefix  "qt55"
+    } else {
+        set qt5pprefix  "qt5"
+    }
+    ui_debug "qt5::depends_component_p, deptype=${deptype} args=$args"
+    foreach comp $args {
+        set done true
+        switch ${comp} {
+            "qt5" {
+                if {${is_qt5kde} == 1} {
+                    global qt5_dependency
+                    # qt5-kde-1.0.tcl exports the exact dependency expression in a variable
+                    if {[lsearch -exact [option ${deptype}] ${qt5_dependency}] < 0} {
+                        ${deptype}-append ${qt5_dependency}
+                    }
+                } else {
+                    ${deptype}-append port:${qt5pprefix}
+                }
+            }
+            "qtwebkit" -
+            "qtwebengine" -
+            "qtwebview" {
+                # these components are never stub subports
+                set done false
+            }
+            default {
+                # these components are included port:qt5-kde (and provided as additional stub subports)
+                if {${is_qt5kde} == 0 || [lsearch -exact ${qt5.kde_stubports} ${comp}] < 0} {
+                    set done false
+                }
+            }
+        }
+        if {!${done}} {
+            set portname "${qt5pprefix}-${comp}"
+            if {[info exists qt5_component_lib] && [info exists qt5_component_lib(${comp})]} {
+                # an explicit dependency pattern was given, e.g. path:foo
+                ${deptype}-append "$qt5_component_lib(${comp}):${portname}"
+            } else {
+                ${deptype}-append port:${portname}
+            }
+        }
+    }
+}
+
+proc qt5.depends_component {args} {
+    return [qt5::depends_component_p depends_lib {*}${args}]
+}
+
+proc qt5.depends_build_component {args} {
+    return [qt5::depends_component_p depends_build {*}${args}]
 }
 
 # kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
