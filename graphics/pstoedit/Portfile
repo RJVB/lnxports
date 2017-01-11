@@ -12,7 +12,7 @@ license             GPL-2+
 
 description         Translate PostScript and PDF to other vector formats
 
-long_description    pstoedit converts PostScript™ and PDF files to other \
+long_description    pstoedit converts PostScript? and PDF files to other \
                     vector graphic formats so that they can be edited \
                     graphically.
 
@@ -24,17 +24,16 @@ checksums           rmd160  b41a02485ebba3861681d280407a788a59538d15 \
 
 depends_build       port:pkgconfig
 
-depends_lib         port:ImageMagick \
-                    port:plotutils
+depends_lib         port:plotutils
 
-depends_run         port:ghostscript
+# depends_run         port:ghostscript
 
 patchfiles          patch-config-pstoedit.pc.in.diff \
                     patch-configure.ac.diff \
                     patch-pkglibdir.diff \
                     patch-src-cppcomp.h.diff
 
-use_autoreconf      yes
+# use_autoreconf      yes
 
 configure.args      --without-emf \
                     --without-swf
