@@ -1,16 +1,17 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 153498 2016-10-02 22:02:10Z devans@macports.org $
 
 PortSystem          1.0
 PortGroup           xcodeversion 1.0
 PortGroup           muniversal 1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           active_variants 1.1
+PortGroup           preserve_runtime_libraries 1.0
 
 name                ffmpeg
 conflicts           ffmpeg-devel
 epoch               1
-version             3.1.4
+version             3.2.2
+revision            3
 license             LGPL-2.1+
 categories          multimedia
 maintainers         devans jeremyhu openmaintainer
@@ -53,8 +54,15 @@ master_sites        http://www.ffmpeg.org/releases/
 
 use_xz              yes
 
-checksums           rmd160  1bfd4f3f66b993235f4e869984e1abd1b2fdc293 \
-                    sha256  a80cb378dda5c9bbcdbd62a99bdec0e4eedbcb47f290e72845af4855c1146b5b
+checksums           rmd160  967ad4c72d6cf050dbdfcc7b356220f0a0742154 \
+                    sha256  3f01bd1fe1a17a277f8c84869e5d9192b4b978cb660872aa2b54c3cc8a2fedfc
+
+# root directory of extracted tarball is owned by root and has permissions 700
+# set to 755 to facilitate maintenance
+
+post-extract {
+    file attributes ${worksrcpath} -permissions 0755
+}
 
 depends_build       port:pkgconfig
 
@@ -127,6 +135,13 @@ platform darwin {
         configure.args-append --disable-asm
     }
 
+    # as of 1.6.0 libvpx only supports darwin 10 or later
+    if {${os.major} < 10} {
+        depends_build-delete port:libvpx
+        configure.args-delete --enable-libvpx
+        configure.args-append --disable-libvpx
+    }
+
     # filters coreimage and coreimagesrc don't build on 10.6
     # and earlier due to use of bridged casts in Objective C (#51823)
     if {${os.major} < 11} {
@@ -144,9 +159,11 @@ platform darwin {
     }
 
     # AudiotoolBox support requires CoreMedia Framework available on 10.7+
+    # libsdl2 requires minimum Xcode 10.7 SDK to build successfully
     if {${os.major} > 10} {
-        configure.args-delete --disable-audiotoolbox
-        configure.args-append --enable-audiotoolbox
+        configure.args-replace --disable-audiotoolbox --enable-audiotoolbox
+        configure.args-replace --disable-sdl2 --enable-sdl2
+        depends_lib-append     port:libsdl2
     }
 
     # VideotoolBox, a new hardware acceleration framework, is supported on 10.8+ and "here to stay".
@@ -178,7 +195,42 @@ destroot.env-append V=1
 # configure isn't autoconf and they do use a dep cache
 #
 
+    set fflibs {avcodec avdevice avfilter avformat avresample avutil postproc swresample swscale}
+#     if {[variant_isset preserve_runtime_libraries]} {
+#         foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*] {
+#             ui_msg "${lib}"
+#             foreach comp ${fflibs} {
+#                 set dep [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/lib${comp}*]
+#                 set olddep [glob -nocomplain ${destroot}${prefix}/lib/lib${comp}.\[0-9\]*.dylib]
+#                 if {[file exists ${dep}]} {
+#                     set depname [file tail ${dep}]
+#                     set olddepname [file tail ${olddep}]
+#                     system "install_name_tool -change ${prefix}/lib/${olddepname} ${prefix}/lib/${preserve_runtime_library_dir}/${depname} ${lib}"
+#                 }
+#             }
+#         }
+#     }
 post-destroot {
+
+    set fflibs {avcodec avdevice avfilter avformat avresample avutil postproc swresample swscale}
+    foreach comp ${fflibs} {
+        preserve_libraries ${prefix}/lib lib${comp}.*.dylib
+    }
+    if {[variant_isset preserve_runtime_libraries]} {
+        # now make the preserved libraries depend on other preserved libraries.
+        foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*] {
+            foreach comp ${fflibs} {
+                set dep [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/lib${comp}*]
+                set olddep [glob -nocomplain ${destroot}${prefix}/lib/lib${comp}.\[0-9\]*.dylib]
+                if {[file exists ${dep}]} {
+                    set depname [file tail ${dep}]
+                    set olddepname [file tail ${olddep}]
+                    system "install_name_tool -change ${prefix}/lib/${olddepname} ${prefix}/lib/${preserve_runtime_library_dir}/${depname} ${lib}"
+                }
+            }
+        }
+    }
+
     file mkdir ${destroot}${prefix}/share/doc/ffmpeg
     file copy ${worksrcpath}/doc/APIchanges ${destroot}${prefix}/share/doc/ffmpeg
     foreach f [glob ${worksrcpath}/doc/*.txt] {
@@ -263,15 +315,12 @@ variant librtmp description {Use librtmp (from rtmpdump) as rtmp[t][es]:// proto
 
 # x265 currently does not support OS X < 10.6 (#48336, #48338)
 # x265 cmake issues cause universal build to fail (#48331)
-# make libx265 support optional via +libx265 variant
-# only define variant for non-universal builds on 10.6 or greater
+# only enable libx265 support for non-universal builds on 10.6 or greater
 
 platform darwin {
-    if {${os.major} > 8 && [variant_isset gpl2] && ![variant_isset universal]} {
-        variant libx265 description {Build with support for encoding HEVC video using libx265} {
-            configure.args-append   --enable-libx265
-            depends_lib-append      port:x265
-        }
+    if {${os.major} > 9 && [variant_isset gpl2] && ![variant_isset universal]} {
+        configure.args-append   --enable-libx265
+        depends_lib-append      port:x265
     }
 }
 
