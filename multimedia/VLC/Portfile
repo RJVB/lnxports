@@ -256,11 +256,12 @@ platform linux {
                         PR-34741-no__clang_version__.patch \
                         no-sparkle.patch \
                         patch-vlc-no-O4.diff \
-				    patch-vlc-gcc6-buildfixes.diff \
-                        patch-soundfont-path.diff
+                        patch-vlc-gcc6-buildfixes.diff \
+                        patch-soundfont-path.diff \
+                        patch-ogg-nullptr-deref.diff
     if {![variant_isset ffmpeg_in_opt]} {
         patchfiles-append \
-				    patch-ffmpegVLC.diff
+                        patch-ffmpegVLC.diff
     }
 
     post-patch {
