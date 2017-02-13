@@ -1,0 +1,12 @@
+--- glib/gunicollate.c.orig	2014-12-19 15:49:48.000000000 -0600
++++ glib/gunicollate.c	2016-08-18 03:30:22.000000000 -0500
+@@ -25,6 +25,9 @@
+ #include <wchar.h>
+ #endif
+ 
++/* Carbon is not available on 64-bit */
++#undef HAVE_CARBON
++
+ #ifdef HAVE_CARBON
+ #include <CoreServices/CoreServices.h>
+ #endif
