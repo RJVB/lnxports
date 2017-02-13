@@ -2,6 +2,7 @@
 
 PortSystem                  1.0
 PortGroup                   compiler_blacklist_versions 1.0
+PortGroup                   locale_select 1.0
 
 # Please keep the glib2 and glib2-devel ports as similar as possible.
 
@@ -53,6 +54,7 @@ if {[vercmp ${macosx_deployment_target} 10.9] < 0} {
 
 depends_build               bin:xmllint:libxml2
 
+depends_build-append        port:gettext-dev
 depends_lib                 port:gettext \
                             port:libffi \
                             port:libiconv \
@@ -65,16 +67,22 @@ compiler.blacklist-append   {clang < 318}
 # https://bugzilla.gnome.org/show_bug.cgi?id=697017
 compiler.blacklist-append   gcc-3.3 *gcc-4.0
 
-# -lresolv is needed at least on Tiger PPC.
-configure.ldflags-append    -lresolv \
+platform darwin {
+    # -lresolv is needed at least on Tiger PPC.
+    configure.ldflags-append \
+                            -lresolv \
                             -bind_at_load
+}
 
 configure.cflags-append     -fstrict-aliasing
 
-configure.args              --enable-static --disable-libelf \
+configure.args              --enable-static \
                             --disable-compile-warnings \
                             --with-pcre=system \
                             ac_cv_prog_AWK=/usr/bin/awk
+platform linux {
+    configure.args-append   --with-libiconv=gnu
+}
 
 configure.perl              /usr/bin/perl
 configure.python            /usr/bin/python
