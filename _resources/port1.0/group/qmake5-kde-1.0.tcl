@@ -84,6 +84,7 @@ default qt5.rewind_qmake_cache yes
 # qt5-kde does not currently support a debug variant, but does provide (some) debugging information
 configure.pre_args-append       "CONFIG+=release"
 
+# see https://trac.macports.org/ticket/53186
 default destroot.destdir        "INSTALL_ROOT=${destroot}"
 
 pre-configure {
@@ -118,11 +119,11 @@ pre-configure {
     # 2) some ports (e.g. py-pyqt5 py-qscintilla2) call qmake indirectly and
     #    do not pass on the configure.args values
     #
-    xinstall -m 755 -d ${configure.dir}
+    xinstall -m 755 -d ${qt5.top_level}
     if {[tbool qt5.rewind_qmake_cache]} {
-        set qt5::cache [open "${configure.dir}/.qmake.cache" w 0644]
+        set qt5::cache [open "${qt5.top_level}/.qmake.cache" w 0644]
     } else {
-        set qt5::cache [open "${configure.dir}/.qmake.cache" a 0644]
+        set qt5::cache [open "${qt5.top_level}/.qmake.cache" a 0644]
     }
     platform darwin {
         puts ${qt5::cache} "if(${qt_qmake_spec_64}) {"
@@ -150,7 +151,7 @@ pre-configure {
         puts ${qt5::cache} "QMAKE_CXX=${configure.cxx}"
     }
 
-    set qt5::qt_version [exec ${prefix}/bin/pkg-config --modversion Qt5Core]
+    set qt5::qt_version [qt5.active_version]
 
     if {${configure.cxx_stdlib} ne ""} {
         # only use cxx_stdlib when it is actually set and not equal to libc++ already.

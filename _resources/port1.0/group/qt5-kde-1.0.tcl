@@ -112,11 +112,15 @@ if {![variant_exists qt5kde]} {
 default_variants        +qt5kde
 
 # standard Qt5 name. This should be just "qt5" (or qt53 for instance when more
-# specific version info must be included). There is nothing but a historical reason
-# to call the Qt5 port itself qt5-mac, so that name should not appear on disk where
-# files could be installed that would be the distant descendants of files from qt4-x11
+# specific version info must be included).
 global qt_name
-set qt_name             qt5
+if {[info exists qt5::rootname]} {
+    # a kludgy way to declare a different prefix for the Qt tooldir and bindir as well as the shared dirs.
+    # Deliberately user unfriendly.
+    set qt_name         ${qt5::rootname}
+} else {
+    set qt_name         qt5
+}
 
 # global definitions with explanation; set the actual values below for cleanness.
 # standard install directory
@@ -170,6 +174,8 @@ set qt_name             qt5
 # standard lrelease command location
     global qt_lrelease_cmd
     global qt_lupdate_cmd
+# location of a simple, dedicated install registry:
+    global qt_install_registry
 
 global qt5_is_concurrent
 # check if we're building qt5 itself. We're aiming to phase out exclusive installs, but we
@@ -221,6 +227,8 @@ if {${os.platform} eq "darwin"} {
 }
 set qt_examples_dir         ${qt_apps_dir}/examples
 set qt_demos_dir            ${qt_apps_dir}/demos
+
+set qt_install_registry     ${qt_dir}/registry
 
 PortGroup                   compiler_blacklist_versions 1.0
 if {${os.platform} eq "darwin"} {
@@ -339,8 +347,8 @@ set qt5.kde_stubports \
             {qtbase qtdeclarative qtserialbus qtserialport qtsensors \
             qtquick1 qtwebchannel qtimageformats qtsvg qtmacextras \
             qtlocation qtxmlpatterns qtcanvas3d qtgraphicaleffects qtmultimedia \
-            qtscript qt3d qtconnectivity qttools qtquickcontrols qtenginio \
-            qtwebkit-examples qtwebsockets qttranslations mysql-plugin \
+            qtscript qt3d qtconnectivity qttools qtquickcontrols qtquickcontrols2 \
+            qtenginio qtwebkit-examples qtwebsockets qttranslations mysql-plugin \
             sqlite-plugin \
             docs
 }
@@ -350,6 +358,8 @@ if {![info exists building_qt5] || [vercmp ${version} 5.7.0] >= 0} {
     # these stubports are added to the list for dependents, but not for port:qt5*-kde itself
     # this allows to define them only in port:qt5-kde, not qt56-kde .
     lappend qt5.kde_stubports qtcharts qtdatavis3d qtgamepad qtpurchasing qtscxml
+    # qttranslations is moved to its own subport; remove it from the stubports list:
+    set qt5.kde_stubports [lsearch -all -inline -not -exact ${qt5.kde_stubports} qttranslations]
 }
 
 global qt5_dependency
@@ -612,28 +622,29 @@ proc qt5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""} {appdir ""
 }
 
 ###############################################################################
-# define the qt5_component_lib array element-by-element instead of in a table;
+# define the qt5::component2pathspec array element-by-element instead of in a table;
 # using a table wouldn't allow the use of variables (they wouldn't be expanded)
 platform darwin {
-    array set qt5_component_lib [list \
+    array set qt5::component2pathspec [list \
         qtwebkit        path:libexec/${qt_name}/Library/Frameworks/QtWebKit.framework/QtWebKit \
         qtwebengine     path:libexec/${qt_name}/Library/Frameworks/QtWebEngine.framework/QtWebEngine \
         qtwebview       path:libexec/${qt_name}/Library/Frameworks/QtWebView.framework/QtWebView \
     ]
 }
 platform linux {
-    array set qt5_component_lib [list \
+    array set qt5::component2pathspec [list \
         qtwebkit        path:libexec/${qt_name}/lib/libQt5WebKit.${qt_libs_ext} \
         qtwebengine     path:libexec/${qt_name}/lib/libQt5WebEngineCore.${qt_libs_ext} \
         qtwebview       path:libexec/${qt_name}/lib/libQt5WebView.${qt_libs_ext} \
     ]
 }
+set qt5::component2pathspec(assistant) path:${qt_bins_dir}/assistant
 
 # a procedure for declaring dependencies on Qt5 components, which will expand them
 # into the appropriate subports for the Qt5 flavour installed
 # e.g. qt5.depends_component qtbase qtsvg qtdeclarative
 proc qt5::depends_component_p {deptype args} {
-    global qt5_component_lib qt5.using_kde os.major qt5.kde_stubports version
+    global qt5::component2pathspec qt5.using_kde os.major qt5.kde_stubports version
     # select the Qt5 port prefix, depending on which Qt5 port is installed
     set is_qt5kde [expr [info exists qt5.using_kde] && ${qt5.using_kde}]
     if {${is_qt5kde} == 1 || ${os.major} == 10} {
@@ -674,9 +685,9 @@ proc qt5::depends_component_p {deptype args} {
         }
         if {!${done}} {
             set portname "${qt5pprefix}-${comp}"
-            if {[info exists qt5_component_lib] && [info exists qt5_component_lib(${comp})]} {
+            if {[info exists qt5::component2pathspec] && [info exists qt5::component2pathspec(${comp})]} {
                 # an explicit dependency pattern was given, e.g. path:foo
-                ${deptype}-append "$qt5_component_lib(${comp}):${portname}"
+                ${deptype}-append "$qt5::component2pathspec(${comp}):${portname}"
             } else {
                 ${deptype}-append port:${portname}
             }
@@ -690,6 +701,103 @@ proc qt5.depends_component {args} {
 
 proc qt5.depends_build_component {args} {
     return [qt5::depends_component_p depends_build {*}${args}]
+}
+
+proc qt5.depends_run_component {args} {
+    return [qt5::depends_component_p depends_run {*}${args}]
+}
+
+proc qt5.active_version {} {
+    global prefix
+    namespace upvar ::qt5 active_version av
+    if {[info exists av]} {
+        return ${av}
+    }
+    if {[file exists ${prefix}/bin/pkg-config]} {
+        set av [exec ${prefix}/bin/pkg-config --modversion Qt5Core]
+        return ${av}
+    } else {
+        return 0.0.0
+    }
+}
+
+# this function registers the specified qch file(s) by installing
+# symlinks to them into ${destroot}${prefix}/share/doc/qch . This is done only
+# when the target directory exists in the install prefix, which in turn means
+# that port:qt5-kde*-assistant is installed.
+proc qt5.register_qch_files {qchfiles} {
+    global prefix destroot
+    set qchdir ${prefix}/share/doc/qch
+    if {[file exists ${qchdir}] && [file isdirectory ${qchdir}]} {
+        xinstall -m 755 -d ${destroot}${qchdir}
+        foreach d ${qchfiles} {
+            set target [string map [list ${destroot} ""] ${d}]
+            ln -s ${target} ${destroot}${qchdir}
+        }
+    }
+}
+
+# store the collection file in the Qt docs dir, not the "assorted misc. collection dir (share/doc/qch)"
+set qt5::qch_collection_file "${qt_docs_dir}/MP-qthelp-collection.qhc"
+
+post-activate {
+    # we'll register entries from share/doc/qch
+    set qchdir ${prefix}/share/doc/qch
+    set qhcdir [file dirname ${qt5::qch_collection_file}]
+    if {[file exists ${qchdir}] && [file isdirectory ${qchdir}] && [file exists ${qhcdir}] && [file isdirectory ${qhcdir}]} {
+        set qhcpfile MP-qthelp-collection.qhcp
+        set qhcfile [file tail ${qt5::qch_collection_file}]
+        if {(${subport} eq "qt5-kde-assistant") || (${subport} eq "qt5-kde-devel-assistant")} {
+            # always regenerate when (re)installing the Qt Assistant
+            set needs_generate yes
+        } elseif {[file exists "${qhcdir}/${qhcfile}"]} {
+            # only regenerate otherwise when the collection file is out-of-date
+            set tDir [file mtime "${qhcdir}"]
+            set tFile [file mtime "${qhcdir}/${qhcfile}"]
+            set needs_generate [expr ${tDir} > ${tFile}]
+        } else {
+            set needs_generate yes
+        }
+        if {${needs_generate}} {
+            # we only store documentation that's not from Qt in the generated collection file;
+            # this appears to be necessary with Qt >= 5.8 to prevent indexing and too-many-open-files errors
+            set candidates {}
+            foreach q [glob -nocomplain ${qchdir}/*.qch] {
+                if {![file exists ${qt_docs_dir}/[file tail ${q}]]} {
+                    lappend candidates [file normalize ${q}]
+                }
+            }
+            if {[file exists "${qhcdir}/${qhcfile}"]} {
+                ui_msg "--->  Regenerating Qt help collection file in ${qhcdir}"
+                # unregister all entries if the collectionfile already exists
+                foreach q ${candidates} {
+                    catch {system -W ${qhcdir} "${prefix}/bin/assistant-qt5 -collectionFile ${qhcfile} -unregister [file normalize ${q}]"}
+                }
+            } elseif {![catch {set fp [open "${qhcdir}/${qhcpfile}" "w"]} err]} {
+                # create an empty collection file
+                ui_msg "--->  Generating Qt help collection file in ${qhcdir}"
+                puts ${fp} "<?xml version=\"1.0\" encoding=\"utf-8\" ?>"
+                puts ${fp} "<QHelpCollectionProject version=\"1.0\">"
+                puts ${fp} "  <assistant>"
+                puts ${fp} "    <title>MacPorts Qt Help Files Collection</title>"
+                puts ${fp} "    <cacheDirectory>QtProject/Assistant-MP</cacheDirectory>"
+                puts ${fp} "    <enableFullTextSearchFallback>true</enableFullTextSearchFallback>"
+                puts ${fp} "  </assistant>"
+                puts ${fp} "</QHelpCollectionProject>"
+                close ${fp}
+                catch {system -W ${qhcdir} "time ${qt_bins_dir}/qcollectiongenerator ${qhcpfile} -o ${qhcfile}"}
+                file delete -force ${qhcdir}/${qhcpfile}
+            } else {
+                ui_debug "cannot create ${qhcdir}/${qhcpfile}: ${err}"
+            }
+            if {[file exists "${qhcdir}/${qhcfile}"]} {
+                # (re)register all candidates
+                foreach q ${candidates} {
+                    catch {system -W ${qhcdir} "${prefix}/bin/assistant-qt5 -collectionFile ${qhcfile} -register [file normalize ${q}]"}
+                }
+            }
+        }
+    }
 }
 
 # kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;

@@ -35,6 +35,39 @@
 # Usage:
 # PortGroup     qt4 1.0
 
+# define this here so it will also be available if we end up including the mainstream qt4-mac portgroup
+proc qt_branch {} {
+    global version
+    return [join [lrange [split ${version} .] 0 1] .]
+}
+
+# check if by chance we're being loaded while the user has the mainstream qt4 port installed
+# TODO: one day I may want to account for Linux here (when moving to a KF5 Plasma desktop system?)
+if {![info exists building_qt4] || ![info exists name] || (${name} ne "qt4-mac" && ${name} ne "qt4-mac-devel")
+    || ${subport} eq "${name}-transitional"} {
+    # we're not building Qt4, and aren't a Qt4 port either; we must be included by a port depending on Qt4
+    # Use the pkgconfig files as an indicator which Qt4 port flavour is installed:
+    if {![file exists ${prefix}/lib/pkgconfig/QtCore.pc]} {
+        if {[info exists depends_lib]} {
+            set curdeps ${depends_lib}
+        } else {
+            set curdeps ""
+        }
+        PortGroup   qt4-mac 1.0
+        if {[info exists depends_lib] && (${curdeps} eq "" || [string first ${curdeps} ${depends_lib}] >= 0)} {
+            set qt4_dependency [string map {${curdeps} ""} ${depends_lib}]
+            ui_warn "depends_libs change: ${qt4_dependency}"
+        } else {
+            set qt4_dependency port:qt4-mac
+        }
+        ui_warn "Using the mainstream/official Qt4 portgroup"
+        return -code ok
+        ui_msg "This should never print!"
+    }
+}
+
+
+
 # check for +debug variant of this port, and make sure Qt was
 # installed with +debug as well; if not, error out.
 platform darwin {
@@ -277,6 +310,7 @@ if {![info exists building_qt4]} {
 
     if {${qt_dir} ne ${prefix}} {
         build.env-append    PATH=${qt_dir}/bin:$env(PATH)
+        configure.pkg_config_path-append ${qt_pkg_config_dir}
     }
 } else {
     build.env-append QMAKE_NO_DEFAULTS=""
@@ -308,9 +342,4 @@ if {![info exists building_qt4]} {
     }
 } else {
     destroot.env-append QMAKE_NO_DEFAULTS=""
-}
-
-proc qt_branch {} {
-    global version
-    return [join [lrange [split ${version} .] 0 1] .]
 }

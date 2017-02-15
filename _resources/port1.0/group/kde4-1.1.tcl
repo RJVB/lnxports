@@ -34,8 +34,13 @@
 # PortGroup     kde4 1.1
 
 # Use CMake and Qt4 port groups
-PortGroup               cmake 1.0
+PortGroup               cmake 1.1
 PortGroup               qt4 1.0
+
+namespace eval kde4 {
+    # our directory:
+    variable currentportgroupdir [file dirname [dict get [info frame 0] file]]
+}
 
 # Make sure to not use any already installed headers and libraries;
 # these are set in CPATH and LIBRARY_PATH anyway.
@@ -60,7 +65,7 @@ depends_lib-append      port:phonon
 # set compiler to Apple's GCC 4.2
 switch ${os.platform}_${os.major} {
     darwin_8 {
-        configure.compiler  pple-gcc-4.2
+        configure.compiler  apple-gcc-4.2
     }
     darwin_9 {
         configure.compiler  gcc-4.2
@@ -94,8 +99,10 @@ proc kde4.use_legacy_prefix {{autorestore 1}} {
     global kde4.include_dirs
     configure.pre_args-replace \
                     -DCMAKE_INSTALL_PREFIX=${prefix} -DCMAKE_INSTALL_PREFIX=${kde4.legacy_prefix}
-    configure.args-replace \
-                    -DCMAKE_INSTALL_RPATH=${prefix}/lib -DCMAKE_INSTALL_RPATH="${prefix}/lib\;${kde4.legacy_prefix}/lib"
+#     configure.args-replace \
+#                     -DCMAKE_INSTALL_RPATH=${prefix}/lib -DCMAKE_INSTALL_RPATH="${prefix}/lib\;${kde4.legacy_prefix}/lib"
+    cmake.install_rpath-append \
+                    ${kde4.legacy_prefix}/lib
     # changing the install prefix will override the KDE4_INCLUDE_INSTALL_DIR path normally set
     # to ${kde4.include_dirs} by kdelibs4's cmake modules. Make sure to override it back to that setting.
     configure.args-append \
@@ -141,9 +148,10 @@ proc kde4.restore_from_legacy_prefix {} {
     }
     if {[file exists ${destroot}${kde4.legacy_prefix}/share]} {
         # move back the share directory to where it should be;
-        # first delete the share directory that was created for us and should be empty:
-        file delete -force ${destroot}${prefix}/share
-        file rename ${destroot}${kde4.legacy_prefix}/share ${destroot}${prefix}/share
+        foreach J [glob -nocomplain ${destroot}${kde4.legacy_prefix}/share/*] {
+            set d [file tail ${J}]
+            file rename ${J} ${destroot}${prefix}/share/${d}
+        }
     }
     if {[file exists ${destroot}${kde4.legacy_prefix}/lib/cmake]} {
         # move back the cmake modules to where they should be
@@ -162,18 +170,14 @@ proc kde4.restore_from_legacy_prefix {} {
 
 # augment the CMake module lookup path, if necessary depending on
 # where Qt4 is installed.
+
+# prepend our own (new) install location for cmake modules:
+cmake.module_path-append ${kde4.cmake_module_dir}
 if {${qt_cmake_module_dir} ne ${cmake_share_module_dir}} {
-    ui_debug "set cmake_module_path kde4.cmake_module_dir\;cmake_share_module_dir\;qt_cmake_module_dir"
-    set cmake_module_path ${kde4.cmake_module_dir}\;${cmake_share_module_dir}\;${qt_cmake_module_dir}
-} else {
-    # prepend our own (new) install location for cmake modules:
-    ui_debug "set cmake_module_path kde4.cmake_module_dir\;cmake_share_module_dir"
-    set cmake_module_path ${kde4.cmake_module_dir}\;${cmake_share_module_dir}
+    cmake.module_path-append \
+                        ${qt_cmake_module_dir}
 }
-ui_debug "cmake_module_path=${cmake_module_path}"
-configure.args-delete -DCMAKE_MODULE_PATH=${cmake_share_module_dir}
-configure.args-append -DCMAKE_MODULE_PATH="${cmake_module_path}" \
-                        -DCMAKE_PREFIX_PATH="${cmake_module_path}"
+ui_debug "cmake.module_path: [cmake::module_path]"
 
 # standard configure args; virtually all KDE ports use CMake and Qt4.
 configure.args-append   -DBUILD_doc=OFF \
@@ -222,7 +226,8 @@ configure.args-append   -DDOCBOOKXSL_DIR=${prefix}/share/xsl/docbook-xsl \
                         -DPNG_PNG_INCLUDE_DIR=${prefix}/include \
                         -DPNG_LIBRARY=${prefix}/lib/libpng.dylib \
                         -DTIFF_INCLUDE_DIR=${prefix}/include \
-                        -DTIFF_LIBRARY=${prefix}/lib/libtiff.dylib
+                        -DTIFF_LIBRARY=${prefix}/lib/libtiff.dylib \
+                        -DSOPRANO_PREFIX=${prefix}
 
 # These two can be removed (see #46240):
 #                        -DQCA2_INCLUDE_DIR=${prefix}/include/QtCrypto \
@@ -234,13 +239,15 @@ variant docs description "Build documentation" {
     configure.args-delete   -DBUILD_doc=OFF -DBUILD_docs=OFF
 }
 
-post-build {
-    if {[file exists ${prefix}/bin/afsctool]} {
-        ui_msg "--->  Compressing build directory ..."
-        if {[catch {system "${prefix}/bin/afsctool -cfvv -8 -J${build.jobs} ${build.dir} 2>&1"} result context]} {
-            ui_msg "Compression failed: ${result}, ${context}; port:afsctool is probably installed without support for parallel compression"
-        } else {
-            ui_debug "Compressing ${build.dir}: ${result}"
+if {[info exist ::env(MACPORTS_COMPRESS_WORKDIR)] && $::env(MACPORTS_COMPRESS_WORKDIR)} {
+    post-build {
+        if {[file exists ${prefix}/bin/afsctool]} {
+            ui_msg "--->  Compressing build directory ..."
+            if {[catch {system "${prefix}/bin/afsctool -cfvv -8 -J${build.jobs} ${build.dir} 2>&1"} result context]} {
+                ui_msg "Compression failed: ${result}, ${context}; port:afsctool is probably installed without support for parallel compression"
+            } else {
+                ui_debug "Compressing ${build.dir}: ${result}"
+            }
         }
     }
 }
@@ -278,6 +285,9 @@ post-activate {
         system "${prefix}/bin/kbuildsycoca4 --global"
     }
 }
+
+# create a .macports-$subport-configure.cmd file containing the cmake invocation details
+cmake.save_configure_cmd
 
 notes-append "
 Don't forget that dbus needs to be started as the local\
