@@ -36,7 +36,6 @@ if {${name} ne ${subport}} {
                         port:py${python.version}-simplegeneric \
                         port:py${python.version}-traitlets \
                         port:py${python.version}-pexpect \
-                        port:py${python.version}-appnope \
                         port:py${python.version}-gnureadline \
                         port:py${python.version}-prompt_toolkit \
                         port:py${python.version}-pygments
