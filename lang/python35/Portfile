@@ -138,15 +138,19 @@ post-destroot {
         reinplace -E {s|-arch [a-z0-9_]+||g} \
             ${destroot}${framewdir}/lib/python${branch}/$confdir/Makefile
     }
+    foreach unversioned {2to3 idle3 pydoc3 python3 python3-config pyvenv} {
+        delete ${destroot}${prefix}/bin/${unversioned}
+    }
     platform linux {
 #         xinstall -m 755 -d ${destroot}${framewdir}/lib/python${branch}
 #         ln -s ../../../../../../../lib/python${branch}/site-packages ${destroot}${framewdir}/lib/python${branch}/site-packages
         xinstall -m 755 -d ${destroot}${framewdir}/lib
         ln -s ../../../../../../lib/python${branch} ${destroot}${framewdir}/lib/python${branch}
+        xinstall -m 755 -d ${destroot}${framewdir}/bin
+        foreach b [glob -nocomplain ${destroot}${prefix}/bin/*] {
+            ln -s ${prefix}/bin/[file tail ${b}] ${destroot}${framewdir}/bin
+        }
         system -W ${destroot}${prefix} "find lib -name \"*.pyc\" | xargs rm"
-    }
-    foreach unversioned {2to3 idle3 pydoc3 python3 python3-config pyvenv} {
-        delete ${destroot}${prefix}/bin/${unversioned}
     }
 }
 
