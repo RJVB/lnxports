@@ -27,15 +27,15 @@ subport wayland-protocols {
 }
 
 if {${subport} eq "${name}"} {
-    version             1.12.0
+    version             1.13.0
     description         Wayland client libraries
     long_description    Wayland is intended as a simpler replacement for X \
                         easier to develop and maintain. GNOME and KDE are expected to be ported to it \
                         and Qt5 has support for it too.
     master_sites        http://wayland.freedesktop.org/releases
 
-    checksums           rmd160  f15bb13c3478e0494463748333e156dcbc764e07 \
-                        sha256  d6b4135cba0188abcb7275513c72dede751d6194f6edc5b82183a3ba8b821ab1
+    checksums           rmd160  c15be97b1f748bb30fe6aa0951b98d121acb15af \
+                        sha256  69b052c031a61e89af7cc8780893d0da1e301492352aa449dee9345043e6fe51
 
 
     depends_lib-append  port:libffi
