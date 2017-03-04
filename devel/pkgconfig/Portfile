@@ -56,9 +56,9 @@ pre-configure {
     if {[variant_isset proxy] && ${os.platform} eq "linux"} {
         # use the proxying principle to build pkg-config itself
         if {[info exists ::env(PKG_CONFIG_PATH)]} {
-            set PKG_CONFIG_PATH "${prefix}/lib/pkgconfig:$env(PKG_CONFIG_PATH)"
+            set PKG_CONFIG_PATH "${prefix}/lib/pkgconfig:${prefix}/lib/${build_arch}-linux-gnu/pkgconfig:$env(PKG_CONFIG_PATH)"
         } else {
-            set PKG_CONFIG_PATH "${prefix}/lib/pkgconfig"
+            set PKG_CONFIG_PATH "${prefix}/lib/pkgconfig:${prefix}/lib/${build_arch}-linux-gnu/pkgconfig"
         }
         # port:pkg-config doesn't declare a dependency on glib so we must make sure it's found
         # (or force the use of the included version)
@@ -76,6 +76,7 @@ post-destroot {
         file rename ${destroot}${prefix}/bin/pkg-config ${destroot}${prefix}/bin/pkg-config-mp
         xinstall -m 755 ${filespath}/pkg-config.sh ${destroot}${prefix}/bin/pkg-config
         reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/pkg-config
+        reinplace "s|@BUILDARCH@|${build_arch}|g" ${destroot}${prefix}/bin/pkg-config
     }
 }
 

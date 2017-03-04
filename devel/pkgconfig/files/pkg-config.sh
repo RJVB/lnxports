@@ -5,9 +5,9 @@ if [ "${PKG_CONFIG_MACPORTS_ONLY}" = "" ] ;then
 		PKG_CONFIG="/usr/bin/pkg-config"
 	fi
 	if [ "${PKG_CONFIG_PATH}" != "" ] ;then
-		PKG_CONFIG_PATH="@PREFIX@/lib/pkgconfig:${PKG_CONFIG_PATH}"
+		PKG_CONFIG_PATH="@PREFIX@/lib/pkgconfig:@PREFIX@/lib/@BUILDARCH@-linux-gnu/pkgconfig:${PKG_CONFIG_PATH}"
 	else
-		PKG_CONFIG_PATH="@PREFIX@/lib/pkgconfig"
+		PKG_CONFIG_PATH="@PREFIX@/lib/pkgconfig:@PREFIX@/lib/@BUILDARCH@-linux-gnu/pkgconfig"
 	fi
 	export PKG_CONFIG_PATH
 	exec "${PKG_CONFIG}" "$@"
