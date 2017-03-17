@@ -36,6 +36,8 @@ depends_build       port:pkgconfig \
 # that all dependencies are there, and simplifies the depspec (maintenance).
 depends_lib         port:gpgme
 
+depends_run         bin:gpg2:gnupg2
+
 use_parallel_build  yes
 
 # do everything as usual, except for the destroot step which is done from the lang/qt subdir
@@ -43,6 +45,12 @@ destroot.dir        ${worksrcpath}/lang/qt
 
 patchfiles          patch-tests-gpg-Makefile.am.diff
 
+platform darwin {
+    pre-patch {
+        # use /bin/echo to avoid garbling the C++ headers
+        reinplace -W ${worksrcpath} "s|echo -n|/bin/echo -n|g" lang/qt/src/Makefile.am lang/qt/src/Makefile.in
+    }
+}
 post-patch {
     reinplace "s|thread_modules=\"\"|thread_modules=\"pthread\"|" ${worksrcpath}/src/gpgme-config.in
     reinplace "s|@GPG@|${prefix}/bin/gpg2|" ${worksrcpath}/src/gpgme-config.in
@@ -75,7 +83,16 @@ platform linux {
 # software (presumably KF5) won't have issues with the non-standard name.
 patchfiles-append   patch-libqgpgme-name.diff
 
+# replace strdup() with qstrdup() in the Qt code
 patchfiles-append   patch-missing-prototypes.diff
+
+platform darwin {
+    # for building gpgme and gpgme++
+    configure.cflags-append \
+                    -D_POSIX_C_SOURCE=200112L
+    configure.cxxflags-append \
+                    -D_POSIX_C_SOURCE=200112L
+}
 
 configure.args      --disable-dependency-tracking \
                     --enable-languages="${languages}"
@@ -96,4 +113,4 @@ post-destroot {
 
 livecheck.type      regex
 livecheck.url       ftp://ftp.gnupg.org/gcrypt/gpgme/
-livecheck.regex     "${name}-(\\d+(?:\\.\\d+)*)${extract.suffix}"
+livecheck.regex     "gpgme-(\\d+(?:\\.\\d+)*)${extract.suffix}"
