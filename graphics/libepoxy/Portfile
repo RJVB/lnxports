@@ -84,3 +84,7 @@ variant python36 conflicts python27 python34 python35 description {build with py
 if {![variant_isset python27] && ![variant_isset python34] && ![variant_isset python35] && ![variant_isset python36]} {
     default_variants-append +python34
 }
+
+post-destroot {
+    reinplace "s|-L\$\{libdir\} -lepoxy|\$\{libdir\}/libepoxy.so|g" ${destroot}${prefix}/lib/pkgconfig/epoxy.pc
+}
