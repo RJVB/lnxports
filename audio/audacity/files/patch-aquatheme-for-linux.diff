@@ -1,0 +1,67 @@
+--- a/src/toolbars/ToolBar.cpp
++++ b/src/toolbars/ToolBar.cpp
+@@ -701,10 +701,16 @@
+ void ToolBar:: MakeButtonBackgroundsLarge()
+ {
+ #ifdef USE_AQUA_THEME
++#ifdef __WXMAC__
+    MakeMacRecoloredImage( bmpRecoloredUpLarge,     bmpMacUpButton );
+    MakeMacRecoloredImage( bmpRecoloredDownLarge,   bmpMacDownButton );
+    MakeMacRecoloredImage( bmpRecoloredHiliteLarge, bmpMacHiliteButton );
+ #else
++   MakeRecoloredImage( bmpRecoloredUpLarge,     bmpMacUpButton );
++   MakeRecoloredImage( bmpRecoloredDownLarge,   bmpMacDownButton );
++   MakeRecoloredImage( bmpRecoloredHiliteLarge, bmpMacHiliteButton );
++#endif
++#else
+    MakeRecoloredImage( bmpRecoloredUpLarge,     bmpUpButtonLarge );
+    MakeRecoloredImage( bmpRecoloredDownLarge,   bmpDownButtonLarge );
+    MakeRecoloredImage( bmpRecoloredHiliteLarge, bmpHiliteButtonLarge );
+@@ -714,10 +720,16 @@
+ void ToolBar::MakeButtonBackgroundsSmall()
+ {
+ #ifdef USE_AQUA_THEME
++#ifdef __WXMAC__
+    MakeMacRecoloredImage( bmpRecoloredUpSmall,     bmpMacUpButtonSmall );
+    MakeMacRecoloredImage( bmpRecoloredDownSmall,   bmpMacDownButtonSmall );
+    MakeMacRecoloredImage( bmpRecoloredHiliteSmall, bmpMacHiliteButtonSmall );
+ #else
++   MakeRecoloredImage( bmpRecoloredUpSmall,     bmpMacUpButtonSmall );
++   MakeRecoloredImage( bmpRecoloredDownSmall,   bmpMacDownButtonSmall );
++   MakeRecoloredImage( bmpRecoloredHiliteSmall, bmpMacHiliteButtonSmall );
++#endif
++#else
+    MakeRecoloredImage( bmpRecoloredUpSmall,     bmpUpButtonSmall );
+    MakeRecoloredImage( bmpRecoloredDownSmall,   bmpDownButtonSmall );
+    MakeRecoloredImage( bmpRecoloredHiliteSmall, bmpHiliteButtonSmall );
+@@ -858,7 +870,7 @@
+ 
+ // EXPERIMENTAL_THEMING is set to not apply the gradient
+ // on wxMAC builds.  on wxMAC we have the AQUA_THEME.
+-#ifdef USE_AQUA_THEME
++#if defined(USE_AQUA_THEME) && defined(__WXMAC__)
+    Repaint( &dc );
+ #else
+ 
+--- a/src/widgets/Meter.cpp
++++ b/src/widgets/Meter.cpp
+@@ -444,7 +444,7 @@
+    
+       // Start with a clean background
+       // LLL:  Should research USE_AQUA_THEME usefulness...
+-#ifndef USE_AQUA_THEME
++#if !(defined(USE_AQUA_THEME) && defined(__WXMAC__))
+ #ifdef EXPERIMENTAL_THEMING
+       if( !mMeterDisabled )
+       {
+--- a/src/toolbars/ControlToolBar.cpp
++++ b/src/toolbars/ControlToolBar.cpp
+@@ -396,7 +396,7 @@
+ 
+ void ControlToolBar::Repaint( wxDC *dc )
+ {
+-#ifndef USE_AQUA_THEME
++#if !(defined(USE_AQUA_THEME) && defined(__WXMAC__))
+    wxSize s = mSizer->GetSize();
+    wxPoint p = mSizer->GetPosition();
+ 

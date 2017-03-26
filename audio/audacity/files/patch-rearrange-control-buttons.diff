@@ -1,0 +1,57 @@
+--- a/src/toolbars/ControlToolBar.cpp
++++ b/src/toolbars/ControlToolBar.cpp
+@@ -287,6 +287,14 @@
+    ToolBar::UpdatePrefs();
+ }
+ 
++#if defined(USE_AQUA_THEME) && !defined(__WXMAC__)
++// add some additional spacing to distribute the control buttons in
++// the toolbar, which is given an oversized minimal width
++#define ADD_SPACING(dx,dy) mSizer->Add((dx),(dy))
++#else
++#define ADD_SPACING(dx,dy) /**/
++#endif
++
+ void ControlToolBar::ArrangeButtons()
+ {
+    int flags = wxALIGN_CENTER | wxRIGHT;
+@@ -302,6 +310,7 @@
+ 
+    // Start with a little extra space
+    mSizer->Add( 5, 55 );
++   ADD_SPACING( 17, 0 );
+ 
+    // Add the buttons in order based on ergonomic setting
+    if( mErgonomicTransportButtons )
+@@ -313,10 +322,15 @@
+       mFF->MoveBeforeInTabOrder( mRecord );
+ 
+       mSizer->Add( mPause,  0, flags, 2 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mPlay,   0, flags, 2 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mStop,   0, flags, 2 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mRewind, 0, flags, 2 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mFF,     0, flags, 10 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mRecord, 0, flags, 5 );
+    }
+    else
+@@ -328,10 +342,15 @@
+       mStop->MoveBeforeInTabOrder( mFF );
+ 
+       mSizer->Add( mRewind, 0, flags, 2 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mPlay,   0, flags, 2 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mRecord, 0, flags, 2 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mPause,  0, flags, 2 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mStop,   0, flags, 2 );
++      ADD_SPACING( 7, 0 );
+       mSizer->Add( mFF,     0, flags, 5 );
+    }
+ 
