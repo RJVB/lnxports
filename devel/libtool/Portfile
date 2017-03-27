@@ -4,9 +4,9 @@ PortSystem          1.0
 
 name                libtool
 version             2.4.6
-revision            2
+revision            3
 categories          devel sysutils
-platforms           darwin freebsd
+platforms           darwin freebsd linux
 # Scripts are GPL-2+, libltdl is LGPL-2+, but all parts that tend to be
 # distributed with dependents have a licensing exception that allows
 # distribution under the same terms as the rest of the program.
@@ -51,13 +51,18 @@ configure.env-append    GCJ=no
 configure.fc            no
 configure.f77           no
 
-configure.args          --disable-silent-rules --program-prefix=g
+# configure.args          --disable-silent-rules --program-prefix=g
+configure.args          --disable-silent-rules
 
 post-destroot {
     set gnubin ${prefix}/libexec/gnubin
     xinstall -d ${destroot}${gnubin}
-    ln -s ../../bin/glibtool ${destroot}${gnubin}/libtool
-    ln -s ../../bin/glibtoolize ${destroot}${gnubin}/libtoolize
+#     ln -s ../../bin/glibtool ${destroot}${gnubin}/libtool
+#     ln -s ../../bin/glibtoolize ${destroot}${gnubin}/libtoolize
+    ln -s ../../bin/libtool ${destroot}${gnubin}/libtool
+    ln -s ../../bin/libtoolize ${destroot}${gnubin}/libtoolize
+    ln -s libtool ${destroot}${prefix}/bin/glibtool
+    ln -s libtoolize ${destroot}${prefix}/bin/glibtoolize
 
     set docdir ${prefix}/share/doc/${name}
     xinstall -d ${destroot}${docdir}
