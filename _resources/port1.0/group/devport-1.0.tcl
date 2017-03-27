@@ -62,14 +62,14 @@ proc create_devport_content {} {
 }
 
 proc unpack_devport_content {} {
-    global destroot prefix
+    global destroot prefix name
     if {[file exists ${dev::archdir}/${dev::archname}]} {
         if {[catch {system -W ${destroot} "bsdtar -xvf ${dev::archdir}/${dev::archname}"} err]} {
             ui_error "Failure unpacking ${dev::archdir}/${dev::archname}: ${err}"
         }
     } else {
         ui_error "The port's content doesn't exists (${dev::archdir}/${dev::archname})!"
-        return -code error "Missing content"
+        return -code error "Missing content; try re-activating or reinstalling port:${name}"
     }
 }
 
@@ -91,6 +91,12 @@ proc create_devport {dependency} {
         build {}
         destroot {
             unpack_devport_content
+        }
+        pre-activate {
+            if {[file exists ${dev::archdir}/${dev::archname}]} {
+                ui_info "${subport} is now installed, removing installed archive ${dev::archdir}/${dev::archname}"
+                file delete -force ${dev::archdir}/${dev::archname}
+            }
         }
     }
 }
