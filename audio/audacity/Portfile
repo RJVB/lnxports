@@ -57,7 +57,7 @@ license             GPL-2+
 license_noconflict  openssl
 maintainers         gmail.com:rjvbertin openmaintainer
 universal_variant   no
-use_parallel_build  no
+use_parallel_build  yes
 
 homepage            http://www.audacityteam.org/
 
@@ -211,9 +211,19 @@ configure.args-append \
                     WX_CONFIG=${wxWidgets.wxconfig}
 platform linux {
     configure.args-append \
-                    --with-midi
+                    --with-midi \
+                    LIBS=-ltiff
     configure.cppflags-append \
-                    -I${prefix}/include -DUSE_AQUA_THEME
+                    -I${prefix}/include
+    configure.cflags-append \
+                    -DUSE_AQUA_THEME
+    configure.cxxflags-append \
+                    -DUSE_AQUA_THEME
+    # as long as we use the host's wxWidgets. We use the static library
+    # because otherwise we might still be getting MacPorts' libtiff
+    # which lacks the version symbols required by the host's wxWidgets libraries.
+    configure.ldflags-append \
+                    /usr/lib/x86_64-linux-gnu/libtiff.a
     configure.args-replace \
                     CPPFLAGS=-I${prefix}/include \
                     CPPFLAGS=-I${prefix}/include -DUSE_AQUA_THEME
