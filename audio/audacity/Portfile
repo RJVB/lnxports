@@ -212,6 +212,8 @@ configure.args-append \
 platform linux {
     configure.args-append \
                     --with-midi
+    configure.cppflags-append \
+                    -I${prefix}/include -DUSE_AQUA_THEME
     configure.args-replace \
                     CPPFLAGS=-I${prefix}/include \
                     CPPFLAGS=-I${prefix}/include -DUSE_AQUA_THEME
