@@ -195,7 +195,7 @@ configure.args-append \
                     --enable-shared \
                     --enable-sse \
                     --with-ffmpeg \
-                    --with-lames \
+                    --with-lame \
                     --with-libflac \
                     --with-libmad \
                     --with-libsoxr \
