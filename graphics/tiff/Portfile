@@ -100,24 +100,25 @@ create_devport port:${name}
 
 post-destroot {
     if {${subport} eq "${name}"} {
-        foreach h [glob -nocomplain ${destroot}${prefix}/include/*] {
-            devport_content-append [string map [list ${destroot} ""] ${h}]
-        }
-        foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.a] {
-            devport_content-append [string map [list ${destroot} ""] ${h}]
-        }
-        foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.la] {
-            devport_content-append [string map [list ${destroot} ""] ${h}]
-        }
-        foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*\[a-zA-Z\].so] {
-            devport_content-append [string map [list ${destroot} ""] ${h}]
-        }
-        foreach h [glob -nocomplain ${destroot}${prefix}/lib/pkgconfig/*] {
-            devport_content-append [string map [list ${destroot} ""] ${h}]
-        }
+#         foreach h [glob -nocomplain ${destroot}${prefix}/include/*] {
+#             devport_content-append [string map [list ${destroot} ""] ${h}]
+#         }
+#         foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.a] {
+#             devport_content-append [string map [list ${destroot} ""] ${h}]
+#         }
+#         foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.la] {
+#             devport_content-append [string map [list ${destroot} ""] ${h}]
+#         }
+#         foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*\[a-zA-Z\].so] {
+#             devport_content-append [string map [list ${destroot} ""] ${h}]
+#         }
+#         foreach h [glob -nocomplain ${destroot}${prefix}/lib/pkgconfig/*] {
+#             devport_content-append [string map [list ${destroot} ""] ${h}]
+#         }
+        register_devport_standard_content
         devport_content-append ${prefix}/share/doc/tiff/html
         devport_content-append ${prefix}/share/man/man3
-        create_devport_content
+        create_devport_content_archive
     }
 }
 

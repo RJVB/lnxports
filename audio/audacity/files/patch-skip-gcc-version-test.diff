@@ -60,3 +60,20 @@ index 2b3ef6ba598ff01b9f08d5dbd2272ccd48c146c4..d43d26163ca6204dfc9ec3ed606abfad
  
  
  { $as_echo "$as_me:${as_lineno-$LINENO}: checking CFLAGS for strict prototypes" >&5
+diff --git a/src/Audacity.h b/src/Audacity.h
+index c5ff40e1..16b5bc6e 100644
+--- a/src/Audacity.h
++++ b/src/Audacity.h
+@@ -26,9 +26,9 @@
+ 
+ // If building with GNU compiler, then must be 4.9 or later.
+ // TODO: This would be much nicer as a standalone test in configure.ac
+-#if !defined(__APPLE__) && defined __GNUC__ && ( __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 9))
+-#error insufficient compiler
+-#endif
++// #if !defined(__APPLE__) && defined __GNUC__ && ( __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 9))
++// #error insufficient compiler
++// #endif
+ 
+ 
+ // We only do alpha builds and release versions.

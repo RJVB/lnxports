@@ -84,19 +84,20 @@ if {${subport} eq "${name}"} {
             THANKS \
             ${destroot}${prefix}/share/doc/${name}
         if {${subport} eq "${name}"} {
-            foreach h [glob -nocomplain ${destroot}${prefix}/include/*.h] {
-                devport_content-append [string map [list ${destroot} ""] ${h}]
-            }
-            foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.a] {
-                devport_content-append [string map [list ${destroot} ""] ${h}]
-            }
-            foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.la] {
-                devport_content-append [string map [list ${destroot} ""] ${h}]
-            }
-            foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*\[a-zA-Z\].so] {
-                devport_content-append [string map [list ${destroot} ""] ${h}]
-            }
-            create_devport_content
+#             foreach h [glob -nocomplain ${destroot}${prefix}/include/*.h] {
+#                 devport_content-append [string map [list ${destroot} ""] ${h}]
+#             }
+#             foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.a] {
+#                 devport_content-append [string map [list ${destroot} ""] ${h}]
+#             }
+#             foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.la] {
+#                 devport_content-append [string map [list ${destroot} ""] ${h}]
+#             }
+#             foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*\[a-zA-Z\].so] {
+#                 devport_content-append [string map [list ${destroot} ""] ${h}]
+#             }
+            register_devport_standard_content
+            create_devport_content_archive
         }
     }
 }
