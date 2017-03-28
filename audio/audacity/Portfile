@@ -1,9 +1,10 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; truncate-lines: t; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
-# PortGroup           wxWidgets 1.0
+PortGroup           wxWidgets 1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           conflicts_build 1.0
+PortGroup           active_variants 1.1
 
 name                audacity
 conflicts           audacity-gtk
@@ -41,7 +42,7 @@ if {${subport} eq "${name}"} {
 #     github.setup        audacity audacity 0cb89a895a25e4f1e7ca4045d0b95e786bce7ed2
     # git describe --tags : Audacity-2.1.3-190-g78149bc
     github.setup    audacity audacity 78149bc3da4a7d18c0487baf7002b23759a814c3
-    version         2.1.3.190
+    version         2.1.3.190 ; revision 1
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
@@ -63,9 +64,19 @@ homepage            http://www.audacityteam.org/
 
 compiler.blacklist  {*gcc-[234].[0-8]}
 
-# wxWidgets.use       wxWidgets-3.0
-# depends_build-append \
-#                     port:${wxWidgets.port}
+wxWidgets.use       wxWidgets-3.0
+depends_build-append \
+                    port:${wxWidgets.port}
+
+if {![catch {set wxw_stdlib [active_variants wxWidgets-3.0 stdlib]} err]} {
+    if {${wxw_stdlib}} {
+        long_description-append "This port needs wxWidgets-3.0 without the +stdlib variant."
+        pre-fetch {
+            ui_error "This port needs wxWidgets-3.0 without the +stdlib variant."
+            return -code error "reinstall port:wxWidgets-3.0 without the +stdlib variant"
+        }
+    }
+}
 
 depends_build-append \
                     port:cmake \
@@ -113,9 +124,9 @@ platform darwin {
                     patch-skip-gcc-version-test.diff
 }
 platform linux {
-    # this is likely to be true as long as we use the host's wxWidgets:
-    conflicts_build-append \
-                    tiff-dev
+#     # this is likely to be true as long as we use the host's wxWidgets:
+#     conflicts_build-append \
+#                     tiff-dev
     patchfiles-append \
                     fix-minsrc-autoreconf.patch                             \
                     workaround-wxwidgets-fit-recovery.patch                 \
@@ -129,7 +140,7 @@ platform linux {
                     patch-fix-casts.diff \
                     patch-skip-gcc-version-test.diff
 
-    set wxWidgets.wxconfig /usr/bin/wx-config
+#     set wxWidgets.wxconfig /usr/bin/wx-config
 }
 
 if {${subport} eq "${name}"} {
@@ -210,20 +221,22 @@ configure.args-append \
                     CPPFLAGS=-I${prefix}/include \
                     WX_CONFIG=${wxWidgets.wxconfig}
 platform linux {
+#     configure.args-append \
+#                     --with-midi \
+#                     LIBS=-ltiff
     configure.args-append \
-                    --with-midi \
-                    LIBS=-ltiff
+                    --with-midi
     configure.cppflags-append \
                     -I${prefix}/include
     configure.cflags-append \
                     -DUSE_AQUA_THEME
     configure.cxxflags-append \
                     -DUSE_AQUA_THEME
-    # as long as we use the host's wxWidgets. We use the static library
-    # because otherwise we might still be getting MacPorts' libtiff
-    # which lacks the version symbols required by the host's wxWidgets libraries.
-    configure.ldflags-append \
-                    /usr/lib/x86_64-linux-gnu/libtiff.a
+#     # as long as we use the host's wxWidgets. We use the static library
+#     # because otherwise we might still be getting MacPorts' libtiff
+#     # which lacks the version symbols required by the host's wxWidgets libraries.
+#     configure.ldflags-append \
+#                     /usr/lib/x86_64-linux-gnu/libtiff.a
     configure.args-replace \
                     CPPFLAGS=-I${prefix}/include \
                     CPPFLAGS=-I${prefix}/include -DUSE_AQUA_THEME

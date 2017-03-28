@@ -279,9 +279,12 @@ proc wxWidgets._set {option action args} {
         # wxWidgets-3.0-libcxx, wxWidgets-3.0-devel
         return -code return "invalid parameter for wxWidgets.use"
     }
-    wxWidgets.prefix    ${frameworks_dir}/wxWidgets.framework/Versions/${wxWidgets.name}/${wxWidgets.version}
+#     wxWidgets.prefix    ${frameworks_dir}/wxWidgets.framework/Versions/${wxWidgets.name}/${wxWidgets.version}
+    wxWidgets.prefix    ${prefix}/libexec/${wxWidgets.name}/${wxWidgets.version}
 
     wxWidgets.wxdir     ${wxWidgets.prefix}/bin
     wxWidgets.wxconfig  ${wxWidgets.wxdir}/wx-config
     wxWidgets.wxrc      ${wxWidgets.wxdir}/wxrc
+    configure.ldflags-append \
+                        -Wl,-rpath=${wxWidgets.prefix}/lib
 }
