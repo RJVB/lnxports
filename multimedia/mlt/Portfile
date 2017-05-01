@@ -1,14 +1,13 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 145945 2016-02-22 08:53:45Z devans@macports.org $
 
 PortSystem          1.0
 PortGroup           muniversal 1.0
 
 name                mlt
 epoch               3
-version             6.4.1 ; revision 1
+version             6.4.1 ; revision 2
 categories          multimedia
-maintainers         gmail.com:rjvbertin dennedy.org:dan openmaintainer
+maintainers         dennedy.org:dan gmail.com:rjvbertin openmaintainer
 license             GPL-2+
 
 description         Open source multimedia framework - core libraries
@@ -83,6 +82,7 @@ platform darwin {
                     port:sox \
                     port:libxml2 \
                     port:libexif
+
 }
 platform linux {
     depends_build-append \
@@ -96,6 +96,19 @@ platform linux {
                     port:libexif
 }
 
+if {[variant_isset opencv]} {
+    PortGroup       active_variants 1.1
+    if {${subport} eq "${name}"} {
+        require_active_variants opencv qt4
+    } else {
+        require_active_variants opencv qt5
+    }
+}
+
+# cherrypicked commit from the next release that fixes a crash-on-exit issue
+# in recent Kkdenlive versions.
+patchfiles-append   patch-commit-a3188e3.diff
+
 # NB: qt-includedir can and should be set to ${qt_includes_dir},
 # not ${qt_includes_dir}/Qt !!
 configure.args-append \
@@ -105,7 +118,8 @@ configure.args-append \
                     --disable-jackrack \
                     --disable-mmx \
                     --disable-gtk2 \
-                    --disable-swfdec
+                    --disable-swfdec \
+                    --disable-opencv
 
 platform darwin 10 {
     if {${build_arch} eq "x86_64"} {
@@ -132,8 +146,8 @@ post-configure {
     set config.mak [open ${worksrcpath}/config.mak "a"]
     puts ${config.mak} "CC=${configure.cc}"
     puts ${config.mak} "CXX=${configure.cxx}"
-    puts ${config.mak} "CFLAGS+=${configure.cflags}"
-    puts ${config.mak} "CXXFLAGS+=${configure.cxxflags}"
+    puts ${config.mak} "CFLAGS+=${configure.cflags} ${configure.cppflags}"
+    puts ${config.mak} "CXXFLAGS+=${configure.cxxflags} ${configure.cppflags}"
     puts ${config.mak} "LDLAGS+=${configure.ldflags}"
     close ${config.mak}
 }
@@ -159,6 +173,32 @@ if {[variant_isset universal]} {
 #     configure.args-delete   --disable-gtk2
 #     depends_lib-append      port:gtk2
 # }
+
+variant gpl3 description {enable GPLv3 components} {
+    configure.args-append   --enable-gpl3
+    license                 GPL-3+
+}
+
+# use an opencv variant to avoid opportunistic dependencies on this library
+# the opencv dependency must match our choice of Qt version, which is
+# another reason why opencv support is provided through a variant.
+variant opencv description {enable OpenCV support} {
+    depends_lib-append      port:opencv
+    configure.args-delete   --disable-opencv
+}
+
+# Allow building without SDL support, useful when used in dependents that themselves
+# depend on SDL2, to avoid (warnings about) runtime conflicts. It can be hoped that
+# one day MLT will support SDL2 too.
+variant disable_sdl description {disable SDL support to avoid SDL vs. SDL2 conflicts} {
+    patchfiles-append       patch-no-sdl.diff
+    configure.args-append   --disable-sdl
+    configure.cppflags-append \
+                            -DMELT_NOSDL
+    depends_lib-delete \
+                            port:libsdl \
+                            port:libsdl_image
+}
 
 livecheck.type      regex
 livecheck.url       http://sourceforge.net/projects/${name}/files/
