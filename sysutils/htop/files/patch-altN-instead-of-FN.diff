@@ -1,0 +1,332 @@
+diff --git a/Action.c b/Action.c
+index f5d7de439e6246aa6792fef054b7e5ad00829502..22a2dc58875043e8ef4fca33607bf140bace14ce 100644
+--- a/Action.c
++++ b/Action.c
+@@ -530,18 +530,18 @@ void Action_setBindings(Htop_Action* keys) {
+    keys['K'] = actionToggleKernelThreads;
+    keys['p'] = actionToggleProgramPath;
+    keys['t'] = actionToggleTreeView;
+-   keys[KEY_F(5)] = actionToggleTreeView;
+-   keys[KEY_F(4)] = actionIncFilter;
++   keys[KEY_ALT('5')] = actionToggleTreeView;
++   keys[KEY_ALT('4')] = actionIncFilter;
+    keys['\\'] = actionIncFilter;
+    keys[KEY_F(3)] = actionIncSearch;
+    keys['/'] = actionIncSearch;
+ 
+    keys[']'] = actionHigherPriority;
+-   keys[KEY_F(7)] = actionHigherPriority;
++   keys[KEY_ALT('7')] = actionHigherPriority;
+    keys['['] = actionLowerPriority;
+-   keys[KEY_F(8)] = actionLowerPriority;
++   keys[KEY_ALT('8')] = actionLowerPriority;
+    keys['I'] = actionInvertSortOrder;
+-   keys[KEY_F(6)] = actionExpandCollapseOrSortColumn;
++   keys[KEY_ALT('6')] = actionExpandCollapseOrSortColumn;
+    keys[KEY_F(18)] = actionExpandCollapseOrSortColumn;
+    keys['<'] = actionSetSortColumn;
+    keys[','] = actionSetSortColumn;
+@@ -550,7 +550,7 @@ void Action_setBindings(Htop_Action* keys) {
+    keys[KEY_F(10)] = actionQuit;
+    keys['q'] = actionQuit;
+    keys['a'] = actionSetAffinity;
+-   keys[KEY_F(9)] = actionKill;
++   keys[KEY_ALT('9')] = actionKill;
+    keys['k'] = actionKill;
+    keys[KEY_RECLICK] = actionExpandOrCollapse;
+    keys['+'] = actionExpandOrCollapse;
+@@ -560,12 +560,12 @@ void Action_setBindings(Htop_Action* keys) {
+    keys['F'] = Action_follow;
+    keys['S'] = actionSetup;
+    keys['C'] = actionSetup;
+-   keys[KEY_F(2)] = actionSetup;
++   keys[KEY_ALT('2')] = actionSetup;
+    keys['l'] = actionLsof;
+    keys['s'] = actionStrace;
+    keys[' '] = actionTag;
+    keys['\014'] = actionRedraw; // Ctrl+L
+-   keys[KEY_F(1)] = actionHelp;
++   keys[KEY_ALT('1')] = actionHelp;
+    keys['h'] = actionHelp;
+    keys['?'] = actionHelp;
+    keys['U'] = actionUntagAll;
+diff --git a/AvailableColumnsPanel.c b/AvailableColumnsPanel.c
+index 6865b8bc322dc4cc7600cd96fe586b9b9ba3cc4c..cf1869ff66919f91b22004b17ae23a69daba26df 100644
+--- a/AvailableColumnsPanel.c
++++ b/AvailableColumnsPanel.c
+@@ -7,6 +7,7 @@ in the source distribution for its full text.
+ 
+ #include "AvailableColumnsPanel.h"
+ #include "Platform.h"
++#include "CRT.h"
+ 
+ #include "Header.h"
+ #include "ColumnsPanel.h"
+@@ -43,7 +44,7 @@ static HandlerResult AvailableColumnsPanel_eventHandler(Panel* super, int ch) {
+    switch(ch) {
+       case 13:
+       case KEY_ENTER:
+-      case KEY_F(5):
++      case KEY_ALT('5'):
+       {
+          int at = Panel_getSelectedIndex(this->columns);
+          Panel_insert(this->columns, at, (Object*) ListItem_new(Process_fields[key].name, key));
+diff --git a/AvailableMetersPanel.c b/AvailableMetersPanel.c
+index e68475f46f3947a10cb45619978df516f6274d00..75256dfedd93a7cf7c0fa1fc42fe5a20b02b039c 100644
+--- a/AvailableMetersPanel.c
++++ b/AvailableMetersPanel.c
+@@ -12,6 +12,7 @@ in the source distribution for its full text.
+ #include "Header.h"
+ #include "ListItem.h"
+ #include "Platform.h"
++#include "CRT.h"
+ 
+ #include <assert.h>
+ #include <stdlib.h>
+@@ -60,7 +61,7 @@ static HandlerResult AvailableMetersPanel_eventHandler(Panel* super, int ch) {
+    bool update = false;
+ 
+    switch(ch) {
+-      case KEY_F(5):
++      case KEY_ALT('5'):
+       case 'l':
+       case 'L':
+       {
+@@ -72,7 +73,7 @@ static HandlerResult AvailableMetersPanel_eventHandler(Panel* super, int ch) {
+       case 0x0a:
+       case 0x0d:
+       case KEY_ENTER:
+-      case KEY_F(6):
++      case KEY_ALT('6'):
+       case 'r':
+       case 'R':
+       {
+diff --git a/CRT.c b/CRT.c
+index 0d516989712ee66fc9384abc976b132c34cbfe4c..2ee70604b2c3080b60536cbf3c9093c1e827855b 100644
+--- a/CRT.c
++++ b/CRT.c
+@@ -594,6 +594,10 @@ void CRT_init(int delay, int colorScheme) {
+          sequence[1] = c;
+          define_key(sequence, KEY_ALT('A' + (c - 'a')));
+       }
++      for (char c = '0'; c <= '9'; c++) {
++         sequence[1] = c;
++         define_key(sequence, KEY_ALT(c));
++      }
+    }
+ #ifndef DEBUG
+    signal(11, CRT_handleSIGSEGV);
+diff --git a/ColumnsPanel.c b/ColumnsPanel.c
+index 3ec9ee8089443843e13d68e44495669b56b67db2..93b2aed99afbd5ee17ddd097ab88f817d007ac4d 100644
+--- a/ColumnsPanel.c
++++ b/ColumnsPanel.c
+@@ -67,7 +67,7 @@ static HandlerResult ColumnsPanel_eventHandler(Panel* super, int ch) {
+          }
+          /* else fallthrough */
+       }
+-      case KEY_F(7):
++      case KEY_ALT('7'):
+       case '[':
+       case '-':
+       {
+@@ -83,7 +83,7 @@ static HandlerResult ColumnsPanel_eventHandler(Panel* super, int ch) {
+          }
+          /* else fallthrough */
+       }
+-      case KEY_F(8):
++      case KEY_ALT('8'):
+       case ']':
+       case '+':
+       {
+@@ -92,7 +92,7 @@ static HandlerResult ColumnsPanel_eventHandler(Panel* super, int ch) {
+          result = HANDLED;
+          break;
+       }
+-      case KEY_F(9):
++      case KEY_ALT('9'):
+       case KEY_DC:
+       {
+          if (selected < size - 1) {
+diff --git a/FunctionBar.c b/FunctionBar.c
+index 659f4108343d5e9bbec16fbb1ab1a1796648dee5..fef8a4596c65c1877d93d834c3c745dde136b7fe 100644
+--- a/FunctionBar.c
++++ b/FunctionBar.c
+@@ -28,11 +28,11 @@ typedef struct FunctionBar_ {
+ 
+ }*/
+ 
+-static const char* FunctionBar_FKeys[] = {"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", NULL};
++static const char* FunctionBar_FKeys[] = {"Alt-1", "Alt-2", "Alt-3", "Alt-4", "Alt-5", "Alt-6", "Alt-7", "Alt-8", "Alt-9", "F10", NULL};
+ 
+ static const char* FunctionBar_FLabels[] = {"      ", "      ", "      ", "      ", "      ", "      ", "      ", "      ", "      ", "      ", NULL};
+ 
+-static int FunctionBar_FEvents[] = {KEY_F(1), KEY_F(2), KEY_F(3), KEY_F(4), KEY_F(5), KEY_F(6), KEY_F(7), KEY_F(8), KEY_F(9), KEY_F(10)};
++static int FunctionBar_FEvents[] = {KEY_ALT('1'), KEY_ALT('2'), KEY_F(3), KEY_ALT('4'), KEY_ALT('5'), KEY_ALT('6'), KEY_ALT('7'), KEY_ALT('8'), KEY_ALT('9'), KEY_F(10)};
+ 
+ static const char* FunctionBar_EnterEscKeys[] = {"Enter", "Esc", NULL};
+ static int FunctionBar_EnterEscEvents[] = {13, 27};
+diff --git a/InfoScreen.c b/InfoScreen.c
+index e27494c74be392d25cdbebe5c49e24222acadebe..2b6c13ace3e2cdd22fa728cf3d5f27ce629dd258 100644
+--- a/InfoScreen.c
++++ b/InfoScreen.c
+@@ -52,9 +52,9 @@ struct InfoScreen_ {
+ 
+ static const char* InfoScreenFunctions[] = {"Search ", "Filter ", "Refresh", "Done   ", NULL};
+ 
+-static const char* InfoScreenKeys[] = {"F3", "F4", "F5", "Esc"};
++static const char* InfoScreenKeys[] = {"Alt-3", "Alt-4", "Alt-5", "Esc"};
+ 
+-static int InfoScreenEvents[] = {KEY_F(3), KEY_F(4), KEY_F(5), 27};
++static int InfoScreenEvents[] = {KEY_F(3), KEY_ALT('4'), KEY_ALT('5'), 27};
+ 
+ InfoScreen* InfoScreen_init(InfoScreen* this, Process* process, FunctionBar* bar, int height, char* panelHeader) {
+    this->process = process;
+@@ -150,11 +150,11 @@ void InfoScreen_run(InfoScreen* this) {
+       case '/':
+          IncSet_activate(this->inc, INC_SEARCH, panel);
+          break;
+-      case KEY_F(4):
++      case KEY_ALT('4'):
+       case '\\':
+          IncSet_activate(this->inc, INC_FILTER, panel);
+          break;
+-      case KEY_F(5):
++      case KEY_ALT('5'):
+          clear();
+          if (As_InfoScreen(this)->scan) InfoScreen_scan(this);
+          InfoScreen_draw(this);
+diff --git a/MainPanel.c b/MainPanel.c
+index a62555ee8b773cc375d6c70ddc30d705775a32b6..cb003cf5ae80c79392436c9a8fc28904dc6a1247 100644
+--- a/MainPanel.c
++++ b/MainPanel.c
+@@ -22,6 +22,7 @@ typedef struct MainPanel_ {
+    State* state;
+    IncSet* inc;
+    Htop_Action *keys;
++   size_t nkeys;
+    pid_t pidSearch;
+ } MainPanel;
+ 
+@@ -36,11 +37,11 @@ static const char* MainFunctions[]  = {"Help  ", "Setup ", "Search", "Filter", "
+ void MainPanel_updateTreeFunctions(MainPanel* this, bool mode) {
+    FunctionBar* bar = MainPanel_getFunctionBar(this);
+    if (mode) {
+-      FunctionBar_setLabel(bar, KEY_F(5), "Sorted");
+-      FunctionBar_setLabel(bar, KEY_F(6), "Collap");
++      FunctionBar_setLabel(bar, KEY_ALT('5'), "Sorted");
++      FunctionBar_setLabel(bar, KEY_ALT('6'), "Collap");
+    } else {
+-      FunctionBar_setLabel(bar, KEY_F(5), "Tree  ");
+-      FunctionBar_setLabel(bar, KEY_F(6), "SortBy");
++      FunctionBar_setLabel(bar, KEY_ALT('5'), "Tree  ");
++      FunctionBar_setLabel(bar, KEY_ALT('6'), "SortBy");
+    }
+ }
+ 
+@@ -94,7 +95,7 @@ static HandlerResult MainPanel_eventHandler(Panel* super, int ch) {
+       result = HANDLED;
+    } else if (ch == 27) {
+       return HANDLED;
+-   } else if (ch != ERR && ch > 0 && ch < KEY_MAX && this->keys[ch]) {
++   } else if (ch != ERR && ch > 0 && ch < this->nkeys && this->keys[ch]) {
+       reaction |= (this->keys[ch])(this->state);
+       result = HANDLED;
+    } else if (isdigit(ch)) {
+@@ -179,7 +180,11 @@ PanelClass MainPanel_class = {
+ MainPanel* MainPanel_new() {
+    MainPanel* this = AllocThis(MainPanel);
+    Panel_init((Panel*) this, 1, 1, 1, 1, Class(Process), false, FunctionBar_new(MainFunctions, NULL, NULL));
+-   this->keys = xCalloc(KEY_MAX, sizeof(Htop_Action));
++   this->nkeys = KEY_MAX;
++   if (KEY_ALT('9') >= this->nkeys) {
++      this->nkeys = KEY_ALT('9') + 1;
++   }
++   this->keys = xCalloc(this->nkeys, sizeof(Htop_Action));
+    this->inc = IncSet_new(MainPanel_getFunctionBar(this));
+ 
+    Action_setBindings(this->keys);
+diff --git a/MainPanel.h b/MainPanel.h
+index f4671f330ad85570dedbac1a12e2ac36f7b9949b..ba7450489f624ceced85475178f4be66fed047f8 100644
+--- a/MainPanel.h
++++ b/MainPanel.h
+@@ -18,6 +18,7 @@ typedef struct MainPanel_ {
+    State* state;
+    IncSet* inc;
+    Htop_Action *keys;
++   size_t nkeys;
+    pid_t pidSearch;
+ } MainPanel;
+ 
+diff --git a/MetersPanel.c b/MetersPanel.c
+index 22449f3d58ced60d7d80a98ab319de14cc1597ea..d774d2ea090d9989e62323ca5e2c9cfbac715e87 100644
+--- a/MetersPanel.c
++++ b/MetersPanel.c
+@@ -110,7 +110,7 @@ static HandlerResult MetersPanel_eventHandler(Panel* super, int ch) {
+          break;
+       }
+       case ' ':
+-      case KEY_F(4):
++      case KEY_ALT('4'):
+       case 't':
+       {
+          if (!Vector_size(this->meters))
+@@ -130,7 +130,7 @@ static HandlerResult MetersPanel_eventHandler(Panel* super, int ch) {
+          }
+          /* else fallthrough */
+       }
+-      case KEY_F(7):
++      case KEY_ALT('7'):
+       case '[':
+       case '-':
+       {
+@@ -146,7 +146,7 @@ static HandlerResult MetersPanel_eventHandler(Panel* super, int ch) {
+          }
+          /* else fallthrough */
+       }
+-      case KEY_F(8):
++      case KEY_ALT('8'):
+       case ']':
+       case '+':
+       {
+@@ -174,7 +174,7 @@ static HandlerResult MetersPanel_eventHandler(Panel* super, int ch) {
+          }
+          break;
+       }
+-      case KEY_F(9):
++      case KEY_ALT('9'):
+       case KEY_DC:
+       {
+          if (!Vector_size(this->meters))
+diff --git a/TraceScreen.c b/TraceScreen.c
+index 6bb2e041ce10a25d6f83122ef94776ba5d708b43..e0036b541c451d2a40d217d3984302c92b230979 100644
+--- a/TraceScreen.c
++++ b/TraceScreen.c
+@@ -47,7 +47,7 @@ static const char* TraceScreenFunctions[] = {"Search ", "Filter ", "AutoScroll "
+ 
+ static const char* TraceScreenKeys[] = {"F3", "F4", "F8", "F9", "Esc"};
+ 
+-static int TraceScreenEvents[] = {KEY_F(3), KEY_F(4), KEY_F(8), KEY_F(9), 27};
++static int TraceScreenEvents[] = {KEY_F(3), KEY_ALT('4'), KEY_ALT('8'), KEY_ALT('9'), 27};
+ 
+ InfoScreenClass TraceScreen_class = {
+    .super = {
+@@ -156,15 +156,15 @@ bool TraceScreen_onKey(InfoScreen* super, int ch) {
+    TraceScreen* this = (TraceScreen*) super;
+    switch(ch) {
+       case 'f':
+-      case KEY_F(8):
++      case KEY_ALT('8'):
+          this->follow = !(this->follow);
+          if (this->follow)
+             Panel_setSelected(super->display, Panel_size(super->display)-1);
+          return true;
+       case 't':
+-      case KEY_F(9):
++      case KEY_ALT('9'):
+          this->tracing = !this->tracing;
+-         FunctionBar_setLabel(super->display->defaultBar, KEY_F(9), this->tracing?"Stop Tracing   ":"Resume Tracing ");
++         FunctionBar_setLabel(super->display->defaultBar, KEY_ALT('9'), this->tracing?"Stop Tracing   ":"Resume Tracing ");
+          InfoScreen_draw(this);
+          return true;
+    }
+
