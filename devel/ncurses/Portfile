@@ -90,5 +90,8 @@ post-destroot {
         }
         ln -s libncurses.so.${major} ${destroot}${prefix}/lib/libtermcap.so
         ln -s ncurses${major}-config ${destroot}${prefix}/bin/ncursesw${major}-config
+        # make really sure that the linker won't find the system version:
+        reinplace "s|-l\$\{THIS\}|\$\{libdir\}/lib\$\{THIS\}.so|g" ${destroot}${prefix}/bin/ncurses${major}-config
+        reinplace "s|-l\$\{TINFO_LIB\}|\$\{libdir\}/lib\$\{TINFO_LIB\}.so|g" ${destroot}${prefix}/bin/ncurses${major}-config
     }
 }
