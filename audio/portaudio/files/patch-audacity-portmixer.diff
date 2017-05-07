@@ -1,0 +1,234 @@
+Description: Add features needed to make portmixer work with audacity.
+Author: Audacity Team
+Last-Update: 2011-12-07
+Synced with version 190600_20161030 on 20170507
+
+diff --git configure.in configure.in
+index 13816fb7a34eb9aea37050b86e3543aa0adc9282..83c239a12f38fe652948d4293ab161346f377301 100644
+--- configure.in
++++ configure.in
+@@ -420,6 +420,7 @@ case "${host_os}" in
+                    DLL_LIBS="$DLL_LIBS -lossaudio"
+                    LIBS="$LIBS -lossaudio"
+            fi
++           INCLUDES="$INCLUDES pa_unix_oss.h"
+            AC_DEFINE(PA_USE_OSS,1)
+         fi
+ 
+diff --git include/pa_win_ds.h include/pa_win_ds.h
+index 5d3864168c4508b5ad6559f5ac73b64097637d98..ba1c24546a1c12b8f15706c1b6fd96db2979388e 100644
+--- include/pa_win_ds.h
++++ include/pa_win_ds.h
+@@ -86,6 +86,21 @@ typedef struct PaWinDirectSoundStreamInfo{
+ 
+ }PaWinDirectSoundStreamInfo;
+ 
++/** Retrieve the GUID of the input device.
++
++ @param stream The stream to query.
++
++ @return A pointer to the GUID, or NULL if none.
++*/
++LPGUID PaWinDS_GetStreamInputGUID( PaStream* s );
++
++/** Retrieve the GUID of the output device.
++
++ @param stream The stream to query.
++
++ @return A pointer to the GUID, or NULL if none.
++*/
++LPGUID PaWinDS_GetStreamOutputGUID( PaStream* s );
+ 
+ 
+ #ifdef __cplusplus
+diff --git include/portaudio.h include/portaudio.h
+index 8a94aafbbb8104bbda9a5320d1d6fc4b843adf7e..9c8a2959f20c50c392124c6d7f13f326470b0cfe 100644
+--- include/portaudio.h
++++ include/portaudio.h
+@@ -1197,6 +1197,15 @@ signed long Pa_GetStreamReadAvailable( PaStream* stream );
+ signed long Pa_GetStreamWriteAvailable( PaStream* stream );
+ 
+ 
++/** Retrieve the host type handling an open stream.
++
++ @return Returns a non-negative value representing the host API type
++ handling an open stream or, a PaErrorCode (which are always negative)
++ if PortAudio is not initialized or an error is encountered.
++*/
++PaHostApiTypeId Pa_GetStreamHostApiType( PaStream* stream );
++
++
+ /* Miscellaneous utilities */
+ 
+ 
+diff --git src/common/pa_front.c src/common/pa_front.c
+index 188cee9e5578f0e050cddbe3c86a9463dc2b22e2..52f44a677dc0f4f3699e019be452337a2ac928d7 100644
+--- src/common/pa_front.c
++++ src/common/pa_front.c
+@@ -1257,8 +1257,10 @@ PaError Pa_OpenStream( PaStream** stream,
+                                   hostApiInputParametersPtr, hostApiOutputParametersPtr,
+                                   sampleRate, framesPerBuffer, streamFlags, streamCallback, userData );
+ 
+-    if( result == paNoError )
++    if( result == paNoError ) {
+         AddOpenStream( *stream );
++        PA_STREAM_REP(*stream)->hostApiType = hostApi->info.type;
++    }
+ 
+ 
+     PA_LOGAPI(("Pa_OpenStream returned:\n" ));
+@@ -1770,6 +1772,32 @@ signed long Pa_GetStreamWriteAvailable( PaStream* stream )
+     return result;
+ }
+ 
++PaHostApiTypeId Pa_GetStreamHostApiType( PaStream* stream )
++{
++    PaError error = PaUtil_ValidateStreamPointer( stream );
++    PaHostApiTypeId result;
++
++#ifdef PA_LOG_API_CALLS
++    PaUtil_DebugPrint("Pa_GetStreamHostApiType called:\n" );
++    PaUtil_DebugPrint("\tPaStream* stream: 0x%p\n", stream );
++#endif
++
++    if( error == paNoError )
++    {
++        result = PA_STREAM_REP(stream)->hostApiType;
++    }
++    else
++    {
++        result = (PaHostApiTypeId) error;
++    }
++
++#ifdef PA_LOG_API_CALLS
++    PaUtil_DebugPrint("Pa_GetStreamHostApiType returned:\n" );
++    PaUtil_DebugPrint("\tPaError: %d ( %s )\n\n", result, Pa_GetErrorText( result ) );
++#endif
++
++    return result;
++}
+ 
+ PaError Pa_GetSampleSize( PaSampleFormat format )
+ {
+diff --git src/common/pa_stream.c src/common/pa_stream.c
+index 03a0ee6ee32e8752949d75a05d57fa5380329858..c4376f93b969bd02a0f90f1eb07478db8efe1501 100644
+--- src/common/pa_stream.c
++++ src/common/pa_stream.c
+@@ -93,6 +93,8 @@ void PaUtil_InitializeStreamRepresentation( PaUtilStreamRepresentation *streamRe
+     streamRepresentation->streamInfo.inputLatency = 0.;
+     streamRepresentation->streamInfo.outputLatency = 0.;
+     streamRepresentation->streamInfo.sampleRate = 0.;
++
++    streamRepresentation->hostApiType = 0;
+ }
+ 
+ 
+diff --git src/common/pa_stream.h src/common/pa_stream.h
+index 678e2ad5ea0897904aaed1fd14c055a74a96f6ba..70572c7523dfce1cc77738979663bb6f98702d06 100644
+--- src/common/pa_stream.h
++++ src/common/pa_stream.h
+@@ -152,6 +152,7 @@ typedef struct PaUtilStreamRepresentation {
+     PaStreamFinishedCallback *streamFinishedCallback;
+     void *userData;
+     PaStreamInfo streamInfo;
++    PaHostApiTypeId hostApiType;
+ } PaUtilStreamRepresentation;
+ 
+ 
+diff --git src/hostapi/alsa/pa_linux_alsa.c src/hostapi/alsa/pa_linux_alsa.c
+index 584cde8901d7f16630ca1e4bc864059da0edd8f3..558fb3d11c5fbdc0deeffe633e62f29b93c06fdf 100644
+--- src/hostapi/alsa/pa_linux_alsa.c
++++ src/hostapi/alsa/pa_linux_alsa.c
+@@ -621,6 +621,7 @@ typedef struct
+     StreamDirection streamDir;
+ 
+     snd_pcm_channel_area_t *channelAreas;  /* Needed for channel adaption */
++    int card;
+ } PaAlsaStreamComponent;
+ 
+ /* Implementation specific stream structure */
+@@ -1873,6 +1874,7 @@ static PaError PaAlsaStreamComponent_Initialize( PaAlsaStreamComponent *self, Pa
+ {
+     PaError result = paNoError;
+     PaSampleFormat userSampleFormat = params->sampleFormat, hostSampleFormat = paNoError;
++    snd_pcm_info_t* pcmInfo;
+     assert( params->channelCount > 0 );
+ 
+     /* Make sure things have an initial value */
+@@ -1900,6 +1902,9 @@ static PaError PaAlsaStreamComponent_Initialize( PaAlsaStreamComponent *self, Pa
+     self->device = params->device;
+ 
+     PA_ENSURE( AlsaOpen( &alsaApi->baseHostApiRep, params, streamDir, &self->pcm ) );
++
++    snd_pcm_info_alloca( &pcmInfo );
++    self->card = snd_pcm_info_get_card( pcmInfo );
+     self->nfds = alsa_snd_pcm_poll_descriptors_count( self->pcm );
+ 
+     PA_ENSURE( hostSampleFormat = PaUtil_SelectClosestAvailableFormat( GetAvailableFormats( self->pcm ), userSampleFormat ) );
+@@ -4605,9 +4610,7 @@ PaError PaAlsa_GetStreamInputCard( PaStream* s, int* card )
+     /* XXX: More descriptive error? */
+     PA_UNLESS( stream->capture.pcm, paDeviceUnavailable );
+ 
+-    alsa_snd_pcm_info_alloca( &pcmInfo );
+-    PA_ENSURE( alsa_snd_pcm_info( stream->capture.pcm, pcmInfo ) );
+-    *card = alsa_snd_pcm_info_get_card( pcmInfo );
++    *card = stream->capture.card;
+ 
+ error:
+     return result;
+@@ -4624,9 +4627,7 @@ PaError PaAlsa_GetStreamOutputCard( PaStream* s, int* card )
+     /* XXX: More descriptive error? */
+     PA_UNLESS( stream->playback.pcm, paDeviceUnavailable );
+ 
+-    alsa_snd_pcm_info_alloca( &pcmInfo );
+-    PA_ENSURE( alsa_snd_pcm_info( stream->playback.pcm, pcmInfo ) );
+-    *card = alsa_snd_pcm_info_get_card( pcmInfo );
++    *card = stream->playback.card;
+ 
+ error:
+     return result;
+diff --git src/hostapi/coreaudio/pa_mac_core_blocking.c src/hostapi/coreaudio/pa_mac_core_blocking.c
+index 679c6ba0aec3e17a30bf9f6fae0434133852b65a..a69e08589aba8c0cf1d099a1af98a908371fbc0b 100644
+--- src/hostapi/coreaudio/pa_mac_core_blocking.c
++++ src/hostapi/coreaudio/pa_mac_core_blocking.c
+@@ -66,6 +66,9 @@
+ #ifdef MOSX_USE_NON_ATOMIC_FLAG_BITS
+ # define OSAtomicOr32( a, b ) ( (*(b)) |= (a) )
+ # define OSAtomicAnd32( a, b ) ( (*(b)) &= (a) )
++#elif MAC_OS_X_VERSION_MAX_ALLOWED <= MAC_OS_X_VERSION_10_3
++# define OSAtomicOr32( a, b ) BitOrAtomic( a, (UInt32 *) b )
++# define OSAtomicAnd32( a, b ) BitAndAtomic( a, (UInt32 *) b )
+ #else
+ # include <libkern/OSAtomic.h>
+ #endif
+diff --git src/hostapi/oss/pa_unix_oss.c src/hostapi/oss/pa_unix_oss.c
+index 51e963048fa66d1e7748c4e63928fe1dd6d3db66..f257d80398fbbaf5f7886bcd74e14fe3b32c669f 100644
+--- src/hostapi/oss/pa_unix_oss.c
++++ src/hostapi/oss/pa_unix_oss.c
+@@ -2043,3 +2043,26 @@ error:
+ #endif
+ }
+ 
++const char *PaOSS_GetStreamInputDevice( PaStream* s )
++{
++    PaOssStream *stream = (PaOssStream*)s;
++
++    if( stream->capture )
++    {
++      return stream->capture->devName;
++    }
++
++   return NULL;
++}
++
++const char *PaOSS_GetStreamOutputDevice( PaStream* s )
++{
++    PaOssStream *stream = (PaOssStream*)s;
++
++    if( stream->playback )
++    {
++      return stream->playback->devName;
++    }
++
++   return NULL;
++}
