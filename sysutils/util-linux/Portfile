@@ -40,22 +40,32 @@ patchfiles-append \
                 sulogin-lockedpwd.patch
 
 configure.args-append \
-                --enable-line --enable-pg --enable-raw --enable-partx --with-udev \
-                --enable-tunelp --enable-static-programs=fdisk,sfdisk,blkid \
+                --enable-line --enable-pg \
+                --enable-static-programs=fdisk,sfdisk,blkid \
                 --disable-silent-rules --without-python \
                 --disable-login --disable-nologin --disable-su --disable-kill \
                 --disable-eject --disable-chfn-chsh \
                 --enable-rpath
 
-configure.ldflags-append -Wl,-rpath=${prefix}/lib
-build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
-destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
+platform linux {
+    configure.args-append \
+                --enable-tunelp --with-udev --enable-partx --enable-raw
+    configure.ldflags-append -Wl,-rpath=${prefix}/lib
+    build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
+    destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
+}
+platform darwin {
+    configure.args-append \
+                --disable-agetty --disable-runuser --disable-wall --disable-last --disable-ipcrm --disable-ipcs --disable-utmpdump
+}
 
 post-destroot {
     file delete -force ${destroot}${prefix}/bin/getopt
     file delete -force ${destroot}${prefix}/share/man/man1/getopt.1
-    file rename ${destroot}/usr/share/bash-completion ${destroot}${prefix}/share/bash-completion
-    foreach c {gsettings gapplication gdbus git gresource} {
-        file delete ${destroot}${prefix}/share/bash-completion/completions/${c}
+    platform linux {
+        file rename ${destroot}/usr/share/bash-completion ${destroot}${prefix}/share/bash-completion
+        foreach c {gsettings gapplication gdbus git gresource} {
+            file delete ${destroot}${prefix}/share/bash-completion/completions/${c}
+        }
     }
 }
