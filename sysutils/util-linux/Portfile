@@ -1,0 +1,61 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem 1.0
+PortGroup       conflicts_build 1.0
+
+name            util-linux
+version         2.29
+description     The util-linux meta-package
+long_description \
+                Corresponds to the following Ubuntu ports: \
+                util-linux util-linux-locales mount bsdutils \
+                fdisk-udeb libblkid1 \
+                libblkid1-udeb libblkid-dev libfdisk1 libfdisk1-udeb \
+                libfdisk-dev libmount1 libmount1-udeb libmount-dev \
+                libsmartcols1 libsmartcols1-udeb libsmartcols-dev libuuid1 \
+                uuid-runtime libuuid1-udeb uuid-dev util-linux-udeb
+
+homepage        https://launchpad.net/ubuntu/+source/${name}
+license         GPL-2
+platforms       linux
+
+master_sites    https://launchpad.net/ubuntu/+archive/primary/+files/
+use_xz          yes
+distname        ${name}_${version}.orig
+checksums       rmd160  19596ea48943f8ac0433e56104d93473579b9697 \
+                sha256  2c59ea67cc7b564104f60532f6e0a95fe17a91acb870ba8fd7e986f273abf9e7
+worksrcdir      ${name}-${version}
+
+conflicts_build-append \
+                gettext-dev
+
+# Ubuntu's patches:
+patch.pre_args  -Np1
+patchfiles-append \
+                Multiarch-support-in-util-linux-build.patch \
+                man-page-tweaks-cleanup-my_dev_t.h-ancient-stuff.patch \
+                Disable-the-fallback-clause-in-hwclock-when-dev-rtc-.patch \
+                verbose-tests.patch \
+                sulogin-fallback-static-sh.patch \
+                sulogin-lockedpwd.patch
+
+configure.args-append \
+                --enable-line --enable-pg --enable-raw --enable-partx --with-udev \
+                --enable-tunelp --enable-static-programs=fdisk,sfdisk,blkid \
+                --disable-silent-rules --without-python \
+                --disable-login --disable-nologin --disable-su --disable-kill \
+                --disable-eject --disable-chfn-chsh \
+                --enable-rpath
+
+configure.ldflags-append -Wl,-rpath=${prefix}/lib
+build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
+destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
+
+post-destroot {
+    file delete -force ${destroot}${prefix}/bin/getopt
+    file delete -force ${destroot}${prefix}/share/man/man1/getopt.1
+    file rename ${destroot}/usr/share/bash-completion ${destroot}${prefix}/share/bash-completion
+    foreach c {gsettings gapplication gdbus git gresource} {
+        file delete ${destroot}${prefix}/share/bash-completion/completions/${c}
+    }
+}

@@ -1,0 +1,41 @@
+From: Andreas Henriksson <andreas@fatal.se>
+Date: Wed, 30 Jul 2014 14:28:17 +0200
+Subject: verbose-tests
+
+Enable verbose tests and print content of failing tests output file.
+---
+ tests/Makemodule.am |  2 +-
+ tests/functions.sh  | 11 +++++++++++
+ 2 files changed, 12 insertions(+), 1 deletion(-)
+
+--- a/tests/Makemodule.am
++++ b/tests/Makemodule.am
+@@ -13,7 +13,7 @@
+ 
+ CLEAN_LOCALS += clean-local-tests
+ 
+-TS_OPTS = --nonroot
++TS_OPTS = --nonroot --verbose --parallel=1
+ TS_COMMAND = $(top_srcdir)/tests/run.sh \
+ 	--srcdir=$(abs_top_srcdir) --builddir=$(abs_top_builddir) \
+ 	--parallel $(TS_OPTS)
+--- a/tests/functions.sh
++++ b/tests/functions.sh
+@@ -122,6 +122,17 @@
+ 		ts_report " $msg ($1)"
+ 	fi
+ 
++	if [ "$TS_VERBOSE" = "yes" ]; then
++		echo ========= script: $TS_SCRIPT =================
++		echo ================= OUTPUT =====================
++		cat -n $TS_OUTPUT
++		echo ================= EXPECTED ===================
++		cat -n $TS_EXPECTED
++		echo ================= O/E diff ===================
++		diff -u $TS_OUTPUT $TS_EXPECTED
++		echo ==============================================
++	fi
++
+ 	return $ret
+ }
+ 

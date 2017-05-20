@@ -1,0 +1,25 @@
+From: LaMont Jones <lamont@mix.mmjgroup.com>
+Date: Sun, 8 Jul 2007 17:25:30 -0600
+Subject: man page tweaks, cleanup my_dev_t.h ancient stuff
+
+Conflicts:
+	getopt/getopt.1
+	mount/my_dev_t.h
+---
+ mount/my_dev_t.h    | 0
+ sys-utils/hwclock.8 | 3 +++
+ 2 files changed, 3 insertions(+)
+ create mode 100644 mount/my_dev_t.h
+
+--- a/sys-utils/hwclock.8
++++ b/sys-utils/hwclock.8
+@@ -1037,6 +1037,9 @@
+ .BR crontab (1),
+ .BR tzset (3)
+ .
++.BR /etc/init.d/hwclock.sh,
++.BR /usr/share/doc/util-linux/README.Debian.hwclock
++.
+ .SH AUTHORS
+ Written by Bryan Henderson, September 1996 (bryanh@giraffe-data.com),
+ based on work done on the

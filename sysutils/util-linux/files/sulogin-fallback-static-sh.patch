@@ -1,0 +1,18 @@
+Description: Add support for /bin/static-sh as fallback if the regular shell fails to execute
+Author: Michael Vogt <michael.vogt@ubuntu.com>
+Bug-Ubuntu: https://launchpad.net/bugs/505887
+
+--- a/login-utils/sulogin.c
++++ b/login-utils/sulogin.c
+@@ -797,6 +797,11 @@
+ 	xsetenv("SHELL", "/bin/sh", 1);
+ 	execl("/bin/sh", profile ? "-sh" : "sh", NULL);
+ 	warn(_("failed to execute %s"), "/bin/sh");
++
++	/* Fall back to static shell */
++	setenv("SHELL", "/bin/static-sh", 1);
++	execl("/bin/static-sh", profile ? "-sh" : "sh", NULL);
++	warn(_("failed to execute %s"), "/bin/static-sh");
+ }
+ 
+ static void usage(FILE *out)

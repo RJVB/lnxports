@@ -1,0 +1,16 @@
+Description: Make sure file systems can be fixed on machines with locked root accounts (as Ubuntu does by default). Don't require --force for sulogin.
+Author: Martin Pitt <martin.pitt@ubuntu.com>
+Bug-Debian: https://bugs.debian.org/326678
+
+--- a/login-utils/sulogin.c
++++ b/login-utils/sulogin.c
+@@ -986,7 +986,8 @@
+ 				const char *passwd = pwd->pw_passwd;
+ 				const char *answer;
+ 				int failed = 0, doshell = 0;
+-				int deny = !opt_e && locked_account_password(pwd->pw_passwd);
++				/* Ubuntu's root account is locked by default allow access without --force */
++				int deny = 0;
+ 
+ 				doprompt(passwd, con, deny);
+ 
