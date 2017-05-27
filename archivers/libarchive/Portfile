@@ -1,14 +1,13 @@
-# $Id: Portfile 139229 2015-08-08 03:10:35Z jeremyhu@macports.org $
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem 1.0
 name             libarchive
 homepage         http://libarchive.org/
 master_sites     ${homepage}downloads/
-version          3.1.2
-revision         1
+version          3.3.1
 categories       archivers
 license          BSD
-maintainers      toby
+maintainers      toby openmaintainer
 description      functions for reading and writing streaming archives
 long_description \
 	Libarchive is a programming library that can create and \
@@ -17,19 +16,41 @@ long_description \
 	also write shar archives.
 platforms        darwin
 
-checksums        rmd160  77c42598b754996481c1fa45c71eca5a428a094c \
-                 sha256  eb87eacd8fe49e8d90c8fdc189813023ccc319c5e752b01fb6ad0cc7b2c53d5e
+checksums        rmd160  229d68a81b7b4e5b7b12d5da88522e04974328b4 \
+                 sha256  29ca5bd1624ca5a007aa57e16080262ab4379dbf8797f5c52f7ea74a3b0424e7
 
-depends_lib      port:bzip2 port:zlib path:lib/libssl.dylib:openssl port:libxml2 port:xz \
-                 port:lzo2 port:libiconv
+depends_lib      port:bzip2 port:zlib port:libxml2 port:xz \
+                 port:lzo2 port:libiconv \
+                 port:lz4 port:expat
 
+# patchfiles       patch-libarchive__archive_read_support_format_lha.c.diff
+
+####
+# the following section is to be removed when 3.3.2 is released. it is
+# a temporary fix for older Mac OS X versions, and is already upstream.
+# comment back in the above patchfile, too.
+
+revision         1
+
+patchfiles-append \
+    patch-3.3.1_to_master.diff \
+    patch-Makefile.am.diff \
+    patch-libarchive__archive_read_support_format_lha.c_p1.diff
+patch.pre_args   -p1
+
+use_autoreconf   yes
+autoreconf.cmd   "build/autogen.sh"
+autoreconf.args  -fvi
+
+depends_build    port:autoconf port:automake port:libtool path:bin/pkg-config:pkgconfig
+####
 if {${os.platform} eq "linux"} {
     patchfiles-append \
                  patch-configure-wchar_t-detection.diff
 }
 
 configure.args   --enable-bsdtar=shared --enable-bsdcpio=shared \
-                 --disable-silent-rules --without-nettle
+                 --disable-silent-rules --without-nettle --with-lzo2
 
 livecheck.type  regex
 livecheck.regex libarchive-(\[0-9.\]+)\\.tar.gz
