@@ -47,6 +47,17 @@ conflicts_build     gettext-dev
 
 set major           [lindex [split ${version} .-] 0]
 
+set to_prefix       /usr/local
+destroot.violate_mtree yes
+configure.pre_args-replace \
+                    --prefix=${prefix} \
+                    --prefix=${to_prefix}
+configure.ldflags-replace \
+                    -Wl,-R,${prefix}/lib \
+                    -Wl,-rpath=${prefix}/lib
+configure.ldflags-prepend \
+                    -L${to_prefix}/lib -Wl,-rpath=${to_prefix}/lib
+
 platform darwin {
     configure.pre_args-append --build=${build_arch}-apple-darwin${os.major}
 
@@ -60,17 +71,17 @@ platform darwin {
 
 configure.dir       ${workpath}/build
 configure.cmd       ${worksrcpath}/configure
+#                     --libdir=${prefix}/lib/${name}
 configure.args      --enable-languages=c,c++,objc,obj-c++,lto,fortran \
-                    --libdir=${prefix}/lib/${name} \
-                    --includedir=${prefix}/include/${name} \
-                    --infodir=${prefix}/share/info \
-                    --mandir=${prefix}/share/man \
-                    --datarootdir=${prefix}/share/gcc-${major} \
-                    --with-local-prefix=${prefix} \
+                    --includedir=${to_prefix}/include/${name} \
+                    --infodir=${to_prefix}/share/info \
+                    --mandir=${to_prefix}/share/man \
+                    --datarootdir=${to_prefix}/share/gcc-${major} \
+                    --with-local-prefix=${to_prefix} \
                     --with-system-zlib \
                     --disable-nls \
                     --program-suffix=-mp-${major} \
-                    --with-gxx-include-dir=${prefix}/include/${name}/c++/ \
+                    --with-gxx-include-dir=${to_prefix}/include/${name}/c++/ \
                     --with-gmp=${prefix} \
                     --with-mpfr=${prefix} \
                     --with-mpc=${prefix} \
@@ -94,18 +105,16 @@ configure.args      --enable-languages=c,c++,objc,obj-c++,lto,fortran \
 #                     OTOOL64=${prefix}/bin/otool
 
 configure.env-append \
-                      BOOT_LDFLAGS="-L${prefix}/lib -Wl,-rpath=${prefix}/lib" \
-                      LDFLAGS="-L${prefix}/lib -Wl,-rpath=${prefix}/lib" \
-                      LD_LIBRARY_PATH=${prefix}/lib
-build.env-append      LDFLAGS="-L${prefix}/lib -Wl,-rpath=${prefix}/lib" \
-                      BOOT_LDFLAGS="-L${prefix}/lib -Wl,-rpath=${prefix}/lib" \
-                      LD_LIBRARY_PATH=${prefix}/lib
-destroot.env-append   LDFLAGS="-L${prefix}/lib -Wl,-rpath=${prefix}/lib" \
-                      BOOT_LDFLAGS="-L${prefix}/lib -Wl,-rpath=${prefix}/lib" \
-                      LD_LIBRARY_PATH=${prefix}/lib
+                      BOOT_LDFLAGS="${configure.ldflags}" \
+                      LD_LIBRARY_PATH=${to_prefix}/lib:${prefix}/lib
+build.env-append      BOOT_LDFLAGS="${configure.ldflags}" \
+                      LD_LIBRARY_PATH=${to_prefix}/lib:${prefix}/lib
+destroot.env-append   BOOT_LDFLAGS="${configure.ldflags}" \
+                      LD_LIBRARY_PATH=${to_prefix}/lib:${prefix}/lib
 
 configure.args-append \
-                    --with-stage1-ldflags="-Wl,-rpath=${prefix}/lib -static-libstdc++ -static-libgcc"
+                    --with-stage1-ldflags="-Wl,-rpath=${to_prefix}/lib -Wl,-rpath=${prefix}/lib -static-libstdc++ -static-libgcc" \
+                    --enable-multiarch
 
 pre-configure {
     configure.args-append --with-pkgversion="MacPorts ${name} ${version}_${revision}${portvariants}"
@@ -203,19 +212,19 @@ if {${subport} eq "libgcc"} {
             # install symlinks to the set of standardLibs that have in this case been
             # installed by the main port. In other words, use the reverse logic to the
             # comparable foreach loop in the main port's post-destroot, minus the deleting.
-            xinstall -m 755 -d ${destroot}${prefix}/lib/libgcc
+            xinstall -m 755 -d ${destroot}${to_prefix}/lib/libgcc
             foreach dylib ${standardLibs} {
                 # Different OS versions (eg: Leopard) or architectures (eg: PPC) don't produce all the dylibs
                 # https://trac.macports.org/ticket/40098
                 # https://trac.macports.org/ticket/40100
-                if {[file exists ${prefix}/lib/${name}/${dylib}]} {
-                    ln -s ${prefix}/lib/${name}/${dylib} ${destroot}${prefix}/lib/libgcc/${dylib}
+                if {[file exists ${to_prefix}/lib/${name}/${dylib}]} {
+                    ln -s ${to_prefix}/lib/${name}/${dylib} ${destroot}${to_prefix}/lib/libgcc/${dylib}
                 }
 
                 if {[variant_isset universal]} {
-                    foreach archdir [glob ${prefix}/lib/${name}/*/] {
+                    foreach archdir [glob ${to_prefix}/lib/${name}/*/] {
                         if {[file exists ${archdir}/${dylib}]} {
-                            ln -s ${archdir}/${dylib} ${destroot}${prefix}/lib/libgcc/${dylib}
+                            ln -s ${archdir}/${dylib} ${destroot}${to_prefix}/lib/libgcc/${dylib}
                         }
                     }
                 }
@@ -233,8 +242,8 @@ if {${subport} eq "libgcc"} {
         depends_lib-delete path:lib/libgcc/libgcc_s.1.dylib:libgcc
         require_active_variants ${name} "" with_libgcc
 
-        configure.args-delete --libdir=${prefix}/lib/${name}
-        configure.args-append --libdir=${prefix}/lib/libgcc
+        configure.args-delete --libdir=${to_prefix}/lib/${name}
+        configure.args-append --libdir=${to_prefix}/lib/libgcc
 
         # TODO: Possibly disable bootstrap with appropriate configure flags.
         #       the problem is that libstdc++'s configure script tests for tls support
@@ -246,7 +255,7 @@ if {${subport} eq "libgcc"} {
         #build.target        all
 
         post-destroot {
-            file mkdir ${destroot}${prefix}/lib/libgcc.merged
+            file mkdir ${destroot}${to_prefix}/lib/libgcc.merged
 
             # Note that we really don't want to include libgcc_ext.10.[45].dylib here, but install_name_tool
             # doesn't know how to change the id of stubs, and it's easier than recreating them for each
@@ -257,20 +266,20 @@ if {${subport} eq "libgcc"} {
                 # Different OS versions (eg: Leopard) or architectures (eg: PPC) don't produce all the dylibs
                 # https://trac.macports.org/ticket/40098
                 # https://trac.macports.org/ticket/40100
-                if {! [file exists ${destroot}${prefix}/lib/libgcc/${dylib}]} {
+                if {! [file exists ${destroot}${to_prefix}/lib/libgcc/${dylib}]} {
                     continue
                 }
 
-                move ${destroot}${prefix}/lib/libgcc/${dylib} ${destroot}${prefix}/lib/libgcc.merged
+                move ${destroot}${to_prefix}/lib/libgcc/${dylib} ${destroot}${to_prefix}/lib/libgcc.merged
                 if {[variant_isset universal]} {
-                    foreach archdir [glob ${destroot}${prefix}/lib/libgcc/*/] {
+                    foreach archdir [glob ${destroot}${to_prefix}/lib/libgcc/*/] {
                         set archdir_nodestroot [string map "${destroot}/ /" ${archdir}]
                         if {[file exists ${archdir}/${dylib}]} {
-                            system "install_name_tool -id ${prefix}/lib/libgcc/${dylib} ${archdir}/${dylib}"
+                            system "install_name_tool -id ${to_prefix}/lib/libgcc/${dylib} ${archdir}/${dylib}"
                             foreach link ${dylibs} {
-                                system "install_name_tool -change ${archdir_nodestroot}${link} ${prefix}/lib/libgcc/${link} ${archdir}/${dylib}"
+                                system "install_name_tool -change ${archdir_nodestroot}${link} ${to_prefix}/lib/libgcc/${link} ${archdir}/${dylib}"
                             }
-                            system "lipo -create -output ${destroot}${prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${prefix}/lib/libgcc.merged/${dylib} ${archdir}/${dylib} && mv ${destroot}${prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${prefix}/lib/libgcc.merged/${dylib}"
+                            system "lipo -create -output ${destroot}${to_prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${to_prefix}/lib/libgcc.merged/${dylib} ${archdir}/${dylib} && mv ${destroot}${to_prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${to_prefix}/lib/libgcc.merged/${dylib}"
                         }
                     }
                 }
@@ -278,26 +287,26 @@ if {${subport} eq "libgcc"} {
                 # strip debug symbols to supress debugger warnings:
                 # http://trac.macports.org/attachment/ticket/34831
                 if {! [string match *libgcc_ext* ${dylib}]} {
-                    system "strip -x ${destroot}${prefix}/lib/libgcc.merged/${dylib}"
+                    system "strip -x ${destroot}${to_prefix}/lib/libgcc.merged/${dylib}"
                 }
             }
 
-            file delete -force ${destroot}${prefix}/bin
-            file delete -force ${destroot}${prefix}/share
-            file delete -force ${destroot}${prefix}/include
-            file delete -force ${destroot}${prefix}/lib/libgcc
-            file delete -force ${destroot}${prefix}/libexec
+            file delete -force ${destroot}${to_prefix}/bin
+            file delete -force ${destroot}${to_prefix}/share
+            file delete -force ${destroot}${to_prefix}/include
+            file delete -force ${destroot}${to_prefix}/lib/libgcc
+            file delete -force ${destroot}${to_prefix}/libexec
 
-            move ${destroot}${prefix}/lib/libgcc.merged ${destroot}${prefix}/lib/libgcc
+            move ${destroot}${to_prefix}/lib/libgcc.merged ${destroot}${to_prefix}/lib/libgcc
 
             # For binary compatibility with binaries that linked against the old libstdcxx port
-            ln -s libgcc/libstdc++.6.dylib ${destroot}${prefix}/lib/libstdc++.6.dylib
+            ln -s libgcc/libstdc++.6.dylib ${destroot}${to_prefix}/lib/libstdc++.6.dylib
         }
     }
 
     ### MacStrop private
     post-destroot {
-        preserve_libraries ${prefix}/lib/libgcc lib*.*.dylib
+        preserve_libraries ${to_prefix}/lib/libgcc lib*.*.dylib
     }
     ### MacStrop private
 
@@ -313,9 +322,9 @@ if {[variant_isset with_libgcc]} {
 }
 
 post-destroot {
-    file delete ${destroot}${prefix}/share/info/dir
+    file delete ${destroot}${to_prefix}/share/info/dir
 
-    foreach file [glob ${destroot}${prefix}/share/{info,man/man7}/*] {
+    foreach file [glob ${destroot}${to_prefix}/share/{info,man/man7}/*] {
         set extension [file extension ${file}]
         set newfile [regsub "${extension}$" ${file} "-mp-${major}${extension}"]
 
@@ -327,52 +336,71 @@ post-destroot {
             # Different OS versions (eg: Leopard) or architectures (eg: PPC) don't produce all the dylibs
             # https://trac.macports.org/ticket/40098
             # https://trac.macports.org/ticket/40100
-            if {[file exists ${destroot}${prefix}/lib/${name}/${dylib}]} {
-                delete ${destroot}${prefix}/lib/${name}/${dylib}
-                ln -s ${prefix}/lib/libgcc/${dylib} ${destroot}${prefix}/lib/${name}/${dylib}
+            if {[file exists ${destroot}${to_prefix}/lib/${name}/${dylib}]} {
+                delete ${destroot}${to_prefix}/lib/${name}/${dylib}
+                ln -s ${to_prefix}/lib/libgcc/${dylib} ${destroot}${to_prefix}/lib/${name}/${dylib}
             }
 
             if {[variant_isset universal]} {
-                foreach archdir [glob ${destroot}${prefix}/lib/${name}/*/] {
+                foreach archdir [glob ${destroot}${to_prefix}/lib/${name}/*/] {
                     if {[file exists ${archdir}/${dylib}]} {
                         delete ${archdir}/${dylib}
-                        ln -s ${prefix}/lib/libgcc/${dylib} ${archdir}/${dylib}
+                        ln -s ${to_prefix}/lib/libgcc/${dylib} ${archdir}/${dylib}
                     }
                 }
             }
         }
     }
     proc replace_hardlink {bname} {
-        global destroot prefix major version
-        if {[file exists ${destroot}${prefix}/bin/${bname}-mp-${major}]} {
-            if {[file exists ${destroot}${prefix}/bin/x86_64-pc-linux-gnu-${bname}-mp-${major}]} {
-                file delete ${destroot}${prefix}/bin/${bname}-mp-${major}
-                ln -s x86_64-pc-linux-gnu-${bname}-mp-${major} ${destroot}${prefix}/bin/${bname}-mp-${major}
-            } elseif {[file exists ${destroot}${prefix}/bin/x86_64-pc-linux-gnu-${bname}-mp-${version}]} {
-                file delete ${destroot}${prefix}/bin/${bname}-mp-${major}
-                ln -s x86_64-pc-linux-gnu-${bname}-mp-${version} ${destroot}${prefix}/bin/${bname}-mp-${major}
+        global destroot prefix to_prefix major version
+        if {[file exists ${destroot}${to_prefix}/bin/${bname}-mp-${major}]} {
+            if {[file exists ${destroot}${to_prefix}/bin/x86_64-pc-linux-gnu-${bname}-mp-${major}]} {
+                file delete ${destroot}${to_prefix}/bin/${bname}-mp-${major}
+                ln -s x86_64-pc-linux-gnu-${bname}-mp-${major} ${destroot}${to_prefix}/bin/${bname}-mp-${major}
+                if {${to_prefix} ne ${prefix}} {
+                    ln -s ${to_prefix}/bin/x86_64-pc-linux-gnu-${bname}-mp-${major} ${destroot}${prefix}/bin/${bname}-mp-${major}
+                }
+            } elseif {[file exists ${destroot}${to_prefix}/bin/x86_64-pc-linux-gnu-${bname}-mp-${version}]} {
+                file delete ${destroot}${to_prefix}/bin/${bname}-mp-${major}
+                ln -s x86_64-pc-linux-gnu-${bname}-mp-${version} ${destroot}${to_prefix}/bin/${bname}-mp-${major}
+                if {${to_prefix} ne ${prefix}} {
+                    ln -s ${to_prefix}/bin/x86_64-pc-linux-gnu-${bname}-mp-${version} ${destroot}${prefix}/bin/${bname}-mp-${major}
+                }
             }
         }
     }
     foreach bin {c++ cpp gcc-ar gcc gcc-nm gcc-ranlib gcov-dump gcov gcov-tool gfortran g++} {
         replace_hardlink ${bin}
     }
-#     # needs the patchelfmod package (ubuntu):
-#     foreach bin [glob -nocomplain ${destroot}${prefix}/bin/*] {
-#         system "patchelfmod -R ${prefix}/lib ${bin}"
-#     }
-#     foreach bin [glob -nocomplain ${destroot}${prefix}/libexec/gcc/*/*/*] {
-#         catch {set result [system "patchelfmod -R ${prefix}/lib ${bin}"]}
-#     }
-#     foreach bin [glob -nocomplain ${destroot}${prefix}/lib/gcc7/gcc/*/*/plugin/*] {
-#         catch {set result [system "patchelfmod -R ${prefix}/lib ${bin}"]}
-#     }
-#     foreach bin [glob -nocomplain ${destroot}${prefix}/lib/*/*] {
-#         catch {set result [system "patchelfmod -R ${prefix}/lib ${bin}"]}
-#     }
-#     foreach bin [glob -nocomplain ${destroot}${prefix}/lib/*/libstdc++.so] {
-#         catch {set result [system "patchelfmod -a ${prefix}/lib/libintl.so.8 ${bin}"]}
-#     }
+
+    # needs the patchelfmod package (ubuntu):
+    foreach bin [glob -nocomplain ${destroot}${to_prefix}/bin/*] {
+        system "patchelfmod -R ${to_prefix}/lib ${bin}"
+        if {${to_prefix} ne ${prefix}} {
+            system "patchelfmod -R ${prefix}/lib ${bin}"
+        }
+    }
+    foreach bin [glob -nocomplain ${destroot}${to_prefix}/libexec/gcc/*/*/*] {
+        catch {set result [system "patchelfmod -R ${to_prefix}/lib ${bin}"]}
+        if {${to_prefix} ne ${prefix}} {
+            catch {set result [system "patchelfmod -R ${prefix}/lib ${bin}"]}
+        }
+    }
+    foreach bin [glob -nocomplain ${destroot}${to_prefix}/lib/gcc7/gcc/*/*/plugin/*] {
+        catch {set result [system "patchelfmod -R ${to_prefix}/lib ${bin}"]}
+        if {${to_prefix} ne ${prefix}} {
+            catch {set result [system "patchelfmod -R ${prefix}/lib ${bin}"]}
+        }
+    }
+    foreach bin [glob -nocomplain ${destroot}${to_prefix}/lib/*/*] {
+        catch {set result [system "patchelfmod -R ${to_prefix}/lib ${bin}"]}
+        if {${to_prefix} ne ${prefix}} {
+            catch {set result [system "patchelfmod -R ${prefix}/lib ${bin}"]}
+        }
+    }
+# #     foreach bin [glob -nocomplain ${destroot}${to_prefix}/lib/*/libstdc++.so] {
+# #         catch {set result [system "patchelfmod -a ${to_prefix}/lib/libintl.so.8 ${bin}"]}
+# #     }
 }
 
 select.group        gcc
