@@ -35,6 +35,11 @@ use_parallel_build  yes
 test.run        yes
 test.target     check
 
+post-destroot {
+    # remove a file that would mess up building libgphoto2
+    file delete -force ${destroot}${prefix}/lib/libexif.la
+}
+
 variant doc description {Install extra documentation} {
     depends_build-append    port:doxygen \
                             path:bin/dot:graphviz
