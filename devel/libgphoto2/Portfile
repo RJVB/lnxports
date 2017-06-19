@@ -34,11 +34,6 @@ depends_lib         path:lib/libjpeg.la:jpeg \
 patch.pre_args      -p1
 patchfiles          GPPort.patch
 
-# don't let the configure script attempt to use libexif.la
-configure.env-append \
-                    LIBEXIF_CFLAGS=${prefix}/include \
-                    LIBEXIF_LIBS=${prefix}/lib/libexif.so
-
 configure.args      --disable-nls \
                     --with-drivers=all \
                     --with-libexif=${prefix} \
