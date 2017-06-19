@@ -29,11 +29,12 @@ checksums           rmd160  70a31b194db1c053ed5461e1ec8c241fb67f4874 \
 
 minimum_xcodeversions {9 3.1}
 
-depends_build       port:yasm
+# depends_build       port:yasm
 
 configure.args      --enable-pic \
                     --enable-shared \
                     --enable-static \
+                    --enable-lto \
                     --disable-avs \
                     --disable-swscale \
                     --disable-lavf \
@@ -77,7 +78,7 @@ platform darwin 8 {
 
 # sets its own optflags
 configure.optflags
-configure.cflags-append -I. -fno-common -read_only_relocs suppress
+configure.cflags-append -I. -fno-common
 
 destroot.args       DIR_INSTALL=${destroot}${prefix}
 
