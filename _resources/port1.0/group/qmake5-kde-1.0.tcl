@@ -149,7 +149,14 @@ pre-configure {
     if { ${configure.compiler} ne "clang" } {
         puts ${qt5::cache} "QMAKE_CC=${configure.cc}"
         puts ${qt5::cache} "QMAKE_CXX=${configure.cxx}"
+        puts ${qt5::cache} "QMAKE_LINK_C=${configure.cc}"
+        puts ${qt5::cache} "QMAKE_LINK_C_SHLIB=${configure.cc}"
+        puts ${qt5::cache} "QMAKE_LINK=${configure.cxx}"
+        puts ${qt5::cache} "QMAKE_LINK_SHLIB=${configure.cxx}"
     }
+    # add our compiler options
+    puts ${qt5::cache} "QMAKE_CFLAGS+=${configure.cflags}"
+    puts ${qt5::cache} "QMAKE_CXXFLAGS+=${configure.cxxflags}"
 
     set qt5::qt_version [qt5.active_version]
 
