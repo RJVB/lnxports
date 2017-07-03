@@ -34,5 +34,8 @@ depends_lib-append  port:shared-mime-info \
                     port:libxml2 \
                     port:perl5
 
+patch.pre_args      -Np1
+patchfiles-append   patch-add-temp-conversion.diff
+
 livecheck.url       http://kde.mirrors.hoobly.com/stable/
 livecheck.regex     (\\d+(\\.\\d+)+)
