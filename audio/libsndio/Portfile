@@ -1,0 +1,44 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
+
+PortSystem 1.0
+
+name                libsndio
+version             1.2.0
+categories          audio
+license             ISCL
+maintainers         gmail.com:rjvbertin
+description         Sndio is a small audio and MIDI framework part of the OpenBSD project.
+long_description    libsndio provides an lightweight audio & MIDI server and a fully documented \
+                    user-space API to access either the server or directly the hardware in \
+                    a uniform way.  Sndio is designed to work for desktop applications, \
+                    but pays special attention to synchronisation mechanisms and \
+                    reliability required by music applications.  Reliability through \
+                    simplicity are part of the project goals.
+homepage            http://www.sndio.org
+platforms           linux
+master_sites        ${homepage}
+distname            sndio-${version}
+checksums           rmd160  8533336f667687ccd2b1ca2a3252a1ff88596cfe \
+                    sha256  b9808e189481904a4404b0c1715ad0c4b301e72abca8e49653bb526ff4e16cdc
+
+depends_build       port:pkgconfig
+
+configure.args      --precision=24 \
+                    --enable-umidi
+build.args          "CPPFLAGS+=\"${configure.cppflags}\"" \
+                    "CFLAGS+=\"${configure.optflags}\"" \
+                    "LDFLAGS+=\"${configure.ldflags}\""
+
+post-destroot {
+}
+
+pre-install {
+    if {![file exists /var/run/sndiod]} {
+        system "mkdir -p /var/run/sndiod"
+        system "useradd -r -g audio -s /sbin/nologin -d /var/run/sndiod sndiod"
+    }
+}
+
+livecheck.type      regex
+livecheck.url       ${homepage}
+livecheck.regex     "sndio-(\\d+(?:\\.\\d+)*)${extract.suffix}"
