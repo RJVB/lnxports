@@ -180,9 +180,11 @@ platform linux {
                         port:libdvdnav \
                         port:gnutls \
                         port:fluidsynth \
+                        port:libsndio \
                         port:portaudio
     configure.ldflags-append \
-                        -Wl,-rpath=${prefix}/lib
+                        -Wl,-rpath=${prefix}/lib \
+                        -Wl,-rpath=${prefix}/lib/lua-5.2
     configure.args-append \
                         --enable-rpath \
                         --enable-dependency-tracking \
@@ -241,10 +243,8 @@ platform linux {
     # VLC 2.2.2 should have full Lua 5.3 compatibility, for now, depend on port:lua52
     # That requires the patch-for-lua52.diff which is appended to patchfiles below.
     # update 2.2.2 : lua 5.3 gives compiler syntax errors so we stick with 5.2 for now.
-    platform darwin {
-        depends_lib-append  port:lua52
-        # depends_lib-append  port:lua
-    }
+    depends_lib-append  port:lua52
+    # depends_lib-append  port:lua
 
     # VLC doesn't currently build for me using port:clang-3.8
     compiler.blacklist-append \
@@ -307,7 +307,8 @@ platform linux {
     #    system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-static_assert.diff"
     #}
 
-    use_autoreconf      yes
+    # do autoreconf only the first time around
+    use_autoreconf      [expr ![file exists ${worksrcpath}/config.status]]
     autoreconf.cmd      ./bootstrap
     autoreconf.pre_args
     autoreconf.args
@@ -323,7 +324,7 @@ platform linux {
     build.args-append    DESTDIR=${worksrcpath}/dest_ignore V=1
 
     # gl.c:121:3: error: Platform not recognized.
-    configure.cppflags-append -D__unix__=1
+    configure.cppflags-append -D__unix__=1 -Wno-unknown-pragmas
 
     # live555 is installed to a weird location
     configure.cppflags-append -I${prefix}/lib/live/liveMedia/include
@@ -340,7 +341,7 @@ platform linux {
                         --disable-debug --disable-update-check --enable-gnutls \
                         --disable-notify --disable-dbus --enable-lua \
                         --disable-gnomevfs --disable-growl --disable-macosx-vlc-app \
-				    --disable-atmo
+                        --disable-atmo
 
     # Input Plugins
     configure.args-append \
