@@ -1,0 +1,39 @@
+--- src/luaconf.h.orig
++++ src/luaconf.h
+@@ -100,7 +100,7 @@
+ #else			/* }{ */
+ 
+ #define LUA_VDIR	LUA_VERSION_MAJOR "." LUA_VERSION_MINOR "/"
+-#define LUA_ROOT	"/usr/local/"
++#define LUA_ROOT	"@PREFIX@/"
+ #define LUA_LDIR	LUA_ROOT "share/lua/" LUA_VDIR
+ #define LUA_CDIR	LUA_ROOT "lib/lua/" LUA_VDIR
+ #define LUA_PATH_DEFAULT  \
+--- src/orig.luaconf.h	2017-07-15 09:57:24.000000000 +0200
++++ src/luaconf.h	2017-07-15 10:11:33.749746599 +0200
+@@ -174,17 +174,17 @@
+ ** give a warning about it. To avoid these warnings, change to the
+ ** default definition.
+ */
+-#if defined(__GNUC__) && ((__GNUC__*100 + __GNUC_MINOR__) >= 302) && \
+-    defined(__ELF__)		/* { */
+-#define LUAI_FUNC	__attribute__((visibility("hidden"))) extern
+-#define LUAI_DDEC	LUAI_FUNC
+-#define LUAI_DDEF	/* empty */
+-
+-#else				/* }{ */
++// #if defined(__GNUC__) && ((__GNUC__*100 + __GNUC_MINOR__) >= 302) && \
++//     defined(__ELF__)		/* { */
++// #define LUAI_FUNC	__attribute__((visibility("hidden"))) extern
++// #define LUAI_DDEC	LUAI_FUNC
++// #define LUAI_DDEF	/* empty */
++// 
++// #else				/* }{ */
+ #define LUAI_FUNC	extern
+ #define LUAI_DDEC	extern
+ #define LUAI_DDEF	/* empty */
+-#endif				/* } */
++// #endif				/* } */
+ 
+ 
+ 
