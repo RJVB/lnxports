@@ -1,0 +1,17 @@
+--- src/orig.evdev.c	2017-07-19 04:49:23.000000000 +0200
++++ src/evdev.c	2017-08-04 18:00:04.289842086 +0200
+@@ -2942,10 +2942,10 @@
+ 		goto err;
+ 
+ 	libevdev_set_clock_id(device->evdev, CLOCK_MONOTONIC);
+-	libevdev_set_device_log_function(device->evdev,
+-					 libevdev_log_func,
+-					 LIBEVDEV_LOG_ERROR,
+-					 libinput);
++// 	libevdev_set_device_log_function(device->evdev,
++// 					 libevdev_log_func,
++// 					 LIBEVDEV_LOG_ERROR,
++// 					 libinput);
+ 	device->seat_caps = 0;
+ 	device->is_mt = 0;
+ 	device->mtdev = NULL;
