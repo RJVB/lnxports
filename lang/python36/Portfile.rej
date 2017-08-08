@@ -1,0 +1,67 @@
+--- /opt/local/var/macports/sources/git.macports.org/dports/lang/python35/Portfile	2017-05-09 16:33:36.036086334 +0200
++++ Portfile	2017-08-08 11:32:53.371005190 +0200
+@@ -10,6 +11,9 @@
+ version             3.5.3
+ revision            1
+ 
++# hopefully this is just the case for python 3.5.3:
++conflicts_build     ${subport}
++
+ epoch               20170117
+ 
+ set major           [lindex [split $version .] 0]
+@@ -119,26 +123,39 @@
+     set framewpath ${frameworks_dir}/Python.framework
+     set framewdir  ${framewpath}/Versions/${branch}
+ 
+-    foreach dir { Headers Resources Python Versions/Current } {
+-        file delete ${destroot}${framewpath}/${dir}
+-    }
++    platform darwin {
++        foreach dir { Headers Resources Python Versions/Current } {
++            file delete ${destroot}${framewpath}/${dir}
++        }
+ 
+-    ln -s ${framewdir}/share/man/man1/python${branch}.1 ${destroot}${prefix}/share/man/man1/
++        ln -s ${framewdir}/share/man/man1/python${branch}.1 ${destroot}${prefix}/share/man/man1/
+ 
+-    # Without this, LINKFORSHARED is set to
+-    # ... $(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)
+-    # (this becomes Python.framework/Versions/3.2/Python) which doesn't
+-    # quite work (see ticket #15099); instead specifically list the
+-    # full path to the proper Python framework file (which becomes
+-    # ${prefix}/Library/Frameworks/Python.framework/Versions/3.2/Python)
+-    reinplace {s|^\(LINKFORSHARED=.*\)$(PYTHONFRAMEWORKDIR).*$|\1 $(PYTHONFRAMEWORKINSTALLDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)|} ${destroot}${framewdir}/lib/python${branch}/$confdir/Makefile
+-
+-    # remove -arch flags from the config
+-    reinplace -E {s|-arch [a-z0-9_]+||g} \
+-      ${destroot}${framewdir}/lib/python${branch}/$confdir/Makefile
++        # Without this, LINKFORSHARED is set to
++        # ... $(PYTHONFRAMEWORKDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)
++        # (this becomes Python.framework/Versions/3.2/Python) which doesn't
++        # quite work (see ticket #15099); instead specifically list the
++        # full path to the proper Python framework file (which becomes
++        # ${prefix}/Library/Frameworks/Python.framework/Versions/3.2/Python)
++        reinplace {s|^\(LINKFORSHARED=.*\)$(PYTHONFRAMEWORKDIR).*$|\1 $(PYTHONFRAMEWORKINSTALLDIR)/Versions/$(VERSION)/$(PYTHONFRAMEWORK)|} ${destroot}${framewdir}/lib/python${branch}/$confdir/Makefile
++
++        # remove -arch flags from the config
++        reinplace -E {s|-arch [a-z0-9_]+||g} \
++            ${destroot}${framewdir}/lib/python${branch}/$confdir/Makefile
++    }
+     foreach unversioned {2to3 idle3 pydoc3 python3 python3-config pyvenv} {
+         delete ${destroot}${prefix}/bin/${unversioned}
+     }
++    platform linux {
++#         xinstall -m 755 -d ${destroot}${framewdir}/lib/python${branch}
++#         ln -s ../../../../../../../lib/python${branch}/site-packages ${destroot}${framewdir}/lib/python${branch}/site-packages
++        xinstall -m 755 -d ${destroot}${framewdir}/lib
++        ln -s ../../../../../../lib/python${branch} ${destroot}${framewdir}/lib/python${branch}
++        xinstall -m 755 -d ${destroot}${framewdir}/bin
++        foreach b [glob -nocomplain ${destroot}${prefix}/bin/*] {
++            ln -s ${prefix}/bin/[file tail ${b}] ${destroot}${framewdir}/bin
++        }
++        system -W ${destroot}${prefix} "find lib -name \"*.pyc\" | xargs rm"
++    }
+ }
+ 
+ platform darwin {

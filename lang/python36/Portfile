@@ -4,16 +4,12 @@ PortSystem 1.0
 PortGroup select 1.0
 PortGroup conflicts_build 1.0
 
-name                python35
+name                python36
 
-# Remember to keep py35-tkinter and py35-gdbm's versions sync'd with this
-version             3.5.3
-revision            1
+# Remember to keep py36-tkinter and py36-gdbm's versions sync'd with this
+version             3.6.2
 
-# hopefully this is just the case for python 3.5.3:
-conflicts_build     ${subport}
-
-epoch               20170117
+epoch               20170717
 
 set major           [lindex [split $version .] 0]
 set branch          [join [lrange [split ${version} .] 0 1] .]
@@ -28,13 +24,14 @@ long_description    Python is an interpreted, interactive, object-oriented \
 
 homepage            http://www.python.org/
 master_sites        ${homepage}ftp/python/${version}/
+#master_sites        ${homepage}ftp/python/3.6.0/
 
 distname            Python-${version}
 
 use_xz              yes
 
-checksums           rmd160  663ad06b0c4b36e7760f5202e73bc53697f225d2 \
-                    sha256  eefe2ad6575855423ab630f5b51a8ef6e5556f774584c06beab4926f930ddbb0
+checksums           rmd160  243d052f3e54426d77d41b33d01adba598dc4d65 \
+                    sha256  9229773be41ed144370f47f0f626a1579931f5a390f1e8e3853174d52edd64a9
 
 patchfiles          patch-setup.py.diff \
                     patch-Lib-cgi.py.diff \
@@ -43,7 +40,7 @@ patchfiles          patch-setup.py.diff \
                     patch-Lib-ctypes-macholib-dyld.py.diff \
                     patch-libedit.diff \
                     omit-local-site-packages.patch \
-                    patch-xcode4bug.diff
+                    patch-configure-xcode4bug.diff
 
 depends_lib         port:zlib path:lib/libssl.dylib:openssl \
                     port:sqlite3 port:ncurses \
@@ -103,6 +100,14 @@ select.entries      [list python python-$pythonNoDot $pythonNoDot] \
 
 set confdir config-${branch}m
 
+platform darwin {
+    set confdir config-${branch}m-darwin
+    post-configure {
+        # See http://trac.macports.org/ticket/18376
+        system -W ${worksrcpath} "ed - pyconfig.h < ${filespath}/pyconfig.ed"
+   }
+}
+
 notes "
 To make this the default Python or Python 3 (i.e., the version run by\
 the 'python' or 'python3' commands), run one or both of:
@@ -139,14 +144,12 @@ post-destroot {
 
         # remove -arch flags from the config
         reinplace -E {s|-arch [a-z0-9_]+||g} \
-            ${destroot}${framewdir}/lib/python${branch}/$confdir/Makefile
+           ${destroot}${framewdir}/lib/python${branch}/$confdir/Makefile
     }
     foreach unversioned {2to3 idle3 pydoc3 python3 python3-config pyvenv} {
         delete ${destroot}${prefix}/bin/${unversioned}
     }
     platform linux {
-#         xinstall -m 755 -d ${destroot}${framewdir}/lib/python${branch}
-#         ln -s ../../../../../../../lib/python${branch}/site-packages ${destroot}${framewdir}/lib/python${branch}/site-packages
         xinstall -m 755 -d ${destroot}${framewdir}/lib
         ln -s ../../../../../../lib/python${branch} ${destroot}${framewdir}/lib/python${branch}
         xinstall -m 755 -d ${destroot}${framewdir}/bin
@@ -160,17 +163,10 @@ post-destroot {
     }
 }
 
-platform darwin {
-    post-configure {
-        # See http://trac.macports.org/ticket/18376
-        system -W ${worksrcpath} "ed - pyconfig.h < ${filespath}/pyconfig.ed"
-    }
-}
-
 variant readline description {Use readline instead of libedit} {
-     patchfiles-delete       patch-libedit.diff
-     depends_lib-append      port:readline
-     depends_lib-delete      port:libedit
+    patchfiles-delete       patch-libedit.diff
+    depends_lib-append      port:readline
+    depends_lib-delete      port:libedit
 }
 
 variant universal {
@@ -217,4 +213,4 @@ livecheck.type      regex
 livecheck.url       ${homepage}downloads/source/
 livecheck.regex     Python (${branch}(?:\\.\\d+)*)
 #regex below just for test releases, proper above
-#livecheck.regex     Python\[ 	\]+(3.5.0\[abrc\]+\[0-9\])
+#livecheck.regex     Python\[ 	\]+(3.6.0\[abrc\]+\[0-9\])
