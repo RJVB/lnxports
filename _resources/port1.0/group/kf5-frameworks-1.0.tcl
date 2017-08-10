@@ -272,8 +272,12 @@ kf5::framework_dependency    khtml libKF5KHtml
 kf5::framework_dependency    kross libKF5KrossCore
 kf5::framework_dependency    krunner libKF5Runner
 kf5::framework_dependency    kwayland libKF5WaylandClient
+set kf5::kirigami_dep        path:${qt_qml_dir}/org/kde/kirigami/libkirigamiplugin.${kf5::libs_ext}:kf5-kirigami
+set kf5::kirigami2_dep       path:${qt_qml_dir}/org/kde/kirigami.2/libkirigamiplugin.${kf5::libs_ext}:kf5-kirigami2
 
 # not a framework; use the procedure to define the path-style dependency
 kf5::framework_dependency    cli-tools libkdeinit5_kcmshell5 ""
+
+set kf5::osx-integration_dep path:${qt_cmake_module_dir}/KF5OSXIntegration/KF5OSXIntegrationConfig.cmake:kf5-osx-integration-devel
 
 # kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax MacPorts/Portfile; tab-indents true; tab-width 4;

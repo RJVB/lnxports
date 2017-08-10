@@ -1,0 +1,16 @@
+--- orig.CMakeLists.txt	2017-08-10 10:37:44.810564080 +0200
++++ CMakeLists.txt	2017-08-10 10:31:59.451571680 +0200
+@@ -33,6 +33,7 @@
+ include(CheckStructHasMember)
+ include(CheckFileOffsetBits)
+ include(GNUInstallDirs)
++include(FeatureSummary)
+ 
+ SET(CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE)
+ 
+@@ -1550,3 +1551,5 @@
+         MESSAGE(STATUS "")
+     ENDIF()
+ ENDIF()
++
++feature_summary(WHAT ALL   FATAL_ON_MISSING_REQUIRED_PACKAGES)

@@ -1,5 +1,4 @@
 # -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
-# $Id: kf5-1.1.tcl 134210 2015-03-20 06:40:18Z mk@macports.org $
 
 # Copyright (c) 2015 The MacPorts Project
 # Copyright (c) 2015, 2016 R.J.V. Bertin
@@ -105,33 +104,32 @@ if { ![ info exists kf5.project ] } {
 
 # KF5 frameworks current version, which is the same for all frameworks
 if {![info exists kf5.version]} {
-    set kf5.version     5.29.0
+    set kf5.version     5.35.0
     # kf5.latest_version is supposed to be used only in the KF5-Frameworks Portfile
     # when updating it to the new version (=kf5.latest_version). This feature is
     # activated only when a file `port dir KF5-Frameworks`/files/enable_latest exists.
-    set kf5.latest_version \
-                        5.29.0
+    # The variable is thus no longer defined here.
 }
 
 # KF5 Applications version
 if {![ info exists kf5.release ]} {
-    set kf5.release     16.12.0
+    set kf5.release     17.04.2
     set kf5.latest_release \
-                        16.12.1
+                        17.04.2
 }
 
 # KF5 Plasma version
 if {![ info exists kf5.plasma ]} {
-    set kf5.plasma      5.8.4
+    set kf5.plasma      5.10.2
     set kf5.latest_plasma \
-                        5.8.4
+                        5.10.3
 }
 
 platforms               darwin linux
 categories              kf5 kde devel
 license                 GPL-2+
 
-set kf5.branch           [join [lrange [split ${kf5.version} .] 0 1] .]
+set kf5.branch          [join [lrange [split ${kf5.version} .] 0 1] .]
 
 if {${kf5::includecounter} == 0} {
 
@@ -141,7 +139,7 @@ if {${kf5::includecounter} == 0} {
     configure.cppflags-delete -I${prefix}/include
 
     if {![info exists kf5.dont_use_xz]} {
-        use_xz              yes
+        use_xz          yes
     }
 
     # kf5.py* variable definitions (now kf5::py* namespaced variables) were
@@ -153,7 +151,7 @@ if {${kf5::includecounter} == 0} {
     #     if {![file exists ${qt_includes_dir}/QtCore/qextstandardpaths.h]}
         if {![catch {set result [active_variants qt5-qtbase {}]}]} {
             ui_debug "port:qt5-qtbase is installed and active"
-            default_variants    +nativeQSP
+            default_variants +nativeQSP
         }
 
         if {![variant_isset nativeQSP]} {
@@ -174,9 +172,6 @@ if {${kf5::includecounter} == 0} {
     depends_build-append    path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
 
     # configure.args-append   -G "\"CodeBlocks - Unix Makefiles\""
-
-    # Use directory set by qt5-kde or qt5-mac
-    configure.args-append   -DECM_MKSPECS_INSTALL_DIR=${qt_mkspecs_dir}/modules
 
     # set a best-compromise plugin destination directory, the one from Qt5.
     # this is also what Kubuntu does, and possibly the only way to ensure that Qt5
@@ -205,6 +200,8 @@ if {${kf5::includecounter} == 0} {
         set kf5.applications_dir \
                             ${applications_dir}/KF5
         set kf5.libexec_dir ${prefix}/libexec/kde5
+        set kf5.pkgconfig_dir \
+                            ${prefix}/lib/pkgconfig
         configure.args-append \
                             -DBUNDLE_INSTALL_DIR=${kf5.applications_dir} \
                             -DCMAKE_DISABLE_FIND_PACKAGE_X11=ON \
@@ -217,10 +214,17 @@ if {${kf5::includecounter} == 0} {
         set kf5.applications_dir \
                             ${prefix}/bin
         set kf5.libexec_dir ${prefix}/lib/${build_arch}-linux-gnu/libexec
+        set kf5.pkgconfig_dir \
+                            ${prefix}/lib/${build_arch}-linux-gnu/pkgconfig
         cmake.install_rpath-prepend \
                             ${prefix}/lib/${build_arch}-linux-gnu
         configure.args-append \
                             -DCMAKE_PREFIX_PATH=${prefix}
+        variant libcxx description {highly experimental option to build against libc++. \
+                Requires using clang and an independently provided libc++ installation.} {
+            configure.cxx_stdlib \
+                            libc++
+        }
     }
     configure.args-append   -DSYSCONF_INSTALL_DIR="${prefix}/etc"
     set kf5.docs_dir        ${prefix}/share/doc/kf5
@@ -237,11 +241,11 @@ if {${kf5::includecounter} == 0} {
                             -DBUILD_doc=OFF \
                             -DBUILD_docs=OFF
         if {${subport} ne "kf5-kapidox" && ${subport} ne "kf5-kapidox-devel"} {
-            if {![info exists kf5.framework]} {
-                kf5.depends_build_frameworks \
+            if {[tbool kf5.allow_apidocs_generation]} {
+                if {![info exists kf5.framework]} {
+                    kf5.depends_build_frameworks \
                             kdoctools
-            }
-            if {[info exists kf5.allow_apidocs_generation] && ${kf5.allow_apidocs_generation}} {
+                }
                 if {[info exists kf5.framework]} {
                     # KF5 frameworks are more or less guaranteed to have a metainfo.yaml file
                     # which is required for newer kapidox versions. We could check for
@@ -255,77 +259,6 @@ if {${kf5::includecounter} == 0} {
                     kf5.depends_build_frameworks \
                             kgenapidox
                 }
-                post-build {
-                    ui_msg "--->  Generating documentation for ${subport} (this can take a while)"
-                    # generate the documentation, working from ${build.dir}
-                    file delete -force ${workpath}/apidocs
-                    xinstall -m 755 -d ${workpath}/apidocs
-                    if {[variant_exists chm] && [variant_isset chm]} {
-                        set chmargs "--chm --chmcompiler ${prefix}/bin/chmcmd"
-                    } else {
-                        set chmargs ""
-                    }
-                    # this appears to be necessary, sometimes:
-                    system "chmod 755 ${workpath}/apidocs"
-                    if {[info exists kf5.framework]} {
-                        if {[catch {system -W ${build.dir} "kapidox_generate --qhp --searchengine --api-searchbox --indexing \
-                            ${chmargs} \
-                            --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${qt_bins_dir}/qhelpgenerator \
-                            ${worksrcpath}"} result context]} {
-                            ui_msg "Failure generating documentation: ${result}"
-                        }
-                        # after creating the destination, copy all generated qch documentation to it
-                        foreach doc [glob -nocomplain ${build.dir}/frameworks/*/qch/*.qch \
-                                ${build.dir}/*/qch/*.qch ${build.dir}/*/html/*.chm] {
-                            if {[file tail ${doc}] ne "None.qch"} {
-                                system "chmod 644 ${doc}"
-                                xinstall -m 644 ${doc} ${workpath}/apidocs/
-                            }
-                        }
-                        file delete -force ${build.dir}/${kf5.framework}-${version}
-                    } else {
-                        system -W ${build.dir} "kgenapidox --qhp --searchengine --api-searchbox \
-                            ${chmargs} \
-                            --qtdoc-dir ${qt_docs_dir} --kdedoc-dir ${kf5.docs_dir} \
-                            --qhelpgenerator ${qt_bins_dir}/qhelpgenerator ${worksrcpath}"
-                        # after creating the destination, copy all generated qch documentation to it
-                        foreach doc [glob -nocomplain ${build.dir}/apidocs/qch/*.qch  ${build.dir}/apidocs/html/*.chm] {
-                            if {[file tail ${doc}] ne "None.qch"} {
-                                system "chmod 644 ${doc}"
-                                xinstall -m 644 ${doc} ${workpath}/apidocs/
-                            }
-                        }
-                        file delete -force ${build.dir}/apidocs
-                    }
-                }
-                post-destroot {
-                    xinstall -m 755 -d ${destroot}${kf5.docs_dir}
-                    # this appears to be necessary, sometimes:
-                    system "chmod 755 ${destroot}${kf5.docs_dir}"
-                    foreach doc [glob -nocomplain ${workpath}/apidocs/*.qch] {
-                        xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
-                        if {[info procs qt5.register_qch_files] ne ""} {
-                            qt5.register_qch_files ${kf5.docs_dir}/[file tail ${doc}]
-                        }
-                    }
-                    if {[variant_exists chm] && [variant_isset chm]} {
-                        foreach doc [glob -nocomplain ${workpath}/apidocs/*.chm] {
-                            xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if {![variant_isset docs]} {
-        # 20160325 : do this in the post-patch so patches around the targeted won't need to be
-        # specific for +docs and -docs !
-        post-patch {
-            if {[file exists ${worksrcpath}/CMakeLists.txt]} {
-                reinplace "/add_subdirectory.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
-                reinplace "/add_subdirectory.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
-                reinplace "/ADD_SUBDIRECTORY.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
-                reinplace "/ADD_SUBDIRECTORY.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
             }
         }
     }
@@ -357,42 +290,37 @@ if {${kf5::includecounter} == 0} {
         set kf5::libs_ext   so
     }
 
-    if {![info exists kf5.framework] && ![info exists kf5.portingAid]} {
-        # explicitly define certain headers and libraries, to avoid
-        # conflicts with those installed into system paths by the user.
-        configure.args-append \
-                            -DDOCBOOKXSL_DIR=${prefix}/share/xsl/docbook-xsl \
-                            -DGETTEXT_INCLUDE_DIR=${prefix}/include \
-                            -DGETTEXT_LIBRARY=${prefix}/lib/libgettextlib.${kf5::libs_ext} \
-                            -DGIF_INCLUDE_DIR=${prefix}/include \
-                            -DGIF_LIBRARY=${prefix}/lib/libgif.${kf5::libs_ext} \
-                            -DJASPER_INCLUDE_DIR=${prefix}/include \
-                            -DJASPER_LIBRARY=${prefix}/lib/libjasper.${kf5::libs_ext} \
-                            -DJPEG_INCLUDE_DIR=${prefix}/include \
-                            -DJPEG_LIBRARY=${prefix}/lib/libjpeg.${kf5::libs_ext} \
-                            -DLBER_LIBRARIES=${prefix}/lib/liblber.${kf5::libs_ext} \
-                            -DLDAP_INCLUDE_DIR=${prefix}/include \
-                            -DLDAP_LIBRARIES=${prefix}/lib/libldap.${kf5::libs_ext} \
-                            -DLIBEXSLT_INCLUDE_DIR=${prefix}/include \
-                            -DLIBEXSLT_LIBRARIES=${prefix}/lib/libexslt.${kf5::libs_ext} \
-                            -DLIBICALSS_LIBRARY=${prefix}/lib/libicalss.${kf5::libs_ext} \
-                            -DLIBICAL_INCLUDE_DIRS=${prefix}/include \
-                            -DLIBICAL_LIBRARY=${prefix}/lib/libical.${kf5::libs_ext} \
-                            -DLIBINTL_INCLUDE_DIR=${prefix}/include \
-                            -DLIBINTL_LIBRARY=${prefix}/lib/libintl.${kf5::libs_ext} \
-                            -DLIBXML2_INCLUDE_DIR=${prefix}/include/libxml2 \
-                            -DLIBXML2_LIBRARIES=${prefix}/lib/libxml2.${kf5::libs_ext} \
-                            -DLIBXML2_XMLLINT_EXECUTABLE=${prefix}/bin/xmllint \
-                            -DLIBXSLT_INCLUDE_DIR=${prefix}/include \
-                            -DLIBXSLT_LIBRARIES=${prefix}/lib/libxslt.${kf5::libs_ext}
-#                             -DOPENAL_INCLUDE_DIR=/System/Library/Frameworks/OpenAL.framework/Headers \
-#                             -DOPENAL_LIBRARY=/System/Library/Frameworks/OpenAL.framework
-#                             -DPNG_INCLUDE_DIR=${prefix}/include \
-#                             -DPNG_PNG_INCLUDE_DIR=${prefix}/include \
-#                             -DPNG_LIBRARY=${prefix}/lib/libpng.${kf5::libs_ext} \
-#                             -DTIFF_INCLUDE_DIR=${prefix}/include \
-#                             -DTIFF_LIBRARY=${prefix}/lib/libtiff.${kf5::libs_ext}
-    }
+#     if {![info exists kf5.framework] && ![info exists kf5.portingAid]} {
+#         # explicitly define certain headers and libraries, to avoid
+#         # conflicts with those installed into system paths by the user.
+#         # These are mostly remnants from the KDE4 PortGroup and are being
+#         # pruned little by little when it becomes clear they're no longer needed.
+#         configure.args-append \
+#                             -DDOCBOOKXSL_DIR=${prefix}/share/xsl/docbook-xsl \
+#                             -DGETTEXT_INCLUDE_DIR=${prefix}/include \
+#                             -DGETTEXT_LIBRARY=${prefix}/lib/libgettextlib.${kf5::libs_ext} \
+#                             -DGIF_INCLUDE_DIR=${prefix}/include \
+#                             -DGIF_LIBRARY=${prefix}/lib/libgif.${kf5::libs_ext} \
+#                             -DJASPER_INCLUDE_DIR=${prefix}/include \
+#                             -DJASPER_LIBRARY=${prefix}/lib/libjasper.${kf5::libs_ext} \
+#                             -DJPEG_INCLUDE_DIR=${prefix}/include \
+#                             -DJPEG_LIBRARY=${prefix}/lib/libjpeg.${kf5::libs_ext} \
+#                             -DLBER_LIBRARIES=${prefix}/lib/liblber.${kf5::libs_ext} \
+#                             -DLDAP_INCLUDE_DIR=${prefix}/include \
+#                             -DLDAP_LIBRARIES=${prefix}/lib/libldap.${kf5::libs_ext} \
+#                             -DLIBEXSLT_INCLUDE_DIR=${prefix}/include \
+#                             -DLIBEXSLT_LIBRARIES=${prefix}/lib/libexslt.${kf5::libs_ext} \
+#                             -DLIBICALSS_LIBRARY=${prefix}/lib/libicalss.${kf5::libs_ext} \
+#                             -DLIBICAL_INCLUDE_DIRS=${prefix}/include \
+#                             -DLIBICAL_LIBRARY=${prefix}/lib/libical.${kf5::libs_ext} \
+#                             -DLIBINTL_INCLUDE_DIR=${prefix}/include \
+#                             -DLIBINTL_LIBRARY=${prefix}/lib/libintl.${kf5::libs_ext} \
+#                             -DLIBXML2_INCLUDE_DIR=${prefix}/include/libxml2 \
+#                             -DLIBXML2_LIBRARIES=${prefix}/lib/libxml2.${kf5::libs_ext} \
+#                             -DLIBXML2_XMLLINT_EXECUTABLE=${prefix}/bin/xmllint \
+#                             -DLIBXSLT_INCLUDE_DIR=${prefix}/include \
+#                             -DLIBXSLT_LIBRARIES=${prefix}/lib/libxslt.${kf5::libs_ext}
+#     }
 
     post-fetch {
         if {[file exists ${worksrcpath}/examples] && [file isdirectory ${worksrcpath}/examples] && ![variant_exists examples]} {
@@ -508,6 +436,7 @@ proc kf5.set_project {project} {
     global filespath
     global version
     set p ${project}
+    set dbranch "stable"
     # get rid of the currently registered category:
     categories-delete       ${kf5::cat}
     if { ![info exists kf5.framework] && ![info exists kf5.portingAid] } {
@@ -528,15 +457,18 @@ proc kf5.set_project {project} {
                     }
                     set kf5::cat "Plasma5"
                 } else {
+                    if {[vercmp ${kf5.release} 17.04.0] < 0} {
+                        set dbranch "Attic"
+                    }
                     set f   "${kf5.virtualPath}/${kf5.release}/src"
                     if {![info exists version]} {
                         version \
                             ${kf5.release}
                     }
                     livecheck.url \
-                                http://download.kde.org/stable/${kf5.virtualPath}
+                            http://download.kde.org/stable/${kf5.virtualPath}
                     livecheck.regex \
-                                (\\d+\\.\\d+\\.\\d)
+                            (\\d+\\.\\d+\\.\\d)
                     set kf5::cat "KF5-Applications"
                 }
             }
@@ -561,12 +493,12 @@ proc kf5.set_project {project} {
         }
         distname            ${project}-${kf5.version}.git
     } else {
-        master_sites        http://download.kde.org/stable/${f}
+        master_sites        http://download.kde.org/${dbranch}/${f}
     }
 }
 
 if {[info exists kf5.project]} {
-    kf5.set_project     ${kf5.project}
+    kf5.set_project         ${kf5.project}
 }
 
 ### kf5.depends_frameworks and the framework dependency defs used to be inlined here
@@ -588,30 +520,128 @@ if {${kf5::includecounter} == 0} {
     PortGroup kf5-frameworks 1.0
     # TODO: raise error if inclusion failed
 
+    if {[variant_isset docs]} {
+        if {${subport} ne "kf5-kapidox" && ${subport} ne "kf5-kapidox-devel"} {
+            post-build {
+                if {[tbool kf5.allow_apidocs_generation]} {
+                    ui_msg "--->  Generating documentation for ${subport} (this can take a while)"
+                    # generate the documentation, working from ${build.dir}
+                    file delete -force ${workpath}/apidocs
+                    xinstall -m 755 -d ${workpath}/apidocs
+                    if {[variant_exists chm] && [variant_isset chm]} {
+                        set chmargs "--chm --chmcompiler ${prefix}/bin/chmcmd"
+                    } else {
+                        set chmargs ""
+                    }
+                    # this appears to be necessary, sometimes:
+                    system "chmod 755 ${workpath}/apidocs"
+                    if {[info exists kf5.framework]} {
+                        if {[catch {system -W ${build.dir} "kapidox_generate --qhp --searchengine --api-searchbox --indexing \
+                            ${chmargs} \
+                            --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${qt_bins_dir}/qhelpgenerator \
+                            ${worksrcpath}"} result context]} {
+                            ui_msg "Failure generating documentation: ${result}"
+                        }
+                        # after creating the destination, copy all generated qch documentation to it
+                        foreach doc [glob -nocomplain ${build.dir}/frameworks/*/qch/*.qch \
+                                ${build.dir}/*/qch/*.qch ${build.dir}/*/html/*.chm] {
+                            if {[file tail ${doc}] ne "None.qch"} {
+                                system "chmod 644 ${doc}"
+                                xinstall -m 644 ${doc} ${workpath}/apidocs/
+                            }
+                        }
+                        file delete -force ${build.dir}/${kf5.framework}-${version}
+                    } else {
+                        system -W ${build.dir} "kgenapidox --qhp --searchengine --api-searchbox \
+                            ${chmargs} \
+                            --qtdoc-dir ${qt_docs_dir} --kdedoc-dir ${kf5.docs_dir} \
+                            --qhelpgenerator ${qt_bins_dir}/qhelpgenerator ${worksrcpath}"
+                        # after creating the destination, copy all generated qch documentation to it
+                        foreach doc [glob -nocomplain ${build.dir}/apidocs/qch/*.qch  ${build.dir}/apidocs/html/*.chm] {
+                            if {[file tail ${doc}] ne "None.qch"} {
+                                system "chmod 644 ${doc}"
+                                xinstall -m 644 ${doc} ${workpath}/apidocs/
+                            }
+                        }
+                        file delete -force ${build.dir}/apidocs
+                    }
+                }
+            }
+            post-destroot {
+                if {[tbool kf5.allow_apidocs_generation]} {
+                    xinstall -m 755 -d ${destroot}${kf5.docs_dir}
+                    # this appears to be necessary, sometimes:
+                    system "chmod 755 ${destroot}${kf5.docs_dir}"
+                    foreach doc [glob -nocomplain ${workpath}/apidocs/*.qch] {
+                        xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
+                        # maybe not such a useful idea:
+#                         if {[info procs qt5.register_qch_files] ne ""} {
+#                             qt5.register_qch_files ${kf5.docs_dir}/[file tail ${doc}]
+#                         }
+                    }
+                    if {[variant_exists chm] && [variant_isset chm]} {
+                        foreach doc [glob -nocomplain ${workpath}/apidocs/*.chm] {
+                            xinstall -m 644 ${doc} ${destroot}${kf5.docs_dir}
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        # 20160325 : do this in the post-patch so patches around the targeted won't need to be
+        # specific for +docs and -docs !
+        post-patch {
+            if {[file exists ${worksrcpath}/CMakeLists.txt]} {
+                reinplace "/add_subdirectory.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+                reinplace "/add_subdirectory.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+                reinplace "/ADD_SUBDIRECTORY.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+                reinplace "/ADD_SUBDIRECTORY.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+            }
+        }
+    }
+
     proc kf5.add_test_library_path {path} {
         global os.platform
         if {${os.platform} eq "darwin"} {
-            test.env    DYLD_LIBRARY_PATH=${path}
+            test.env DYLD_LIBRARY_PATH=${path}
         } else {
-            test.env    LD_LIBRARY_PATH=${path}
+            test.env LD_LIBRARY_PATH=${path}
         }
     }
 
     proc kf5.use_latest {lversion} {
         global kf5.latest_release kf5.latest_version kf5.latest_plasma kf5.project kf5.set_project kf5.branch
-        global version
+        global version subport
         upvar #0 kf5.version v
         upvar #0 kf5.release r
         upvar #0 kf5.plasma p
         upvar #0 kf5.branch b
         switch -nocase ${lversion} {
-            kf5.version     {set v ${kf5.latest_version}}
-            kf5.release     {set r ${kf5.latest_release}}
-            kf5.plasma      {set p ${kf5.latest_plasma}}
-            frameworks      {set v ${kf5.latest_version}}
-            applications    {set r ${kf5.latest_release}}
-            plasma          {set p ${kf5.latest_plasma}}
-            default {
+            kf5.version     {
+                ui_debug "Using kf5.version=${kf5.latest_version} instead of ${v} for ${subport}"
+                set v ${kf5.latest_version}
+            }
+            kf5.release     {
+                ui_debug "Using kf5.release=${kf5.latest_release} instead of ${r} for ${subport}"
+                set r ${kf5.latest_release}
+            }
+            kf5.plasma      {
+                ui_debug "Using kf5.plasma=${kf5.latest_plasma} instead of ${p} for ${subport}"
+                set p ${kf5.latest_plasma}
+            }
+            frameworks      {
+                ui_debug "Using kf5.version=${kf5.latest_version} instead of ${v} for ${subport}"
+                set v ${kf5.latest_version}
+            }
+            applications    {
+                ui_debug "Using kf5.release=${kf5.latest_release} instead of ${r} for ${subport}"
+                set r ${kf5.latest_release}
+            }
+            plasma          {
+                ui_debug "Using kf5.plasma=${kf5.latest_plasma} instead of ${p} for ${subport}"
+                set p ${kf5.latest_plasma}
+            }
+            default         {
                 ui_error "Illegal argument ${lversion} to kf5.use_latest"
                 return -code error "Illegal argument to kf5.use_latest"
             }
@@ -895,7 +925,7 @@ if {${kf5::includecounter} == 0} {
     }
 
     # create a .macports-$subport-configure.cmd file containing the cmake invocation details
-    cmake.save_configure_cmd
+    cmake.save_configure_cmd "log too"
 
 }
 

@@ -55,6 +55,15 @@
 # set qt5_min_reference_version  12
 # set qt5_max_reference_version  15
 
+# define all available port:qt5* versions
+global available_qt5_versions
+set available_qt5_versions {
+    qt5
+    qt56
+    qt55
+    qt53
+}
+
 if {[tbool just_want_qt5_version_info]} {
     PortGroup           qt5 1.0
     return
@@ -453,6 +462,19 @@ if {![info exists building_qt5] || [vercmp ${version} 5.7.0] >= 0} {
 global qt5_dependency
 global qt5webkit_dependency
 if {${os.platform} eq "darwin"} {
+    # We define a depspec for port:qt5-kde or port:qt53-kde if we're on OS X 10.6
+    if {[info exists building_qt5]} {
+        set qt5::pprefix            ${basename}
+    } else {
+        switch ${os.major} {
+            "10" {
+                set qt5::pprefix    "qt53-kde"
+            }
+            default {
+                set qt5::pprefix    "qt5-kde"
+            }
+        }
+    }
     # see if the framework install exists, and if so depend on it;
     # if not, depend on the library version
     if {[file exists ${qt_frameworks_dir}/QtCore.framework/QtCore]} {
@@ -460,21 +482,26 @@ if {${os.platform} eq "darwin"} {
     } else {
         set qt5_pathlibspec path:libexec/${qt_name}/lib/libQtCore.${qt_libs_ext}
     }
-    set qt5_dependency ${qt5_pathlibspec}:qt5-kde
+    set qt5_dependency ${qt5_pathlibspec}:${qt5::pprefix}
     if {[file exists ${qt_frameworks_dir}/QtWebKit.framework/QtWebKit]} {
         set qt5_pathlibspec path:libexec/${qt_name}/Library/Frameworks/QtWebKit.framework/QtWebKit
     } else {
         set qt5_pathlibspec path:libexec/${qt_name}/lib/libQtWebKit.${qt_libs_ext}
     }
-    set qt5webkit_dependency ${qt5_pathlibspec}:qt5-kde-qtwebkit
+    set qt5webkit_dependency ${qt5_pathlibspec}:${qt5::pprefix}-qtwebkit
     set qt5webengine_dependency \
-                        path:libexec/${qt_name}/Library/Frameworks/QtWebEngineCore.framework/QtWebEngineCore:qt5-kde-qtwebengine
+                        path:libexec/${qt_name}/Library/Frameworks/QtWebEngineCore.framework/QtWebEngineCore:${qt5::pprefix}-qtwebengine
 } elseif {${os.platform} eq "linux"} {
+    if {[info exists building_qt5]} {
+        set qt5::pprefix            ${basename}
+    } else {
+        set qt5::pprefix            "qt5-kde"
+    }
     set qt5_pathlibspec path:libexec/${qt_name}/lib/libQt5Core.${qt_libs_ext}
-    set qt5_dependency ${qt5_pathlibspec}:qt5-kde
-    set qt5webkit_dependency path:libexec/${qt_name}/lib/libQt5WebKit.${qt_libs_ext}:qt5-kde-qtwebkit
+    set qt5_dependency ${qt5_pathlibspec}:${qt5::pprefix}
+    set qt5webkit_dependency path:libexec/${qt_name}/lib/libQt5WebKit.${qt_libs_ext}:${qt5::pprefix}-qtwebkit
     set qt5webengine_dependency \
-                        path:libexec/${qt_name}/lib/libQt5WebEngineCore.${qt_libs_ext}:qt5-kde-qtwebengine
+                        path:libexec/${qt_name}/lib/libQt5WebEngineCore.${qt_libs_ext}:${qt5::pprefix}-qtwebengine
 }
 if {![info exists building_qt5]} {
     depends_lib-append ${qt5_dependency}
@@ -732,16 +759,18 @@ set qt5::component2pathspec(assistant) path:${qt_bins_dir}/assistant
 # into the appropriate subports for the Qt5 flavour installed
 # e.g. qt5.depends_component qtbase qtsvg qtdeclarative
 proc qt5::depends_component_p {deptype args} {
-    global qt5::component2pathspec qt5.using_kde os.major qt5.kde_stubports version
+    global qt5::component2pathspec qt5.using_kde os.major qt5.kde_stubports version qt5::pprefix
     # select the Qt5 port prefix, depending on which Qt5 port is installed
     set is_qt5kde [expr [info exists qt5.using_kde] && ${qt5.using_kde}]
-    if {${is_qt5kde} == 1 || ${os.major} == 10} {
-        # We have port:qt5-kde or we're on OS X 10.6 which only gets Qt 5.3.2 from that port
-        set qt5pprefix  "qt5-kde"
-    } elseif {${os.major} == 11} {
-        set qt5pprefix  "qt55"
-    } else {
-        set qt5pprefix  "qt5"
+    if {!${is_qt5kde}} {
+        switch ${os.major} {
+            "11" {
+                set qt5::pprefix    "qt55"
+            }
+            default {
+                set qt5::pprefix    "qt5"
+            }
+        }
     }
     ui_debug "qt5::depends_component_p, deptype=${deptype} args=$args"
     foreach comp $args {
@@ -755,7 +784,7 @@ proc qt5::depends_component_p {deptype args} {
                         ${deptype}-append ${qt5_dependency}
                     }
                 } else {
-                    ${deptype}-append port:${qt5pprefix}
+                    ${deptype}-append port:${qt5::pprefix}
                 }
             }
             "qtwebkit" -
@@ -772,7 +801,7 @@ proc qt5::depends_component_p {deptype args} {
             }
         }
         if {!${done}} {
-            set portname "${qt5pprefix}-${comp}"
+            set portname "${qt5::pprefix}-${comp}"
             if {[info exists qt5::component2pathspec] && [info exists qt5::component2pathspec(${comp})]} {
                 # an explicit dependency pattern was given, e.g. path:foo
                 ${deptype}-append "$qt5::component2pathspec(${comp}):${portname}"
