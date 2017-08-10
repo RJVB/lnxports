@@ -2,7 +2,6 @@
 
 PortSystem              1.0
 PortGroup               cmake 1.1
-PortGroup               qt5 1.0
 
 name                    openal-soft
 version                 1.18.1
@@ -44,9 +43,26 @@ patchfiles-append       patch-feature-summary.diff
 configure.args-append   -DALSOFT_EXAMPLES=OFF \
                         -DALSOFT_REQUIRE_COREAUDIO=OFF -DALSOFT_BACKEND_COREAUDIO=OFF
 cmake.save_configure_cmd "log too"
-cmake.install_rpath-prepend \
+
+
+variant utilities description {install the utilities too} {}
+if {[variant_isset utilities]} {
+    PortGroup           qt5 1.0
+    cmake.install_rpath-prepend \
                         ${prefix}/lib/${build_arch}-linux-gnu \
                         ${qt_libs_dir}
+    configure.args-append \
+                        -DALSOFT_UTILS=ON \
+                        -DALSOFT_NO_CONFIG_UTIL=OFF \
+                        -DALSOFT_TESTS=ON
+} else {
+    cmake.install_rpath-prepend \
+                        ${prefix}/lib/${build_arch}-linux-gnu
+    configure.args-append \
+                        -DALSOFT_UTILS=OFF \
+                        -DALSOFT_NO_CONFIG_UTIL=ON \
+                        -DALSOFT_TESTS=OFF
+}
 
 livecheck.type          regex
 livecheck.regex         /${name}-(\[0-9.\]+)${extract.suffix}
