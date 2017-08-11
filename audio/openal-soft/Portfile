@@ -23,7 +23,9 @@ long_description        OpenAL Soft is a ${description}. It's forked from the \
                         air absorption, occlusion, and environmental reverb, \
                         are available through the EFX extension. It also \
                         facilitates streaming audio, multi-channel buffers, \
-                        and audio capture.
+                        and audio capture. \
+                        The configuration utility requires Qt5 and is thus not installed by default \
+                        (use the +utilities variant if you require it).
 
 homepage                http://kcat.strangesoft.net/openal.html
 master_sites            http://kcat.strangesoft.net/openal-releases
@@ -35,15 +37,30 @@ checksums               rmd160  f822be811120db3092225da544dc9ca7746bc47e \
 depends_build-append    port:pkgconfig
 
 depends_lib-append      port:portaudio
-# PortAudio is a system lib on Linux
-#                         port:pulseaudio
 
+# maintainer convenience: have cmake print a diagnostic summary
 patchfiles-append       patch-feature-summary.diff
 
 configure.args-append   -DALSOFT_EXAMPLES=OFF \
-                        -DALSOFT_REQUIRE_COREAUDIO=OFF -DALSOFT_BACKEND_COREAUDIO=OFF
-cmake.save_configure_cmd "log too"
+                        -DALSOFT_REQUIRE_PULSEAUDIO=OFF -DALSOFT_BACKEND_PULSEAUDIO=OFF \
+                        -DALSOFT_REQUIRE_JACK=OFF -DALSOFT_BACKEND_JACK=OFF
 
+variant pulseaudio description {build with PulseAudio support} {}
+if {[variant_isset pulseaudio]} {
+#     depends_lib-append  port:pulseaudio
+    configure.args-replace \
+                        -DALSOFT_REQUIRE_PULSEAUDIO=OFF -DALSOFT_BACKEND_PULSEAUDIO=OFF \
+                        -DALSOFT_REQUIRE_PULSEAUDIO=ON -DALSOFT_BACKEND_PULSEAUDIO=ON
+}
+default_variants-append +pulseaudio
+
+variant jack description {build with Jack support} {}
+if {[variant_isset jack]} {
+    depends_lib-append  port:jack
+    configure.args-replace \
+                        -DALSOFT_REQUIRE_JACK=OFF -DALSOFT_BACKEND_JACK=OFF \
+                        -DALSOFT_REQUIRE_JACK=ON -DALSOFT_BACKEND_JACK=ON
+}
 
 variant utilities description {install the utilities too} {}
 if {[variant_isset utilities]} {
@@ -62,6 +79,16 @@ if {[variant_isset utilities]} {
                         -DALSOFT_UTILS=OFF \
                         -DALSOFT_NO_CONFIG_UTIL=ON \
                         -DALSOFT_TESTS=OFF
+}
+
+variant examples description {build the examples} {}
+if {[variant_isset examples]} {
+#     depends_lib-append  port:libsdl2 \
+#                         port:libsdl_sound
+    depends_lib-append  port:ffmpeg
+    configure.args-replace \
+                        -DALSOFT_EXAMPLES=OFF \
+                        -DALSOFT_EXAMPLES=ON
 }
 
 livecheck.type          regex
