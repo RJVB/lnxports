@@ -54,9 +54,12 @@ if {[vercmp ${macosx_deployment_target} 10.9] < 0} {
 
 depends_build               bin:xmllint:libxml2
 
-depends_build-append        port:gettext-dev
-depends_lib                 port:gettext \
-                            port:libffi \
+variant gettext description {build with port:gettext} {
+    depends_build-append    port:gettext-dev
+    depends_lib             port:gettext
+}
+
+depends_lib                 port:libffi \
                             port:libiconv \
                             port:pcre \
                             port:zlib
