@@ -1,0 +1,158 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem 1.0
+PortGroup       conflicts_build 1.0
+
+name            systemd
+set orig.version 234
+set ubuntu.version 2ubuntu5
+version         ${orig.version}.${ubuntu.version}
+description     The systemd meta-package
+long_description \
+                Corresponds to the following Ubuntu \"ArtVark\" ports: \
+                systemd systemd-sysv systemd-container systemd-journal-remote \
+                systemd-coredump systemd-tests libpam-systemd libnss-myhostname \
+                libnss-mymachines libnss-resolve libnss-systemd libsystemd0 \
+                libsystemd-dev udev libudev1 libudev-dev udev-udeb libudev1-udeb
+
+homepage        https://launchpad.net/ubuntu/+source/${name}/${version}
+license         GPL-2
+platforms       linux
+
+master_sites    https://launchpad.net/ubuntu/+archive/primary/+files/
+distname        ${name}_${orig.version}.orig
+checksums       rmd160  499d645f6df29f59f8bc5b642773e678747feedb \
+                sha256  da3e69d10aa1c983d33833372ad4929037b411ac421fb085c8cee79ae1d80b6a
+worksrcdir      ${name}-${orig.version}
+
+conflicts_build-append \
+                gettext-dev
+
+# an undoubtedly tiny selection of all required dependencies; debian/control lists:
+#                pkg-config,
+#                xsltproc,
+#                docbook-xsl,
+#                docbook-xml,
+#                m4,
+#                meson (>= 0.40.0),
+#                intltool,
+#                gperf,
+#                gnu-efi [amd64 i386 arm64],
+#                libcap-dev (>= 1:2.24-9~),
+#                libpam0g-dev,
+#                libapparmor-dev (>= 2.9.0-3+exp2) <!stage1>,
+#                libidn11-dev <!stage1>,
+#                libiptc-dev <!stage1> | iptables-dev <!stage1>,
+#                libaudit-dev <!stage1>,
+#                libdbus-1-dev (>= 1.3.2) <!nocheck>,
+#                libcryptsetup-dev (>= 2:1.6.0) <!stage1>,
+#                libselinux1-dev (>= 2.1.9),
+#                libacl1-dev,
+#                liblzma-dev,
+#                liblz4-dev (>= 0.0~r125),
+#                liblz4-tool <!nocheck>,
+#                libbz2-dev <!stage1>,
+#                zlib1g-dev <!stage1> | libz-dev <!stage1>,
+#                libcurl4-gnutls-dev <!stage1> | libcurl-dev <!stage1>,
+#                libmicrohttpd-dev <!stage1>,
+#                libgnutls28-dev <!stage1>,
+#                libgcrypt20-dev,
+#                libkmod-dev (>= 15),
+#                libblkid-dev (>= 2.24),
+#                libmount-dev (>= 2.27.1),
+#                libdw-dev (>= 0.158) <!stage1>,
+#                libpolkit-gobject-1-dev <!stage1>,
+#                linux-base <!nocheck>,
+#                acl <!nocheck>,
+#                python3:native,
+#                python3-lxml:native,
+#                python3-pyparsing <!nocheck>,
+#                tzdata <!nocheck>,
+#                libcap2-bin <!nocheck>,
+#                iproute2 <!nocheck>,
+
+depends_build-append \
+                port:pkgconfig \
+                port:m4 \
+                port:gperf \
+                port:perl5 \
+                port:py36-lxml
+depends_lib-append \
+                port:zlib \
+                port:bzip2 \
+                port:xz \
+                port:libxslt \
+                port:curl \
+                port:lz4 \
+                port:lzo2 \
+                port:libpcap \
+                port:gnutls \
+                port:python36 \
+                port:libgpg-error \
+                port:libgcrypt \
+                port:util-linux
+
+# Ubuntu's patches:
+patch.pre_args  -Np1
+patchfiles-append \
+                patch-no-gold-linker.diff
+foreach p [exec cat ${filespath}/series] {
+    patchfiles-append ${p}
+}
+
+post-patch {
+    ui_msg "--->  Running autogen.sh"
+    system -W ${worksrcpath} "./autogen.sh"
+}
+
+configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
+pre-configure {
+    set cmd [join "${configure.cmd} ${configure.pre_args} ${configure.args}"]
+    configure.pre_args-prepend "-cf '${configure.cmd} "
+    configure.cmd "/bin/csh"
+    ui_debug "configure command set to `${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}`"
+    system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.log"
+}
+
+configure.cflags-append \
+                -ftrapv \
+                -Wno-error=nonnull
+
+configure.args-append \
+                --disable-lto \
+                --disable-selinux \
+                --disable-apparmor \
+                --enable-compat-libs \
+                --enable-kdbus \
+                --sysconfdir=${prefix}/etc \
+                --localstatedir=/var \
+                --libdir=${prefix}/lib \
+                --with-rootprefix=${prefix} \
+                --with-pamlibdir=/lib/security \
+                --with-pamconfdir=/etc/pam.d \
+                --with-bashcompletiondir=${prefix}/share/bash-completion/completions \
+                --with-efi-libdir=${prefix}/lib \
+                --with-efi-ldsdir=${prefix}/lib \
+                --with-efi-includedir=${prefix}/include \
+                --enable-tcpwrap \
+                --disable-keymap \
+                --enable-hwdb \
+                PYTHON=${prefix}/bin/python3.6
+
+platform linux {
+    configure.ldflags-append -Wl,-rpath=${prefix}/lib
+    build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
+    destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
+}
+
+destroot.violate_mtree       yes
+
+post-destroot {
+    foreach b [glob -nocomplain ${destroot}/bin/*] {
+        file rename ${b} ${destroot}${prefix}/bin
+    }
+    file delete ${destroot}/etc/init.d/README
+    file delete ${destroot}/var/log/README
+}
+
+livecheck.type none

@@ -1,0 +1,12 @@
+--- systemd-234/orig.configure.ac	2017-07-12 16:01:10.000000000 +0200
++++ systemd-234/configure.ac	2017-08-17 14:47:54.078832104 +0200
+@@ -239,8 +239,7 @@
+         -Wl,--no-undefined \
+         -Wl,-z,relro \
+         -Wl,-z,now \
+-        -pie \
+-        -Wl,-fuse-ld=gold])
++        -pie])
+ 
+ AC_SUBST([OUR_CPPFLAGS], "$with_cppflags $sanitizer_cppflags")
+ AC_SUBST([OUR_CFLAGS], "-D__SANE_USERSPACE_TYPES__ $with_cflags $sanitizer_cflags")
