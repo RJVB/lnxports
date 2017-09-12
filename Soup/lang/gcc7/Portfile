@@ -6,8 +6,13 @@ PortGroup compiler_blacklist_versions 1.0
 PortGroup active_variants 1.1
 PortGroup conflicts_build 1.0
 
-name                gcc7
-subport             libgcc {}
+name                gcc7-bad
+subport             libgcc-bad {}
+
+pre-fetch {
+    ui_error "This port is abandoned"
+    return -code error "abandoned port"
+}
 
 epoch               2
 version             7.1.0
