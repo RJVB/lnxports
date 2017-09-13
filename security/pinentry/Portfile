@@ -1,0 +1,84 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem                  1.0
+
+name                        pinentry
+version                     0.9.7
+revision                    1
+categories                  security
+license                     GPL-2+
+maintainers                 ionic openmaintainer
+homepage                    http://www.gnupg.org/aegypten2
+platforms                   darwin
+master_sites                gnupg
+
+description                 Passphrase entry dialog utilizing the Assuan protocol
+
+long_description            This is a collection of simple PIN or passphrase entry \
+                            dialogs which utilize the Assuan protocol as described by \
+                            the aegypten project.
+
+use_bzip2                   yes
+
+checksums                   rmd160  2f9a34fcef91a1538bd4436a6aa01810732ddc8f \
+                            sha256  6398208394972bbf897c3325780195584682a0d0c164ca5a0da35b93b1e4e7b2
+
+configure.args              --with-libiconv-prefix=${prefix} \
+                            --with-ncurses-include-dir=${prefix}/include/ncurses \
+                            --enable-pinentry-curses \
+                            --disable-pinentry-gtk2 \
+                            --disable-pinentry-qt \
+                            --disable-pinentry-qt5
+
+platform linux {
+    configure.args-append   --enable-libsecret
+}
+
+# Fix picking up the correct assuan version.
+# -isystem has the added benefit of moving the include
+# directory specified to the end of the include path list.
+# This will help the build system respect custom include
+# paths correctly (i.e., searching them before the MP include
+# directory.)
+configure.cppflags-replace  -I${prefix}/include -isystem${prefix}/include
+
+depends_build               port:pkgconfig
+depends_lib                 port:libiconv \
+                            port:ncurses \
+                            port:libassuan \
+                            port:libgpg-error
+
+variant gtk2 description {Enable gtk2-based pinentry tool} {
+    depends_lib-append      port:gtk2
+    configure.args-delete   --disable-pinentry-gtk2
+    configure.args-append   --enable-pinentry-gtk2 \
+                            --enable-fallback-curses
+}
+
+variant qt4 conflicts qt5 description {Enable qt4-based pinentry tool} {
+    PortGroup               qt4 1.0
+    configure.args-delete   --disable-pinentry-qt
+    configure.args-append   --enable-pinentry-qt \
+                            --enable-fallback-curses
+}
+
+variant qt5 conflicts qt4 description {Enable qt5-based pinentry tool} {}
+if {[variant_isset qt5]} {
+    PortGroup               qt5 1.0
+    configure.args-delete   --disable-pinentry-qt \
+                            --disable-pinentry-qt5
+    configure.args-append   --enable-pinentry-qt \
+                            --enable-pinentry-qt5 \
+                            --enable-fallback-curses
+}
+
+platform darwin {
+    configure.args-append   --disable-rpath
+}
+platform linux {
+    configure.args-append   --enable-rpath
+}
+
+livecheck.type              regex
+livecheck.url               https://gnupg.org/ftp/gcrypt/pinentry/
+livecheck.regex             ${name}-(\\d+\\.\\d+\\.\\d+)
