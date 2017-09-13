@@ -4,7 +4,8 @@ PortSystem      1.0
 PortGroup       muniversal 1.0
 
 name            libgcrypt
-version         1.7.7
+version         1.8.1
+revision        1
 categories      devel security
 # libs are LGPL, executables and docs are GPL
 license         {GPL-2+ LGPL-2.1+}
@@ -23,8 +24,8 @@ long_description \
 master_sites    gnupg
 use_bzip2       yes
 
-checksums       rmd160  9ce9f14fe70333eb7ef8c8ed1e6169c259105b9e \
-                sha256  b9b85eba0793ea3e6e66b896eb031fa05e1a4517277cc9ab10816b359254cd9a
+checksums       rmd160  5132a2f4ff4531048e9cabbaa98d0cdfbe2f895c \
+                sha256  7a2875f8b1ae0301732e878c0cca2c9664ff09ef71408f085c50e332656a78b3
 
 depends_lib     port:libgpg-error
 
