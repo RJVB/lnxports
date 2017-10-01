@@ -1,7 +1,7 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem              1.0
-PortGroup               cmake 1.0
+PortGroup               cmake 1.1
 
 name                    doxygen
 version                 1.8.13
@@ -40,20 +40,24 @@ checksums               ${distname}.src${extract.suffix} \
                         sha256  af667887bd7a87dc0dbf9ac8d86c96b552dfb8ca9c790ed1cbffaa6131573f6b
 
 depends_build-append    bin:perl:perl5 \
-                        bin:python2.7:python27 \
-                        port:flex \
-                        port:bison
+                        bin:python2.7:python27 
+#                         port:flex \
+#                         port:bison
 license_noconflict      perl5 python27
 
 depends_lib             port:libpng \
                         port:libiconv
 
-patchfiles              patch-src-portable_c.c.diff \
-                        fix_dumb_cxxflags.patch
+# patchfiles              patch-src-portable_c.c.diff
+patchfiles-append       fix_dumb_cxxflags.patch \
+                        patch-findiconv.diff
 
 # temporary patch to fix possible use of NULL pointer.
 # see also: https://github.com/doxygen/doxygen/commit/381d9d286dd27ce0ba14989b51011070d8583d62
 patchfiles-append       patch-src-xmlgen.cpp.diff
+
+configure.cflags-append -pthread
+configure.cxxflags-append -pthread
 
 # see #50342
 configure.args-append -DPython_ADDITIONAL_VERSIONS=2.7
@@ -107,7 +111,7 @@ if {[string match *clang* ${configure.cxx}]} {
 }
 
 # build fails out of source :/
-cmake.out_of_source     no
+# cmake.out_of_source     no
 
 destroot.args           INSTALL=${prefix} \
                         DOCDIR=${prefix}/share/doc/doxygen \
@@ -144,6 +148,7 @@ variant qt5 conflicts qt4 description {Include the GUI wizard based on Qt5} {
 
     # tell configure to make the wizard app
     configure.args-append   -Dbuild_wizard=ON
+    configure.ldflags-append -Wl,-rpath=${qt_libs_dir}
 }
 
 livecheck.type          regex
