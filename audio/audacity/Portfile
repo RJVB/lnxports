@@ -236,7 +236,8 @@ platform linux {
     configure.cflags-append \
                     -DUSE_AQUA_THEME
     configure.cxxflags-append \
-                    -DUSE_AQUA_THEME
+                    -DUSE_AQUA_THEME \
+                    -std=gnu++11
 #     # as long as we use the host's wxWidgets. We use the static library
 #     # because otherwise we might still be getting MacPorts' libtiff
 #     # which lacks the version symbols required by the host's wxWidgets libraries.
