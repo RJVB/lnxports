@@ -4,6 +4,7 @@
 PortSystem          1.0
 
 name                gcc6
+version			6.3.0
 maintainers         gmail.com:rjvbertin
 
 categories          lang
@@ -24,7 +25,7 @@ build           {}
 
 destroot {
     foreach bin [glob -nocomplain /usr/bin/x86_64-linux-gnu-*-6] {
-        set bname [string map {"-6" "-mp-6"} [string map {"x86_64-linux-gnu-" ""} [file tail ${bin}]]
+        set bname [string map [list "-6" "-mp-6"] [string map [list "x86_64-linux-gnu-" ""] [file tail ${bin}]]]
         set bin_filename ${destroot}${prefix}/bin/${bname}
 
         xinstall -m 755 "${filespath}/gcc-bin" "${bin_filename}"
