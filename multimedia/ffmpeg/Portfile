@@ -214,29 +214,30 @@ post-destroot {
         set pattern "${pattern} lib${comp}.so.*"
     }
     preserve_libraries ${prefix}/lib ${pattern}
-    if {[variant_isset preserve_runtime_libraries]} {
-        # construct a dict that maps SO names to file names
-        foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*.so.*] {
-            dict set sonames ${lib} soname [exec patchelf --print-soname ${lib}]
-            dict set sonames ${lib} filename [file tail ${lib}]
-        }
-        # now make the preserved libraries depend on other preserved libraries.
-        foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*.so.*] {
-            set lrpath [exec patchelf --print-rpath ${lib}]
-            # https://github.com/darealshinji/patchelf
-            # set the soname to the full filename
-            system "patchelf --set-soname [file tail ${lib}] ${lib}"
-            # prepend the new installation path to the rpath
-            system "patchelf --set-rpath ${prefix}/lib/${preserve_runtime_library_dir}:${lrpath} ${lib}"
-            # update any dependencies on the other libraries installed by this port
-            dict for {id info} ${sonames} {
-                dict with info {
-                    ui_debug "patchelf --replace-needed ${soname} ${filename} ${lib}"
-                    system "patchelf --replace-needed ${soname} ${filename} ${lib}"
-                }
-            }
-        }
-    }
+    update_preserved_libraries
+#     if {[variant_isset preserve_runtime_libraries]} {
+#         # construct a dict that maps SO names to file names
+#         foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*.so.*] {
+#             dict set sonames ${lib} soname [exec patchelf --print-soname ${lib}]
+#             dict set sonames ${lib} filename [file tail ${lib}]
+#         }
+#         # now make the preserved libraries depend on other preserved libraries.
+#         foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*.so.*] {
+#             set lrpath [exec patchelf --print-rpath ${lib}]
+#             # https://github.com/darealshinji/patchelf
+#             # set the soname to the full filename
+#             system "patchelf --set-soname [file tail ${lib}] ${lib}"
+#             # prepend the new installation path to the rpath
+#             system "patchelf --set-rpath ${prefix}/lib/${preserve_runtime_library_dir}:${lrpath} ${lib}"
+#             # update any dependencies on the other libraries installed by this port
+#             dict for {id info} ${sonames} {
+#                 dict with info {
+#                     ui_debug "patchelf --replace-needed ${soname} ${filename} ${lib}"
+#                     system "patchelf --replace-needed ${soname} ${filename} ${lib}"
+#                 }
+#             }
+#         }
+#     }
 
     file mkdir ${destroot}${prefix}/share/doc/ffmpeg
     file copy ${worksrcpath}/doc/APIchanges ${destroot}${prefix}/share/doc/ffmpeg
