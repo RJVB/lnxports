@@ -147,6 +147,38 @@ proc preserve_libraries {srcdir patternlist} {
     }
 }
 
+platform linux {
+    proc update_preserved_libraries {} {
+        global prefix subport destroot preserve_runtime_library_dir
+        if {[variant_isset preserve_runtime_libraries]} {
+            # when preserving multiple directories, make them depend on each other
+            # construct a dict that maps SO names to file names
+            foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*.so.*] {
+                dict set sonames ${lib} soname [exec patchelf --print-soname ${lib}]
+                dict set sonames ${lib} filename [file tail ${lib}]
+            }
+            # now make the preserved libraries depend on other preserved libraries.
+            foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*.so.*] {
+                set lrpath [exec patchelf --print-rpath ${lib}]
+                # https://github.com/darealshinji/patchelf
+                # set the soname to the full filename
+                system "patchelf --set-soname [file tail ${lib}] ${lib}"
+                # prepend the new installation path to the rpath
+                system "patchelf --set-rpath ${prefix}/lib/${preserve_runtime_library_dir}:${lrpath} ${lib}"
+                # update any dependencies on the other libraries installed by this port
+                dict for {id info} ${sonames} {
+                    dict with info {
+                        ui_debug "patchelf --replace-needed ${soname} ${filename} ${lib}"
+                        system "patchelf --replace-needed ${soname} ${filename} ${lib}"
+                    }
+                }
+            }
+        } else {
+            ui_debug "The preserve_runtime_libraries variant isn't set; ignoring the call to preserve_libraries"
+        }
+    }
+}
+
 variant preserve_runtime_libraries description {Experimental variant that preserves the pre-existing runtime \
                                         libraries to ease the rebuilding load during upgrades.} {}
 
