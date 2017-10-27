@@ -220,7 +220,6 @@ post-destroot {
             dict set sonames ${lib} soname [exec patchelf --print-soname ${lib}]
             dict set sonames ${lib} filename [file tail ${lib}]
         }
-        puts $sonames
         # now make the preserved libraries depend on other preserved libraries.
         foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*.so.*] {
             set lrpath [exec patchelf --print-rpath ${lib}]
