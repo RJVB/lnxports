@@ -214,7 +214,7 @@ post-destroot {
         set pattern "${pattern} lib${comp}.so.*"
     }
     preserve_libraries ${prefix}/lib ${pattern}
-    update_preserved_libraries
+    update_preserved_libraries "*.so.*"
 #     if {[variant_isset preserve_runtime_libraries]} {
 #         # construct a dict that maps SO names to file names
 #         foreach lib [glob -nocomplain ${destroot}${prefix}/lib/${preserve_runtime_library_dir}/*.so.*] {
