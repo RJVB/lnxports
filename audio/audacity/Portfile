@@ -88,6 +88,25 @@ if {![catch {set wxw_stdlib [active_variants ${wxWidgets.port} stdlib]} err]} {
     }
 }
 
+if {[variant_exists wx32] && [variant_isset wx32]} {
+    variant qt description {require wxWidgets-3.2 +qt (experimental!!)} {}
+    if {[variant_isset qt]} {
+        set qt_ok 0
+        if {![catch {set wxw_qt [active_variants ${wxWidgets.port} stdlib]} err]} {
+            if {${wxw_qt}} {
+                set qt_ok 1
+            }
+        }
+        if {!${qt_ok}} {
+            long_description-append "This port needs ${wxWidgets.port} with the +qt variant."
+            pre-fetch {
+                ui_error "This port needs ${wxWidgets.port} with the +qt variant."
+                return -code error "reinstall port:${wxWidgets.port} with the +qt variant"
+            }
+        }
+    }
+}
+
 depends_build-append \
                     port:cmake \
                     port:pkgconfig \
