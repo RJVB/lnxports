@@ -41,6 +41,8 @@ depends_lib-append      port:portaudio
 # maintainer convenience: have cmake print a diagnostic summary
 patchfiles-append       patch-feature-summary.diff
 
+cmake.save_configure_cmd "log too"
+
 configure.args-append   -DALSOFT_EXAMPLES=OFF \
                         -DALSOFT_REQUIRE_PULSEAUDIO=OFF -DALSOFT_BACKEND_PULSEAUDIO=OFF \
                         -DALSOFT_REQUIRE_JACK=OFF -DALSOFT_BACKEND_JACK=OFF
