@@ -113,7 +113,7 @@ variant universal {
     configure.args-append   --disable-pch
 }
 
-variant wxwidgets30 conflicts wxwidgets28 wxgtk30 wxgtk28 description {Use Cocoa-based wxWidgets 3.0} {
+variant wxwidgets30 conflicts wxgtk32 wxwidgets28 wxgtk30 wxgtk28 description {Use Cocoa-based wxWidgets 3.0} {
     wxWidgets.use           wxWidgets-3.0
     platform darwin {
         depends_lib-append      port:${wxWidgets.port}
@@ -123,7 +123,7 @@ variant wxwidgets30 conflicts wxwidgets28 wxgtk30 wxgtk28 description {Use Cocoa
     ui_msg ${configure.args}
 }
 
-variant wxwidgets28 conflicts wxwidgets30 wxgtk30 wxgtk28 description {Use 32-bit Carbon-based wxWidgets 2.8} {
+variant wxwidgets28 conflicts wxgtk32 wxwidgets30 wxgtk30 wxgtk28 description {Use 32-bit Carbon-based wxWidgets 2.8} {
     wxWidgets.use           wxWidgets-2.8
     platform darwin {
         depends_lib-append      port:${wxWidgets.port}
@@ -136,7 +136,17 @@ variant wxwidgets28 conflicts wxwidgets30 wxgtk30 wxgtk28 description {Use 32-bi
     }
 }
 
-variant wxgtk30 conflicts wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWidgets 3.0 with GTK} {
+variant wxgtk32 conflicts wxgtk30 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWidgets 3.2 with GTK} {
+    wxWidgets.use           wxGTK-3.2
+    platform darwin {
+        depends_lib-append      port:${wxWidgets.port}
+        autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
+        configure.args-append   --with-wxdir=${wxWidgets.wxdir}
+    }
+    ui_msg ${configure.args}
+}
+
+variant wxgtk30 conflicts wxgtk32 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWidgets 3.0 with GTK} {
     wxWidgets.use           wxGTK-3.0
     platform darwin {
         depends_lib-append      port:${wxWidgets.port}
@@ -146,7 +156,7 @@ variant wxgtk30 conflicts wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWid
     ui_msg ${configure.args}
 }
 
-variant wxgtk28 conflicts wxwidgets30 wxwidgets28 wxgtk30 description {Use wxWidgets 2.8 with GTK} {
+variant wxgtk28 conflicts wxgtk32 wxwidgets30 wxwidgets28 wxgtk30 description {Use wxWidgets 2.8 with GTK} {
     wxWidgets.use           wxGTK-2.8
     platform darwin {
         depends_lib-append      port:${wxWidgets.port}
@@ -156,7 +166,7 @@ variant wxgtk28 conflicts wxwidgets30 wxwidgets28 wxgtk30 description {Use wxWid
 }
 
 platform darwin {
-    if {[variant_isset wxgtk28] || [variant_isset wxgtk30]} {
+    if {[variant_isset wxgtk28] || [variant_isset wxgtk30] || [variant_isset wxgtk32]} {
         # TODO: someone needs to do a careful check of this list of dependencies
         # codeblocks ends up linking against these, but it is quite possible that
         # some of them are also needed when liking against Carbon/Cocoa-based wxWidgets
@@ -183,7 +193,8 @@ platform darwin {
     }
 }
 
-if {![variant_isset wxwidgets30] && ![variant_isset wxwidgets28] && ![variant_isset wxgtk30] && ![variant_isset wxgtk28]} {
+if {![variant_isset wxwidgets30] && ![variant_isset wxwidgets28]
+        && ![variant_isset wxgtk30] && ![variant_isset wxgtk28] && ![variant_isset wxgtk32]} {
     platform darwin {
         default_variants +wxwidgets30
     }
