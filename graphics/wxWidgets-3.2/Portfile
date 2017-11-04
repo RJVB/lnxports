@@ -161,4 +161,6 @@ variant qt description {build wxQT} {
                     --with-qt
     configure.args-append \
                     --enable-cxx11
+    configure.ldflags-append \
+                    -Wl,-rpath=${qt_libs_dir}
 }
