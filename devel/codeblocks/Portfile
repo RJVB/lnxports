@@ -2,6 +2,7 @@
 
 PortSystem          1.0
 PortGroup           wxWidgets 1.0
+PortGroup           conflicts_build 1.0
 
 fetch.type          svn
 svn.url             svn://svn.code.sf.net/p/codeblocks/code/trunk
@@ -113,14 +114,13 @@ variant universal {
     configure.args-append   --disable-pch
 }
 
-variant wxwidgets32 conflicts wxgtk30 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWidgets 3.2} {
+variant wxwidgets32 conflicts wxgtk30 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWidgets 3.2} {}
+if {[variant_isset wxwidgets32]} {
+    conflicts_build-append  wxWidgets-3.0
     wxWidgets.use           wxWidgets-3.2
-    platform darwin {
-        depends_lib-append      port:${wxWidgets.port}
-        autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
-        configure.args-append   --with-wxdir=${wxWidgets.wxdir}
-    }
-    ui_msg ${configure.args}
+    depends_lib-append      port:${wxWidgets.port}
+    autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
+    configure.args-append   --with-wxdir=${wxWidgets.wxdir}
 }
 
 variant wxwidgets30 conflicts wxwidgets32 wxwidgets28 wxgtk30 wxgtk28 description {Use Cocoa-based wxWidgets 3.0} {
@@ -130,7 +130,6 @@ variant wxwidgets30 conflicts wxwidgets32 wxwidgets28 wxgtk30 wxgtk28 descriptio
         autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
         configure.args-append   --with-wxdir=${wxWidgets.wxdir}
     }
-    ui_msg ${configure.args}
 }
 
 variant wxwidgets28 conflicts wxwidgets32 wxwidgets30 wxgtk30 wxgtk28 description {Use 32-bit Carbon-based wxWidgets 2.8} {
@@ -146,14 +145,12 @@ variant wxwidgets28 conflicts wxwidgets32 wxwidgets30 wxgtk30 wxgtk28 descriptio
     }
 }
 
-variant wxgtk30 conflicts wxwidgets32 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWidgets 3.0 with GTK} {
+variant wxgtk30 conflicts wxwidgets32 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWidgets 3.0 with GTK} {}
+if {[variant_isset wxgtk30]} {
     wxWidgets.use           wxGTK-3.0
-    platform darwin {
-        depends_lib-append      port:${wxWidgets.port}
-        autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
-        configure.args-append   --with-wxdir=${wxWidgets.wxdir}
-    }
-    ui_msg ${configure.args}
+    depends_lib-append      port:${wxWidgets.port}
+    autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
+    configure.args-append   --with-wxdir=${wxWidgets.wxdir}
 }
 
 variant wxgtk28 conflicts wxwidgets32 wxwidgets30 wxwidgets28 wxgtk30 description {Use wxWidgets 2.8 with GTK} {
