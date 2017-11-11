@@ -3,7 +3,8 @@
 PortSystem          1.0
 
 name                sqlite3
-version             3.17.0
+# don't forget to update the checksums for sqlite3-tools when updating sqlite3
+version             3.20.1
 categories          databases
 platforms           darwin
 license             public-domain
@@ -26,8 +27,8 @@ master_sites        ${homepage}2017
 set padded_ver      [string range [subst [regsub -all {\.([0-9]+)} "${version}.0.0" {[format %02d \1]}]] 0 6]
 distname            sqlite-autoconf-${padded_ver}
 
-checksums           rmd160  c198f8c3f91894ba017b7e71a9d6e5c31a9ef12c \
-                    sha256  a4e485ad3a16e054765baf6371826b5000beed07e626510896069c0bf013874c
+checksums           rmd160  9e6f5367269bdeba47cce342be0cb428b1d6e169 \
+                    sha256  ec66595b29bc0798b023a5122021ea646ab4fa9e2f735937c5426feeba950742
 
 depends_lib         port:libedit \
                     port:ncurses
@@ -42,6 +43,12 @@ configure.args      --enable-threadsafe \
                     --enable-readline \
                     --enable-fts5 \
                     AWK=/usr/bin/awk
+
+# if {${subport} eq ${name}} {
+#     post-patch {
+#         reinplace "s|-ltinfo||" ${worksrcpath}/configure
+#     }
+# }
 
 # search in worksrcpath for sqlite3.h first -- dont pick up an installed one!
 configure.cppflags-prepend  -DSQLITE_DISABLE_INTRINSIC \
@@ -81,8 +88,8 @@ subport ${name}-tools {
                               database files, including the sqldiff program and the \
                               sqlite3_analyzer program.
 
-    checksums       rmd160  1c0930021811f401c33b42ad93bbf3dd6174a6c4 \
-                    sha256  86754bee6bcaf1f2a6bf4a02676eb3a43d22d4e5d8339e217424cb2be6b748c3
+    checksums       rmd160  5260e6bcf35dc360a6dd31cec4792268feede6b7 \
+                    sha256  665bcae19f313c974e3fc2e375b93521c3668d79bc7b66250c24a4a4aeaa2c2a
     use_zip                   yes
     depends_lib               port:tcl
     configure.args            --with-tcl=${prefix}/lib
