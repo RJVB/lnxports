@@ -1,7 +1,8 @@
-This patch is needed for GTK to make sure that the port finds the right OpenGL library
---- configure.orig
+diff --git configure configure
+index 80b1e5d3f4..3ce994f3f6 100755
+--- configure
 +++ configure
-@@ -19465,48 +19465,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
+@@ -19579,48 +19579,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
  
  
  
