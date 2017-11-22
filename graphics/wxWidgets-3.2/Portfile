@@ -16,17 +16,18 @@ fetch.type          git
 version             3.1.0-git-20171121
 livecheck.version   v3.1.0
 
-set branch          3.2
+set shortversion    3.2
 
-name                wxWidgets-${branch}
-wxWidgets.use       wxWidgets-${branch}
-
-subport wxQt-${branch}    {
-    set wxWidgets.prefix [string map {"wxWidgets" "wxQt"} ${wxWidgets.prefix}]
-}
+name                wxWidgets-${shortversion}
+wxWidgets.use       wxWidgets-${shortversion}
 
 # set wxtype          osx_cocoa
 set wxtype          gtk2
+
+subport wxQt-${shortversion} {
+    set wxWidgets.prefix [string map {"wxWidgets" "wxQt"} ${wxWidgets.prefix}]
+    set wxtype      qt
+}
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
 
@@ -128,9 +129,8 @@ platform linux {
                     --enable-graphics_ctx \
 }
 
-if {${subport} eq "wxQt-${branch}"} {
+if {${wxtype} eq "qt"} {
     PortGroup qt5 1.0
-    set wxtype      qt
     configure.args-delete \
                     --with-gtk=2 \
                     --with-cocoa
