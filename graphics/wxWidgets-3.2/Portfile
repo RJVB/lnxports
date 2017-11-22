@@ -131,6 +131,10 @@ platform linux {
 
 if {${wxtype} eq "qt"} {
     PortGroup qt5 1.0
+
+    patchfiles-append \
+                    patch-wxqt-standard-menus.diff
+
     configure.args-delete \
                     --with-gtk=2 \
                     --with-cocoa
