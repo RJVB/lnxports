@@ -133,6 +133,7 @@ if {${wxtype} eq "qt"} {
     PortGroup qt5 1.0
 
     patchfiles-append \
+                    patch-wxqt-install-missing-headers.diff \
                     patch-wxqt-standard-menus.diff
 
     configure.args-delete \
