@@ -290,6 +290,16 @@ proc wxWidgets._set {option action args} {
                 return -code error "incompatible macOS version"
             }
         } }
+    } elseif {${args} eq "wxQt-3.2"} {
+        wxWidgets.name      "wxQt"
+        wxWidgets.version   "3.1"
+        wxWidgets.port      "wxQt-3.2"
+        if {${os.major} < 11} {platform darwin {
+            pre-fetch {
+                ui_error "${wxWidgets.port} requires macOS 10.7 or later."
+                return -code error "incompatible macOS version"
+            }
+        } }
     } else {
         # throw an error
         ui_error "invalid parameter for wxWidgets.use; use one of:\n\twxWidgets-2.8/wxGTK-2.8/wxWidgets-3.0/wxGTK-3.0/wxPython-3.0/wxWidgets-3.2"
