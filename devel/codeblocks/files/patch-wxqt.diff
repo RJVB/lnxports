@@ -108,3 +108,74 @@
      #include "resources/icons/app.xpm"
  #endif
  
+--- orig.configure.ac	2017-05-11 01:33:01.814773000 +0200
++++ configure.ac	2017-11-23 21:09:37.267459906 +0100
+@@ -259,6 +259,68 @@
+ 			WX_X11_LIBS="$WX_X11_LIBS -lX11 $X_EXTRA_LIBS"
+ 		fi
+     ;;
++    *wx_qt*)
++        AC_MSG_RESULT(wxQT)
++		dnl
++		dnl pkg-config no longer needed by debugger plugin
++		dnl but is needed by others
++		dnl
++		dnl only do this if it is really needed
++		dnl AM_CONDITIONAL adds _TRUE and _FALSE to the appropriate variables
++		dnl if the condition is true, the *_TRUE variable is empty (!)
++		if test "x$BUILD_FILEMANAGER_TRUE" = "x" -o \
++				"x$BUILD_SPELLCHECKER_TRUE" = "x" -o \
++				"x$BUILD_MOUSESAP_TRUE" = "x" -o \
++				"x$BUILD_EXPORTER_TRUE" = "x" -o \
++				"x$GTK_NOTEBOOK_TRUE" = "x" -o \
++				"x$LINUX_TRUE" = "x" ; then
++
++			if test "x$LINUX_TRUE" = "x" ; then
++				if test "x$HAVE_PKG_CONFIG" = "xyes"; then
++					PKG_CHECK_MODULES([GLIB2], [glib-2.0])
++				fi
++			fi
++
++			if test "x$BUILD_SPELLCHECKER_TRUE" = "x" ; then
++				if test "x$HAVE_PKG_CONFIG" = "xyes"; then
++					PKG_CHECK_MODULES([HUNSPELL], [hunspell])
++				fi
++			fi
++
++			if test "x$BUILD_MOUSESAP_TRUE" = "x"  ; then
++				if test "x$HAVE_PKG_CONFIG" = "xyes"; then
++                    PKG_CHECK_MODULES([QT5], [Qt5OpenGL])
++				fi
++			fi
++
++			if test "x$BUILD_FILEMANAGER_TRUE" = "x" ; then
++				if test "x$HAVE_PKG_CONFIG" = "xyes"; then
++					PKG_CHECK_MODULES([GAMIN], [gamin])
++				fi
++			fi
++
++			if test "x$BUILD_EXPORTER_TRUE" = "x" ; then
++				if test "x$HAVE_PKG_CONFIG" = "xyes"; then
++					PKG_CHECK_MODULES([FONTCONFIG], [fontconfig])
++				fi
++			fi
++
++    	fi
++
++        dnl Check whether boost is installed
++        AX_BOOST_BASE
++
++		CB_GLIB2_CFLAGS="$GLIB2_CFLAGS"
++		CB_GLIB2_LIBS="$GLIB2_LIBS"
++		CB_GAMIN_CFLAGS="$GAMIN_CFLAGS"
++		CB_GAMIN_LIBS="$GAMIN_LIBS"
++		CB_HUNSPELL_CFLAGS="$HUNSPELL_CFLAGS"
++		CB_HUNSPELL_LIBS="$HUNSPELL_LIBS"
++		CB_FONTCONFIG_CFLAGS="$FONTCONFIG_CFLAGS"
++		CB_FONTCONFIG_LIBS="$FONTCONFIG_LIBS"
++		WX_QT_CFLAGS="$QT_CFLAGS"
++		WX_QT_LIBS="$QT_LIBS"
++    ;;
+     *wx_msw*)
+         AC_MSG_RESULT(wxMSW)
+     ;;

@@ -114,19 +114,20 @@ variant universal {
     configure.args-append   --disable-pch
 }
 
-variant wxqt32 conflicts wxwidgets32 wxgtk30 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxQt 3.2} {}
+variant wxqt32 conflicts wxwidgets32 wxgtk30 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxQt 3.2 - experimental!} {}
 if {[variant_isset wxqt32]} {
     PortGroup               qt5 1.0
     conflicts_build-append  wxWidgets-3.0
     wxWidgets.use           wxQt-3.2
     depends_lib-append      port:${wxWidgets.port}
+    patchfiles-append       patch-wxqt.diff
     autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
     pre-configure {
         configure.cppflags-append \
-                            -I${qt_includes_dir} \
-                            [exec ${prefix}/bin/pkg-config --cflags glib-2.0]
+                            -I${qt_includes_dir}
+#                             [exec ${prefix}/bin/pkg-config --cflags glib-2.0]
         configure.ldflags-append \
-                            [exec ${prefix}/bin/pkg-config --libs Qt5Gui glib-2.0]
+                            [exec ${prefix}/bin/pkg-config --libs Qt5Gui]
     }
     configure.args-append   --with-wxdir=${wxWidgets.wxdir}
 }
