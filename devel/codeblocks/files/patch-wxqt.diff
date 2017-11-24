@@ -42,9 +42,9 @@
      #include "media/wxsmith.xpm"
  #endif
  
---- ./src/plugins/contrib/dragscroll/orig.dragscroll.cpp	2016-02-06 15:29:31.423286000 +0100
-+++ ./src/plugins/contrib/dragscroll/dragscroll.cpp	2017-11-22 20:25:19.271662604 +0100
-@@ -1633,7 +1633,7 @@
+--- src/plugins/contrib/dragscroll/orig.dragscroll.cpp	2016-02-06 15:29:31.423286000 +0100
++++ src/plugins/contrib/dragscroll/dragscroll.cpp	2017-11-24 14:05:15.110083579 +0100
+@@ -1633,12 +1633,14 @@
  //      __WXGTK__ MOUSE SCROLLING __WXGTK__
  // ----------------------------------------------------------------------------
  ///////////////////////////////////////////////////////////////////////////////
@@ -53,6 +53,21 @@
  // ----------------------------------------------------------------------------
  void MouseEventsHandler::OnMouseEvent(wxMouseEvent& event)    //GTK
  // ----------------------------------------------------------------------------
+ {
+ 
++// for now:
++#ifndef __WXQT__
+     // For efficiency, skip wheel events now
+     if ( event.GetEventType() ==  wxEVT_MOUSEWHEEL)
+         { event.Skip(); return; }
+@@ -1876,6 +1878,7 @@
+ 
+     }//else if (event.Dragging() && m_dragMode != DRAG_NONE)
+ 
++#endif // __WXQT__
+     // pass on the event
+     event.Skip();
+ 
 --- ./src/plugins/contrib/FileManager/orig.directorymonitor.cpp	2016-02-13 17:01:49.283357000 +0100
 +++ ./src/plugins/contrib/FileManager/directorymonitor.cpp	2017-11-22 20:21:20.199277733 +0100
 @@ -22,7 +22,7 @@
