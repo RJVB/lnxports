@@ -134,7 +134,8 @@ if {${wxtype} eq "qt"} {
 
     patchfiles-append \
                     patch-wxqt-install-missing-headers.diff \
-                    patch-wxqt-standard-menus.diff
+                    patch-wxqt-standard-menus.diff \
+                    patch-wxqt-temp-fixes.diff
 
     configure.args-delete \
                     --with-gtk=2 \
@@ -144,6 +145,17 @@ if {${wxtype} eq "qt"} {
                     --enable-cxx11
     configure.ldflags-append \
                     -Wl,-rpath=${qt_libs_dir}
+    post-destroot {
+        foreach h {caret.h clrpickerg.h fdrepdlg.h filepickerg.h fontpickerg.h} {
+            set target ${destroot}${wxWidgets.prefix}/include/wx-${branch}/wx/generic/${h}
+            if {![file exists ${target}]} {
+                xinstall -m 755 ${worksrcpath}/include/wx/generic/${h} ${target}
+            } else {
+                # missing install fixed upstream
+                ui_warn "${target} already exists"
+            }
+        }
+    }
 }
 
 post-destroot {
