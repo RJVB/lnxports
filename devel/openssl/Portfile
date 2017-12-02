@@ -1,13 +1,11 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 139225 2015-08-07 22:24:56Z jeremyhu@macports.org $
-# $Id: Portfile 153177 2016-09-26 12:10:57Z cal@macports.org $
 
 PortSystem          1.0
 PortGroup           muniversal 1.0
 
 name                openssl
 epoch               1
-version             1.0.2j
+version             1.0.2l
 
 # Please revbump these ports when updating OpenSSL.
 #  - freeradius (#43461)
@@ -43,9 +41,9 @@ master_sites        ${homepage}/source \
                     ftp://ftp.linux.hr/pub/openssl/source/ \
                     ftp://guest.kuria.katowice.pl/pub/openssl/source/
 
-checksums           sha1    bdfbdb416942f666865fa48fe13c2d0e588df54f \
-                    rmd160  d5be416caf523f3496323dbd05547144348e7854 \
-                    sha256  e7aff292be21c259c6af26469c7a9b3ba26e9abaaffd325e3dccc9785256c431
+checksums           sha1    b58d5d0e9cea20e571d903aafa853e2ccd914138 \
+                    rmd160  fece6681e6fd5423daf82e54116b39fd0217c6d2 \
+                    sha256  ce07195b659e75f4e1db43552860070061f156a98bb37b672b101ba6e3ddf30c
 
 if {${os.platform} eq "darwin"} {
     patchfiles      install-headers-HFS+.patch \
@@ -101,6 +99,13 @@ configure.universal_args-delete --disable-dependency-tracking
 # Parallel builds don't quite work (#46719).
 use_parallel_build  no
 
+post-configure {
+    # splice in our build options
+    reinplace "s|^CFLAG=.*|& ${configure.optflags}|g" ${worksrcpath}/Makefile
+    reinplace "s|^SHARED_LDFLAGS=.*|& ${configure.ldflags}|g" ${worksrcpath}/Makefile
+}
+
+# build.post_args-append CFLAG+=\"${configure.optflags}\" SHARED_LDFLAGS+=\"${configure.ldflags}\"
 test.run            yes
 
 if {[variant_isset universal]} {
