@@ -2,9 +2,10 @@
 
 PortSystem 1.0
 PortGroup  github 1.0
+PortGroup  preserve_runtime_libraries 1.0
+PortGroup  conflicts_configure 1.0
 
-github.setup                hunspell hunspell 1.6.0 v
-revision                    1
+github.setup                hunspell hunspell 1.6.2 v
 license                     {GPL-2+ LGPL-2.1+ MPL-1.1+}
 categories                  textproc
 maintainers                 nomaintainer
@@ -17,8 +18,8 @@ long_description            Hunspell is a spell checker and morphological analyz
                             character encoding. Hunspell interfaces: Ispell-like terminal interface \
                             using Curses library, Ispell pipe interface, OpenOffice.org UNO module.
 
-checksums                   rmd160  1fb51c38894f39b42b61d68121706c5a2ef37b67 \
-                            sha256  ce515ee140ebd1dece02b824b289b947f90e64d3f7a4fe439d01df591b1f9b64
+checksums                   rmd160  8726b0e4cbefcc008b2e176ad1a7f39cdffbdc19 \
+                            sha256  9a8e49d82fae6037bef210fb72a5f7ae040e796738e8ff3b2a5e5bedc9461262
 
 conflicts                   freeling
 
@@ -27,8 +28,12 @@ patchfiles                  patch-hunspell.cxx.diff
 depends_lib                 port:gettext port:ncurses
 # port:readline
 
-use_autoreconf              yes
-autoreconf.args             -fvi
+conflicts_configure         gettext-dev
+
+if {![file exists ${worksrcpath}/config.status]} {
+    use_autoreconf          yes
+    autoreconf.args         -fvi
+}
 
 configure.cppflags-append   -DLIBDIR=\\"${prefix}/share/hunspell\\"
 configure.args              --with-ui --with-readline
@@ -37,6 +42,7 @@ test.run                    yes
 test.target                 check
 
 post-destroot {
+    preserve_libraries ${prefix}/lib "libhunspell-1.*.dylib libhunspell-1.*.so.*"
     set docdir ${prefix}/share/doc/${name}
     xinstall -d ${destroot}${docdir}
     xinstall -m 644 -W ${worksrcpath} AUTHORS AUTHORS.myspell BUGS COPYING \
@@ -48,5 +54,3 @@ notes "
 You must install (at least) one of the language dictionaries after installing\
 this port in order for it to work.
 "
-
-livecheck.regex             /${name}-(\[0-9.\]+)${extract.suffix}
