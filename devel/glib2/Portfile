@@ -9,12 +9,13 @@ PortGroup                   locale_select 1.0
 name                        glib2
 conflicts                   glib2-devel
 set my_name                 glib
-version                     2.50.2
+version                     2.54.2
+revision                    1
 set branch                  [join [lrange [split ${version} .] 0 1] .]
 categories                  devel
-maintainers                 ryandesign openmaintainer
+maintainers                 {ryandesign @ryandesign} openmaintainer
 license                     LGPL-2+
-homepage                    http://www.gtk.org/
+homepage                    https://wiki.gnome.org/Projects/GLib
 platforms                   darwin
 dist_subdir                 glib2
 distname                    ${my_name}-${version}
@@ -29,28 +30,27 @@ long_description            Glib is a library which includes support routines \
 
 master_sites                gnome:sources/${my_name}/${branch}/
 
-checksums                   rmd160  421af588c21606587455eb69ba5bb85892c0da33 \
-                            sha256  be68737c1f268c05493e503b3b654d2b7f43d7d0b8c5556f7e4651b870acfbf5
+checksums                   rmd160  6804848c49bc882da563d8c3e025f1e37518bbc5 \
+                            sha256  bb89e5c5aad33169a8c7f28b45671c7899c12f74caf707737f784d7102758e6c \
+                            size    7830724
 
 # ${prefix}/include/glib-2.0/glib/gi18n.h requires -I${prefix}/include to find libintl.h
 # See https://trac.macports.org/changeset/27148
-#                             patch-glib-2.0.pc.in.diff \
+# patch-configure-switch-for-gappinfo-impl-mp.diff: understand comments inline!
+#   => https://trac.macports.org/ticket/53911
+#   => https://bugzilla.gnome.org/show_bug.cgi?id=781548
 patchfiles                  patch-configure.diff \
+                            patch-glib-2.0.pc.in.diff \
                             patch-glib-gmain.c.diff \
                             patch-glib_gunicollate.c.diff \
                             patch-gi18n.h.diff \
                             patch-gio_xdgmime_xdgmime.c.diff \
                             patch-gio_gdbusprivate.c.diff \
                             patch-get-launchd-dbus-session-address.diff \
-                            patch-gmodule-gmodule-dl.c.diff
+                            patch-gmodule-gmodule-dl.c.diff \
+                            patch-configure-switch-for-gappinfo-impl-mp.diff
 
-if {[vercmp ${macosx_deployment_target} 10.9] < 0} {
-    # gcocoanotificationbackend requires OS X 10.9 or later.
-    patchfiles-append       remove-gcocoanotificationbackend.patch
-} else {
-    # gcocoanotificationbackend.c:115:52: error: array subscript is not an integer
-    compiler.blacklist-append {clang < 600}
-}
+patchfiles-append           gosxapp.patch
 
 depends_build               bin:xmllint:libxml2
 
@@ -64,8 +64,13 @@ depends_lib                 port:libffi \
                             port:pcre \
                             port:zlib
 
-# GLib-CRITICAL **: attempting to free a locked GVariant instance.  This should never happen.
-compiler.blacklist-append   {clang < 318}
+if {[vercmp ${macosx_deployment_target} 10.9] < 0} {
+    # GLib-CRITICAL **: attempting to free a locked GVariant instance.  This should never happen.
+    compiler.blacklist-append   {clang < 318}
+} else {
+    # gcocoanotificationbackend.c:115:52: error: array subscript is not an integer
+    compiler.blacklist-append   {clang < 600}
+}
 
 # https://bugzilla.gnome.org/show_bug.cgi?id=697017
 compiler.blacklist-append   gcc-3.3 *gcc-4.0
@@ -81,20 +86,19 @@ configure.cflags-append     -fstrict-aliasing
 
 configure.args              --enable-static \
                             --disable-compile-warnings \
+                            --disable-gtk-doc \
                             --with-pcre=system \
-                            ac_cv_prog_AWK=/usr/bin/awk
+                            ac_cv_prog_AWK=/usr/bin/awk \
+                            ac_cv_prog_GTKDOC_CHECK= \
+                            ac_cv_path_GTKDOC_CHECK_PATH= \
+                            ac_cv_path_GTKDOC_MKPDF= \
+                            ac_cv_path_GTKDOC_REBASE=
 platform linux {
     configure.args-append   --with-libiconv=gnu
 }
 
 configure.perl              /usr/bin/perl
 configure.python            /usr/bin/python
-configure.env-append        PCRE_CFLAGS="-I${prefix}/include" \
-                            PCRE_LIBS="-L${prefix}/lib -lpcre" \
-                            PERL_PATH=${configure.perl} \
-                            PKG_CONFIG=false \
-                            ZLIB_CFLAGS="-I${prefix}/include" \
-                            ZLIB_LIBS="-L${prefix}/lib -lz"
 
 post-patch {
     reinplace "s|data_dirs = \"/usr|data_dirs = \"${prefix}/share:/usr|g" ${worksrcpath}/glib/gutils.c
@@ -106,8 +110,18 @@ post-patch {
 }
 
 pre-configure {
+#     if {![variant_isset quartz] && ![variant_isset x11]} {
+#         error "Either +x11 or +quartz is required"
+#     }
+
     set libffi_version      [exec sed -n {s/Version: //p} ${prefix}/lib/pkgconfig/libffi.pc]
-    configure.env-append    LIBFFI_CFLAGS="-I${prefix}/lib/libffi-${libffi_version}/include" \
+    configure.env-append    PCRE_CFLAGS="[exec ${prefix}/bin/pkg-config --cflags libpcre]" \
+                            PCRE_LIBS="[exec ${prefix}/bin/pkg-config --libs libpcre]" \
+                            PERL_PATH=${configure.perl} \
+                            PKG_CONFIG=false \
+                            ZLIB_CFLAGS="[exec ${prefix}/bin/pkg-config --cflags zlib]" \
+                            ZLIB_LIBS="[exec ${prefix}/bin/pkg-config --libs zlib]" \
+                            LIBFFI_CFLAGS="-I${prefix}/lib/libffi-${libffi_version}/include" \
                             LIBFFI_LIBS="-L${prefix}/lib -lffi"
 }
 
@@ -133,10 +147,24 @@ platform darwin {
     configure.args-append   --disable-dtrace
 }
 
-platform darwin 8 {
+if {${os.platform} eq "darwin" && ${os.major} <= 10} {
+    # Requires python 2.7 as of 2.53.4
+    # See https://bugzilla.gnome.org/show_bug.cgi?id=785193
     depends_lib-append      port:python27
     configure.python        ${prefix}/bin/python2.7
 }
+
+variant quartz conflicts x11 {
+    configure.args-append   --with-appinfo-impl=native
+}
+
+variant x11 conflicts quartz {
+    configure.args-append   --with-appinfo-impl=generic
+}
+
+# if {![variant_isset quartz]} {
+#     default_variants +x11
+# }
 
 livecheck.type              gnome
 livecheck.name              ${my_name}
