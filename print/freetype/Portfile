@@ -1,0 +1,216 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# $Id: Portfile 129404 2014-12-12 19:15:42Z ryandesign@macports.org $
+# $Id: Portfile 152634 2016-09-14 01:02:26Z ryandesign@macports.org $
+
+PortSystem              1.0
+
+name                    freetype
+
+subport "${name}-infinality" {
+    supported_archs     noarch
+}
+
+categories              print graphics
+platforms               darwin
+
+# Infinality patches updated for Freetype >= 2.7 can be found here:
+# https://github.com/archfan/infinality_bundle/releases
+# freetype 2.8: https://github.com/archfan/infinality_bundle/pull/11#event-1094059648
+# see also https://github.com/bohoomil/fontconfig-ultimate/issues/171
+if {${subport} eq "${name}-infinality"} {
+#     version             2017.01.15
+    version             2017.08.05
+    maintainers         gmail.com:rjvbertin
+    license             MIT
+    homepage            http://bohoomil.com
+    description         The Freetype Infinality patches
+    long_description    This is a s(t)ub port providing versioning information \
+                        for the Infinality patches maintained by Bohoomil and that \
+                        are available through freetype's +infinality variant.
+    installs_libs       no
+    supported_archs     noarch
+    distfiles
+    use_configure       no
+    # this appears to be required despite an empty build block!
+    build.cmd           echo
+    fetch {}
+    checksum {}
+    extract {
+        xinstall -m 0755 -d ${worksrcpath}
+    }
+    patch {}
+    post-patch {}
+    configure {}
+    build {}
+    post-destroot {
+        xinstall -m 0755 -d ${destroot}${prefix}/share/fonts/fontconfig-ultimate
+        foreach f [glob ${filespath}/infinality-settings*] {
+            copy ${f} ${destroot}${prefix}/share/fonts/fontconfig-ultimate
+        }
+        xinstall -m 0755 ${filespath}/launchctl-infinality-settings.sh ${destroot}${prefix}/share/fonts/fontconfig-ultimate
+        xinstall -m 0644 ${filespath}/Infinality-CHANGELOG ${destroot}${prefix}/share/fonts/fontconfig-ultimate
+        xinstall -m 0644 ${filespath}/Infinality-archfan-CHANGELOG ${destroot}${prefix}/share/fonts/fontconfig-ultimate
+    }
+    notes-append "freetype must be now be (re)build and (re)installed with the +infinality variant."
+
+} else {
+    PortGroup               muniversal 1.0
+
+    if {[file exists ${prefix}/share/fonts/fontconfig-ultimate/infinality-settings.sh]} {
+        default_variants    +infinality
+    }
+
+    version                 2.8.1
+    maintainers             {ryandesign @ryandesign}
+    license                 {FreeType GPL-2}
+    homepage                http://www.freetype.org
+    use_bzip2               yes
+    use_parallel_build      yes
+
+    description \
+        A software font engine
+    long_description \
+        FreeType2 is a software font engine that is designed to \
+        be small, efficient, highly customisable and portable while \
+        capable of producing high-quality output (glyph images). \
+        It can be used in graphics libraries, display servers, font \
+        conversion tools, text image generation tools, and many \
+        other products as well.
+
+    master_sites        sourceforge:project/freetype/freetype2/${version}:source \
+                        sourceforge:project/freetype/freetype-docs/${version}:docs \
+                        http://download.savannah.gnu.org/releases/freetype/
+
+    set docdistname         ${name}-doc-${version}
+
+    distfiles           ${distname}${extract.suffix}:source \
+                        ${docdistname}${extract.suffix}:docs
+
+#     2.8
+#     checksums           ${distname}${extract.suffix} \
+#                         rmd160  518184d2be032b9807345367265cc7cd49df0da5 \
+#                         sha256  a3c603ed84c3c2495f9c9331fe6bba3bb0ee65e06ec331e0a0fb52158291b40b \
+#                         ${docdistname}${extract.suffix} \
+#                         rmd160  ad81e3ca016e583a949cbb9bd4ce40bc0493fa79 \
+#                         sha256  427ba04d11f450df4bac4c95fec247be1b835ccdcf85d8b081f3f39d31811154
+#     2.8.1
+    checksums           ${distname}${extract.suffix} \
+                        rmd160  4b31c73b38d1f03c431b12408f800569e0724cc4 \
+                        sha256  e5435f02e02d2b87bb8e4efdcaa14b1f78c9cf3ab1ed80f94b6382fb6acc7d78 \
+                        ${docdistname}${extract.suffix} \
+                        rmd160  5ef58133218fa1ba8106cdaada4a3e6f56c793ad \
+                        sha256  e6251ab44adcb075c7ca4205163c43b6539cbe5265b8a24ec0afa07f8b9213f3
+
+    patchfiles \
+                        patch-src_base_ftrfork.c.diff \
+                        patch-modules.cfg.diff
+    # the autoconf/libtool system sets the dylib compatibility version to the current version (and both
+    # to some meaningless value rather than the FT version). The CMake build system sets the 
+    # compatibility version to vMaj.vMin.0 and the current version to vMaj.vMin.vPatch, as one could
+    # expect.
+    # libtool version for 2.7.1 : 20
+    # libtool version for 2.8.0 : 21
+    # libtool version for 2.8.1 : 22
+    # 2.8.x builds should set the compatibility version to at most 21 so that users can re-activate
+    # an older install.
+    patchfiles-append   patch-compatversion=20.diff
+
+    variant lineheight description {revert the lineheight to what it was in 2.7.1 and earlier} {
+        # https://bbs.archlinux.org/viewtopic.php?pid=1717280#p1717280
+        patchfiles-append patch-revert-lineheight.diff
+    }
+
+    depends_lib         port:bzip2 \
+                        port:libpng \
+                        port:zlib
+
+    # See http://trac.macports.org/ticket/18232
+    configure.cppflags-replace  -I${prefix}/include -isystem${prefix}/include
+
+    configure.args      --with-bzip2 \
+                        --with-png \
+                        --with-zlib \
+                        --without-harfbuzz \
+                        ac_cv_prog_AWK=/usr/bin/awk
+
+    configure.universal_args-delete --disable-dependency-tracking
+
+    platform macosx {
+        if {${os.major} < 9} {
+            configure.args-append \
+                --with-old-mac-fonts
+        }
+    }
+
+    set docdir              ${prefix}/share/doc/${name}
+
+    variant infinality description {patched for improved font rendering, bohoomil ultimate style} {
+
+#         revision                    [expr ${revision} + 1]
+        depends_build-append        port:${name}-infinality
+        depends_run-append          port:${name}-infinality
+
+        # the freetype*-enable-valid*.patch provides the mod from patch-modules.cfg.diff
+        patchfiles-delete           patch-modules.cfg.diff
+        patchfiles-append           0001-Enable-table-validation-modules.patch \
+                                    0002-infinality-2.8.1-2017.12.31.patch
+        pre-patch {
+            # make -p0 patches
+            set pf [split ${patchfiles} " "]
+            foreach f ${pf} {
+                reinplace -W ${filespath} "s| \[ab\]/| |g" ${f}
+                reinplace -W ${filespath} "s| freetype-${version}\[^/\]*/| |g" ${f}
+            }
+        }
+
+#         configure.args-replace      --without-harfbuzz --with-harfbuzz
+#         depends_lib-append          port:harfbuzz
+
+        notes-append "Copy ${prefix}/share/fonts/fontconfig-ultimate/infinality-settings.sh (or .csh) to an appropriate location
+         and make sure it gets read when you log in. See infinality-settings-explained.sh for explanation
+         of the various settings and variables. Then, use launchctl-infinality-settings.sh to copy the
+         selected environment variables to those managed by LaunchServices"
+    }
+
+    post-destroot {
+        xinstall -m 0755 -d ${destroot}${docdir}
+
+        xinstall -m 0644 -W ${worksrcpath} \
+            ChangeLog \
+            README \
+            ${destroot}${docdir}
+        xinstall -m 0644 -W ${worksrcpath}/docs \
+            CHANGES \
+            FTL.TXT \
+            GPLv2.TXT \
+            LICENSE.TXT \
+            PROBLEMS \
+            TODO \
+            formats.txt \
+            raster.txt \
+            ${destroot}${docdir}
+
+        xinstall -m 0755 -d ${destroot}${docdir}/html
+        xinstall -m 0644 -W ${worksrcpath}/docs ft2faq.html ${destroot}${docdir}/html
+        foreach dir {design glyphs reference tutorial} {
+            copy ${worksrcpath}/docs/${dir} ${destroot}${docdir}/html
+        }
+        if {[variant_isset infinality]} {
+            ln -s ${prefix}/share/fonts/fontconfig-ultimate/launchctl-infinality-settings.sh ${destroot}${prefix}/bin
+        }
+    }
+
+    if {${os.arch} eq "i386"} {
+        if { ${os.major}>=10 } {
+            set merger_configure_env(ppc) CC_BUILD=${configure.cc}
+        }
+        set merger_configure_env(ppc64)   CC_BUILD=${configure.cc}
+    } else {
+        set merger_configure_env(i386)    CC_BUILD=${configure.cc}
+        set merger_configure_env(x86_64)  CC_BUILD=${configure.cc}
+    }
+
+    livecheck.type          sourceforge
+    livecheck.regex         {/freetype2/([0-9.]+)/}
+
+}
