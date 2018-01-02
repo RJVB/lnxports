@@ -10,10 +10,12 @@ diff -r 815d97a7a0a1 src/xxdiff.pro
  TARGET = xxdiff
  
  
-@@ -112,6 +112,12 @@
+@@ -111,7 +111,13 @@
+ #linux-g++:QMAKE_LIBS += -lmpatrol -lbfd -liberty
  
  # auto_ptr deprecated in C++11, removed in C++17
- linux: QMAKE_CXXFLAGS += -std=c++03
+-linux: QMAKE_CXXFLAGS += -std=c++03
++#linux: QMAKE_CXXFLAGS += -std=c++03
 +linux:QMAKE_CFLAGS_RELEASE   -= -O2
 +linux:QMAKE_CXXFLAGS_RELEASE -= -O2
 +linux:QMAKE_CFLAGS += @@CFLAGS@@
