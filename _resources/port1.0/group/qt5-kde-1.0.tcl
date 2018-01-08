@@ -2,7 +2,7 @@
 
 # Copyright (c) 2014 The MacPorts Project
 # Copyright (c) 2013-11-26 michaelld@macports.org
-# Copyright (c) 2015-2017 R.J.V. Bertin
+# Copyright (c) 2015-2018 R.J.V. Bertin
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -58,10 +58,11 @@
 # define all available port:qt5* versions
 global available_qt5_versions
 set available_qt5_versions {
-    qt5
-    qt56
-    qt55
-    qt53
+    qt5  {qt5-kde  5.8}
+    qt58 {qt58-kde 5.8}
+    qt56 {qt56-kde 5.6}
+    qt54 {qt54-kde 5.4}
+    qt53 {qt53-kde 5.3}
 }
 
 if {[tbool just_want_qt5_version_info]} {
@@ -75,13 +76,18 @@ if {[tbool just_want_qt5_version_info]} {
 
 # first, check if port:qt5-kde or a port:qt5-kde-devel is installed, or if we're on Mac OS X 10.6
 # NB: the qt5-kde-devel ports may never exist officially in MacPorts but is used locally by KF5 port maintainers!
-if {[file exists ${prefix}/include/qt5/QtCore/QtCore] || ${os.major} == 10} {
+# NB2 : ${prefix} isn't set by portindex but registry_active can be used!!
+# NB3 : this is a simpler variant of the equivalent block in qt5-1.0.tcl and qt5-mac-1.0.tcl;
+# it can be because we have strict(er) control over who includes this, and the tests are redundant
+# if we come here via one of the aforementioned PortGroup files.
+if {[file exists ${prefix}/include/qt5/QtCore/QtCore] || ${os.major} == 10
+        || ([catch {registry_active "qt5-kde"}] == 0 || [catch {registry_active "qt5-kde-devel"}] == 0) } {
     # Qt5 has been installed through port:qt5-kde or port:qt5-kde-devel
     ui_debug "Qt5 is provided by port:qt5-kde"
     # we're in the right PortGroup, otherwise we'd need to
     # PortGroup           qt5-kde 1.0
     set qt5.using_kde   yes
-} elseif {[file exists ${prefix}/libexec/qt5/plugins]
+} elseif {[file exists ${prefix}/libexec/qt5/plugins/platforms/libqcocoa.dylib]
         && [file type ${prefix}/libexec/qt5/plugins] eq "directory"} {
     # qt5-qtbase is installed: Qt5 has been installed through a standard port:qt5 port
     # (checking if "plugins" is a directory is probably redundant)
@@ -137,8 +143,8 @@ if {[file exists ${prefix}/include/qt5/QtCore/QtCore] || ${os.major} == 10} {
 # }
 
 ######### checks that should never trigger #########
-if {[file exists ${prefix}/libexec/qt5/plugins]
-        && [file type ${prefix}/libexec/qt5/plugins] eq "directory"} {
+if {[file exists ${prefix}/libexec/qt5/plugins/platforms/libqcocoa.dylib]
+    && [file type ${prefix}/libexec/qt5/plugins] eq "directory"} {
     # Qt5 has been installed through port:qt5, which leads to certain incompatibilities
     # which do not need to be declared otherwise. The header Qt5 PortGroup has similar
     # checks and provisions, but since ports can also include us directly we have to
@@ -440,6 +446,23 @@ if {${os.platform} eq "darwin"} {
 
 # allow for depending on either qt5[-mac] or qt5[-mac]-devel or qt5[-mac]*-kde, simultaneously
 
+proc qt5.active_version {} {
+    global prefix
+    namespace upvar ::qt5 active_version av
+    if {[info exists av]} {
+        return ${av}
+    }
+    if {[info exists building_qt5]} {
+        set av ${version}
+        return ${av}
+    } elseif {[file exists ${prefix}/bin/pkg-config]} {
+        set av [exec ${prefix}/bin/pkg-config --modversion Qt5Core]
+        return ${av}
+    } else {
+        return 0.0.0
+    }
+}
+
 set qt5.kde_stubports \
             {qtbase qtdeclarative qtserialbus qtserialport qtsensors \
             qtquick1 qtwebchannel qtimageformats qtsvg qtmacextras \
@@ -451,12 +474,22 @@ set qt5.kde_stubports \
 }
 # new in 5.7.1: qtcharts qtdatavis3d qtgamepad qtpurchasing qtscxml
 # removed in 5.7: qtenginio (kept as stubport for 1 or 2 versions)
-if {![info exists building_qt5] || [vercmp ${version} 5.7.0] >= 0} {
-    # these stubports are added to the list for dependents, but not for port:qt5*-kde itself
-    # this allows to define them only in port:qt5-kde, not qt56-kde .
+# these are added to the list either when not building Qt, or when
+# building a Qt5 version of the proper version. This is to avoid that
+# we define inappropriate stub subports.
+if {![info exist building_qt5] || [vercmp ${version} 5.7.0] >= 0} {
+    # new stubports to be added to the list for dependents.
     lappend qt5.kde_stubports qtcharts qtdatavis3d qtgamepad qtpurchasing qtscxml
     # qttranslations is moved to its own subport; remove it from the stubports list:
     set qt5.kde_stubports [lsearch -all -inline -not -exact ${qt5.kde_stubports} qttranslations]
+}
+if {![info exist building_qt5] || [vercmp ${version} 5.8.0] >= 0} {
+    lappend qt5.kde_stubports qtdoc qtnetworkauth qtspeech
+}
+if {![info exist building_qt5] || [vercmp ${version} 5.9.0] >= 0} {
+    lappend qt5.kde_stubports qtremoteobjects
+    # qt3d is moved to its own subport; remove it from the stubports list:
+    set qt5.kde_stubports [lsearch -all -inline -not -exact ${qt5.kde_stubports} qt3d]
 }
 
 global qt5_dependency
@@ -515,24 +548,29 @@ if {![tbool QT53] && ![tbool qt5.no_LTO_variant]} {
     variant LTO description {Build with Link-Time Optimisation (LTO) (experimental)} {}
 }
 
-if {![info exists building_qt5] && [variant_exists LTO] && [variant_isset LTO]} {
-    configure.cflags-append     -flto
-    configure.cxxflags-append   -flto
-    configure.objcflags-append  -flto
-    configure.objcxxflags-append  -flto
-    # ${configure.optflags} is a list, and that can lead to strange effects
-    # in certain situations if we don't treat it as such here.
-    foreach opt ${configure.optflags} {
-        configure.ldflags-append ${opt}
+if {![info exists building_qt5]} {
+    if {[variant_exists LTO] && [variant_isset LTO]} {
+        configure.cflags-append         -flto
+        configure.cxxflags-append       -flto
+        configure.objcflags-append      -flto
+        configure.objcxxflags-append    -flto
+        # ${configure.optflags} is a list, and that can lead to strange effects
+        # in certain situations if we don't treat it as such here.
+        foreach opt ${configure.optflags} {
+            configure.ldflags-append ${opt}
+        }
+        configure.ldflags-append        -flto
+        # assume any compiler not clang will be gcc
+        if {![string match "*clang*" ${configure.compiler}]} {
+            configure.cflags-append     -fuse-linker-plugin -ffat-lto-objects
+            configure.cxxflags-append   -fuse-linker-plugin -ffat-lto-objects
+            configure.objcflags-append  -fuse-linker-plugin -ffat-lto-objects
+            configure.objcxxflags-append -fuse-linker-plugin -ffat-lto-objects
+            configure.ldflags-append    -fuse-linker-plugin
+        }
     }
-    configure.ldflags-append    -flto
-    # assume any compiler not clang will be gcc
-    if {![string match "*clang*" ${configure.compiler}]} {
-        configure.cflags-append         -fuse-linker-plugin -ffat-lto-objects
-        configure.cxxflags-append       -fuse-linker-plugin -ffat-lto-objects
-        configure.objcflags-append      -fuse-linker-plugin -ffat-lto-objects
-        configure.objcxxflags-append    -fuse-linker-plugin -ffat-lto-objects
-        configure.ldflags-append        -fuse-linker-plugin
+    platform linux {
+        configure.ldflags-append        -Wl,-rpath,${qt_libs_dir}
     }
 }
 
@@ -711,7 +749,7 @@ proc qt5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""} {appdir ""
                 set bundlename ${wrappername}
             }
             if {${bundleexec} eq ""} {
-                set bundleexec ${bundlename}
+                set bundleexec [file tail ${bundlename}]
             }
             puts ${fd} "exec \"${appdir}/${bundlename}.app/Contents/MacOS/${bundleexec}\" \"\$\@\""
         } else {
@@ -753,7 +791,8 @@ platform linux {
         qtwebview       path:libexec/${qt_name}/lib/libQt5WebView.${qt_libs_ext} \
     ]
 }
-set qt5::component2pathspec(assistant) path:${qt_bins_dir}/assistant
+set qt5::component2pathspec(assistant)  path:${qt_bins_dir}/assistant
+set qt5::component2pathspec(webkit)     $qt5::component2pathspec(qtwebkit)
 
 # a procedure for declaring dependencies on Qt5 components, which will expand them
 # into the appropriate subports for the Qt5 flavour installed
@@ -775,6 +814,7 @@ proc qt5::depends_component_p {deptype args} {
     ui_debug "qt5::depends_component_p, deptype=${deptype} args=$args"
     foreach comp $args {
         set done true
+        set portname "${qt5::pprefix}-${comp}"
         switch ${comp} {
             "qt5" {
                 if {${is_qt5kde} == 1} {
@@ -787,10 +827,15 @@ proc qt5::depends_component_p {deptype args} {
                     ${deptype}-append port:${qt5::pprefix}
                 }
             }
+            "webkit" {
+                # this refers to the new version-agnostic port:qt5-webkit
+                set portname "qt5-${comp}"
+                set done false
+            }
             "qtwebkit" -
             "qtwebengine" -
             "qtwebview" {
-                # these components are never stub subports
+                # these components are never stub subports (or possibly so, in the case of QtWebKit)
                 set done false
             }
             default {
@@ -801,9 +846,9 @@ proc qt5::depends_component_p {deptype args} {
             }
         }
         if {!${done}} {
-            set portname "${qt5::pprefix}-${comp}"
             if {[info exists qt5::component2pathspec] && [info exists qt5::component2pathspec(${comp})]} {
                 # an explicit dependency pattern was given, e.g. path:foo
+                ui_debug "component ${comp} -> port ${portname} and depspec $qt5::component2pathspec(${comp})"
                 ${deptype}-append "$qt5::component2pathspec(${comp}):${portname}"
             } else {
                 ${deptype}-append port:${portname}
@@ -820,22 +865,8 @@ proc qt5.depends_build_component {args} {
     return [qt5::depends_component_p depends_build {*}${args}]
 }
 
-proc qt5.depends_run_component {args} {
+proc qt5.depends_runtime_component {args} {
     return [qt5::depends_component_p depends_run {*}${args}]
-}
-
-proc qt5.active_version {} {
-    global prefix
-    namespace upvar ::qt5 active_version av
-    if {[info exists av]} {
-        return ${av}
-    }
-    if {[file exists ${prefix}/bin/pkg-config]} {
-        set av [exec ${prefix}/bin/pkg-config --modversion Qt5Core]
-        return ${av}
-    } else {
-        return 0.0.0
-    }
 }
 
 # this function registers the specified qch file(s) by installing
@@ -866,7 +897,9 @@ post-activate {
     if {[file exists ${qchdir}] && [file isdirectory ${qchdir}] && [file exists ${qhcdir}] && [file isdirectory ${qhcdir}]} {
         set qhcpfile MP-qthelp-collection.qhcp
         set qhcfile [file tail ${qt5::qch_collection_file}]
-        if {(${subport} eq "qt5-kde-assistant") || (${subport} eq "qt5-kde-devel-assistant")} {
+        if {(${subport} eq "qt5-kde-assistant") || (${subport} eq "qt5-kde-devel-assistant") \
+                || (${subport} eq "qt5-assistant") || (${subport} eq "qt5-assistant-devel")} \
+        {
             # always regenerate when (re)installing the Qt Assistant
             set needs_generate yes
         } elseif {[file exists "${qhcdir}/${qhcfile}"]} {
