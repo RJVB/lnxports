@@ -2,7 +2,7 @@ PortSystem              1.0
 PortGroup               compiler_blacklist_versions 1.0
 
 name                    libcxx
-version                 4.0.0
+version                 5.0.1
 epoch                   1
 categories              lang
 platforms               darwin
@@ -24,8 +24,8 @@ dist_subdir             llvm
 use_xz                  yes
 distname                ${name}-${version}.src
 
-checksums               rmd160  b1a870353076c9af77c16f182d5d6a987a0e3030 \
-                        sha256  4f4d33c4ad69bf9e360eebe6b29b7b19486948b1a41decf89d4adec12473cf96
+checksums               rmd160  1e5a22e62515382488f232039e31f0b12c08ca4f \
+                        sha256  fa8f99dd2bde109daa3276d529851a3bce5718d46ce1c5d0806f46caa3e57c00 \
 
 if {${os.platform} eq "linux"} {
     PortGroup           cmake 1.1
@@ -33,8 +33,8 @@ if {${os.platform} eq "linux"} {
     worksrcdir          llvm-${version}.src
     checksums-prepend   ${name}-${version}.src${extract.suffix}
     checksums-append    llvm-${version}.src${extract.suffix} \
-                        rmd160  468ae2502ba523b35c5e8340724ddaa50b31ccb5 \
-                        sha256  8d10511df96e73b8ff9e7abbfb4d4d432edbdbe965f1f4f07afaf370b8a533be
+                        rmd160  3d17de87813313b6eac5b5dc8592f676c5cee561 \
+                        sha256  5fa7489fc0225b11821cab0362f5813a05f2bcf2533e8a4ea9c9c860168807b0
     depends_lib         port:libedit port:libffi port:ncurses port:zlib
 
     post-extract {
@@ -43,11 +43,12 @@ if {${os.platform} eq "linux"} {
 
     patch.pre_args -p1
     patchfiles-append \
-        3001-buildit-build-fix-for-Leopard.patch \
-        3002-buildit-Set-compatibility-version-to-RC_ProjectSourc.patch \
-        3003-Fix-local-and-iterator-when-building-with-Lion-and-n.patch \
-        3004-Fix-missing-long-long-math-prototypes-when-using-the.patch \
-        3005-implement-atomic-using-mutex-lock_guard-for-64b-ops-.patch \
+        3004-Revert-Remove-the-buildit-and-testit-scripts-they-ha.patch \
+        3001-Fix-local-and-iterator-when-building-with-Lion-and-n.patch \
+        3002-Fix-missing-long-long-math-prototypes-when-using-the.patch \
+        3003-implement-atomic-using-mutex-lock_guard-for-64b-ops-.patch \
+        3006-buildit-Set-compatibility-version-to-RC_ProjectSourc.patch \
+        3008-buildit-Fix-CFLAGS-for-Leopard-and-Snow-Leopard-to-i.patch \
         patch-accept-build_types.diff
 
     cmake.install_prefix \
@@ -66,7 +67,7 @@ if {${os.platform} eq "linux"} {
                         -DLIBCXX_ENABLE_ASSERTIONS=OFF \
                         -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++
 
-    cmake.save_configure_cmd
+    cmake.save_configure_cmd "log too"
 
     variant benchmark_libcxx description {build the benchmark against libc++} {
         configure.args-replace \
