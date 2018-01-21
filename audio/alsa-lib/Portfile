@@ -24,40 +24,86 @@ platforms           linux
 depends_build       port:pkgconfig
 
 subport "${basename}-plugins" {}
+subport "${basename}-tools" {}
+subport "${basename}-utils" {}
 
-if {${subport} eq "${basename}-lib"} {
-    description         alsa-lib contains the user space library that developers compile ALSA applications against.
-    long_description-append \n${description}
-    master_sites        ftp://ftp.alsa-project.org/pub/lib/
-    checksums           rmd160  f787813b0b13a92185e5afdf0dfeaadc61a5ae0e \
+switch ${subport} {
+    alsa-lib {
+        description     alsa-lib contains the user space library that developers compile ALSA applications against.
+        long_description-append \n${description}
+        master_sites    ftp://ftp.alsa-project.org/pub/lib/
+        checksums       rmd160  f787813b0b13a92185e5afdf0dfeaadc61a5ae0e \
                         sha256  f4f68ad3c6da36b0b5241ac3c798a7a71e0e97d51f972e9f723b3f20a9650ae6
 
-    configure.args-append \
+        configure.args-append \
                         --disable-dependency-tracking \
                         --disable-silent-rules \
                         --enable-symbolic-functions \
                         --disable-python
-    post-destroot {
-        file rename ${destroot}${prefix}/share/alsa/alsa.conf ${destroot}${prefix}/share/alsa/alsa.conf.stock
-    }
-    post-activate {
-        if {![file exists ${prefix}/share/alsa/alsa.conf]} {
-            xinstall -m 644 ${prefix}/share/alsa/alsa.conf.stock ${prefix}/share/alsa/alsa.conf
+        post-destroot {
+            file rename ${destroot}${prefix}/share/alsa/alsa.conf ${destroot}${prefix}/share/alsa/alsa.conf.stock
+        }
+        post-activate {
+            if {![file exists ${prefix}/share/alsa/alsa.conf]} {
+                xinstall -m 644 ${prefix}/share/alsa/alsa.conf.stock ${prefix}/share/alsa/alsa.conf
+            }
         }
     }
-} elseif {${subport} eq "${basename}-plugins"} {
-    description         alsa-plugins contains plugins for various ALSA needs (e.g. Jack).
-    long_description-append \n${description}
-    master_sites        ftp://ftp.alsa-project.org/pub/plugins/
-    distname            ${subport}-${version}
-    checksums           rmd160  7e06e33bc971c2b0fc4218695506471fb4cccd40 \
+    alsa-plugins {
+        description     alsa-plugins contains plugins for various ALSA needs (e.g. Jack).
+        long_description-append \n${description}
+        master_sites    ftp://ftp.alsa-project.org/pub/plugins/
+        distname        ${subport}-${version}
+        checksums       rmd160  7e06e33bc971c2b0fc4218695506471fb4cccd40 \
                         sha256  797da5f8f53379fbea28817bc466de16affd2c07849e84f1af8d5e22f7bb7f1c
 
-    depends_lib         port:${basename}-lib \
+        depends_lib     port:${basename}-lib \
                         port:ffmpeg \
                         port:libsamplerate
-    configure.args-append \
+        configure.args-append \
                         --disable-dependency-tracking
+    }
+    alsa-tools {
+        description     alsa-tools contains various more obscure tools and loaders.
+        long_description-append \n${description}
+        master_sites    ftp://ftp.alsa-project.org/pub/tools/
+        distname        ${subport}-${version}
+        checksums       rmd160  76bf1c2404c218e7fd1fa27bbb829cb2349f0c6c \
+                        sha256  bc3c6567de835223ee7d69487b8c22fb395a2e8c613341b0c96e6a5f6a2bd534
+
+        depends_lib     port:${basename}-lib
+        depends_run     port:${basename}-plugins
+        patchfiles-append \
+                        patch-atools-makefile.diff
+
+        configure.env   CONFIGURE_ARGS=\"${configure.pre_args} --disable-dependency-tracking \"
+        configure.cmd   make
+        configure.pre_args
+        configure.args  -w configure
+
+        post-destroot {
+            file rename ${destroot}/etc ${destroot}${prefix}/etc
+            file rename ${destroot}/usr/local/share/sounds ${destroot}${prefix}/share/sounds
+            file rename ${destroot}/usr/local/bin/sbiload ${destroot}${prefix}/bin/sbiload
+        }
+    }
+    alsa-utils {
+        PortGroup       conflicts_configure 1.0
+        description     alsa-utils contains various generic ALSA command line tools, such as amixer, aplay, alsaconf, etc.
+        long_description-append \n${description}
+        master_sites    ftp://ftp.alsa-project.org/pub/utils/
+        distname        ${subport}-${version}
+        checksums       rmd160  55dae43c8b2311c12c8b55505c63e10028e3cbb6 \
+                        sha256  320bd285e91db6e7fd7db3c9ec6f55b02f35449ff273c7844780ac6a5a3de2e8
+
+        conflicts_configure gettext-dev
+        depends_lib     port:${basename}-lib
+        depends_run     port:${basename}-plugins
+        configure.args-append \
+                        --disable-dependency-tracking \
+                        --with-udev-rules-dir=${prefix}/lib/udev \
+                        --with-systemdsystemunitdir=${prefix}/lib/systemd
+    }
 }
 
 livecheck.type      regex

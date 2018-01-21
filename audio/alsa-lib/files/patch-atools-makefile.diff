@@ -1,0 +1,31 @@
+--- orig.Makefile	2017-11-14 09:06:03.000000000 +0100
++++ Makefile	2018-01-21 14:35:52.966878301 +0100
+@@ -2,18 +2,17 @@
+ TOP = .
+ SUBDIRS = as10k1 envy24control hdsploader hdspconf hdspmixer \
+ 	  mixartloader pcxhrloader rmedigicontrol sb16_csp seq sscape_ctl \
+-	  us428control usx2yloader vxloader echomixer ld10k1 qlo10k1 \
+-	  hwmixvolume hdajackretask hda-verb hdajacksensetest
++	  us428control usx2yloader vxloader echomixer ld10k1 \
++	  hdajackretask hda-verb hdajacksensetest
+ 
+ all:
+-	@for i in $(SUBDIRS); do \
++	+for i in $(SUBDIRS); do \
+ 	  cd $(TOP)/$$i; echo $(TOP)/$$i; \
+-	  ./gitcompile $(GITCOMPILE_ARGS) || exit 1; \
+ 	  cd ..; make -C $$i || exit 1; \
+ 	done
+ 
+ configure:
+-	@for i in $(SUBDIRS); do \
++	for i in $(SUBDIRS); do \
+ 	  cd $(TOP)/$$i; echo $(TOP)/$$i; \
+ 	  if [ -x ./configure ]; then \
+ 	    ./configure $(CONFIGURE_ARGS) || exit 1; \
+@@ -44,4 +43,4 @@
+ 
+ clean:
+ 	rm -rf *~ distdir
+-	@for i in $(SUBDIRS); do make -C $$i clean || exit 1; done
++	+for i in $(SUBDIRS); do make -C $$i clean || exit 1; done
