@@ -4,12 +4,12 @@ PortSystem          1.0
 PortGroup           perl5 1.0
 
 name                git
-version             2.13.1
+version             2.15.1
 
 description         A fast version control system
 long_description    Git is a fast, scalable, distributed open source version \
                     control system focusing on speed and efficiency.
-maintainers         ciserlohn openmaintainer
+maintainers         {ciserlohn @ci42} openmaintainer
 categories          devel
 license             GPL-2 LGPL-2.1+
 platforms           darwin
@@ -22,17 +22,17 @@ distfiles           git-${version}${extract.suffix} \
                     git-manpages-${version}${extract.suffix}
 
 checksums           git-${version}${extract.suffix} \
-                    rmd160  34b7124a0773035aa32b51092f9f1aed7662966f \
-                    sha256  3bc1becd983f77ab154a46801624369dbc40c3dd04b4c4b07ad026f5684688fe \
+                    rmd160  4faa07120bec5376a76330cdebe5b43e283856d7 \
+                    sha256  999c90fd7d45066992cdb87dda35bdff6dfc1d01496118ea718dfb866da4045c \
                     git-manpages-${version}${extract.suffix} \
-                    rmd160  b53ed7f2e0ad0ac69744ebb821995f96444e94b7 \
-                    sha256  e3dd097d06c44f6d8191ae468b6fc401eaf6992f4962041e9c3af4a06335ff70
+                    rmd160  5bd31e68d989dfb2ddf1bb529b3380e0dfaaf27a \
+                    sha256  6c6bcf7d53aec8a498a1f5af558ae8f83daf892c3565188ee81ce34f6f022656 \
 
 perl5.require_variant   yes
 perl5.conflict_variants no
-perl5.branches          5.24
+perl5.branches          5.24 5.26
+perl5.default_branch    5.26
 perl5.create_variants   ${perl5.branches}
-perl5.default_branch    5.24
 
 depends_lib-append  port:curl \
                     port:zlib \
@@ -68,8 +68,20 @@ use_configure       no
 
 variant universal   {}
 
-set CFLAGS          "-I. -Wall -O3 -I${prefix}/include [get_canonical_archflags cc] ${configure.optflags}"
+set CFLAGS          "-I. -Wall -O2 -I${prefix}/include [get_canonical_archflags cc] ${configure.optflags}"
 set LDFLAGS         "-L${prefix}/lib [get_canonical_archflags ld] ${configure.ldflags}"
+
+if {[variant_isset pcre]} {
+    depends_build-append \
+                    port:pkgconfig
+    if {[file exists ${prefix}/bin/pkg-config]} {
+        # fetch the flags required for building with the local pcre2 install
+        set pcreflags "[exec ${prefix}/bin/pkg-config --cflags libpcre2-8]"
+        configure.cflags-append \
+                    ${pcreflags}
+        set CFLAGS  "${CFLAGS} ${pcreflags}"
+    }
+}
 
 build.env           CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}"
 build.args          CFLAGS="${CFLAGS}" \
@@ -91,12 +103,12 @@ test.cmd            make
 test.target         test
 test.dir            ${worksrcpath}
 pre-test {
-    eval test.args  ${build.args}
+    test.args  {*}${build.args}
 }
 
 destroot.target     install
 pre-destroot {
-    eval destroot.args  ${build.args}
+    destroot.args  {*}${build.args}
     xinstall -m 644 ${worksrcpath}/contrib/subtree/git-subtree.1 ${workpath}/man1
 }
 
@@ -146,15 +158,17 @@ post-destroot {
 }
 
 variant pcre {
-    build.args-append       LIBPCREDIR=${prefix} USE_LIBPCRE=1
-    depends_lib-append      port:pcre
+    platform darwin {
+        build.args-append   LIBPCREDIR=${prefix} USE_LIBPCRE2=1
+    }
+    depends_lib-append      port:pcre2
 }
 
 variant doc description {Install HTML and plaintext documentation} {
     distfiles-append        git-htmldocs-${version}${extract.suffix}
     checksums-append        git-htmldocs-${version}${extract.suffix} \
-                            rmd160  9223c8b1f137024bc601337c30654b40e8b30af9 \
-                            sha256  eb2a463434a00cc7381788faa29499cd32c19a5437d97d7dcf65b25603b2b411
+                            rmd160  ab63ccf6425576d8d80d2171b060891a6760f1db \
+                            sha256  0b3ad20f1f98d548f07a19900852e134cfc958d9664af95d04c028cf8d140166
 
     patchfiles-append       git-subtree.html.diff
 
@@ -247,7 +261,7 @@ platform linux {
     configure.args  --prefix=${prefix} --with-curl --with-openssl --with-iconv=${prefix} --with-perl="${prefix}/bin/perl${perl5.major}"
     if {[variant_isset pcre]} {
         configure.args-append \
-                    --with-libpcre
+                    --with-libpcre2
     }
     configure.args-append \
                     --with-python="${prefix}/bin/python2.7"
