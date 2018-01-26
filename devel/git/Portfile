@@ -58,13 +58,12 @@ patchfiles          git-subtree.1.diff
 platform darwin {
     patchfiles-append \
                     patch-Makefile.diff
+    use_configure       no
 }
 patch.pre_args      -p1
 
 extract.only        git-${version}${extract.suffix} \
                     git-manpages-${version}${extract.suffix}
-
-use_configure       no
 
 variant universal   {}
 
@@ -74,6 +73,12 @@ set LDFLAGS         "-L${prefix}/lib [get_canonical_archflags ld] ${configure.ld
 if {[variant_isset pcre]} {
     depends_build-append \
                     port:pkgconfig
+    pre-configure {
+        if {![file exists ${prefix}/bin/pkg-config]} {
+            ui_error "Please re-run this command after installing port:pkgconfig"
+            return -code error "Please re-run this command after installing port:pkgconfig"
+        }
+    }
     if {[file exists ${prefix}/bin/pkg-config]} {
         # fetch the flags required for building with the local pcre2 install
         set pcreflags "[exec ${prefix}/bin/pkg-config --cflags libpcre2-8]"
