@@ -96,8 +96,10 @@ depends_lib-append \
 patch.pre_args  -Np1
 patchfiles-append \
                 patch-no-gold-linker.diff
-foreach p [exec cat ${filespath}/series] {
-    patchfiles-append ${p}
+if {[file exists ${filespath}/series]} {
+    foreach p [exec cat ${filespath}/series] {
+        patchfiles-append ${p}
+    }
 }
 
 post-patch {
