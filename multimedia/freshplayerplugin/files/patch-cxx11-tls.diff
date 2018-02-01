@@ -1,0 +1,190 @@
+diff --git a/3rdparty/angle/CMakeLists.txt b/3rdparty/angle/CMakeLists.txt
+index bc4a42c2417ef72b76f3fd8b011520db29a6d17f..4aecd08c9893f7c2a7eeb4964f80aa44bd333d68 100644
+--- a/3rdparty/angle/CMakeLists.txt
++++ b/3rdparty/angle/CMakeLists.txt
+@@ -2,7 +2,12 @@ include_directories(include)
+ include_directories(src)
+ 
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-strict-aliasing")
+-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing")
++if(USE_CXX11_THREAD_LOCAL_STORAGE)
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing -std=c++11")
++    add_definitions(-DUSE_CXX11_THREAD_LOCAL)
++else()
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-strict-aliasing")
++endif()
+ 
+ add_library(shader_translator STATIC
+     src/common/Float16ToFloat32.cpp
+diff --git a/3rdparty/angle/src/common/tls.cpp b/3rdparty/angle/src/common/tls.cpp
+index cb1b32d3258a85803e01f9b4906a49a30960e5d6..0edf0a7f2361726860ad7229ae00a7ac52640ef6 100644
+--- a/3rdparty/angle/src/common/tls.cpp
++++ b/3rdparty/angle/src/common/tls.cpp
+@@ -10,7 +10,7 @@
+ 
+ #include <assert.h>
+ 
+-#ifdef ANGLE_ENABLE_WINDOWS_STORE
++#if defined(ANGLE_ENABLE_WINDOWS_STORE)
+ #include <vector>
+ #include <set>
+ #include <map>
+@@ -29,8 +29,21 @@ typedef vector<void*> ThreadLocalData;
+ 
+ static __declspec(thread) ThreadLocalData* currentThreadData = nullptr;
+ static set<ThreadLocalData*> allThreadData;
+-static DWORD nextTlsIndex = 0;
+-static vector<DWORD> freeTlsIndices;
++static TLSIndex nextTlsIndex = 0;
++static vector<TLSIndex> freeTlsIndices;
++
++#elif defined(USE_CXX11_THREAD_LOCAL)
++#include <vector>
++#include <set>
++
++using namespace std;
++// Thread local storage using C++11 thread_local
++typedef vector<void*> ThreadLocalData;
++
++static thread_local ThreadLocalData* currentThreadData = nullptr;
++static set<ThreadLocalData*> allThreadData;
++static TLSIndex nextTlsIndex = 0;
++static vector<TLSIndex> freeTlsIndices;
+ 
+ #endif
+ 
+@@ -38,11 +51,10 @@ TLSIndex CreateTLSIndex()
+ {
+     TLSIndex index;
+ 
+-#ifdef ANGLE_PLATFORM_WINDOWS
+-#ifdef ANGLE_ENABLE_WINDOWS_STORE
++#if defined(ANGLE_ENABLE_WINDOWS_STORE) || defined(USE_CXX11_THREAD_LOCAL)
+     if (!freeTlsIndices.empty())
+     {
+-        DWORD result = freeTlsIndices.back();
++        TLSIndex result = freeTlsIndices.back();
+         freeTlsIndices.pop_back();
+         index = result;
+     }
+@@ -50,10 +62,8 @@ TLSIndex CreateTLSIndex()
+     {
+         index = nextTlsIndex++;
+     }
+-#else
++#elif defined(ANGLE_PLATFORM_WINDOWS)
+     index = TlsAlloc();
+-#endif
+-
+ #elif defined(ANGLE_PLATFORM_POSIX)
+     // Create global pool key
+     if ((pthread_key_create(&index, NULL)) != 0)
+@@ -74,8 +84,7 @@ bool DestroyTLSIndex(TLSIndex index)
+         return false;
+     }
+ 
+-#ifdef ANGLE_PLATFORM_WINDOWS
+-#ifdef ANGLE_ENABLE_WINDOWS_STORE
++#if defined(ANGLE_ENABLE_WINDOWS_STORE) || defined(USE_CXX11_THREAD_LOCAL)
+     assert(index < nextTlsIndex);
+     assert(find(freeTlsIndices.begin(), freeTlsIndices.end(), index) == freeTlsIndices.end());
+ 
+@@ -88,9 +97,8 @@ bool DestroyTLSIndex(TLSIndex index)
+         }
+     }
+     return true;
+-#else
++#elif defined(ANGLE_PLATFORM_WINDOWS)
+     return (TlsFree(index) == TRUE);
+-#endif
+ #elif defined(ANGLE_PLATFORM_POSIX)
+     return (pthread_key_delete(index) == 0);
+ #endif
+@@ -104,8 +112,7 @@ bool SetTLSValue(TLSIndex index, void *value)
+         return false;
+     }
+ 
+-#ifdef ANGLE_PLATFORM_WINDOWS
+-#ifdef ANGLE_ENABLE_WINDOWS_STORE
++#if defined(ANGLE_ENABLE_WINDOWS_STORE) || defined(USE_CXX11_THREAD_LOCAL)
+     ThreadLocalData* threadData = currentThreadData;
+     if (!threadData)
+     {
+@@ -120,9 +127,8 @@ bool SetTLSValue(TLSIndex index, void *value)
+ 
+     threadData->at(index) = value;
+     return true;
+-#else
++#elif defined(ANGLE_PLATFORM_WINDOWS)
+     return (TlsSetValue(index, value) == TRUE);
+-#endif
+ #elif defined(ANGLE_PLATFORM_POSIX)
+     return (pthread_setspecific(index, value) == 0);
+ #endif
+@@ -136,8 +142,7 @@ void *GetTLSValue(TLSIndex index)
+         return NULL;
+     }
+ 
+-#ifdef ANGLE_PLATFORM_WINDOWS
+-#ifdef ANGLE_ENABLE_WINDOWS_STORE
++#if defined(ANGLE_ENABLE_WINDOWS_STORE) || defined(USE_CXX11_THREAD_LOCAL)
+     ThreadLocalData* threadData = currentThreadData;
+     if (threadData && threadData->size() > index)
+     {
+@@ -147,9 +152,8 @@ void *GetTLSValue(TLSIndex index)
+     {
+         return nullptr;
+     }
+-#else
++#elif defined(ANGLE_PLATFORM_WINDOWS)
+     return TlsGetValue(index);
+-#endif
+ #elif defined(ANGLE_PLATFORM_POSIX)
+     return pthread_getspecific(index);
+ #endif
+diff --git a/3rdparty/angle/src/common/tls.h b/3rdparty/angle/src/common/tls.h
+index ca9e07ab700ae9dbaab1c7e77ae9e66981bca812..5e7177d2b84cf08b7efa2d2c5e4361fe609c861c 100644
+--- a/3rdparty/angle/src/common/tls.h
++++ b/3rdparty/angle/src/common/tls.h
+@@ -14,15 +14,25 @@
+ #ifdef ANGLE_PLATFORM_WINDOWS
+ 
+ // TLS does not exist for Windows Store and needs to be emulated
++    typedef DWORD TLSIndex;
+ #   ifdef ANGLE_ENABLE_WINDOWS_STORE
+ #       ifndef TLS_OUT_OF_INDEXES
+-#           define TLS_OUT_OF_INDEXES static_cast<DWORD>(0xFFFFFFFF)
++#           define TLS_OUT_OF_INDEXES static_cast<TLSIndex>(0xFFFFFFFF)
+ #       endif
+ #       ifndef CREATE_SUSPENDED
+ #           define CREATE_SUSPENDED 0x00000004
+ #       endif
+ #   endif
+-    typedef DWORD TLSIndex;
++#   define TLS_INVALID_INDEX (TLS_OUT_OF_INDEXES)
++#elif defined(USE_CXX11_THREAD_LOCAL)
++#   include <cstdint>
++    typedef uint32_t TLSIndex;
++#   ifndef TLS_OUT_OF_INDEXES
++#       define TLS_OUT_OF_INDEXES static_cast<TLSIndex>(0xFFFFFFFF)
++#   endif
++#   ifndef CREATE_SUSPENDED
++#       define CREATE_SUSPENDED 0x00000004
++#   endif
+ #   define TLS_INVALID_INDEX (TLS_OUT_OF_INDEXES)
+ #elif defined(ANGLE_PLATFORM_POSIX)
+ #   include <pthread.h>
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index bdd56840f4cc3721f0cae8c0a83e0d93e2b915e4..6fa098062397074cb3f8693319c31066211ef83e 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -6,6 +6,9 @@ set(VER_MAJOR 0)
+ set(VER_MINOR 3)
+ set(VER_MICRO 9)
+ 
++option(USE_CXX11_THREAD_LOCAL_STORAGE
++    "Use C++11 thread-local storage instead of pthread g/setspecific on Unix" OFF)
++
+ # setup compiler flags
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -fPIC -pthread")
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror=format-security")
