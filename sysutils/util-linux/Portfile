@@ -4,7 +4,7 @@ PortSystem 1.0
 PortGroup       conflicts_build 1.0
 
 name            util-linux
-version         2.29
+version         2.29 ; revision 1
 description     The util-linux meta-package
 long_description \
                 Corresponds to the following Ubuntu ports: \
@@ -49,7 +49,7 @@ configure.args-append \
 
 platform linux {
     configure.args-append \
-                --enable-tunelp --with-udev --enable-partx --enable-raw
+                --enable-tunelp --with-udev --enable-partx --enable-raw --disable-tls
     configure.ldflags-append -Wl,-rpath=${prefix}/lib
     build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
     destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
