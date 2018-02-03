@@ -39,6 +39,8 @@ depends_lib     port:nspr \
 destroot.dir ${destroot.dir}/dist
 build.dir    ${build.dir}/nss
 
+# mimic the nss_build_all target, without building nspr
+build.pre_args    -w all latest
 # external tests require libc++ and don't build on some systems with libc++ anyways, just disable them
 build.args   NSS_DISABLE_GTESTS=1
 
@@ -58,7 +60,7 @@ destroot.args-append \
 
 post-patch {
     # libraries are not relative to any main executable, so no need for @executable_path
-    reinplace "s|@executable_path|${prefix}/lib/nss|g" \
+    reinplace "s|@executable_path|${prefix}/lib|g" \
         ${build.dir}/coreconf/Darwin.mk \
         ${build.dir}/lib/freebl/config.mk
 }
@@ -68,7 +70,7 @@ post-destroot {
     # see https://bugzilla.mozilla.org/show_bug.cgi?id=530672
 
     xinstall  -m 0755 ${filespath}/nss-config.in       ${destroot}${prefix}/bin/nss-config
-    reinplace "s,@libdir@,${prefix}/lib/nss,g"         ${destroot}${prefix}/bin/nss-config
+    reinplace "s,@libdir@,${prefix}/lib,g"             ${destroot}${prefix}/bin/nss-config
     reinplace "s,@prefix@,${prefix},g"                 ${destroot}${prefix}/bin/nss-config
     reinplace "s,@exec_prefix@,${prefix},g"            ${destroot}${prefix}/bin/nss-config
     reinplace "s,@includedir@,${prefix}/include/nss,g" ${destroot}${prefix}/bin/nss-config
@@ -80,7 +82,7 @@ post-destroot {
     set nss_version  [exec ${destroot}${prefix}/bin/nss-config --version]
 
     xinstall  -m 0644 ${filespath}/nss.pc.in          ${destroot}${prefix}/lib/pkgconfig/nss.pc
-    reinplace "s,@libdir@,${prefix}/lib/nss,g"        ${destroot}${prefix}/lib/pkgconfig/nss.pc
+    reinplace "s,@libdir@,${prefix}/lib,g"            ${destroot}${prefix}/lib/pkgconfig/nss.pc
     reinplace "s,@prefix@,${prefix},g"                ${destroot}${prefix}/lib/pkgconfig/nss.pc
     reinplace "s,@exec_prefix@,${prefix},g"           ${destroot}${prefix}/lib/pkgconfig/nss.pc
     reinplace "s,@includedir@,${prefix}/include/nss," ${destroot}${prefix}/lib/pkgconfig/nss.pc
@@ -91,6 +93,8 @@ post-destroot {
     xinstall -m 0644 \
         {*}[glob ${build.dir}/doc/nroff/*.1] \
         ${destroot}${prefix}/share/man/man1/
+
+    file rename ${destroot}${prefix}/lib/libssl.a ${destroot}${prefix}/lib/libssl3.a
 }
 
 use_parallel_build  no
@@ -99,7 +103,7 @@ use_parallel_build  no
 # to fix build on 10.6 and earlier
 # https://trac.macports.org/ticket/51196
 
-compiler.blacklist  *gcc* {clang < 300}
+# compiler.blacklist  *gcc* {clang < 300}
 
 # mimic nss/coreconf/Darwin.mk
 
@@ -109,8 +113,10 @@ if {![variant_isset universal]} {
     }
 
     build.args-append \
-        CC=\"${configure.cc} -arch ${build_arch}\" \
-        CCC=\"${configure.cxx} -arch ${build_arch}\"
+        CC=\"${configure.cc} -Wl,-R,${prefix}/lib -Wl,-rpath,${prefix}/lib \" \
+        CCC=\"${configure.cxx} -Wl,-R,${prefix}/lib -Wl,-rpath,${prefix}/lib \" \
+        RPATH=\"-Wl,-R,${prefix}/lib -Wl,-rpath,${prefix}/lib \" \
+        LDFLAGS=\"${configure.ldflags} -Wl,-rpath,${prefix}/lib \"
 } else {
     lappend merger_build_args(x86_64) USE_64=1
     lappend merger_build_args(ppc64)  USE_64=1
@@ -141,7 +147,7 @@ if {[variant_isset universal]} {
 
     merger-post-destroot {
         foreach arch ${universal_archs_to_use} {
-            foreach chk [glob -nocomplain -directory ${destroot}-${arch}${prefix}/lib/nss *.chk] {
+            foreach chk [glob -nocomplain -directory ${destroot}-${arch}${prefix}/lib *.chk] {
                 # delete chk file and replace it with an empty file, which can be merged
                 # keep the empty file so that later, we can know which chk files need to be regenerated from universal library
                 file delete ${chk}
@@ -151,11 +157,11 @@ if {[variant_isset universal]} {
     }
 
     post-destroot {
-        foreach chk [glob -nocomplain -directory ${destroot}${prefix}/lib/nss *.chk] {
+        foreach chk [glob -nocomplain -directory ${destroot}${prefix}/lib *.chk] {
             # replace empty chk file with an actual one generated from universal library
             file delete ${chk}
             set base [file rootname ${chk}]
-            system "env DYLD_LIBRARY_PATH=${destroot}${prefix}/lib/nss ${destroot}${prefix}/bin/shlibsign -i ${base}.dylib -o ${chk}"
+            system "env DYLD_LIBRARY_PATH=${destroot}${prefix}/lib ${destroot}${prefix}/bin/shlibsign -i ${base}.dylib -o ${chk}"
         }
     }
 }
