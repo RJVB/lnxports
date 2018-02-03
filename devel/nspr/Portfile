@@ -8,7 +8,7 @@ version             4.17
 categories          devel
 maintainers         nomaintainer
 license             {MPL-1.1 GPL-2+ LGPL-2.1+}
-platforms           darwin
+platforms           darwin linux
 
 description         A platform-neutral API for system level and libc like functions.
 long_description    ${description}
@@ -32,10 +32,11 @@ post-patch {
 configure.args \
     --disable-debug \
     --enable-optimize='${configure.optflags}' \
-    --libdir=${prefix}/lib/nspr
+    --libdir=${prefix}/lib/nspr \
+    --enable-64bit
 
-set merger_configure_args(ppc64)  "--enable-64bit"
-set merger_configure_args(x86_64) "--enable-64bit"
+# set merger_configure_args(ppc64)  "--enable-64bit"
+# set merger_configure_args(x86_64) "--enable-64bit"
 
 variant debug description "build with debugging symbols" {
     configure.args-delete   --disable-debug \
