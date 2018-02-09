@@ -1,0 +1,166 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           compiler_blacklist_versions 1.0
+PortGroup           conflicts_build 1.0
+if {[file exists ${prefix}/etc/macports/locales.tcl]} {
+    PortGroup       locale_select 1.0
+}
+
+name                inkscape
+conflicts           inkscape-devel
+version             0.92.2
+revision            1
+license             GPL-2 LGPL-2.1
+maintainers         {devans @dbevans}
+categories          graphics gnome
+platforms           darwin linux
+
+description         This is the current stable release version of Inkscape.
+
+long_description    Inkscape is an multi-platform, Open-Source Vector Graphics Editor \
+                    that uses SVG as its native file format. \
+                    ${description}
+
+homepage            http://www.inkscape.org/
+master_sites        https://inkscape.org/en/gallery/item/11254/
+
+use_bzip2           yes
+
+checksums           rmd160  5508b38c47ed0a860a734eef8f8ca8e53f4e923a \
+                    sha256  a628d0e04c254e9840947e6d866974f92c68ae31631a38b94d9b65e5cd84cfd3
+
+set perl_version    5.24
+
+conflicts_build-append \
+                    gettext-dev
+
+depends_build       port:pkgconfig \
+                    port:autoconf \
+                    port:automake \
+                    port:libtool \
+                    port:intltool \
+                    port:perl${perl_version}
+
+platform darwin {
+    depends_lib     port:desktop-file-utils \
+                    port:popt \
+                    path:lib/libgc.dylib:boehmgc \
+                    port:gdk-pixbuf2 \
+                    port:gsl \
+                    port:gtkmm \
+                    port:dbus-glib \
+                    port:lcms2 \
+                    port:poppler \
+                    port:boost \
+                    port:ImageMagick \
+                    port:libcdr-0.1 \
+                    port:libexif \
+                    port:libvisio-0.1 \
+                    port:libwpg-0.3 \
+                    port:aspell \
+                    port:gtkspell2 \
+                    port:potrace \
+                    port:py27-lxml \
+                    port:py27-numpy
+}
+platform linux {
+    depends_lib     port:gsl \
+                    port:lcms2 \
+                    port:boost \
+                    port:libexif \
+                    port:libvisio-0.1 \
+                    port:libwpg-0.3 \
+                    port:potrace
+    if {[string match *clang* ${configure.cxx}]} {
+        depends_lib-append \
+                    port:libomp
+    }
+}
+
+patchfiles          patch-use-configured-perl.diff \
+                    libavoid-abs-ambiguous.diff
+
+post-patch {
+    reinplace "s|@@MP_PERL@@|${prefix}/bin/perl${perl_version}|" ${worksrcpath}/Makefile.am
+    reinplace "s|\"python-interpreter\", \"python\"|\"python-interpreter\", \"python2.7\"|g" ${worksrcpath}/src/extension/implementation/script.cpp
+    reinplace "s|^#include \"Object.h\"|#include \"${prefix}/include/poppler/Object.h\"|" ${worksrcpath}/src/extension/internal/pdfinput/pdf-parser.h
+    reinplace "s|^#include \"Object.h\"|#include \"${prefix}/include/poppler/Object.h\"|" ${worksrcpath}/src/extension/internal/pdfinput/pdf-parser.cpp
+}
+
+# py27-numpy is currently not universal (#48263).
+
+universal_variant no
+
+platform darwin {
+# on Sierra, building with clang optimization enabled causes crash at startup
+# issue affects both +x11 and +quartz builds
+    if {${os.major} > 15} {
+        configure.optflags  -O0
+    }
+}
+
+if {![file exists ${worksrcpath}/config.log]} {
+    configure.cmd   ./autogen.sh && ./configure
+}
+
+configure.python    ${prefix}/bin/python2.7
+
+configure.args      --enable-lcms \
+                    --enable-poppler-cairo \
+                    --enable-dbusapi \
+                    --disable-silent-rules \
+                    --disable-strict-build
+
+configure.cppflags-append \
+                    -I${worksrcpath}/src/extension/script
+
+platform darwin {
+    # clang-425.0.28 cannot handle glibmm's headers
+    compiler.blacklist-append {clang < 500} gcc-4.0 *gcc-4.2
+
+    if {[string match "*clang*" ${configure.compiler}]} {
+        if {${configure.cxx_stdlib} eq "libstdc++"} {
+            configure.cxxflags-append -std=c++98
+        } else {
+            configure.cxxflags-append -std=c++11
+        }
+    }
+}
+
+variant strict description {Enable strict build} {
+    configure.args-replace  --disable-strict-build --enable-strict-build
+}
+
+#
+# the following dummy variants are used
+# to identify this port's binary dependencies
+# based on which variant of gtkmm is used for the build
+#
+
+variant x11 conflicts quartz {}
+variant quartz conflicts x11 {}
+
+if {![variant_isset quartz]} {
+    default_variants +x11
+}
+
+if {[variant_isset gtk3]} {
+    post-activate {
+        system "gtk-update-icon-cache-3.0 -f -t ${prefix}/share/icons/hicolor"
+        system "update-desktop-database ${prefix}/share/applications"
+    }
+} else {
+    post-activate {
+        system "gtk-update-icon-cache -f -t ${prefix}/share/icons/hicolor"
+        system "update-desktop-database ${prefix}/share/applications"
+    }
+}
+
+post-destroot {
+    file rename ${destroot}/usr/share/dbus-1 ${destroot}${prefix}/share/
+}
+
+livecheck.type      regex
+livecheck.url       https://inkscape.org/en/release
+livecheck.regex     ">Download Inkscape (\\d+(?:\\.\\d+)*)"
