@@ -6,10 +6,10 @@ PortGroup           github 1.0
 PortGroup           cmake 1.1
 platforms           linux
 
-github.setup        i-rinat freshplayerplugin 1f48001315b632df17debddeb6bac7b3e19e4f2f
+github.setup        i-rinat freshplayerplugin ce233f621bf80c914be1d14f47fdc3f492cfcb47
 fetch.type          git
-# v0.3.9-2-g1f48001
-version             0.3.9.2
+# v0.3.9-3-gce233f6
+version             0.3.9.3
 description         ppapi2npapi compatibility layer
 long_description    PPAPI-host NPAPI-plugin adapter. \
                     The main goal of this project is to get PPAPI (Pepper) Flash player working in Firefox \
@@ -59,7 +59,6 @@ destroot.violate_mtree \
                     yes
 
 patch.pre_args      -Np1
-patchfiles-append   patch-cxx11-tls.diff
 
 configure.optflags-append \
                     -ftls-model=global-dynamic
@@ -71,6 +70,4 @@ configure.ldflags-append \
                     -ftls-model=global-dynamic
 configure.args-append \
                     -DWITH_GLES2=ON
-configure.args-append \
-                    -DUSE_CXX11_THREAD_LOCAL_STORAGE=ON
 
