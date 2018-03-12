@@ -96,6 +96,7 @@ depends_run         port:wxWidgets-common \
                     port:wxWidgets_select
 
 patchfiles-append   patch-configure.diff \
+                    patch-relax-buildoption-check.diff \
                     patch-upstream-configure-highsierra.diff
 
 post-patch {
