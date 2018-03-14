@@ -3,16 +3,17 @@
 PortSystem          1.0
 PortGroup           wxWidgets 1.0
 PortGroup           conflicts_build 1.0
+PortGroup           active_variants 1.1
 
 fetch.type          svn
 svn.url             svn://svn.code.sf.net/p/codeblocks/code/trunk
-svn.revision        11098
+svn.revision        11321
 # Get the svn last changed date by running the following command:
 # svn info http://svn.code.sf.net/p/codeblocks/code/trunk| grep "^Last Changed Date:" | cut -d" " -f4,5
-set LCD             "2017-06-21 13:35:48"
+set LCD             "2018-03-14 10:24:44"
 
 name                codeblocks
-version             16.01-${svn.revision}
+version             17.12-${svn.revision}
 
 platforms           darwin freebsd
 categories          devel aqua x11
@@ -141,13 +142,20 @@ if {[variant_isset wxwidgets32]} {
     configure.args-append   --with-wxdir=${wxWidgets.wxdir}
 }
 
-variant wxwidgets30 conflicts wxwidgets32 wxqt32 wxwidgets28 wxgtk30 wxgtk28 description {Use Cocoa-based wxWidgets 3.0} {
+variant wxwidgets30 conflicts wxwidgets32 wxqt32 wxwidgets28 wxgtk30 wxgtk28 description {Use Cocoa-based wxWidgets 3.0} {}
+if {[variant_isset wxwidgets30]} {
     wxWidgets.use           wxWidgets-3.0
-    platform darwin {
-        depends_lib-append      port:${wxWidgets.port}
-        autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
-        configure.args-append   --with-wxdir=${wxWidgets.wxdir}
+    depends_lib-append      port:${wxWidgets.port}
+    autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
+    configure.args-append   --with-wxdir=${wxWidgets.wxdir}
+    variant gtk2 conflicts gtk3 description {} {}
+    variant gtk3 conflicts gtk2 description {} {}
+    if {[variant_isset gtk2]} {
+        require_active_variants wxWidgets-3.0 gtk2
+    } elseif {[variant_isset gtk3]} {
+        require_active_variants wxWidgets-3.0 gtk3
     }
+
 }
 
 variant wxwidgets28 conflicts wxwidgets32 wxqt32 wxwidgets30 wxgtk30 wxgtk28 description {Use 32-bit Carbon-based wxWidgets 2.8} {
@@ -211,12 +219,7 @@ platform darwin {
 if {![variant_isset wxwidgets30] && ![variant_isset wxwidgets28]
         && ![variant_isset wxgtk30] && ![variant_isset wxgtk28]
         && ![variant_isset wxwidgets32] && ![variant_isset wxqt32]} {
-    platform darwin {
-        default_variants +wxwidgets30
-    }
-    platform linux {
-        default_variants +wxgtk30
-    }
+    default_variants +wxwidgets30
 }
 
 livecheck.type      regex
