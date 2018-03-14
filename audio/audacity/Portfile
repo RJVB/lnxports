@@ -270,13 +270,23 @@ platform darwin {
     # Since version 2.2.0 we need to use the embedded (modified) Portaudio version.
     configure.args-append \
                     --with-portaudio=local
-    configure.env-append \
+}
+configure.env-append \
                     PORTMIDI_CFLAGS=-I${prefix}/include \
                     PORTMIDI_LIBS=${prefix}/lib/libportmidi.dylib
-    depends_lib-append \
+depends_lib-append \
                     port:portmidi
-}
 platform linux {
+    if {[string match *clang* ${configure.cxx}]} {
+        variant libcxx description {highly experimental and probably broken option to build against libc++. \
+                Requires using clang and an independently provided libc++ installation.} {
+            configure.cxx_stdlib \
+                            libc++
+            configure.ldflags-append \
+                            -stdlib=libc++
+        }
+    }
+
 #     configure.args-append \
 #                     --with-midi \
 #                     LIBS=-ltiff
@@ -298,6 +308,9 @@ platform linux {
     configure.args-replace \
                     CPPFLAGS=-I${prefix}/include \
                     CPPFLAGS=-I${prefix}/include -DUSE_AQUA_THEME
+    configure.env-replace \
+                    PORTMIDI_LIBS=${prefix}/lib/libportmidi.dylib \
+                    PORTMIDI_LIBS=${prefix}/lib/libportmidi.so
 }
 
 build.args-append   V=1 VERBOSE=1
