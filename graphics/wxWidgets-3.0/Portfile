@@ -204,14 +204,14 @@ if {${subport} eq "wxPython-3.0"} {
     patchfiles-append       patch-sdl.diff \
                             patch-gtk-quartz.diff
 
-    depends_build-append    port:pkgconfig
-    depends_lib-append      path:lib/pkgconfig/cairo.pc:cairo \
-                            port:libsdl \
-                            port:libsdl_mixer
+#     depends_build-append    port:pkgconfig
+#     depends_lib-append      path:lib/pkgconfig/cairo.pc:cairo \
+#                             port:libsdl \
+#                             port:libsdl_mixer
 
-    configure.args-delete   --with-cocoa \
-                            --without-sdl
-    configure.args-append   --with-sdl
+#     configure.args-delete   --with-cocoa \
+#                             --without-sdl
+#     configure.args-append   --with-sdl
 
     #variant gtk2 conflicts gtk3 description {} {
     #    depends_lib-append      port:gtk2
@@ -219,17 +219,17 @@ if {${subport} eq "wxPython-3.0"} {
     #    set wxtype              gtk2
     #}
     #variant gtk3 conflicts gtk2 description {} {
-        depends_lib-append      port:gtk3
+#         depends_lib-append      port:gtk3
         configure.args-append   --with-gtk=3
     #}
-    variant quartz conflicts x11 description "(Doesn't work properly yet)" {
-       require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
-       require_active_variants gtk3 quartz
-    }
+#     variant quartz conflicts x11 description "(Doesn't work properly yet)" {
+#        require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
+#        require_active_variants gtk3 quartz
+#     }
     variant x11 conflicts quartz {
-        depends_lib-append  port:mesa port:libGLU
-        require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
-        require_active_variants gtk3 x11
+#         depends_lib-append  port:mesa port:libGLU
+#         require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
+#         require_active_variants gtk3 x11
     }
     #if{![variant_isset gtk2] && ![variant_isset gtk3]} {
     #    default_variants-append +gtk3
@@ -254,6 +254,25 @@ if {${subport} eq "wxPython-3.0"} {
     #        require_active_variants gtk3 x11
     #    }
     #}
+} else {
+    variant gtk2 conflicts gtk3 description {} {
+        configure.args-delete   --with-gtk=3
+        configure.args-append   --with-gtk=2
+        set wxtype              gtk2
+    }
+    variant gtk3 conflicts gtk2 description {} {
+        configure.args-delete   --with-gtk=2
+        configure.args-append   --with-gtk=3
+        set wxtype              gtk3
+    }
+    if {![variant_isset gtk2] && ![variant_isset gtk3]} {
+        default_variants        +gtk2
+    }
+}
+
+variant cxx11 description {build with C++11} {}
+if {[variant_isset cxx11]} {
+    configure.cxxflags-append   -std=c++11
 }
 
 post-destroot {
