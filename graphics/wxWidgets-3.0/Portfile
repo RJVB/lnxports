@@ -5,7 +5,6 @@ PortGroup           active_variants 1.1
 PortGroup           github          1.0
 PortGroup           select          1.0
 PortGroup           wxWidgets       1.0
-PortGroup           compiler_blacklist_versions 1.0
 
 github.setup        wxWidgets wxWidgets 3.0.4 v
 github.tarball_from releases
@@ -75,7 +74,8 @@ distfiles           ${distname}-${version}${extract.suffix}
 
 checksums           ${distname}-${version}${extract.suffix} \
                     rmd160  179bcd489aec0a56a7a2890be68ee718b87a1c7a \
-                    sha256  96157f988d261b7368e5340afa1a0cad943768f35929c22841f62c25b17bf7f0
+                    sha256  96157f988d261b7368e5340afa1a0cad943768f35929c22841f62c25b17bf7f0 \
+                    size    20204622
 
 set selectdir       ${workpath}/select
 select.group        wxWidgets
@@ -127,6 +127,13 @@ platform darwin {
     if {[string match *clang* ${configure.cxx}]} {
         configure.ldflags-append \
                     -stdlib=${configure.cxx_stdlib}
+}
+
+platform darwin powerpc {
+    if {![catch {sysctl hw.vectorunit} result] && $result > 0} {
+        # Work around buggy header. https://trac.macports.org/ticket/55251
+        configure.cxxflags-append -faltivec
+        configure.cflags-append -faltivec
     }
 }
 platform linux {
@@ -173,7 +180,8 @@ if {${subport} eq "wxPython-3.0"} {
                             rmd160  09280fd9ad1670162e38719e0055de5e6ddbc059 \
                             sha256  bc886064820ac90997e10623a591e26ee8b08d73711e8d6d0512eaaffb5e9362
 
-    patchfiles-append       patch-upstream-src-osx-carbon-fontdlgosx.mm.diff \
+    patchfiles-append       patch-upstream-configure-highsierra.diff \
+                            patch-upstream-src-osx-carbon-fontdlgosx.mm.diff \
                             patch-upstream-src-stc-scintilla-src-Editor.cxx.diff \
                             patch-upstream-webkit-proper-types.diff
 
