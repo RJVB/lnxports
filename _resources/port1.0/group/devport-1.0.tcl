@@ -1,6 +1,7 @@
 # -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
 
 # Copyright (c) 2015 The MacPorts Project
+# Copyright (c) 2017 RJVB
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without

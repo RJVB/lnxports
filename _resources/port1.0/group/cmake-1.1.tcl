@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2009 Orville Bennett <illogical1 at gmail.com>
 # Copyright (c) 2010-2015 The MacPorts Project
-# Copyright (c) 2015, 2016 R.J.V. Bertin
+# Copyright (c) 2015-2017 R.J.V. Bertin
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -135,6 +135,11 @@ proc cmake::module_path {} {
 # cmake.generator "Eclipse CDT4 - Ninja"
 # if maintaining the port means editing it using an IDE of choice.
 #
+# Ports can signal incompatibilities by setting
+# set cmake.make_generator_incompatible yes
+# or
+# set cmake.ninja_generator_incompatible yes
+#
 default cmake.generator             {"CodeBlocks - Unix Makefiles"}
 # CMake generates Unix Makefiles that contain a special "fast" install target
 # which skips the whole "let's see if there's anything left to (re)build before
@@ -155,40 +160,59 @@ proc cmake::build_dir {} {
 option_proc cmake.generator cmake::handle_generator
 proc cmake::handle_generator {option action args} {
     global cmake.generator destroot destroot.target build.cmd build.post_args
-    global depends_build destroot.post_args build.jobs
-    if {${action} eq "set"} {
+    global depends_build destroot.post_args build.jobs subport
+    global cmake.make_generator_incompatible cmake.ninja_generator_incompatible
+    if {${action} eq "read"} {
+        # we need to handle the "read" action too if we want to be able to raise
+        # an error when an incompatible generator is requested.
+        set args ${cmake.generator}
+    }
+    if {${action} eq "set" || ${action} eq "read"} {
         switch -glob [lindex ${args} 0] {
             "*Unix Makefiles*" {
-                ui_debug "Selecting the 'Unix Makefiles' generator ($args)"
-                depends_build-delete \
+                if {![tbool cmake.make_generator_incompatible]} {
+                    ui_debug "Selecting the 'Unix Makefiles' generator ($args)"
+                    depends_build-delete \
                                     port:ninja
-                build.cmd           make
-                build.post_args     VERBOSE=ON
-                destroot.target     install/fast
-                destroot.destdir    DESTDIR=${destroot}
-                # unset the DESTDIR env. variable if it has been set before
-                destroot.env-delete DESTDIR=${destroot}
-#                 proc ui_progress_info {string} {
-#                     if {[scan $string "\[%d%%\] " perc] == 1} {
-#                         return $perc
-#                     } else {
-#                         return -1
+                    build.cmd       make
+                    build.post_args VERBOSE=ON
+                    destroot.target install/fast
+                    destroot.destdir \
+                                    DESTDIR=${destroot}
+                    # unset the DESTDIR env. variable if it has been set before
+                    destroot.env-delete \
+                                    DESTDIR=${destroot}
+#                     proc ui_progress_info {string} {
+#                         if {[scan $string "\[%d%%\] " perc] == 1} {
+#                             return $perc
+#                         } else {
+#                             return -1
+#                         }
 #                     }
-#                 }
+                } else {
+                    ui_error "port:${subport} doesn't support CMake's ${args} generator (don't use cmake.generator on the commandline)"
+                    return -code error "unsupported CMake generator requested (port:${subport})"
+                }
             }
             "*Ninja" {
-                ui_debug "Selecting the Ninja generator ($args)"
-                depends_build-append \
+                if {![tbool cmake.ninja_generator_incompatible]} {
+                    ui_debug "Selecting the Ninja generator ($args)"
+                    depends_build-append \
                                     port:ninja
-                build.cmd           ninja
-                # force Ninja to use the exact number of requested build jobs
-                build.post_args     -j${build.jobs} -v
-                destroot.target     install
-                # ninja needs the DESTDIR argument in the environment
-                destroot.destdir
-                destroot.env-append DESTDIR=${destroot}
+                    build.cmd       ninja
+                    # force Ninja to use the exact number of requested build jobs
+                    build.post_args -j${build.jobs} -v
+                    destroot.target install
+                    # ninja needs the DESTDIR argument in the environment
+                    destroot.destdir
+                    destroot.env-append DESTDIR=${destroot}
+                } else {
+                    ui_error "port:${subport} doesn't support CMake's ${args} generator (don't use cmake.generator on the commandline)"
+                    return -code error "unsupported CMake generator requested (port:${subport})"
+                }
             }
             default {
+                ui_msg "generator fallback"
                 if {[llength $args] != 1} {
                     set msg "cmake.generator requires a single value (not \"${args}\")"
                 } else {
@@ -209,8 +233,22 @@ default configure.dir {[cmake::build_dir]}
 default build.dir {${configure.dir}}
 default build.post_args {VERBOSE=ON}
 
-#FIXME: ccache works with cmake on linux
-configure.ccache    no
+# cache the configure.ccache variable (it will be overridden in the pre-configure step)
+set cmake::ccache_cache ${configure.ccache}
+
+# tell CMake to use ccache via the CMAKE_<LANG>_COMPILER_LAUNCHER variable
+# and unset the global configure.ccache option which is not compatible
+# with CMake.
+# See https://stackoverflow.com/questions/1815688/how-to-use-ccache-with-cmake
+proc cmake::ccaching {} {
+    global prefix
+    namespace upvar ::cmake ccache_cache cccache
+    if {${cccache} && [file exists ${prefix}/bin/ccache]} {
+        return [list \
+            -DCMAKE_C_COMPILER_LAUNCHER=${prefix}/bin/ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=${prefix}/bin/ccache]
+    }
+}
 
 configure.cmd       ${prefix}/bin/cmake
 
@@ -225,6 +263,7 @@ default configure.pre_args {[list \
                     -DCMAKE_INSTALL_PREFIX="${cmake.install_prefix}" \
                     -DCMAKE_INSTALL_NAME_DIR="${cmake.install_prefix}/lib" \
                     {*}[cmake::system_prefix_path] \
+                    {*}[cmake::ccaching] \
                     {-DCMAKE_C_COMPILER="$CC"} \
                     {-DCMAKE_CXX_COMPILER="$CXX"} \
                     -DCMAKE_POLICY_DEFAULT_CMP0025=NEW \
@@ -256,7 +295,7 @@ default configure.post_args {[option cmake.source_dir]}
 
 # TODO: Handle configure.objcflags (cf. to CMake upstream ticket #4756
 #       "CMake needs an Objective-C equivalent of CMAKE_CXX_FLAGS"
-#       <http://public.kitware.com/Bug/view.php?id=4756>)
+#       <https://public.kitware.com/Bug/view.php?id=4756>)
 
 # TODO: Handle the Fortran-specific configure.* variables:
 #       configure.fflags, configure.fcflags, configure.f90flags
@@ -269,7 +308,7 @@ pre-configure {
 
     # The environment variable CPPFLAGS is not considered by CMake.
     # (CMake upstream ticket #12928 "CMake silently ignores CPPFLAGS"
-    # <http://www.cmake.org/Bug/view.php?id=12928>).
+    # <https://www.cmake.org/Bug/view.php?id=12928>).
     #
     # But adding -I${prefix}/include to CFLAGS/CXXFLAGS is a bad idea.
     # If any other flags are needed, we need to add them.
@@ -281,9 +320,9 @@ pre-configure {
     # the concerned Release build type so that configure.optflags
     # gets honored (Debug used by the +debug variant does not set
     # optimisation flags by default).
-    # NB: more recent CMake versions (>=3?) no longer take the env. variables into
-    # account, and thus require explicit use of ${configure.c*flags} below:
-    # Using a custom BUILD_TYPE we can simply append to the env. variables,
+    # We use a custom BUILD_TYPE (MacPorts) so we can simply append all desired
+    # arguments to the CFLAGS and CXXFLAGS env. variables, which will be used
+    # to set CMAKE_C_FLAGS and CMAKE_CXX_FLAGS, and those will control the build.
     if {![variant_isset debug]} {
         configure.cflags-append     -DNDEBUG
         configure.cxxflags-append   -DNDEBUG
@@ -308,11 +347,29 @@ pre-configure {
     }
 
     configure.pre_args-prepend "-G \"[join ${cmake.generator}]\""
-    # CMake doesn't like --enable-debug, so remove it unconditionally.
-    configure.args-delete --enable-debug
+    # undo a counterproductive action from the debug PG:
+    configure.args-delete -DCMAKE_BUILD_TYPE=debugFull
+
+    # The configure.ccache variable has been cached so we can restore it in the post-configure
+    # (pre-configure and post-configure are always run in a single `port` invocation.)
+    configure.ccache        no
+    # surprising but intended behaviour that's impossible to work around more gracefully:
+    # overriding configure.ccache fails if the user set it directly from the commandline
+    if {[tbool configure.ccache]} {
+        ui_error "Please don't use configure.ccache=yes on the commandline for port:${subport}, use configureccache=yes"
+        return -code error "invalid invocation (port:${subport})"
+    }
+    if {${cmake::ccache_cache}} {
+        ui_info "        (using ccache)"
+    }
 }
 
 post-configure {
+    # restore configure.ccache:
+    if {[info exists cmake::ccache_cache]} {
+        configure.ccache    ${cmake::ccache_cache}
+        ui_debug "configure.ccache restored to ${cmake::ccache_cache}"
+    }
     # either compile_commands.json was created because of -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     # in which case touch'ing it won't change anything. Or else it wasn't created, in which case
     # we'll create a file that corresponds, i.e. containing an empty json array.
@@ -397,7 +454,7 @@ platform darwin {
 
         # Setting our own -arch flags is unnecessary (in the case of a non-universal build) or even
         # harmful (in the case of a universal build, because it causes the compiler identification to
-        # fail; see http://public.kitware.com/pipermail/cmake-developers/2015-September/026586.html).
+        # fail; see https://public.kitware.com/pipermail/cmake-developers/2015-September/026586.html).
         # Save all archflag-containing variables before changing any of them, because some of them
         # declare their default value based on the value of another.
         foreach archflag_var ${cmake._archflag_vars} {
@@ -450,10 +507,4 @@ variant debug description "Enable debug binaries" {
     configure.ldflags-append        ${cmake::debugopts}
     # try to ensure that info won't get stripped
     configure.args-append           -DCMAKE_STRIP:FILEPATH=/bin/echo
-}
-
-# cmake doesn't like --enable-debug, so in case a portfile sets
-# --enable-debug (regardless of variant) we remove it
-if {[string first "--enable-debug" ${configure.args}] > -1} {
-    configure.args-delete     --enable-debug
 }

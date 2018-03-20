@@ -197,7 +197,7 @@ if {![variant_exists qt5kde]} {
 if {[variant_isset qt5kde]} {
     ui_debug "+qt5kde is set for port:${subport}"
 } else {
-    ui_debug "+qt5kde is not yet but will be set for port:${subport}"
+    ui_debug "+qt5kde is not yet set but will be for port:${subport}"
 }
 default_variants        +qt5kde
 
@@ -463,6 +463,9 @@ proc qt5.active_version {} {
     }
 }
 
+## NB
+## Remember to update the component2pathspec table when promoting
+## a stubport to a (sub)port!
 set qt5.kde_stubports \
             {qtbase qtdeclarative qtserialbus qtserialport qtsensors \
             qtquick1 qtwebchannel qtimageformats qtsvg qtmacextras \
@@ -490,6 +493,10 @@ if {![info exist building_qt5] || [vercmp ${version} 5.9.0] >= 0} {
     lappend qt5.kde_stubports qtremoteobjects
     # qt3d is moved to its own subport; remove it from the stubports list:
     set qt5.kde_stubports [lsearch -all -inline -not -exact ${qt5.kde_stubports} qt3d]
+}
+
+platform linux {
+    lappend qt5.kde_stubports x11
 }
 
 global qt5_dependency
@@ -537,6 +544,7 @@ if {${os.platform} eq "darwin"} {
                         path:libexec/${qt_name}/lib/libQt5WebEngineCore.${qt_libs_ext}:${qt5::pprefix}-qtwebengine
 }
 if {![info exists building_qt5]} {
+    ui_debug "Adding depspec \"${qt5_dependency}\" ([dict get [info frame 0] file])"
     depends_lib-append ${qt5_dependency}
     if {[info exists qt5.depends_qtwebengine] && ${qt5.depends_qtwebengine}} {
         depends_lib-append \
@@ -791,8 +799,13 @@ platform linux {
         qtwebview       path:libexec/${qt_name}/lib/libQt5WebView.${qt_libs_ext} \
     ]
 }
+set qt5::component2pathspec(qt3d)       path:${qt_pkg_config_dir}/Qt53DCore.pc
+set qt5::component2pathspec(qttranslations) path:${qt_translations_dir}/qt_en.qm
 set qt5::component2pathspec(assistant)  path:${qt_bins_dir}/assistant
 set qt5::component2pathspec(webkit)     $qt5::component2pathspec(qtwebkit)
+platform darwin {
+    set qt5::component2pathspec(x11)    path:${qt_pkg_config_dir}/Qt5X11Extras.pc
+}
 
 # a procedure for declaring dependencies on Qt5 components, which will expand them
 # into the appropriate subports for the Qt5 flavour installed
@@ -800,7 +813,7 @@ set qt5::component2pathspec(webkit)     $qt5::component2pathspec(qtwebkit)
 proc qt5::depends_component_p {deptype args} {
     global qt5::component2pathspec qt5.using_kde os.major qt5.kde_stubports version qt5::pprefix
     # select the Qt5 port prefix, depending on which Qt5 port is installed
-    set is_qt5kde [expr [info exists qt5.using_kde] && ${qt5.using_kde}]
+    set is_qt5kde [tbool qt5.using_kde]
     if {!${is_qt5kde}} {
         switch ${os.major} {
             "11" {

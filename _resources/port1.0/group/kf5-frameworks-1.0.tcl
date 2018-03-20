@@ -65,13 +65,20 @@ namespace eval kf5 {
 
     # internal and (hopefully) rarely used stuff is put in the KF5 namespace
 
+    variable libs_ext
+
     variable pyversion       2.7
     variable pybranch        [join [lrange [split ${pyversion} .] 0 1] ""]
+
     if {${os.platform} eq "darwin"} {
+        set libs_ext   dylib
+
         # this should probably become under control of a variant
         variable pythondep   port:python27
         variable pylibdir    ${frameworks_dir}/Python.framework/Versions/${pyversion}/lib/python${pyversion}
     } elseif {${os.platform} eq "linux"} {
+        set libs_ext   so
+
         # for personal use: don't add a python dependency.
         variable pythondep   bin:python:python27
     }
@@ -135,12 +142,15 @@ namespace eval kf5 {
                     if {[lsearch {"baloo" "kactivities" "kdbusaddons" "kded" "kdelibs4support-devel" "kglobalaccel" "kio"
                                     "kservice" "kwallet" "kwalletmanager" "plasma-framework"} ${name}] ne "-1"} {
                         if {!${kf5::dbus_start_warning_printed}} {
-                            notes-append "
-                                Don't forget that dbus needs to be started as the local\
-                                user (not with sudo) before any KDE programs will launch.
-                                To start it run the following command:
-                                 launchctl load -w /Library/LaunchAgents/org.freedesktop.dbus-session.plist
-                                "
+                            if {[catch {exec ps -ax | fgrep dbus-daemon} result]} {
+                                ui_debug "dbus-daemon isn't running: ${result}"
+                                notes-append "
+                                    Don't forget that dbus needs to be started as the local\
+                                    user (not with sudo) before any KDE programs will launch.
+                                    To start it run the following command:
+                                     launchctl load -w /Library/LaunchAgents/org.freedesktop.dbus-session.plist
+                                    "
+                            }
                             set kf5::dbus_start_warning_printed yes
                         }
                     }
@@ -164,6 +174,13 @@ namespace eval kf5 {
         configure.args-append \
                         -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion}
     }
+}
+
+# public variables:
+if {${os.platform} eq "darwin"} {
+    set kf5.libs_dir    ${prefix}/lib
+} elseif {${os.platform} eq "linux"} {
+    set kf5.libs_dir    ${prefix}/lib/${build_arch}-linux-gnu
 }
 
 proc kf5.depends_frameworks {first args} {
@@ -272,8 +289,14 @@ kf5::framework_dependency    khtml libKF5KHtml
 kf5::framework_dependency    kross libKF5KrossCore
 kf5::framework_dependency    krunner libKF5Runner
 kf5::framework_dependency    kwayland libKF5WaylandClient
+kf5::framework_dependency    kuserfeedback libKUserFeedbackCore
+kf5::framework_dependency    kactivities-stats libKF5ActivitiesStats
+
+# QML frameworks, should be used as runtime deps:
 set kf5::kirigami_dep        path:${qt_qml_dir}/org/kde/kirigami/libkirigamiplugin.${kf5::libs_ext}:kf5-kirigami
 set kf5::kirigami2_dep       path:${qt_qml_dir}/org/kde/kirigami.2/libkirigamiplugin.${kf5::libs_ext}:kf5-kirigami2
+set kf5::qqc2desktopstyle_dep \
+                            path:${qt_qml_dir}/org/kde/qqc2desktopstyle/private/libqqc2desktopstyleplugin.${kf5::libs_ext}:kf5-qqc2-desktop-style
 
 # not a framework; use the procedure to define the path-style dependency
 kf5::framework_dependency    cli-tools libkdeinit5_kcmshell5 ""
