@@ -11,7 +11,7 @@ categories          lang
 license             GPL-3+ Permissive
 platforms           linux
 
-description         A wrapper for the system gcc6 packages
+description         A wrapper for the system gcc7 packages
 long_description    ${description}. Install at least v7.0 of gcc7 and g++7, or their equivalents. \
                     Designed for Ubuntu.
 
