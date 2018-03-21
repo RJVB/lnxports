@@ -35,6 +35,7 @@ subport             audacity-devel {
 
 
 if {${subport} eq "${name}"} {
+    conflicts       "${name}-devel"
     # get the source tarball from github because it contains all required external libs
     # incl. those not in MacPorts.
     github.setup    audacity audacity 2.2.2 Audacity-
@@ -42,15 +43,20 @@ if {${subport} eq "${name}"} {
                     sha256  7963cedab841aff181ea25b06991ba5ba56249533815ba5cdd82ec1282dbadd8
     set PPREFIX     ./
 } else {
-    # git describe --tags : Audacity-2.2.2-407-g56bca7427
-    github.setup    audacity audacity 56bca7427218ab9bdd9a54f4eb7d7490c07657bb
-    version         2.2.2.407
+    conflicts       "${name}"
+    # git describe --tags : Audacity-2.2.2-413-g2ccc8eec9
+    github.setup    audacity audacity 2ccc8eec9babe1d9d0139550a7476fb4d06ce6c5
+    version         2.2.2.413
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
     distname        audacity-git
+    checksums       rmd160  43b66fdbe873d5f64059f5b58b20b676d9540d20 \
+                    sha256  9231238cfe468b7b0531853564cfc19dea635f50b1acd5c9b468c5795d6e767b
     set PPREFIX     devel/
+
     variant wx32 description {Use wxWidgets 3.2 - experimental!} {}
+
     livecheck.type  none
 
     pre-build {
@@ -141,12 +147,13 @@ platform darwin {
                     src-Makefile-for-osx.diff                               \
                     portaudio-no-universal-build.diff                       \
                     buildinfo-clarify-no-gstreamer.diff                     \
+                    patch-aboutdlg-compiler.diff                            \
                     add_enGB_translation.diff                               \
                     patch-more-decent-font-sizes.diff                       \
                     patch-python.diff                                       \
                     patch-vstcontrolosx.diff \
                     patch-libnyquist-symbol-visibility.diff \
-                    patch-fix-casts.diff \
+                    patch-fix-vsteffects.diff \
                     patch-add-MenusMac.diff \
                     patch-skip-gcc-version-test.diff \
                     patch-fix-audiounits.diff
@@ -171,12 +178,13 @@ platform linux {
                     libvamp-Makefile-for-linux.diff                         \
                     workaround-wxwidgets-fit-recovery.patch                 \
                     buildinfo-clarify-no-gstreamer.diff                     \
+                    patch-aboutdlg-compiler.diff                            \
                     add_enGB_translation.diff                               \
                     patch-avoid-clang-choke-on-confbase.diff                \
                     patch-rearrange-control-buttons.diff                    \
                     patch-python-linux.diff                                 \
                     patch-libnyquist-symbol-visibility.diff \
-                    patch-fix-casts.diff \
+                    patch-fix-vsteffects.diff \
                     patch-skip-gcc-version-test.diff \
                     patch-fix-audiounits.diff
     # strange C++ errors, why would upstream builds not be affected?
@@ -280,6 +288,7 @@ post-patch {
                                 lib-src/lv2/configure
     reinplace -W ${worksrcpath} "s|/usr/local|${prefix}|g" \
                                 src/effects/ladspa/LadspaEffect.cpp \
+                                src/effects/VST/VSTEffect.cpp \
                                 src/export/ExportMP3.cpp \
                                 lib-src/lv2/lilv/wscript \
                                 lib-src/lv2/lilv/test/lilv_test.c
