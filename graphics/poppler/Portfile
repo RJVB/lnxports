@@ -132,7 +132,9 @@ if {${subport} ne ${name}} {
                 ${destroot}${prefix}/lib/pkgconfig/poppler.pc
     }
 } else {
-    preserve_libraries ${prefix}/lib libpoppler.so.*
+    post-destroot {
+        preserve_libraries ${prefix}/lib libpoppler.so.*
+    }
 }
 
 livecheck.type      regex
