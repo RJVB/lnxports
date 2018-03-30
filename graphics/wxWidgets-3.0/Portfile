@@ -127,6 +127,7 @@ platform darwin {
     if {[string match *clang* ${configure.cxx}]} {
         configure.ldflags-append \
                     -stdlib=${configure.cxx_stdlib}
+    }
 }
 
 platform darwin powerpc {
