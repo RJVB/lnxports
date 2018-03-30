@@ -1,34 +1,706 @@
-# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile  $
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
-PortSystem          1.0
+PortSystem 1.0
+
+variant proxy description {proxy the GCC 7 suite provided by the host distribution} {}
+default_variants    +proxy
+if {[variant_isset proxy]} {
+    name                gcc7
+    version             7.2.0
+    maintainers         gmail.com:rjvbertin
+
+    categories          lang
+    license             GPL-3+ Permissive
+    platforms           linux
+
+    description         A wrapper for the system gcc7 packages
+    long_description    ${description}. Install at least v7.0 of gcc7 and g++7, or their equivalents. \
+                        Designed for Ubuntu.
+
+    homepage            http://gcc.gnu.org/
+
+    distfiles
+    installs_libs       no
+    supported_archs     noarch
+    use_configure       no
+    build               {}
+
+    destroot {
+        foreach bin [glob -nocomplain /usr/bin/x86_64-linux-gnu-*-7] {
+            set bname [string map [list "-7" "-mp-7"] [string map [list "x86_64-linux-gnu-" ""] [file tail ${bin}]]]
+            set bin_filename ${destroot}${prefix}/bin/${bname}
+
+            xinstall -m 755 "${filespath}/gcc-bin" "${bin_filename}"
+            reinplace "s:EXEC_PATH:${bin}:" "${bin_filename}"
+        }
+    }
+    return
+} else {
+# NOT +proxy
+
+PortGroup select 1.0
+PortGroup compiler_blacklist_versions 1.0
+PortGroup active_variants 1.1
+### MacStrop private
+PortGroup compress_workdir 1.0
+PortGroup preserve_runtime_libraries 1.0
+### MacStrop private
 
 name                gcc7
-version             7.2.0
-maintainers         gmail.com:rjvbertin
 
+platform linux {
+    PortGroup       conflicts_build 1.0
+
+    default_variants +with_libgcc +quick
+    if {![variant_isset with_libgcc]} {
+        ui_error "Building with a separate libgcc subport is not supported on ${os.platform}"
+        return -code error "The +with_libgcc variant must be set"
+    }
+
+    conflicts_build gettext-dev
+}
+
+# are we the port that currently provides libgcc?
+set provides_libgcc 1
+
+epoch               2
+version             7.3.0
+
+# Work around parallel building issue on APFS
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81797
+patchfiles-append   notparallel-install-headers.patch
+
+set major           [lindex [split ${version} .-] 0]
+set ver3char        [join [split ${version} '.'] ""]
+
+if {${provides_libgcc}} {
+    set libgcc_port libgcc
+} else {
+    set libgcc_port libgcc${major}
+}
+
+subport             ${libgcc_port} { revision 0 }
+
+platforms           darwin
 categories          lang
-license             GPL-3+ Permissive
-platforms           linux
-
-description         A wrapper for the system gcc7 packages
-long_description    ${description}. Install at least v7.0 of gcc7 and g++7, or their equivalents. \
-                    Designed for Ubuntu.
+maintainers         nomaintainer
+# an exception in the license allows dependents to not be GPL
+license             {GPL-3+ Permissive}
+description         The GNU compiler collection
+long_description    The GNU compiler collection, including front ends for \
+                    C, C++, Objective-C, Objective-C++, and Fortran.
 
 homepage            http://gcc.gnu.org/
+master_sites        ftp://ftp.funet.fi/pub/mirrors/sources.redhat.com/pub/gcc/releases/gcc-${version}/ \
+                    ftp://ftp.gwdg.de/pub/linux/gcc/releases/gcc-${version}/ \
+                    ftp://gcc.ftp.nluug.nl/mirror/languages/gcc/releases/gcc-${version}/ \
+                    ftp://gcc.gnu.org/pub/gcc/releases/gcc-${version}/ \
+                    gnu:gcc/gcc-${version}
 
-distfiles
-installs_libs       no
-supported_archs     noarch
-use_configure       no
-build               {}
+distname            gcc-${version}
+use_xz              yes
 
-destroot {
-    foreach bin [glob -nocomplain /usr/bin/x86_64-linux-gnu-*-7] {
-        set bname [string map [list "-7" "-mp-7"] [string map [list "x86_64-linux-gnu-" ""] [file tail ${bin}]]]
-        set bin_filename ${destroot}${prefix}/bin/${bname}
+checksums           rmd160  31f6934a0e0c0ca84b6668110f9afdb91c1f9023 \
+                    sha256  832ca6ae04636adbb430e865a1451adf6979ab44ca1c8374f61fba65645ce15c \
+                    size    62462388
 
-        xinstall -m 755 "${filespath}/gcc-bin" "${bin_filename}"
-        reinplace "s:EXEC_PATH:${bin}:" "${bin_filename}"
+installs_libs       yes
+
+depends_lib         \
+                    port:gmp \
+                    path:lib/pkgconfig/isl.pc:isl \
+                    \
+                    \
+                    port:libiconv \
+                    port:libmpc \
+                    port:mpfr
+
+platform darwin {
+    depends_skip_archcheck-append gcc_select ld64 cctools
+}
+license_noconflict  gmp mpfr ppl libmpc
+
+platform darwin {
+    configure.pre_args-append --build=${build_arch}-apple-darwin${os.major}
+
+    # see https://gcc.gnu.org/ml/gcc-patches/2012-05/msg00672.html
+    patchfiles-append patch-float128.diff
+
+    # enable build on 10.4 and 10.5 PPC
+    # https://trac.macports.org/ticket/54215
+    patchfiles-append         patch-darwin-ppc-2017-01-msg02971.diff
+
+    # cause `as` to be invoked with the -q option so that it
+    # invokes the clang integrated assembler (instead of the obsolete GNU as)
+    # `man as` claims that this is the default but clearly that is not true everywhere.
+    patchfiles-append patch-default-clang-assembler.diff
+}
+
+configure.dir       ${workpath}/build
+configure.cmd       ${worksrcpath}/configure
+
+# where to install the headers, should be unversioned for the GCC version that
+# provides port:libgcc and versioned for all other ports
+if {${provides_libgcc}} {
+    set gcc_headerdir ${prefix}/include/gcc
+} else {
+    set gcc_headerdir ${prefix}/include/${name}
+}
+
+# the runtime libraries are built for installation to lib/gcc${ver3char} (e.g. lib/gcc720)
+# but will ultimately still be installed into lib/libgcc .
+# The change is only because lib/libgcc and lib/gcc720 have the same length.
+configure.args      --enable-languages=c,c++,objc,obj-c++,lto,fortran \
+                    --libdir=${prefix}/lib/gcc${ver3char} \
+                    --includedir=${gcc_headerdir} \
+                    --infodir=${prefix}/share/info \
+                    --mandir=${prefix}/share/man \
+                    --datarootdir=${prefix}/share/gcc-${major} \
+                    --with-local-prefix=${prefix} \
+                    --with-system-zlib \
+                    --disable-nls \
+                    --program-suffix=-mp-${major} \
+                    --with-gxx-include-dir=${gcc_headerdir}/c++/ \
+                    --with-gmp=${prefix} \
+                    --with-mpfr=${prefix} \
+                    --with-mpc=${prefix} \
+                    --with-isl=${prefix} \
+                    --enable-stage1-checking \
+                    --disable-multilib \
+                    --enable-lto \
+                    --enable-libstdcxx-time \
+                    --with-build-config=bootstrap-debug \
+                    --with-ld=${prefix}/bin/ld \
+                    --with-ar=${prefix}/bin/ar \
+                    --with-bugurl=https://trac.macports.org/newticket
+
+platform darwin {
+    if {${os.major} >= 13} {
+        # use the system assembler by default; now that we use `as -q` that is the
+        # only way that doesn't oblige users to install a port:clang-xy in addition
+        # to port:gccN. This can change when the `as` command from port:cctools takes
+        # a --clang argument to use a specific clang.
+        configure.args-append \
+                    --with-as=/usr/bin/as
+        configure.env-append \
+                    AS_FOR_TARGET=/usr/bin/as
+    } else {
+        # older Xcode versions aren't compatible and oblige selecting a clang port
+        # via the `port select clang` mechanism.
+        pre-fetch {
+            if {![file exists ${prefix}/bin/clang]} {
+                ui_error "You need to run `port select --set clang mp-clang-${cdv}`"
+                return -code error "port:${name} needs ${prefix}/bin/clang"
+            }
+        }
+        depends_skip_archcheck-append llvm_select
+        configure.args-append \
+                    --with-as=${prefix}/bin/as
+        configure.env-append \
+                    AS_FOR_TARGET=${prefix}/bin/as
     }
+}
+
+# see https://lists.macports.org/pipermail/macports-dev/2017-August/036209.html
+# --disable-tls does not limit functionality
+# it only determines how std::call_once works
+configure.args-append \
+                    --disable-tls
+
+configure.env-append \
+                    AR_FOR_TARGET=${prefix}/bin/ar \
+                    LD_FOR_TARGET=${prefix}/bin/ld \
+                    NM_FOR_TARGET=${prefix}/bin/nm \
+                    OBJDUMP_FOR_TARGET=${prefix}/bin/objdump \
+                    RANLIB_FOR_TARGET=${prefix}/bin/ranlib \
+                    STRIP_FOR_TARGET=${prefix}/bin/strip \
+                    OTOOL=${prefix}/bin/otool \
+                    OTOOL64=${prefix}/bin/otool
+
+pre-configure {
+    configure.args-append --with-pkgversion="MacPorts ${name} ${version}_${revision}${portvariants}"
+
+    if {${configure.sdkroot} ne ""} {
+        # We should be using --with-build-sysroot here.  Using --with-sysroot
+        # changes the behavior of the installed gcc to look in that sysroot
+        # by default instead of /.  Using --with-build-sysroot is supposed
+        # to be used during the build but not impact the installed product.
+        # Unfortunately, the build fails because the value doesn't get
+        # plumbed everywhere it is supposed to.
+        #
+        # https://trac.macports.org/ticket/53726
+        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=79885
+        #
+        # Note that macports toolchains will fail to compile gcc unless
+        # the DevSDK is installed due to another gcc build system bug:
+        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80203
+        configure.args-append --with-sysroot="${configure.sdkroot}"
+    }
+
+    # TODO: Remove when base automatically creates configure.dir (2.2.1?).
+    file mkdir ${configure.dir}
+}
+
+# http://trac.macports.org/ticket/29067
+compiler.blacklist-append gcc-4.0
+
+# http://trac.macports.org/ticket/29104
+compiler.blacklist-append {llvm-gcc-4.2 < 2336.1}
+
+# https://trac.macports.org/ticket/47996
+compiler.blacklist-append {clang < 300}
+
+# "-stdlib" would be passed on to the bootstrap compiler if present
+configure.cxx_stdlib
+
+build.dir           ${configure.dir}
+
+use_parallel_build  yes
+
+destroot.target     install install-info-host
+
+# moved upwards from the "dylibs" variable in the port:libgcc post-destroot;
+# these are the libraries that are potential dependencies for other ports
+# and that are either installed by that port and not the
+# main port, or by the main port and as symlinks by port:libgcc.
+set standardLibs    {libgcc_ext.10.4.dylib libgcc_ext.10.5.dylib \
+    libgcc_s.1.dylib libgfortran.4.dylib libquadmath.0.dylib \
+    libstdc++.6.dylib libobjc-gnu.4.dylib libgomp.1.dylib \
+    libitm.1.dylib libssp.0.dylib libasan.0.dylib libatomic.1.dylib}
+
+if {${subport} eq "${libgcc_port}"} {
+
+    conflicts       libgcc-devel
+
+    variant stub conflicts universal description "To be used when port:${name} is (going to be installed) +with_libgcc" {}
+    if {[variant_isset with_libgcc]} {
+        # we don't provide this variant ourselves, but this situation will
+        # arise when the user installs gcc+with_libgcc and libgcc isn't
+        # installed yet.
+        default_variants-append +stub
+    } elseif {![catch {set result [active_variants ${name} with_libgcc {}]}]} {
+        if {${result}} {
+            # convenience when the user reinstalls port:libgcc: auto-activate +stub when required.
+            default_variants-append +stub
+        }
+    }
+
+    long_description-append \
+                    This port installs the standard runtime libraries, including libstdc++.
+
+    # http://trac.macports.org/ticket/35770
+    # http://trac.macports.org/ticket/38814
+    # While there can be multiple versions of these runtimes in a single
+    # process, it is not possible to pass objects between different versions,
+    # so we simplify this by having the libgcc port provide the newest version
+    # of these runtimes for all versions of gcc to use.
+    #
+    # If there is a binary incompatible change to the runtime in a future
+    # version of gcc, then the latest version of gcc to provide a given ABI
+    # version should continue to provide a subport for that and older gcc
+    # versions.
+
+    if {[variant_exists stub] && [variant_isset stub]} {
+        long_description-append \
+                    Users building from source can install port:${name}+with_libgcc \
+                    and port:${subport}+stub to avoid building everything twice.
+        # reset the depspecs
+        depends_lib
+#         # this probably doesn't make sense, ${name} depends on us.
+#         require_active_variants ${name} with_libgcc
+
+        use_configure   no
+        installs_libs   no
+        supported_archs noarch
+        fetch           {}
+        extract         {}
+        patch           {}
+        build           {}
+        destroot {
+            # install something relevant into $prefix/lib/libgcc
+            xinstall -m 755 -d ${destroot}${prefix}/lib/libgcc
+            system "echo ${version} > ${destroot}${prefix}/lib/libgcc/libgcc_version.txt"
+            # there should be no need to install anything related to headers
+            # For binary compatibility with binaries that linked against the old libstdcxx port
+            ln -s libgcc/libstdc++.6.dylib ${destroot}${prefix}/lib/libstdc++.6.dylib
+        }
+    } else {
+        depends_lib-delete path:lib/libgcc/libgcc_s.1.dylib:libgcc
+#         # this probably doesn't make sense, ${name} depends on us.
+#         require_active_variants ${name} "" with_libgcc
+
+        # port:libgcc builds the runtime libraries for installation in lib/libgcc
+        configure.args-replace  --libdir=${prefix}/lib/gcc${ver3char} \
+                                --libdir=${prefix}/lib/libgcc
+
+        # see https://trac.macports.org/ticket/54766
+        configure.args-replace \
+                                --includedir=${prefix}/include/${name} \
+                                --includedir=${prefix}/include/gcc
+
+        configure.args-replace \
+                                --with-gxx-include-dir=${prefix}/include/${name}/c++/ \
+                                --with-gxx-include-dir=${prefix}/include/gcc/c++/
+
+        # bootstrap-less building is a *lot* faster, see:
+        # http://trac.macports.org/ticket/36116
+        # and
+        # https://trac.macports.org/changeset/103047
+        if {${os.major} >= 11} {
+            compiler.blacklist-append {clang < 425}
+            configure.args-append --disable-bootstrap
+            build.target        all
+        } else {
+            configure.cc_archflags
+            configure.cxx_archflags
+            configure.objc_archflags
+            configure.ld_archflags
+            configure.universal_cflags
+            configure.universal_cxxflags
+            configure.universal_ldflags
+            configure.universal_args
+            build.target        bootstrap-lean
+        }
+
+        post-destroot {
+            file mkdir ${destroot}${prefix}/lib/libgcc.merged
+
+            # Note that we really don't want to include libgcc_ext.10.[45].dylib here, but install_name_tool
+            # doesn't know how to change the id of stubs, and it's easier than recreating them for each
+            # gcc port.
+
+            foreach dylib ${standardLibs} {
+                # Different OS versions (eg: Leopard) or architectures (eg: PPC) don't produce all the dylibs
+                # https://trac.macports.org/ticket/40098
+                # https://trac.macports.org/ticket/40100
+                if {! [file exists ${destroot}${prefix}/lib/libgcc/${dylib}]} {
+                    continue
+                }
+
+                move ${destroot}${prefix}/lib/libgcc/${dylib} ${destroot}${prefix}/lib/libgcc.merged
+                if {[variant_isset universal]} {
+                    foreach archdir [glob ${destroot}${prefix}/lib/libgcc/*/] {
+                        set archdir_nodestroot [string map "${destroot}/ /" ${archdir}]
+                        if {[file exists ${archdir}/${dylib}]} {
+                            system "install_name_tool -id ${prefix}/lib/libgcc/${dylib} ${archdir}/${dylib}"
+                            foreach link ${dylibs} {
+                                system "install_name_tool -change ${archdir_nodestroot}${link} ${prefix}/lib/libgcc/${link} ${archdir}/${dylib}"
+                            }
+                            system "lipo -create -output ${destroot}${prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${prefix}/lib/libgcc.merged/${dylib} ${archdir}/${dylib} && mv ${destroot}${prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${prefix}/lib/libgcc.merged/${dylib}"
+                        }
+                    }
+                }
+
+                if {${os.major} < 13} {
+                    # strip debug symbols to suppress debugger warnings:
+                    # http://trac.macports.org/attachment/ticket/34831
+                    # This isn't required for lldb
+                    if {! [string match *libgcc_ext* ${dylib}]} {
+                        system "strip -x ${destroot}${prefix}/lib/libgcc.merged/${dylib}"
+                    }
+                }
+            }
+
+            file delete -force ${destroot}${prefix}/bin
+            file delete -force ${destroot}${prefix}/share
+            file delete -force ${destroot}${prefix}/lib/libgcc
+            file delete -force ${destroot}${prefix}/libexec
+
+            move ${destroot}${prefix}/lib/libgcc.merged ${destroot}${prefix}/lib/libgcc
+
+            # For binary compatibility with binaries that linked against the old libstdcxx port
+            ln -s libgcc/libstdc++.6.dylib ${destroot}${prefix}/lib/libstdc++.6.dylib
+        }
+    }
+
+    ### MacStrop private
+    post-destroot {
+        preserve_libraries ${prefix}/lib/libgcc lib*.*.dylib
+    }
+    ### MacStrop private
+
+} else {
+### Main port
+
+# check if we can support a +with_libgcc variant. That is only if and when neither the previous nor the next
+# version of this port is already installed with that variant.
+# The previous version is relevant in the port providing libgcc-devel (currently gcc8); older releases should
+# not provide a +with_libgcc variant in any case (currently that is gcc6 and earlier).
+# The next version is relevant in the current latest release version (currently gcc7)
+proc check_withlibgcc_compat {other} {
+    if {[catch {set result [active_variants ${other} {} with_libgcc]} err]} {
+        # port:${other} isn't installed or active; we accept that too.
+        set result 1
+    }
+    ui_debug "+with_libgcc compatibility due to port:${other}: ${result} ${err}"
+    return ${result}
+}
+set previous_version_allows [check_withlibgcc_compat gcc[expr ${major} - 1]]
+set next_version_allows [check_withlibgcc_compat gcc[expr ${major} + 1]]
+
+if {${previous_version_allows} && ${next_version_allows}} {
+    variant with_libgcc conflicts universal description "Include the standard libraries instead of getting them from port:libgcc. For if you install from source." {
+        ui_debug "port:${name}+with_libgcc requires port:libgcc+stub"
+        require_active_variants path:lib/libgcc/libgcc_s.1.dylib:libgcc stub
+    }
+    long_description-append \
+                    Users building from source can install port:${name}+with_libgcc \
+                    and port:libgcc+stub to avoid building everything twice.
+}
+# the quick variant simplifies gcc patch development but also decreases the build time by a factor > 4. The
+# resulting compiler binaries appear to be about 1-2% slower.
+variant quick description "Build ${name} without the usual 3-stage bootstrap.\
+    Probably safest with configure.compiler=macports-gcc-${major} but not when that compiler uses libc++!" {}
+
+depends_run-append          port:gcc_select
+
+if {${os.major} >= 13 || ${os.platform} eq "linux"} {
+    # OS X 10.9 and up support the system clang toolchain from Xcode and
+    # MacPorts clang compilers (starting arbitrarily at 3.9) for building
+    # against the libc++ runtime instead of libstdc++. A feature under
+    # testing which hopefully can be included into GCC one day under control
+    # of a -stdlib=libc++ compiler argument.
+    # Even when that happens it will use a hardcoded clang version determined
+    # during the GCC build, i.e. these variants will remain.
+    set libcxx_versions     {{} 3.9 4.0 5.0}
+} else {
+    # don't support the system clang toolchain before OS X 10.9
+    set libcxx_versions     {3.9 4.0 5.0}
+}
+
+foreach cdv ${libcxx_versions} {
+    set cv [join [split ${cdv} "."] ""]
+    if {${cdv} eq {}} {
+        variant libcxx description "Build to use libc++ and the corresponding headers from Xcode (experimental for Xcode <= 6)" {}
+    } else {
+        variant libcxx${cv} description "Build to use libc++ and the corresponding headers from port:clang-${cdv}" {}
+    }
+    if {[variant_isset libcxx${cv}]} {
+        if {${cdv} ne {}} {
+            depends_run-append  port:clang-${cdv}
+            platform darwin {
+                set libcxx_headers  "${prefix}/libexec/llvm-${cdv}/include/c++/v1"
+            }
+            set clang_mp        "${prefix}/bin/clang-mp-${cdv}"
+            if {${os.major} >= 13 && ${os.platform} eq "darwin"} {
+                pre-fetch {
+                    if {![file exists ${prefix}/bin/clang]} {
+                        ui_error "You need to run `port select --set clang mp-clang-${cdv}`"
+                        return -code error "port:${name} needs ${prefix}/bin/clang"
+                    }
+                }
+                depends_skip_archcheck-append llvm_select
+                # we need a clang installation anyway, use it for the compiler too
+                # (if the user used port select to that extent).
+                configure.args-replace \
+                                --with-as=/usr/bin/as \
+                                --with-as=${prefix}/bin/as
+                configure.env-replace \
+                                AS_FOR_TARGET=/usr/bin/as \
+                                AS_FOR_TARGET=${prefix}/bin/as
+            }
+        } else {
+            platform darwin {
+                set libcxx_headers  "[file dir [exec xcrun --find clang]]/../include/c++/v1"
+                set clang_mp        "[exec xcrun --find clang]"
+            }
+            platform linux {
+                set clang_mp        "/usr/bin/clang"
+            }
+        }
+        platform linux {
+            set libcxx_headers      "/usr/include/c++/v1"
+            depends_build-append    port:libcxx
+            depends_run-append      port:libcxx
+        }
+        patchfiles-append   patch-use-libcxx.diff
+        post-patch {
+            reinplace "s|@LLVMHEADERPATH@|${libcxx_headers}|g" ${worksrcpath}/gcc/incpath.c
+#             # this will apply when as -q takes a --clang argument.
+#             reinplace "s|@CLANG@|${clang_mp}|g" ${worksrcpath}/gcc/config/darwin.h
+        }
+
+        # the reason for the change proposed in https://lists.macports.org/pipermail/macports-dev/2017-August/036209.html
+        # is moot when using libc++ ; reenable TLS
+        platform darwin {
+            configure.args-delete   --disable-tls
+        }
+        platform linux {
+            configure.args-append   --enable-compressed-debug-sections=all
+        }
+        # we need to build libstdc++ in this case because libsupc++.a might be needed (but only on 10.9 and earlier?)
+        # Once we figure out how to get rid of that dependency we could use --disable-libstdcxx and speed up the build.
+        configure.args-append   "--with-libcxx-include-dir=${libcxx_headers}"
+
+#         # GCC_IS_BUILDING_ITSELF: causes g++ to add a static libstdc++ just like it does when building with/for libstdc++
+#         # GCC_FORCE_LIBSTDCPP: forces the use of libstdc++ for the current build and ignores the default clang C++ header location
+#         # LIBCPP_INCLUDE_PATH: redefines the location of the clang C++ headers; empty means don't use them at all
+#         # The combination below means: build GCC "as usual" itself
+#         configure.env-append    GCC_IS_BUILDING_ITSELF=1 GCC_FORCE_LIBSTDCPP=1
+#         build.env-append        GCC_IS_BUILDING_ITSELF=1 GCC_FORCE_LIBSTDCPP=1
+#         destroot.env-append     GCC_IS_BUILDING_ITSELF=1 GCC_FORCE_LIBSTDCPP=1
+    }
+}
+# post-patch {
+#     # use the system clang as assembler if no libcxx variant is set
+#     # and `as -q` accepts a --clang argument.
+#     set clang_mp "[exec xcrun --find clang]"
+#     reinplace "s|@CLANG@|${clang_mp}|g" ${worksrcpath}/gcc/config/darwin.h
+# }
+
+post-destroot {
+    file delete ${destroot}${prefix}/share/info/dir
+
+    foreach file [glob ${destroot}${prefix}/share/{info,man/man7}/*] {
+        set extension [file extension ${file}]
+        set newfile [regsub "${extension}$" ${file} "-mp-${major}${extension}"]
+
+        file rename ${file} ${newfile}
+    }
+
+    if {![variant_exists with_libgcc] || ![variant_isset with_libgcc]} {
+        foreach dylib ${standardLibs} {
+            # Different OS versions (e.g. Leopard) or architectures (e.g. PPC) don't produce all the dylibs
+            # https://trac.macports.org/ticket/40098
+            # https://trac.macports.org/ticket/40100
+            if {[file exists ${destroot}${prefix}/lib/${name}/${dylib}]} {
+                delete ${destroot}${prefix}/lib/${name}/${dylib}
+                ln -s ${prefix}/lib/libgcc/${dylib} ${destroot}${prefix}/lib/${name}/${dylib}
+            }
+
+            if {[variant_isset universal]} {
+                foreach archdir [glob ${destroot}${prefix}/lib/${name}/*/] {
+                    if {[file exists ${archdir}/${dylib}]} {
+                        delete ${archdir}/${dylib}
+                        ln -s ${prefix}/lib/libgcc/${dylib} ${archdir}/${dylib}
+                    }
+                }
+            }
+        }
+        # The C++ headerfiles are installed by port:libgcc too
+        delete -force ${destroot}${gcc_headerdir}/c++
+    } elseif {${os.platform} eq "darwin"} {
+        file mkdir ${destroot}${prefix}/lib/libgcc
+        foreach dylib ${standardLibs} {
+            # This is a modified "inversed" version of what port:libgcc does when not in stub mode
+            # the difference is that here we're moving the ${standardLibs} from lib/gcc${ver3char} ($prefix/lib/gcc7)
+            # into the unversioned $prefix/lib/libgcc and need to adapt their ID and link info accordingly.
+            if {! [file exists ${destroot}${prefix}/lib/gcc${ver3char}/${dylib}]} {
+                continue
+            }
+
+            move ${destroot}${prefix}/lib/gcc${ver3char}/${dylib} ${destroot}${prefix}/lib/libgcc
+            # put an appropriate symlink in the versioned location
+            ln -s ${prefix}/lib/libgcc/${dylib} ${destroot}${prefix}/lib/gcc${ver3char}/${dylib}
+
+            # update ${dylib}'s ID and all of its dependents to match the new location
+            if {[variant_isset universal]} {
+                # this case is untested and should never be executed because of the with_libgcc/universal conflict
+                # Keeping it around for the "just in case".
+                foreach archdir [glob ${destroot}${prefix}/lib/gcc${ver3char}/*/] {
+                    set archdir_nodestroot [string map "${destroot}/ /" ${archdir}]
+                    if {[file exists ${archdir}/${dylib}]} {
+                        system "install_name_tool -id ${prefix}/lib/libgcc/${dylib} ${archdir}/${dylib}"
+                        foreach link ${dylibs} {
+                            system "install_name_tool -change ${archdir_nodestroot}${link} ${prefix}/lib/libgcc/${link} ${archdir}/${dylib}"
+                        }
+                        system "lipo -create -output ${destroot}${prefix}/lib/libgcc/${dylib}~ ${destroot}${prefix}/lib/libgcc/${dylib} ${archdir}/${dylib} && mv ${destroot}${prefix}/lib/libgcc/${dylib}~ ${destroot}${prefix}/lib/libgcc/${dylib}"
+                    }
+                }
+            } else {
+                if {[string match *libgcc_ext* ${dylib}]} {
+                    # libgcc_ext is a stub library which install_name_tool cannot handle.
+                    # Instead, we do a binary-file search-and-replace, which is possible because the
+                    # original and desired target rpaths have the same length.
+                    system "/usr/bin/ex -b +:1,\\\$s,${prefix}/lib/gcc${ver3char}/libgcc_s.1.dylib,${prefix}/lib/libgcc/libgcc_s.1.dylib,g +:wq ${destroot}${prefix}/lib/libgcc/${dylib}"
+                } else {
+                    system "install_name_tool -id ${prefix}/lib/libgcc/${dylib} ${destroot}${prefix}/lib/libgcc/${dylib}"
+                    foreach dep [glob ${destroot}${prefix}/lib/gcc${ver3char}/*.dylib ${destroot}${prefix}/lib/libgcc/*.dylib] {
+                        if {[file type ${dep}] eq "file" && ![string match *libgcc_ext* ${dep}]} { 
+                            # ${dylib} has been moved, so update all of its dependents
+                            set old ${prefix}/lib/gcc${ver3char}/${dylib}
+                            set new ${prefix}/lib/libgcc/${dylib}
+                            system "install_name_tool -change ${old} ${new} ${dep}"
+                        }
+                    }
+                }
+            }
+
+            if {${os.major} < 13} {
+                # strip debug symbols to suppress debugger warnings:
+                # http://trac.macports.org/attachment/ticket/34831
+                if {! [string match *libgcc_ext* ${dylib}]} {
+                    system "strip -x ${destroot}${prefix}/lib/libgcc/${dylib}"
+                }
+            }
+        }
+    }
+    foreach cdv ${libcxx_versions} {
+        set cv [join [split ${cdv} "."] ""]
+#         if {[variant_isset libcxx${cv}] && [file exists ${destroot}${gcc_headerdir}/c++]} {
+#             # move the stdc++ headers out of the way because g++ shouldn't find them.
+#             # FIXME: needs to go when gcc supports -stdlib=libc++ !
+#             xinstall -m 755 -d ${destroot}${prefix}/include/${name}-stdinc
+#             file rename ${destroot}${gcc_headerdir}/c++ ${destroot}${prefix}/include/${name}-stdinc/c++
+#         }
+    }
+
+    # make the library directory available via the old path too, in case anyone expects it there.
+    ln -s gcc${ver3char} ${destroot}${prefix}/lib/${name}
+
+    platform darwin {
+        ### MacStrop private
+        preserve_libraries ${prefix}/lib/libgcc lib*.*.dylib
+        ### MacStrop private
+    }
+}
+
+select.group        gcc
+select.file         ${filespath}/mp-${name}
+
+if {[variant_exists quick] && [variant_isset quick]} {
+    # quick (and hopefully not too dirty) build: don't bootstrap
+    # and leave the configure environment mostly intact.
+    configure.args-replace \
+                    --with-build-config=bootstrap-debug \
+                    --disable-bootstrap
+} else {
+    configure.cc_archflags
+    configure.cxx_archflags
+    configure.objc_archflags
+    configure.ld_archflags
+    configure.universal_cflags
+    configure.universal_cxxflags
+    configure.universal_ldflags
+    configure.universal_args
+    build.target    bootstrap-lean
+}
+
+### End main port
+}
+
+platform powerpc {
+    configure.universal_archs ppc ppc64
+}
+platform i386 {
+    configure.universal_archs i386 x86_64
+}
+variant universal {
+    configure.args-delete --disable-multilib
+}
+# the generated compiler doesn't accept -arch
+configure.env-append \
+                    CPP="${configure.cc} -E" \
+                    CXXCPP="${configure.cxx} -E"
+build.env-append    CPP="${configure.cc} -E" \
+                    CXXCPP="${configure.cxx} -E"
+
+configure.cc-append [get_canonical_archflags]
+configure.cxx-append ${configure.cxx_archflags}
+
+livecheck.type      regex
+livecheck.url       http://ftp.gnu.org/gnu/gcc/
+livecheck.regex     gcc-(${major}\\.\[0-9.\]+)/
+
+# NOT +proxy
 }
