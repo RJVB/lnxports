@@ -74,7 +74,7 @@ platform linux {
                     port:potrace
     if {[string match *clang* ${configure.cxx}]} {
         depends_lib-append \
-                    port:libomp
+                    path:lib/libgomp.so:libomp
     }
 }
 
