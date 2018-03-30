@@ -2,13 +2,18 @@
 
 PortSystem          1.0
 PortGroup           compiler_blacklist_versions 1.0
+# PortGroup           cxx11 1.1
 # PortGroup           gobject_introspection 1.0
-PortGroup           muniversal 1.0
+# PortGroup           muniversal 1.0
 PortGroup           preserve_runtime_libraries 1.0
+
+# version 0.58.0 includes C++11 extensions that break
+# build of a number of dependents (inkscape, texlive-bin, etc)
+# hold off on update until this is sorted out
 
 name                poppler
 conflicts           pdf2json xpdf-tools
-version             0.55.0
+version             0.57.0
 license             GPL-2+
 maintainers         {devans @dbevans} openmaintainer
 categories          graphics
@@ -22,26 +27,26 @@ master_sites        ${homepage}
 
 use_xz              yes
 
-checksums           rmd160  c2c541521a14188d3d882b478d639350b0934252 \
-                    sha256  537f2bc60d796525705ad9ca8e46899dcc99c2e9480b80051808bae265cdc658
+checksums           rmd160  a535f7797241cf44b598ad8d60a05f5307afcd52 \
+                    sha256  0ea37de71b7db78212ebc79df59f99b66409a29c2eac4d882dae9f2397fe44d8
 
 depends_build       port:pkgconfig
 
 depends_lib         port:bzip2 \
                     port:curl \
                     port:expat \
+                    port:jpeg \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:lcms2 \
+                    port:libpng \
                     port:poppler-data \
+                    port:tiff \
                     port:zlib
 # taken from the host:
 # depends_lib-append  port:fontconfig \
 #                     port:freetype \
-#                     port:jpeg \
-#                     path:lib/pkgconfig/glib-2.0.pc:glib2 \
 #                     path:lib/pkgconfig/cairo.pc:cairo \
-#                     port:lcms2 \
-#                     port:libpng \
-#                     port:openjpeg15 \
-#                     port:tiff
+#                     port:openjpeg
 
 # gobject_introspection yes
 configure.args-append \
@@ -88,6 +93,10 @@ subport poppler-qt5 {
 
     configure.env-append    MOCQT5=${qt_bins_dir}/moc
     configure.args-delete   --disable-poppler-qt5
+
+    # avoid:
+    #    ${prefix}/libexec/qt5/include/QtCore/qbasicatomic.h:61:4: error: "Qt requires C++11 support"
+    configure.cxxflags-append -std=c++11
 }
 
 if {${subport} ne ${name}} {
