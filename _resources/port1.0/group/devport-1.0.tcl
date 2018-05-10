@@ -104,8 +104,9 @@ proc create_devport {dependency} {
     subport ${name}-dev {
         description     [join ${devport_description}]
         long_description [join ${devport_long_description}]
-        depends_lib-append \
-                        ${dependency}
+        depends_fetch
+        depends_build
+        depends_lib     ${dependency}
         installs_libs   yes
         supported_archs noarch
         distfiles
