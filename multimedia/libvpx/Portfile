@@ -1,17 +1,14 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 137267 2015-06-07 23:05:53Z ryandesign@macports.org $
 
 PortSystem          1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           muniversal 1.0
 PortGroup           preserve_runtime_libraries 1.0
 
-# Since libvpx installs a static library only, increase the revision of
-# dependents when updating libvpx to a new version so they'll be rebuilt.
 name                libvpx
-version             1.6.0
+version             1.7.0
 categories          multimedia
-maintainers         devans openmaintainer
+maintainers         {devans @dbevans} openmaintainer
 platforms           darwin
 license             Permissive
 
@@ -26,15 +23,29 @@ long_description    The WebM VP8/VP9 codecs are being developed \
                     The VP9 encoder in this release is not, as yet, feature complete.
 
 homepage            http://webmproject.org
-master_sites        http://storage.googleapis.com/downloads.webmproject.org/releases/webm/
-use_bzip2           yes
 
-checksums           rmd160  84bcd655859fddbe170e9ffb08c3a37dd2dad62c \
-                    sha256  d0afbb5eb1ecae68f8d578abace160a97e2e8a230e3028cf4db115d59a695aad
+# use git fetch rather than downloading a snapshot tarball
+# which delivers a different checksum and size on each download
+# this is not a stealth upgrade but a "feature" of this repo
 
+fetch.type          git
+git.url             https://chromium.googlesource.com/webm/${name}
+git.branch          v${version}
+
+# support for non-intel archs removed in version 1.5.0
+supported_archs     x86_64 i386
+
+# depends_build-append port:yasm
+
+# support for 10.5 and earlier removed in version 1.5.0
 platform darwin {
-    if {[string match "*86*" [get_canonical_archs]]} {
-        depends_build-append port:yasm
+    if {${os.major} < 10} {
+        depends_lib
+        depends_build
+        pre-fetch {
+            ui_error "${name} @${version} does not build on Mac OS X 10.5 Leopard or earlier."
+            return -code error "unsupported platform"
+        }
     }
 }
 
@@ -44,12 +55,24 @@ platform darwin {
 }
 patchfiles-append   patch-Makefile.diff
 
-# clang 425.0.28 with libvpx-1.4.0:
-# vp9/common/x86/vp9_subpixel_8t_intrin_avx2.c:77:16: error: assigning to '__m256i' from incompatible type 'int'
-#  filtersReg32 = MM256_BROADCASTSI128_SI256(filtersReg);
-#               ^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-compiler.blacklist  {clang < 500}
+platform darwin {
+    # clang 425.0.28 with libvpx-1.4.0:
+    # vp9/common/x86/vp9_subpixel_8t_intrin_avx2.c:77:16: error: assigning to '__m256i' from incompatible type 'int'
+    #  filtersReg32 = MM256_BROADCASTSI128_SI256(filtersReg);
+    #               ^ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # apple gcc-4.2 with libvpx-1.6.0:
+    # vp9/encoder/x86/vp9_frame_scale_ssse3.c: In function ?eight_tap_row_ssse3?:
+    # vp9/encoder/x86/vp9_frame_scale_ssse3.c:93: internal compiler error: Segmentation fault
+    # {standard input}:unknown:Undefined local symbol LC2
+    compiler.blacklist  *gcc* {clang < 800} macports-clang-3.3 macports-clang-3.4 macports-clang-3.7 macports-clang-3.8
+    # Make sure that mp-clang-3.9 is picked if all compilers were blacklisted.
+    # Especially important for 10.6 on libc++, since the fallback list contains macports-clang-3.7
+    # as the first, and thus selected, fallback option (even though it has been blacklisted earlier).
+    compiler.fallback-prepend macports-clang-3.9
+}
 
+# As of 1.7.0: builds both static and shared libraries
+# doesn't install docs or examples correctly, so disable them.
 configure.args      --enable-vp8 \
                     --enable-vp9 \
                     --enable-internal-stats \
@@ -57,7 +80,10 @@ configure.args      --enable-vp8 \
                     --enable-postproc \
                     --enable-multithread \
                     --enable-runtime-cpu-detect \
+                    --enable-experimental \
+                    --enable-spatial-svc \
                     --enable-shared \
+                    --disable-install-docs \
                     --disable-debug-libs \
                     --disable-examples \
                     --disable-unit-tests
@@ -70,12 +96,6 @@ configure.env       LD="${configure.cc}"
 #    configure.args-delete --disable-install-docs
 #    configure.args-append --enable-install-docs
 #}
-
-platform darwin 8 {
-    # Tiger's make 3.80 experiences "virtual memory exhausted" during destroot
-    depends_build-append    port:gmake
-    build.cmd               ${prefix}/bin/gmake
-}
 
 build.target
 build.args          verbose=1
@@ -95,14 +115,14 @@ if {[string match "macports-clang-3.\[5-9\]" ${configure.compiler}] ||
 
 configure.universal_args-delete --disable-dependency-tracking
 
-set my_targets(ppc)     ppc32
-set my_targets(ppc64)   ppc64
+# As of 1.5.0 ppc build targets are no longer supported
+
 set my_targets(i386)    x86
 set my_targets(x86_64)  x86_64
 
 # We must specify the target, otherwise the configure script will guess,
 # and that may not match what the user requested in macports.conf.
-foreach my_arch {ppc ppc64 i386 x86_64} {
+foreach my_arch {i386 x86_64} {
     set merger_host(${my_arch}) ""
     if {[info exists my_targets(${my_arch})]} {
         set merger_configure_args(${my_arch}) --target=$my_targets(${my_arch})-${os.platform}-gcc
@@ -116,77 +136,83 @@ if {![variant_isset universal]} {
     }
 }
 
+# ####################
+# # it shouldn't be necessary to record variants in the archive name
+# set archname ${name}@${version}-dev.tar.bz2
+# # this could go into the software images directory
+# set archdir ${prefix}/var/devcontent
+# 
+# proc create_devport_content {first {args 0}} {
+#     global destroot prefix archname archdir
+#     # join ${first} and (the optional) ${args}
+#     set rawargs [linsert $args[set list {}] 0 ${first}]
+#     set args ""
+#     # convert the arguments to local-relative:
+#     foreach a ${rawargs} {
+#         set args "${args} ./${a}"
+#     }
+#     xinstall -m 755 -d ${destroot}${archdir}
+#     if {[catch {system -W ${destroot} "bsdtar -cjvf ${destroot}${archdir}/${archname} ${args}"} err]} {
+#         ui_error "Failure creating ${destroot}${archdir}/${archname} for ${args}: ${err}"
+#         file delete -force ${destroot}${archdir}/${archname}
+#     } else {
+#         foreach a ${args} {
+#             file delete -force ${destroot}/${a}
+#         }
+#     }
+# }
+# 
+# proc unpack_devport_content {} {
+#     global destroot prefix archname archdir
+#     if {[file exists ${archdir}/${archname}]} {
+#         if {[catch {system -W ${destroot} "bsdtar -xvf ${archdir}/${archname}"} err]} {
+#             ui_error "Failure unpacking ${archdir}/${archname}: ${err}"
+#         }
+#     } else {
+#         ui_error "The port's content doesn't exists (${archdir}/${archname})!"
+#         return -code error "Missing content"
+#     }
+# }
+# 
+# proc create_devport {dependency} {
+#     global name long_description
+#     subport ${name}-dev {
+#         description     "Development headers and libraries for ${name}"
+#         depends_lib-append \
+#                         ${dependency}
+#         long_description ${long_description}\nThis installs the development headers and libraries.
+#         installs_libs   yes
+#         supported_archs noarch
+#         distfiles
+#         fetch {}
+#         checksum {}
+#         extract {}
+#         use_configure   no
+#         patchfiles
+#         build {}
+#         destroot {
+#             unpack_devport_content
+#         }
+#     }
+# }
+# 
+# ####################
 ####################
-# it shouldn't be necessary to record variants in the archive name
-set archname ${name}@${version}-dev.tar.bz2
-# this could go into the software images directory
-set archdir ${prefix}/var/devcontent
-
-proc create_devport_content {first {args 0}} {
-    global destroot prefix archname archdir
-    # join ${first} and (the optional) ${args}
-    set rawargs [linsert $args[set list {}] 0 ${first}]
-    set args ""
-    # convert the arguments to local-relative:
-    foreach a ${rawargs} {
-        set args "${args} ./${a}"
-    }
-    xinstall -m 755 -d ${destroot}${archdir}
-    if {[catch {system -W ${destroot} "bsdtar -cjvf ${destroot}${archdir}/${archname} ${args}"} err]} {
-        ui_error "Failure creating ${destroot}${archdir}/${archname} for ${args}: ${err}"
-        file delete -force ${destroot}${archdir}/${archname}
-    } else {
-        foreach a ${args} {
-            file delete -force ${destroot}/${a}
-        }
-    }
-}
-
-proc unpack_devport_content {} {
-    global destroot prefix archname archdir
-    if {[file exists ${archdir}/${archname}]} {
-        if {[catch {system -W ${destroot} "bsdtar -xvf ${archdir}/${archname}"} err]} {
-            ui_error "Failure unpacking ${archdir}/${archname}: ${err}"
-        }
-    } else {
-        ui_error "The port's content doesn't exists (${archdir}/${archname})!"
-        return -code error "Missing content"
-    }
-}
-
-proc create_devport {dependency} {
-    global name long_description
-    subport ${name}-dev {
-        description     "Development headers and libraries for ${name}"
-        depends_lib-append \
-                        ${dependency}
-        long_description ${long_description}\nThis installs the development headers and libraries.
-        installs_libs   yes
-        supported_archs noarch
-        distfiles
-        fetch {}
-        checksum {}
-        extract {}
-        use_configure   no
-        patchfiles
-        build {}
-        destroot {
-            unpack_devport_content
-        }
-    }
-}
-
+PortGroup devport 1.0
 ####################
+
 
 create_devport port:${name}
 
 post-destroot {
     preserve_libraries  ${prefix}/lib libvpx.so.*
     if {${subport} eq "${name}"} {
-        create_devport_content ${prefix}/include/vpx ${prefix}/lib/libvpx.a ${prefix}/lib/libvpx.so
+#         create_devport_content ${prefix}/include/vpx ${prefix}/lib/libvpx.a ${prefix}/lib/libvpx.so
+        register_devport_standard_content
+        create_devport_content_archive
     }
 }
 
 livecheck.type  regex
-livecheck.url   http://downloads.webmproject.org/releases/webm/index.html
-livecheck.regex "${name}-(\\d+(?:\\.\\d+)*)${extract.suffix}"
+livecheck.url   https://chromium.googlesource.com/webm/${name}
+livecheck.regex "v(\\d+(?:\\.\\d+)*)"
