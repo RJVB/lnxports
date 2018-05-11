@@ -1,0 +1,18 @@
+--- modules/gui/qt/components/orig.interface_widgets.cpp	2018-04-12 19:39:42.000000000 +0200
++++ modules/gui/qt/components/interface_widgets.cpp	2018-05-11 15:32:19.440989999 +0200
+@@ -50,12 +50,12 @@
+ #include <QBitmap>
+ #include <QUrl>
+ 
++# if defined(QT5_HAS_XCB)
++#  include <xcb/xcb.h>
++# endif
+ #if defined (QT5_HAS_X11)
+ # include <X11/Xlib.h>
+ # include <QX11Info>
+-# if defined(QT5_HAS_XCB)
+-#  include <xcb/xproto.h>
+-# endif
+ #endif
+ #ifdef QT5_HAS_WAYLAND
+ # include QPNI_HEADER
