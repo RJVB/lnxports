@@ -63,8 +63,16 @@ if {${subport} eq "llvm-${llvm_version}"} {
             set bname [file tail ${bin}]
             set bin_filename ${destroot}${prefix}/bin/${bname}${llvm_suffix}
 
-            xinstall -m 755 "${filespath}/llvm-bin" "${bin_filename}"
-            reinplace "s:EXEC_PATH:${bin}:" "${bin_filename}"
+            if {${bname} ne "clang-${llvm_version}"} {
+                xinstall -m 755 "${filespath}/llvm-bin" "${bin_filename}"
+                reinplace "s:EXEC_PATH:${bin} --target=x86_64-pc-linux-gnu:" "${bin_filename}"
+                if {${bname} eq "clang" || ${bname} eq "clang++"} {
+                    set bin_filename ${prefix}/bin/${bname}${llvm_suffix}
+                    set distbin_filename ${destroot}${prefix}/bin/dist${bname}${llvm_suffix}
+                    xinstall -m 755 "${filespath}/llvm-bin" "${distbin_filename}"
+                    reinplace "s:EXEC_PATH:distcc ${bin_filename} --target=x86_64-pc-linux-gnu:" "${distbin_filename}"
+                }
+            }
         }
     }
 } elseif {${subport} eq "lldb-${llvm_version}"} {
