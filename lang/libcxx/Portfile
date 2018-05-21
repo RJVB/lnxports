@@ -64,6 +64,8 @@ if {${os.platform} eq "linux"} {
     configure.args-append \
                         -DLLVM_PATH=${worksrcpath} \
                         -DLLVM_TARGETS_TO_BUILD="X86\;AMDGPU" \
+                        -DLIBCXXABI_ENABLE_STATIC=OFF \
+                        -DLIBCXX_ENABLE_STATIC=OFF \
                         -DLIBCXX_CXX_ABI=libstdc++ \
                         -DLIBCXX_CXX_ABI_INCLUDE_PATHS="${abi_header_dirs}" \
                         -DLIBCXX_ENABLE_ASSERTIONS=OFF \
