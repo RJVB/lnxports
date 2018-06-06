@@ -64,7 +64,7 @@ platform linux {
 set provides_libgcc 1
 
 epoch               2
-version             7.3.0
+version             7.3.0 ; revision 1
 
 # Work around parallel building issue on APFS
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81797
@@ -522,9 +522,7 @@ foreach cdv ${libcxx_versions} {
 
         # the reason for the change proposed in https://lists.macports.org/pipermail/macports-dev/2017-August/036209.html
         # is moot when using libc++ ; reenable TLS
-        platform darwin {
-            configure.args-delete   --disable-tls
-        }
+        configure.args-delete       --disable-tls
         platform linux {
             configure.args-append   --enable-compressed-debug-sections=all
         }
