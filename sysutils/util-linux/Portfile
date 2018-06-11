@@ -4,7 +4,7 @@ PortSystem 1.0
 PortGroup       conflicts_build 1.0
 
 name            util-linux
-version         2.29 ; revision 1
+version         2.32
 description     The util-linux meta-package
 long_description \
                 Corresponds to the following Ubuntu ports: \
@@ -22,8 +22,8 @@ platforms       linux
 master_sites    https://launchpad.net/ubuntu/+archive/primary/+files/
 use_xz          yes
 distname        ${name}_${version}.orig
-checksums       rmd160  19596ea48943f8ac0433e56104d93473579b9697 \
-                sha256  2c59ea67cc7b564104f60532f6e0a95fe17a91acb870ba8fd7e986f273abf9e7
+checksums       rmd160  4d4296736572333b21c6325e13a6004f5c14f64c \
+                sha256  6c7397abc764e32e8159c2e96042874a190303e77adceb4ac5bd502a272a4734
 worksrcdir      ${name}-${version}
 
 conflicts_build-append \
@@ -34,7 +34,6 @@ patch.pre_args  -Np1
 patchfiles-append \
                 Multiarch-support-in-util-linux-build.patch \
                 man-page-tweaks-cleanup-my_dev_t.h-ancient-stuff.patch \
-                Disable-the-fallback-clause-in-hwclock-when-dev-rtc-.patch \
                 verbose-tests.patch \
                 sulogin-fallback-static-sh.patch \
                 sulogin-lockedpwd.patch
@@ -53,6 +52,7 @@ platform linux {
     configure.ldflags-append -Wl,-rpath=${prefix}/lib
     build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
     destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
+    destroot.violate_mtree yes
 }
 platform darwin {
     configure.args-append \
