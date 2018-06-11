@@ -10,7 +10,7 @@ PortGroup                   locale_select 1.0
 name                        glib2
 conflicts                   glib2-devel
 set my_name                 glib
-version                     2.56.0
+version                     2.56.0 ; revision 1
 set branch                  [join [lrange [split ${version} .] 0 1] .]
 categories                  devel
 maintainers                 {ryandesign @ryandesign} openmaintainer
@@ -129,6 +129,9 @@ post-destroot {
     xinstall -d ${destroot}${docdir}
     xinstall -m 644 -W ${worksrcpath} AUTHORS COPYING ChangeLog HACKING NEWS \
         README ${destroot}${docdir}
+    if {![file exists ${destroot}${prefix}/include/gio-unix-2.0/gio/gdesktopappinfo.h]} {
+        xinstall -m 644 ${worksrcpath}/gio/gdesktopappinfo.h ${destroot}${prefix}/include/gio-unix-2.0/gio/gdesktopappinfo.h
+    }
 }
 
 platform darwin {
