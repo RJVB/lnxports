@@ -39,6 +39,7 @@ minimum_xcodeversions {9 3.1}
 depends_build       port:pkgconfig
 
 depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:gdk-pixbuf2 \
                     port:libepoxy
 
 # # mesa required to configure both +x11, +quartz (not just +x11) due to their dependency on libepoxy
@@ -257,7 +258,7 @@ if {![variant_isset quartz]} {
 
 post-activate {
     ui_debug "Updating gdk-pixbuf.loaders..."
-    system "gdk-pixbuf-query-loaders >${prefix}/etc/gtk-3.0/gdk-pixbuf.loaders"
+    system "${prefix}/bin/gdk-pixbuf-query-loaders >${prefix}/etc/gtk-3.0/gdk-pixbuf.loaders"
     ui_debug "Updating GLib schemas..."
     system "${prefix}/bin/glib-compile-schemas ${prefix}/share/glib-2.0/schemas"
 }
