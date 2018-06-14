@@ -98,6 +98,7 @@ test.target         check
 
 variant viewer description "Build the rsvg-view-3 viewer utility." {
     depends_lib-append  port:gtk3
+    depends_build-append port:gtk3-dev
 #     depends_run-append  port:adwaita-icon-theme
 }
 
