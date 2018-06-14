@@ -78,7 +78,7 @@ proc register_devport_standard_content {} {
         foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.la] {
             devport_content-append [string map [list ${destroot} ""] ${h}]
         }
-        foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*\[a-zA-Z\].so] {
+        foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.so] {
             devport_content-append [string map [list ${destroot} ""] ${h}]
         }
         foreach h [glob -nocomplain ${destroot}${prefix}/lib/pkgconfig/*] {
