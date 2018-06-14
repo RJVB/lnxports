@@ -106,7 +106,9 @@ proc create_devport {dependency} {
         long_description [join ${devport_long_description}]
         depends_fetch
         depends_build
+        depends_run
         depends_lib     ${dependency}
+        depends_extract bin:bsdtar:libarchive
         installs_libs   yes
         supported_archs noarch
         distfiles
@@ -115,7 +117,7 @@ proc create_devport {dependency} {
         extract {}
         use_configure   no
         patchfiles
-        build {}
+        build           {}
         destroot {
             unpack_devport_content
         }
@@ -131,3 +133,12 @@ proc create_devport {dependency} {
     }
 }
 
+proc is_devport {} {
+    global subport name
+    return [eval {${subport} eq "${name}-dev"}]
+}
+
+proc is_mainport {} {
+    global subport name
+    return [expr {${subport} eq "${name}"}]
+}
