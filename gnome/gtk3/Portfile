@@ -48,6 +48,11 @@ depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
 depends_run         port:shared-mime-info \
                     port:hicolor-icon-theme
 
+####################
+PortGroup devport 1.0
+create_devport port:${name}
+####################
+
 # patchfiles          O_CLOEXEC-10.6-and-earlier.patch
 
 # gtk3 +quartz uses instancetype which is not available
@@ -78,9 +83,11 @@ if {[variant_isset universal]} {
 #                             CC_FOR_BUILD="${configure.cc} ${configure.cc_archflags}"
 # }
 
-pre-configure {
-    if {![variant_isset quartz] && ![variant_isset x11]} {
-        error "Either +x11 or +quartz is required"
+if {[is_mainport]} {
+    pre-configure {
+        if {![variant_isset quartz] && ![variant_isset x11]} {
+            error "Either +x11 or +quartz is required"
+        }
     }
 }
 
@@ -110,22 +117,28 @@ build.args-append   V=1 \
 test.run            yes
 test.target         check
 
-post-destroot {
-    set docdir ${prefix}/share/doc/${name}
-    xinstall -d ${destroot}${docdir}
-    xinstall -m 644 -W ${worksrcpath} AUTHORS COPYING HACKING NEWS README \
-        ${destroot}${docdir}
+if {[is_mainport]} {
+    post-destroot {
+        set docdir ${prefix}/share/doc/${name}
+        xinstall -d ${destroot}${docdir}
+        xinstall -m 644 -W ${worksrcpath} AUTHORS COPYING HACKING NEWS README \
+            ${destroot}${docdir}
 
-    # avoid conflict with the gtk-update-icon-cache installed by gtk2
-    move ${destroot}${prefix}/bin/gtk-update-icon-cache \
-         ${destroot}${prefix}/bin/gtk-update-icon-cache-3.0
-    
-    ui_debug "Creating gtk.immodules..."
-    system "LD_LIBRARY_PATH=${destroot}${prefix}/lib \
-        ${destroot}${prefix}/bin/gtk-query-immodules-3.0 \
-        ${destroot}${prefix}/lib/gtk-3.0/3.0.0/immodules/*.so \
-        >${destroot}${prefix}/etc/gtk-3.0/gtk.immodules"
-    reinplace "s|${destroot}||" ${destroot}${prefix}/etc/gtk-3.0/gtk.immodules
+        # avoid conflict with the gtk-update-icon-cache installed by gtk2
+        move ${destroot}${prefix}/bin/gtk-update-icon-cache \
+             ${destroot}${prefix}/bin/gtk-update-icon-cache-3.0
+        
+        ui_debug "Creating gtk.immodules..."
+        system "LD_LIBRARY_PATH=${destroot}${prefix}/lib \
+            ${destroot}${prefix}/bin/gtk-query-immodules-3.0 \
+            ${destroot}${prefix}/lib/gtk-3.0/3.0.0/immodules/*.so \
+            >${destroot}${prefix}/etc/gtk-3.0/gtk.immodules"
+        reinplace "s|${destroot}||" ${destroot}${prefix}/etc/gtk-3.0/gtk.immodules
+        ####################
+        register_devport_standard_content
+        create_devport_content_archive
+        ####################
+    }
 }
 
 platform darwin {
@@ -224,43 +237,47 @@ if {[variant_isset universal]} {
     configure.cc "${configure.cc} ${configure.cc_archflags}"
 }
 
-variant quartz conflicts x11 {
-    require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
-    require_active_variants path:lib/pkgconfig/pango.pc:pango quartz
-    require_active_variants port:gdk-pixbuf2 "" x11
+if {[is_mainport]} {
+    variant quartz conflicts x11 {
+        require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
+        require_active_variants path:lib/pkgconfig/pango.pc:pango quartz
+        require_active_variants port:gdk-pixbuf2 "" x11
 
-    configure.args-append   --enable-quartz-backend
+        configure.args-append   --enable-quartz-backend
+    }
+
+    variant x11 conflicts quartz {
+#         require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
+#         require_active_variants path:lib/pkgconfig/pango.pc:pango x11
+#         require_active_variants port:gdk-pixbuf2 x11
+# 
+#         depends_lib-append      port:xorg-libXi \
+#                                 port:xorg-libXrandr \
+#                                 port:xorg-libXcursor \
+#                                 port:xorg-libXinerama \
+#                                 port:xorg-libXdamage \
+#                                 port:xorg-libXcomposite \
+#                                 port:xorg-libXfixes \
+#                                 port:at-spi2-atk
+
+        configure.args-append   --enable-xinerama \
+                                --x-include=${prefix}/include \
+                                --x-lib=${prefix}/lib \
+                                --enable-x11-backend
+    }
+
+    if {![variant_isset quartz]} {
+        default_variants +x11
+    }
 }
 
-variant x11 conflicts quartz {
-#     require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
-#     require_active_variants path:lib/pkgconfig/pango.pc:pango x11
-#     require_active_variants port:gdk-pixbuf2 x11
-
-#     depends_lib-append      port:xorg-libXi \
-#                             port:xorg-libXrandr \
-#                             port:xorg-libXcursor \
-#                             port:xorg-libXinerama \
-#                             port:xorg-libXdamage \
-#                             port:xorg-libXcomposite \
-#                             port:xorg-libXfixes \
-#                             port:at-spi2-atk
-
-    configure.args-append   --enable-xinerama \
-                            --x-include=${prefix}/include \
-                            --x-lib=${prefix}/lib \
-                            --enable-x11-backend
-}
-
-if {![variant_isset quartz]} {
-    default_variants +x11
-}
-
-post-activate {
-    ui_debug "Updating gdk-pixbuf.loaders..."
-    system "${prefix}/bin/gdk-pixbuf-query-loaders >${prefix}/etc/gtk-3.0/gdk-pixbuf.loaders"
-    ui_debug "Updating GLib schemas..."
-    system "${prefix}/bin/glib-compile-schemas ${prefix}/share/glib-2.0/schemas"
+if {${subport} eq "${name}"} {
+    post-activate {
+        ui_debug "Updating gdk-pixbuf.loaders..."
+        system "${prefix}/bin/gdk-pixbuf-query-loaders >${prefix}/etc/gtk-3.0/gdk-pixbuf.loaders"
+        ui_debug "Updating GLib schemas..."
+        system "${prefix}/bin/glib-compile-schemas ${prefix}/share/glib-2.0/schemas"
+    }
 }
 
 livecheck.type      gnome
