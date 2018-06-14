@@ -34,7 +34,8 @@ depends_build       port:pkgconfig \
                     port:mm-common \
                     port:gtk3-dev \
                     port:atkmm-dev \
-                    port:pangomm-dev
+                    port:pangomm-dev \
+                    port:cairomm-dev
 
 depends_lib         port:gtk3 \
                     port:glibmm \

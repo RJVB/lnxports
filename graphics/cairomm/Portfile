@@ -32,26 +32,41 @@ depends_build       port:pkgconfig \
 #                     port:libsigcxx2
 depends_lib         port:libsigcxx2
 
-pre-configure {
-    use_autoreconf  [expr ![file exists ${worksrcpath}/config.status]]
-}
-autoreconf.args     -fvi
+####################
+PortGroup           devport 1.0
+create_devport      port:${name}
+####################
 
-#
-# dummy variants to ensure that this port gets rebuilt if
-# the corresponding variants for cairo change
-#
+if {[is_mainport]} {
+    pre-configure {
+        use_autoreconf  [expr ![file exists ${worksrcpath}/config.status]]
+    }
+    autoreconf.args     -fvi
 
-variant x11 {}
-# variant quartz {}
-default_variants +x11
+    #
+    # dummy variants to ensure that this port gets rebuilt if
+    # the corresponding variants for cairo change
+    #
 
-if {[variant_isset quartz]} {
-    require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
-}
+    variant x11 {}
+    # variant quartz {}
+    default_variants +x11
 
-if {[variant_isset x11]} {
-#     require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
+    if {[variant_isset quartz]} {
+        require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
+    }
+
+    if {[variant_isset x11]} {
+    #     require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
+    }
+
+    post-destroot {
+        ####################
+        register_devport_standard_content
+        create_devport_content_archive
+        ####################
+    }
+
 }
 
 livecheck.type      regex
