@@ -35,28 +35,42 @@ depends_lib     path:lib/pkgconfig/pango.pc:pango \
                 port:glibmm \
                 port:libsigcxx2
 
-pre-configure { 
-    use_autoreconf  [expr ![file exists ${worksrcpath}/config.status]]
-}
-autoreconf.args -fvi
+####################
+PortGroup devport 1.0
+create_devport port:${name}
+####################
 
-#
-# dummy variants to ensure that this port gets rebuilt if
-# the corresponding variants for pango change
-#
+if {[is_mainport]} {
+    pre-configure { 
+        use_autoreconf  [expr ![file exists ${worksrcpath}/config.status]]
+    }
+    autoreconf.args -fvi
 
-variant x11 {}
-variant quartz {}
-default_variants +x11
+    #
+    # dummy variants to ensure that this port gets rebuilt if
+    # the corresponding variants for pango change
+    #
 
-if {[variant_isset x11]} {
-#     require_active_variants path:lib/pkgconfig/cairomm-1.0.pc:cairomm x11
-    require_active_variants path:lib/pkgconfig/pango.pc:pango x11
-}
+    variant x11 {}
+    variant quartz {}
+    default_variants +x11
 
-if {[variant_isset quartz]} {
-    require_active_variants path:lib/pkgconfig/cairomm-1.0.pc:cairomm quartz
-    require_active_variants ath:lib/pkgconfig/pango.pc:pango quartz
+    if {[variant_isset x11]} {
+    #     require_active_variants path:lib/pkgconfig/cairomm-1.0.pc:cairomm x11
+        require_active_variants path:lib/pkgconfig/pango.pc:pango x11
+    }
+
+    if {[variant_isset quartz]} {
+        require_active_variants path:lib/pkgconfig/cairomm-1.0.pc:cairomm quartz
+        require_active_variants ath:lib/pkgconfig/pango.pc:pango quartz
+    }
+
+    post-destroot {
+        ####################
+        register_devport_standard_content
+        create_devport_content_archive
+        ####################
+    }
 }
 
 livecheck.type  gnome
