@@ -32,48 +32,65 @@ checksums           rmd160  622faf204c59a66e4672f1316eb43795ce108622 \
 
 depends_build       port:pkgconfig \
                     port:mm-common \
-                    port:gtk3-dev
+                    port:gtk3-dev \
+                    port:atkmm-dev \
+                    port:pangomm-dev
 
 depends_lib         port:gtk3 \
                     port:glibmm \
+                    port:cairomm \
                     port:pangomm \
                     port:atkmm
 
-# Update glibtool to know about -stdlib=... in CXXFLAGS
-pre-configure {
-    use_autoreconf [expr ![file exists ${worksrcpath}/config.status]]
-}
-autoreconf.args     -fvi
+####################
+PortGroup           devport 1.0
+create_devport      port:${name}
+####################
 
-# build using system perl
-configure.perl      /usr/bin/perl
+if {[is_mainport]} {
+    # Update glibtool to know about -stdlib=... in CXXFLAGS
+    pre-configure {
+        use_autoreconf [expr ![file exists ${worksrcpath}/config.status]]
+    }
+    autoreconf.args     -fvi
 
-#
-# dummy variants to ensure that this port gets rebuilt if
-# the corresponding variants for gtk3 change
-#
+    # build using system perl
+    configure.perl      /usr/bin/perl
 
-variant x11 conflicts quartz {}
-variant quartz conflicts x11 {}
+    #
+    # dummy variants to ensure that this port gets rebuilt if
+    # the corresponding variants for gtk3 change
+    #
 
-if {![variant_isset quartz]} {
-    default_variants +x11
-}
+    variant x11 conflicts quartz {}
+    variant quartz conflicts x11 {}
 
-if {[variant_isset quartz]} {
-    require_active_variants path:lib/pkgconfig/cairomm-1.0.pc:cairomm quartz
-    require_active_variants pangomm quartz
-    require_active_variants gtk3 quartz
-} else {
-    require_active_variants gtk3 "" quartz
-}
+    if {![variant_isset quartz]} {
+        default_variants +x11
+    }
 
-if {[variant_isset x11]} {
-#     require_active_variants path:lib/pkgconfig/cairomm-1.0.pc:cairomm x11
-    require_active_variants pangomm x11
-    require_active_variants gtk3 x11
-} else {
-    require_active_variants gtk3 "" x11
+    if {[variant_isset quartz]} {
+        require_active_variants path:lib/pkgconfig/cairomm-1.0.pc:cairomm quartz
+        require_active_variants pangomm quartz
+        require_active_variants gtk3 quartz
+    } else {
+        require_active_variants gtk3 "" quartz
+    }
+
+    if {[variant_isset x11]} {
+    #     require_active_variants path:lib/pkgconfig/cairomm-1.0.pc:cairomm x11
+        require_active_variants pangomm x11
+        require_active_variants gtk3 x11
+    } else {
+        require_active_variants gtk3 "" x11
+    }
+
+    post-destroot {
+        ####################
+        register_devport_standard_content
+        create_devport_content_archive
+        ####################
+    }
 }
 
 livecheck.type      gnome
