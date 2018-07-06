@@ -3,10 +3,13 @@
 PortSystem      1.0
 PortGroup       compiler_blacklist_versions 1.0
 PortGroup       muniversal 1.0
-PortGroup       cxx11 1.1
+platform darwin {
+    PortGroup   cxx11 1.1
+}
+PortGroup       locale_select 1.0
 
 name            gdb
-version         8.0.1
+version         8.1
 categories      devel
 license         GPL-3+
 maintainers     nomaintainer
@@ -28,36 +31,63 @@ the same machine as GDB (native) or on another machine (remote). GDB \
 can run on most popular UNIX and Microsoft Windows variants.
 
 homepage        https://www.gnu.org/software/gdb/
-platforms       darwin
+platforms       darwin linux
 supported_archs x86_64 i386
 
 master_sites    gnu
 
-checksums       rmd160  5ad7e7417dea2f4c7cc4795b74a58b948d8d93b2 \
-                sha256  52017d33cab5b6a92455a1a904046d075357abf24153470178c0aadca2d479c5 \
-                size    36359351
+checksums       rmd160  71bbfb22a924f5aa88af7ba8ed11f763a8666ad1 \
+                sha256  e54a2322da050e4b00785370a282b9b8f0b25861ec7cfbbce0115e253eea910e \
+                size    37334207
 
 # these dependencies are listed under depends_lib rather than depends_build
 # because gdb will link with libraries they provide if installed.
 # there may be more. See variable host_libs in configure.ac.
 # port:guile should also be a dependency, but currently does not build universally. (#48767)
 
-depends_lib     port:boehmgc \
+platform darwin {
+    depends_lib port:boehmgc
+}
+depends_lib-append \
                 port:expat \
-                port:gettext \
                 port:libiconv \
                 port:ncurses \
+                port:gettext \
                 port:zlib
+if {${os.platform} ne "darwin"} {
+    configure.env-append \
+                LIBS="-L${prefix}/lib -lintl"
+    build.env-append \
+                LIBS="-L${prefix}/lib -lintl"
+    # we install a certain number of files also installed by port:binutils.
+    # Avoid existential problems: delete our copy and require binutils so
+    # everything is complete.
+    depends_run-append \
+                port:binutils
+}
 
 # clang 600.0.57 is known to segfault when building this
 compiler.blacklist {clang >= 600 < 601}
 
 configure.args \
     --with-docdir=${prefix}/share/doc \
-    --without-guile \
     --without-python \
-    --program-prefix=g \
     --disable-werror
+
+platform darwin {
+    configure.args-append \
+        --without-guile \
+        --program-prefix=g
+}
+if {${os.platform} ne "darwin"} {
+    configure.args-append \
+        --enable-compressed-debug-sections=all \
+        --enable-plugins \
+        --enable-tui \
+        --disable-gdbtk \
+        --enable-rpath \
+        --enable-lto
+}
 
 post-destroot {
     if {${os.platform} eq "darwin" && ${os.major} < 12} {
@@ -65,14 +95,23 @@ post-destroot {
         system "chmod g+s ${destroot}${prefix}/bin/ggdb*"
     }
 
-    foreach info [glob -tails -directory ${destroot}${prefix}/share/info g*] {
-        move ${destroot}${prefix}/share/info/${info} ${destroot}${prefix}/share/info/g${info}
+    platform darwin {
+        xinstall -m 755 -d ${destroot}${prefix}/libexec/gnubin
+        foreach info [glob -tails -directory ${destroot}${prefix}/share/info g*] {
+            move ${destroot}${prefix}/share/info/${info} ${destroot}${prefix}/share/info/g${info}
+        }
+        foreach binary [glob -tails -directory ${destroot}${prefix}/bin g*] {
+            ln -s ${prefix}/bin/${binary} ${destroot}${prefix}/libexec/gnubin/[string range $binary 1 end]
+        }
     }
-
-    xinstall -m 755 -d ${destroot}${prefix}/libexec/gnubin
-    foreach binary [glob -tails -directory ${destroot}${prefix}/bin g*] {
-        ln -s ${prefix}/bin/${binary} ${destroot}${prefix}/libexec/gnubin/[string range $binary 1 end]
-    }
+    # remove items already installed by port:binutils
+    file delete -force ${destroot}${prefix}/share/locale
+    file delete -force ${destroot}${prefix}/share/info/bfd.info
+    file delete -force ${destroot}${prefix}/lib/libopcodes.la
+    file delete -force ${destroot}${prefix}/lib/libopcodes.a
+    file delete -force ${destroot}${prefix}/lib/libbfd.la
+    file delete -force ${destroot}${prefix}/lib/libbfd.a
+    file delete -force {*}[glob -directory ${destroot}${prefix}/include/ *.h]
 }
 
 set pythons_suffixes {27 35 36}
