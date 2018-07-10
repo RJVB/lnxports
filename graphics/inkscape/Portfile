@@ -2,15 +2,13 @@
 
 PortSystem          1.0
 PortGroup           compiler_blacklist_versions 1.0
-PortGroup           conflicts_build 1.0
 if {[file exists ${prefix}/etc/macports/locales.tcl]} {
     PortGroup       locale_select 1.0
 }
 
 name                inkscape
 conflicts           inkscape-devel
-version             0.92.2
-revision            1
+version             0.92.3
 license             GPL-2 LGPL-2.1
 maintainers         {devans @dbevans}
 categories          graphics gnome
@@ -23,29 +21,28 @@ long_description    Inkscape is an multi-platform, Open-Source Vector Graphics E
                     ${description}
 
 homepage            http://www.inkscape.org/
-master_sites        https://inkscape.org/en/gallery/item/11254/
+master_sites        https://inkscape.org/en/gallery/item/12187
 
 use_bzip2           yes
 
-checksums           rmd160  5508b38c47ed0a860a734eef8f8ca8e53f4e923a \
-                    sha256  a628d0e04c254e9840947e6d866974f92c68ae31631a38b94d9b65e5cd84cfd3
+checksums           rmd160  95648c6b491e09920662e03a51f2278a0ff10392 \
+                    sha256  063296c05a65d7a92a0f627485b66221487acfc64a24f712eb5237c4bd7816b2 \
+                    size    31606442
 
 set perl_version    5.24
-
-conflicts_build-append \
-                    gettext-dev
 
 depends_build       port:pkgconfig \
                     port:autoconf \
                     port:automake \
                     port:libtool \
                     port:intltool \
-                    port:perl${perl_version}
+                    port:perl5
 
 platform darwin {
     depends_lib     port:desktop-file-utils \
                     port:popt \
                     path:lib/libgc.dylib:boehmgc \
+                    path:lib/libgomp.dylib:libomp \
                     port:gdk-pixbuf2 \
                     port:gsl \
                     port:gtkmm \
@@ -76,13 +73,14 @@ platform linux {
         depends_lib-append \
                     path:lib/libgomp.so:libomp
     }
+    depends_lib-append \
+                    port:gettext
 }
 
-patchfiles          patch-use-configured-perl.diff \
-                    libavoid-abs-ambiguous.diff
+patchfiles          patch-use-configured-perl.diff
 
 post-patch {
-    reinplace "s|@@MP_PERL@@|${prefix}/bin/perl${perl_version}|" ${worksrcpath}/Makefile.am
+    reinplace "s|@@MP_PERL@@|${prefix}/bin/perl5|" ${worksrcpath}/Makefile.am
     reinplace "s|\"python-interpreter\", \"python\"|\"python-interpreter\", \"python2.7\"|g" ${worksrcpath}/src/extension/implementation/script.cpp
     reinplace "s|^#include \"Object.h\"|#include \"${prefix}/include/poppler/Object.h\"|" ${worksrcpath}/src/extension/internal/pdfinput/pdf-parser.h
     reinplace "s|^#include \"Object.h\"|#include \"${prefix}/include/poppler/Object.h\"|" ${worksrcpath}/src/extension/internal/pdfinput/pdf-parser.cpp
@@ -100,13 +98,16 @@ platform darwin {
     }
 }
 
-if {![file exists ${worksrcpath}/config.log]} {
-    configure.cmd   ./autogen.sh && ./configure
+pre-configure {
+    if {![file exists ${worksrcpath}/configure]} {
+        configure.cmd ./autogen.sh && ./configure
+    }
 }
 
 configure.python    ${prefix}/bin/python2.7
 
-configure.args      --enable-lcms \
+configure.args      --without-gnome-vfs \
+                    --enable-lcms \
                     --enable-poppler-cairo \
                     --enable-dbusapi \
                     --disable-silent-rules \
@@ -126,6 +127,12 @@ platform darwin {
             configure.cxxflags-append -std=c++11
         }
     }
+}
+platform linux {
+    configure.env-append \
+                    LIBS="-L${prefix}/lib -lintl"
+    build.env-append \
+                    LIBS="-L${prefix}/lib -lintl"
 }
 
 variant strict description {Enable strict build} {
@@ -147,8 +154,8 @@ if {![variant_isset quartz]} {
 
 if {[variant_isset gtk3]} {
     post-activate {
-        system "gtk-update-icon-cache-3.0 -f -t ${prefix}/share/icons/hicolor"
-        system "update-desktop-database ${prefix}/share/applications"
+        system "${prefix}/bin/gtk-update-icon-cache-3.0 -f -t ${prefix}/share/icons/hicolor"
+        system "${prefix}/bin/update-desktop-database ${prefix}/share/applications"
     }
 } else {
     post-activate {
