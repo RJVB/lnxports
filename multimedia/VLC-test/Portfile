@@ -52,7 +52,7 @@ supported_archs         x86_64
 ###################  ports VLC and libVLC  ###################
 ##
 if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
-    version             3.0.2
+    version             3.0.3
     license             GPL-2
 
     platforms           darwin
@@ -62,8 +62,8 @@ if {(${subport} eq ${name}) || (${subport} eq "lib${name}")} {
     distname            vlc-${version}
     use_xz              yes
 
-    checksums           rmd160  1ae891e5c6116e942cc5628eff65c72a4f3cb57d \
-                        sha256  efe8c889b69bffba9662140bdcf434d9d36edc5dbb0e300fcce4553c354ea198
+    checksums           rmd160  4579fd54990e2d9fcc51845fd65ee7b89fa4c0c3 \
+                        sha256  9ba8b04bdb13f7860a2041768ac83b47b397a36549c71c530b94028a3cfd5b51
 
     platform darwin {
         # Enable HFS compression of the workdir if the compress_workdir PortGroup is installed
@@ -200,6 +200,9 @@ platform linux {
             return -code error "Conflicting libraries /usr/lib/libvlc.so and/or /usr/lib/libvlccore.so are present"
         }
     }
+
+    # work around what is undoubtedly a bug in clang5 on Linux
+    patchfiles-append   patch-atomic-for-clang5.diff
 }
 
     pre-fetch {
@@ -215,26 +218,11 @@ platform linux {
     compiler.blacklist-append \
                         gcc-4.2 llvm-gcc-4.2 macports-clang-3.8 {clang < 300}
 
-#     patchfiles          buildfix-package.mak.patch \
-#                         PR-34741-no__clang_version__.patch \
-#                         static_assert.patch \
-#                         no-sparkle.patch \
-#                         patch-vlc-no-O4.diff \
-    # make 10.12 and later ignore all QTKit code in modules/gui/macosx/open.m
-#     patchfiles-append           patch-really-no-qtkit.diff
-
     patchfiles-append   configure.ac-no-arch.patch \
                         patch-soundfont-path.diff
     if {[tbool use_ffmpeg_VLC]} {
         patchfiles-append \
                         patch-ffmpegVLC.diff
-    } else {
-#         patchfiles-append \
-#                         patch-ffmpeg3-compat.diff
-#         platform darwin {
-#             patchfiles-append \
-#                         patch-vda-ffmpeg34+.diff
-#         }
     }
 
     post-patch {
@@ -321,7 +309,7 @@ platform linux {
                         --with-contrib=${worksrcpath}/contrib \
                         --disable-debug --disable-update-check --enable-gnutls \
                         --disable-notify --disable-dbus --enable-lua \
-                        --disable-gnomevfs --disable-growl \
+                        --disable-growl \
                         --disable-sparkle
 
     # Input Plugins
@@ -444,15 +432,6 @@ platform linux {
     default_variants-append     +x11
 
     if {${subport} ne "lib${name}"} {
-#         variant qt4 conflicts qt5 description {Build using Qt4 UI. This will use qt4-mac. Experimental and probably dysfunctional} {
-#             patchfiles-append       patch-vlc-no-qt5.diff \
-#                                     patch-vlc-qt-configureac.diff \
-#                                     patch-simplepreferences.diff
-#
-#             configure.args-replace  --disable-qt --enable-qt
-#
-#             PortGroup               qt4 1.0
-#         }
         variant qt5 conflicts qt4 description {Build using Qt5 UI. Experimental and probably dysfunctional} {
             patchfiles-append       patch-vlc-qt-configureac.diff \
                                     patch-vlc-qt-x11.diff
@@ -505,7 +484,7 @@ platform linux {
 
     patchfiles-append           patch-for-lua53.diff
 
-    platform macosx {
+    platform darwin {
         default_variants-append +quartz
         if {${os.major} <= 15} {
             default_variants-append +qtkit

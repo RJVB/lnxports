@@ -1,0 +1,1092 @@
+--- ./include/orig.vlc_atomic.h	2018-07-12 13:30:23.000000000 +0200
++++ ./include/vlc_atomic.h	2018-07-12 13:34:40.020389000 +0200
+@@ -197,14 +197,14 @@
+ {
+     union { float f; uint32_t i; } u;
+     u.f = f;
+-    atomic_init(var, u.i);
++    atomic_init((__UINT_LEAST32_TYPE__*)var, u.i);
+ }
+ 
+ /** Helper to retrieve a single precision from an atom. */
+ static inline float vlc_atomic_load_float(vlc_atomic_float *atom)
+ {
+     union { float f; uint32_t i; } u;
+-    u.i = atomic_load(atom);
++    u.i = atomic_load((__UINT_LEAST32_TYPE__*)atom);
+     return u.f;
+ }
+ 
+@@ -213,7 +213,7 @@
+ {
+     union { float f; uint32_t i; } u;
+     u.f = f;
+-    atomic_store(atom, u.i);
++    atomic_store((__UINT_LEAST32_TYPE__*)atom, u.i);
+ }
+ 
+ # else /* C++ */
+--- ./src/modules/orig.entry.c	2018-07-12 13:46:44.000000000 +0200
++++ ./src/modules/entry.c	2018-07-12 13:47:25.800389000 +0200
+@@ -106,7 +106,7 @@
+     plugin->conf.booleans = 0;
+ #ifdef HAVE_DYNAMIC_PLUGINS
+     plugin->abspath = NULL;
+-    atomic_init(&plugin->loaded, false);
++    atomic_init((_Bool*)&plugin->loaded, false);
+     plugin->unloadable = true;
+     plugin->handle = NULL;
+     plugin->abspath = NULL;
+--- ./src/modules/orig.bank.c	2018-07-12 13:43:37.000000000 +0200
++++ ./src/modules/bank.c	2018-07-12 13:46:24.650389000 +0200
+@@ -166,7 +166,7 @@
+         return NULL;
+ 
+ #ifdef HAVE_DYNAMIC_PLUGINS
+-    atomic_init(&lib->loaded, true);
++    atomic_init((_Bool*)&lib->loaded, true);
+     lib->unloadable = false;
+ #endif
+     return lib;
+@@ -236,7 +236,7 @@
+     }
+ 
+     plugin->handle = handle;
+-    atomic_init(&plugin->loaded, true);
++    atomic_init((_Bool*)&plugin->loaded, true);
+     return plugin;
+ error:
+     module_Unload( handle );
+@@ -500,7 +500,7 @@
+ {
+     static vlc_mutex_t lock = VLC_STATIC_MUTEX;
+ 
+-    if (atomic_load_explicit(&plugin->loaded, memory_order_acquire))
++    if (atomic_load_explicit((_Bool*)&plugin->loaded, memory_order_acquire))
+         return 0; /* fast path: already loaded */
+ 
+     /* Try to load the plug-in (without locks, so read-only) */
+@@ -521,7 +521,7 @@
+     }
+ 
+     vlc_mutex_lock(&lock);
+-    if (!atomic_load_explicit(&plugin->loaded, memory_order_relaxed))
++    if (!atomic_load_explicit((_Bool*)&plugin->loaded, memory_order_relaxed))
+     {   /* Lock is held, update the plug-in structure */
+         if (vlc_plugin_resolve(plugin, entry))
+         {
+@@ -530,7 +530,7 @@
+         }
+ 
+         plugin->handle = handle;
+-        atomic_store_explicit(&plugin->loaded, true, memory_order_release);
++        atomic_store_explicit((_Bool*)&plugin->loaded, true, memory_order_release);
+     }
+     else /* Another thread won the race to load the plugin */
+         module_Unload(handle);
+@@ -549,7 +549,7 @@
+ {
+     if (!plugin->unloadable)
+         return;
+-    if (!atomic_exchange_explicit(&plugin->loaded, false,
++    if (!atomic_exchange_explicit((_Bool*)&plugin->loaded, false,
+                                   memory_order_acquire))
+         return;
+ 
+--- ./src/posix/orig.timer.c	2018-07-12 21:35:57.000000000 +0200
++++ ./src/posix/timer.c	2018-07-12 21:36:18.071776000 +0200
+@@ -75,7 +75,7 @@
+ 
+                 timer->value += misses * timer->interval;
+                 assert(timer->value <= now);
+-                atomic_fetch_add_explicit(&timer->overruns, misses,
++                atomic_fetch_add_explicit((unsigned int*)&timer->overruns, misses,
+                                           memory_order_relaxed);
+             }
+         }
+@@ -119,7 +119,7 @@
+     timer->data = data;
+     timer->value = 0;
+     timer->interval = 0;
+-    atomic_init(&timer->overruns, 0);
++    atomic_init((unsigned int*)&timer->overruns, 0);
+ 
+     if (vlc_clone (&timer->thread, vlc_timer_thread, timer,
+                    VLC_THREAD_PRIORITY_INPUT))
+@@ -161,6 +161,6 @@
+ 
+ unsigned vlc_timer_getoverrun (vlc_timer_t timer)
+ {
+-    return atomic_exchange_explicit (&timer->overruns, 0,
++    return atomic_exchange_explicit ((unsigned int*)&timer->overruns, 0,
+                                      memory_order_relaxed);
+ }
+--- ./src/orig.libvlc.c	2018-07-12 13:30:03.000000000 +0200
++++ ./src/libvlc.c	2018-07-12 13:30:08.800389000 +0200
+@@ -443,7 +443,7 @@
+ 
+     vlc_ExitDestroy( &priv->exit );
+ 
+-    assert( atomic_load(&(vlc_internals(p_libvlc)->refs)) == 1 );
++    assert( atomic_load((unsigned int*)&(vlc_internals(p_libvlc)->refs)) == 1 );
+     vlc_object_release( p_libvlc );
+ }
+ 
+--- ./src/audio_output/orig.output.c	2018-07-12 20:58:39.000000000 +0200
++++ ./src/audio_output/output.c	2018-07-12 20:58:51.861776000 +0200
+@@ -210,7 +210,7 @@
+     vlc_mutex_init (&owner->dev.lock);
+     vlc_mutex_init (&owner->vp.lock);
+     vlc_viewpoint_init (&owner->vp.value);
+-    atomic_init (&owner->vp.update, false);
++    atomic_init ((_Bool*)&owner->vp.update, false);
+     owner->req.device = (char *)unset_str;
+     owner->req.volume = -1.f;
+     owner->req.mute = -1;
+--- ./src/audio_output/orig.dec.c	2018-07-12 20:56:01.000000000 +0200
++++ ./src/audio_output/dec.c	2018-07-12 20:58:22.221776000 +0200
+@@ -79,7 +79,7 @@
+     /* Create the audio output stream */
+     owner->volume = aout_volume_New (p_aout, p_replay_gain);
+ 
+-    atomic_store (&owner->restart, 0);
++    atomic_store ((unsigned char*) &owner->restart, 0);
+     owner->input_format = *p_format;
+     owner->mixer_format = owner->input_format;
+     owner->request_vout = *p_request_vout;
+@@ -112,9 +112,9 @@
+     owner->sync.discontinuity = true;
+     aout_OutputUnlock (p_aout);
+ 
+-    atomic_init (&owner->buffers_lost, 0);
+-    atomic_init (&owner->buffers_played, 0);
+-    atomic_store (&owner->vp.update, true);
++    atomic_init ((unsigned int*)&owner->buffers_lost, 0);
++    atomic_init ((unsigned int*)&owner->buffers_played, 0);
++    atomic_store ((_Bool*)&owner->vp.update, true);
+     return 0;
+ }
+ 
+@@ -141,7 +141,7 @@
+     aout_owner_t *owner = aout_owner (aout);
+ 
+     int status = AOUT_DEC_SUCCESS;
+-    int restart = atomic_exchange (&owner->restart, 0);
++    int restart = atomic_exchange ((unsigned char*)&owner->restart, 0);
+     if (unlikely(restart))
+     {
+         if (owner->mixer_format.i_format)
+@@ -197,7 +197,7 @@
+ void aout_RequestRestart (audio_output_t *aout, unsigned mode)
+ {
+     aout_owner_t *owner = aout_owner (aout);
+-    atomic_fetch_or (&owner->restart, mode);
++    atomic_fetch_or ((unsigned char*)&owner->restart, mode);
+     msg_Dbg (aout, "restart requested (%u)", mode);
+ }
+ 
+@@ -387,7 +387,7 @@
+     if (block->i_flags & BLOCK_FLAG_DISCONTINUITY)
+         owner->sync.discontinuity = true;
+ 
+-    if (atomic_exchange(&owner->vp.update, false))
++    if (atomic_exchange((_Bool*)&owner->vp.update, false))
+     {
+         vlc_mutex_lock (&owner->vp.lock);
+         aout_FiltersChangeViewpoint (owner->filters, &owner->vp.value);
+@@ -408,7 +408,7 @@
+     owner->sync.end = block->i_pts + block->i_length + 1;
+     owner->sync.discontinuity = false;
+     aout_OutputPlay (aout, block);
+-    atomic_fetch_add(&owner->buffers_played, 1);
++    atomic_fetch_add((unsigned int*)&owner->buffers_played, 1);
+ out:
+     aout_OutputUnlock (aout);
+     return ret;
+@@ -416,7 +416,7 @@
+     owner->sync.discontinuity = true;
+     block_Release (block);
+ lost:
+-    atomic_fetch_add(&owner->buffers_lost, 1);
++    atomic_fetch_add((unsigned int*)&owner->buffers_lost, 1);
+     goto out;
+ }
+ 
+@@ -425,8 +425,8 @@
+ {
+     aout_owner_t *owner = aout_owner (aout);
+ 
+-    *lost = atomic_exchange(&owner->buffers_lost, 0);
+-    *played = atomic_exchange(&owner->buffers_played, 0);
++    *lost = atomic_exchange((unsigned int*)&owner->buffers_lost, 0);
++    *played = atomic_exchange((unsigned int*)&owner->buffers_played, 0);
+ }
+ 
+ void aout_DecChangePause (audio_output_t *aout, bool paused, mtime_t date)
+@@ -474,6 +474,6 @@
+ 
+     vlc_mutex_lock (&owner->vp.lock);
+     owner->vp.value = *p_viewpoint;
+-    atomic_store(&owner->vp.update, true);
++    atomic_store((_Bool*)&owner->vp.update, true);
+     vlc_mutex_unlock (&owner->vp.lock);
+ }
+--- ./src/playlist/orig.preparser.c	2018-07-12 20:51:14.000000000 +0200
++++ ./src/playlist/preparser.c	2018-07-12 20:53:46.301776000 +0200
+@@ -142,7 +142,7 @@
+ 
+     preparser->owner = parent;
+     preparser->fetcher = playlist_fetcher_New( parent );
+-    atomic_init( &preparser->deactivated, false );
++    atomic_init( (_Bool*)&preparser->deactivated, false );
+ 
+     if( unlikely( !preparser->fetcher ) )
+         msg_Warn( parent, "unable to create art fetcher" );
+@@ -154,7 +154,7 @@
+     input_item_t *item, input_item_meta_request_option_t i_options,
+     int timeout, void *id )
+ {
+-    if( atomic_load( &preparser->deactivated ) )
++    if( atomic_load( (_Bool*)&preparser->deactivated ) )
+         return;
+ 
+     vlc_mutex_lock( &item->lock );
+@@ -193,7 +193,7 @@
+ 
+ void playlist_preparser_Deactivate( playlist_preparser_t* preparser )
+ {
+-    atomic_store( &preparser->deactivated, true );
++    atomic_store( (_Bool*)&preparser->deactivated, true );
+     background_worker_Cancel( preparser->worker, NULL );
+ }
+ 
+--- ./src/playlist/orig.fetcher.c	2018-07-12 20:48:48.000000000 +0200
++++ ./src/playlist/fetcher.c	2018-07-12 20:50:14.041776000 +0200
+@@ -320,7 +320,7 @@
+ {
+     struct fetcher_request* req = req_;
+ 
+-    if( atomic_fetch_sub( &req->refs, 1 ) != 1 )
++    if( atomic_fetch_sub( (unsigned int*)&req->refs, 1 ) != 1 )
+         return;
+ 
+     input_item_Release( req->item );
+@@ -330,7 +330,7 @@
+ static void RequestHold( void* req_ )
+ {
+     struct fetcher_request* req = req_;
+-    atomic_fetch_add_explicit( &req->refs, 1, memory_order_relaxed );
++    atomic_fetch_add_explicit( (unsigned int*)&req->refs, 1, memory_order_relaxed );
+ }
+ 
+ static void* FetcherThread( void* handle )
+@@ -340,7 +340,7 @@
+ 
+     th->pf_worker( th->fetcher, th->req );
+ 
+-    atomic_store( &th->active, false );
++    atomic_store( (_Bool*)&th->active, false );
+     background_worker_RequestProbe( th->worker );
+     return NULL;
+ }
+@@ -360,7 +360,7 @@
+     th->pf_worker = pf_worker;
+ 
+     vlc_interrupt_init( &th->interrupt );
+-    atomic_init( &th->active, true );
++    atomic_init( (_Bool*)&th->active, true );
+ 
+     if( !vlc_clone( &th->thread, FetcherThread, th, VLC_THREAD_PRIORITY_LOW ) )
+     {
+@@ -375,7 +375,7 @@
+ 
+ static int ProbeWorker( void* fetcher_, void* th_ )
+ {
+-    return !atomic_load( &((struct fetcher_thread*)th_)->active );
++    return !atomic_load( (_Bool*)&((struct fetcher_thread*)th_)->active );
+     VLC_UNUSED( fetcher_ );
+ }
+ 
+@@ -459,7 +459,7 @@
+     req->options = options;
+     req->preparse_status = preparse_status;
+ 
+-    atomic_init( &req->refs, 1 );
++    atomic_init( (unsigned int*)&req->refs, 1 );
+     input_item_Hold( item );
+ 
+     if( background_worker_Push( fetcher->local, req, NULL, 0 ) )
+--- ./src/video_output/orig.statistic.h	2018-07-12 21:02:01.000000000 +0200
++++ ./src/video_output/statistic.h	2018-07-12 21:02:05.291776000 +0200
+@@ -35,8 +35,8 @@
+ 
+ static inline void vout_statistic_Init(vout_statistic_t *stat)
+ {
+-    atomic_init(&stat->displayed, 0);
+-    atomic_init(&stat->lost, 0);
++    atomic_init((unsigned int*)&stat->displayed, 0);
++    atomic_init((unsigned int*)&stat->lost, 0);
+ }
+ 
+ static inline void vout_statistic_Clean(vout_statistic_t *stat)
+@@ -48,19 +48,19 @@
+                                            unsigned *restrict displayed,
+                                            unsigned *restrict lost)
+ {
+-    *displayed = atomic_exchange(&stat->displayed, 0);
+-    *lost      = atomic_exchange(&stat->lost, 0);
++    *displayed = atomic_exchange((unsigned int*)&stat->displayed, 0);
++    *lost      = atomic_exchange((unsigned int*)&stat->lost, 0);
+ }
+ 
+ static inline void vout_statistic_AddDisplayed(vout_statistic_t *stat,
+                                                int displayed)
+ {
+-    atomic_fetch_add(&stat->displayed, displayed);
++    atomic_fetch_add((unsigned int*)&stat->displayed, displayed);
+ }
+ 
+ static inline void vout_statistic_AddLost(vout_statistic_t *stat, int lost)
+ {
+-    atomic_fetch_add(&stat->lost, lost);
++    atomic_fetch_add((unsigned int*)&stat->lost, lost);
+ }
+ 
+ #endif
+--- ./src/input/orig.resource.c	2018-07-12 20:54:52.000000000 +0200
++++ ./src/input/resource.c	2018-07-12 20:55:21.781776000 +0200
+@@ -422,7 +422,7 @@
+     if( !p_resource )
+         return NULL;
+ 
+-    atomic_init( &p_resource->refs, 1 );
++    atomic_init( (unsigned int*)&p_resource->refs, 1 );
+     p_resource->p_parent = p_parent;
+     vlc_mutex_init( &p_resource->lock );
+     vlc_mutex_init( &p_resource->lock_hold );
+@@ -431,7 +431,7 @@
+ 
+ void input_resource_Release( input_resource_t *p_resource )
+ {
+-    if( atomic_fetch_sub( &p_resource->refs, 1 ) != 1 )
++    if( atomic_fetch_sub( (unsigned int*)&p_resource->refs, 1 ) != 1 )
+         return;
+ 
+     DestroySout( p_resource );
+@@ -446,7 +446,7 @@
+ 
+ input_resource_t *input_resource_Hold( input_resource_t *p_resource )
+ {
+-    atomic_fetch_add( &p_resource->refs, 1 );
++    atomic_fetch_add( (unsigned int*)&p_resource->refs, 1 );
+     return p_resource;
+ }
+ 
+--- ./src/input/orig.item.c	2018-07-12 20:51:32.000000000 +0200
++++ ./src/input/item.c	2018-07-12 20:52:09.851776000 +0200
+@@ -471,7 +471,7 @@
+ {
+     input_item_owner_t *owner = item_owner(p_item);
+ 
+-    atomic_fetch_add( &owner->refs, 1 );
++    atomic_fetch_add( (unsigned int*)&owner->refs, 1 );
+     return p_item;
+ }
+ 
+@@ -479,7 +479,7 @@
+ {
+     input_item_owner_t *owner = item_owner(p_item);
+ 
+-    if( atomic_fetch_sub(&owner->refs, 1) != 1 )
++    if( atomic_fetch_sub((unsigned int*)&owner->refs, 1) != 1 )
+         return;
+ 
+     vlc_event_manager_fini( &p_item->event_manager );
+@@ -1062,7 +1062,7 @@
+     if( unlikely(owner == NULL) )
+         return NULL;
+ 
+-    atomic_init( &owner->refs, 1 );
++    atomic_init( (unsigned int*)&owner->refs, 1 );
+ 
+     input_item_t *p_input = &owner->item;
+     vlc_event_manager_t * p_em = &p_input->event_manager;
+--- ./src/input/orig.decoder.c	2018-07-12 20:52:33.000000000 +0200
++++ ./src/input/decoder.c	2018-07-12 20:53:23.601776000 +0200
+@@ -677,7 +677,7 @@
+     decoder_owner_sys_t *p_owner = p_dec->p_owner;
+     /* Don't override reload if it's RELOAD_DECODER_AOUT */
+     int expected = RELOAD_NO_REQUEST;
+-    atomic_compare_exchange_strong( &p_owner->reload, &expected, RELOAD_DECODER );
++    atomic_compare_exchange_strong( (int*)&p_owner->reload, &expected, RELOAD_DECODER );
+ }
+ 
+ /* decoder_GetInputAttachments:
+@@ -1190,7 +1190,7 @@
+             /* If we reload because the aout failed, we should release it. That
+              * way, a next call to aout_update_format() won't re-use the
+              * previous (failing) aout but will try to create a new one. */
+-            atomic_store( &p_owner->reload, RELOAD_DECODER_AOUT );
++            atomic_store( (int*)&p_owner->reload, RELOAD_DECODER_AOUT );
+         }
+     }
+     else
+@@ -1373,7 +1373,7 @@
+      * audio output requested a reload. This will only result in a drop of an
+      * input block or an output buffer. */
+     enum reload reload;
+-    if( ( reload = atomic_exchange( &p_owner->reload, RELOAD_NO_REQUEST ) ) )
++    if( ( reload = atomic_exchange( (int*)&p_owner->reload, RELOAD_NO_REQUEST ) ) )
+     {
+         msg_Warn( p_dec, "Reloading the decoder module%s",
+                   reload == RELOAD_DECODER_AOUT ? " and the audio output" : "" );
+@@ -1690,7 +1690,7 @@
+     p_owner->flushing = false;
+     p_owner->b_draining = false;
+     p_owner->drained = false;
+-    atomic_init( &p_owner->reload, RELOAD_NO_REQUEST );
++    atomic_init( (int*)&p_owner->reload, RELOAD_NO_REQUEST );
+     p_owner->b_idle = false;
+ 
+     es_format_Init( &p_owner->fmt, fmt->i_cat, 0 );
+--- ./src/misc/orig.addons.c	2018-07-12 21:25:42.000000000 +0200
++++ ./src/misc/addons.c	2018-07-12 21:26:04.661776000 +0200
+@@ -80,7 +80,7 @@
+     if( unlikely(owner == NULL) )
+         return NULL;
+ 
+-    atomic_init( &owner->refs, 1 );
++    atomic_init( (unsigned int*)&owner->refs, 1 );
+ 
+     addon_entry_t *p_entry = &owner->entry;
+     vlc_mutex_init( &p_entry->lock );
+@@ -92,7 +92,7 @@
+ {
+     addon_entry_owner_t *owner = (addon_entry_owner_t *) p_entry;
+ 
+-    atomic_fetch_add( &owner->refs, 1 );
++    atomic_fetch_add( (unsigned int*)&owner->refs, 1 );
+     return p_entry;
+ }
+ 
+@@ -100,7 +100,7 @@
+ {
+     addon_entry_owner_t *owner = (addon_entry_owner_t *) p_entry;
+ 
+-    if( atomic_fetch_sub(&owner->refs, 1) != 1 )
++    if( atomic_fetch_sub((unsigned int*)&owner->refs, 1) != 1 )
+         return;
+ 
+     free( p_entry->psz_name );
+--- ./src/misc/orig.objects.c	2018-07-12 21:21:45.000000000 +0200
++++ ./src/misc/objects.c	2018-07-12 21:34:35.071776000 +0200
+@@ -61,7 +61,7 @@
+ 
+     int canc = vlc_savecancel ();
+     printf (" %so %p %s, %u refs, parent %p\n", prefix, (void *)obj,
+-            obj->obj.object_type, atomic_load(&priv->refs),
++            obj->obj.object_type, atomic_load((unsigned int*)&priv->refs),
+             (void *)obj->obj.parent);
+     vlc_restorecancel (canc);
+ }
+@@ -194,7 +194,7 @@
+     priv->var_root = NULL;
+     vlc_mutex_init (&priv->var_lock);
+     vlc_cond_init (&priv->var_wait);
+-    atomic_init (&priv->refs, 1);
++    atomic_init ((unsigned int*)&priv->refs, 1);
+     priv->pf_destructor = NULL;
+     priv->prev = NULL;
+     priv->first = NULL;
+@@ -413,10 +413,10 @@
+ {
+     vlc_object_internals_t *internals = vlc_internals( p_this );
+ #ifndef NDEBUG
+-    unsigned refs = atomic_fetch_add (&internals->refs, 1);
++    unsigned refs = atomic_fetch_add ((unsigned int*)&internals->refs, 1);
+     assert (refs > 0); /* Avoid obvious freed object uses */
+ #else
+-    atomic_fetch_add (&internals->refs, 1);
++    atomic_fetch_add ((unsigned int*)&internals->refs, 1);
+ #endif
+     return p_this;
+ }
+@@ -429,12 +429,12 @@
+ void vlc_object_release (vlc_object_t *obj)
+ {
+     vlc_object_internals_t *priv = vlc_internals(obj);
+-    unsigned refs = atomic_load (&priv->refs);
++    unsigned refs = atomic_load ((unsigned int*)&priv->refs);
+ 
+     /* Fast path */
+     while (refs > 1)
+     {
+-        if (atomic_compare_exchange_weak (&priv->refs, &refs, refs - 1))
++        if (atomic_compare_exchange_weak ((unsigned int*)&priv->refs, &refs, refs - 1))
+             return; /* There are still other references to the object */
+ 
+         assert (refs > 0);
+@@ -444,7 +444,7 @@
+ 
+     if (unlikely(parent == NULL))
+     {   /* Destroying the root object */
+-        refs = atomic_fetch_sub (&priv->refs, 1);
++        refs = atomic_fetch_sub ((unsigned int*)&priv->refs, 1);
+         assert (refs == 1); /* nobody to race against in this case */
+ 
+         assert (priv->first == NULL); /* no children can be left */
+@@ -459,7 +459,7 @@
+     vlc_object_internals_t *papriv = vlc_internals (parent);
+ 
+     vlc_mutex_lock (&papriv->tree_lock);
+-    refs = atomic_fetch_sub (&priv->refs, 1);
++    refs = atomic_fetch_sub ((unsigned int*)&priv->refs, 1);
+     assert (refs > 0);
+ 
+     if (likely(refs == 1))
+--- ./src/misc/orig.renderer_discovery.c	2018-07-12 21:15:33.000000000 +0200
++++ ./src/misc/renderer_discovery.c	2018-07-12 21:19:38.331776000 +0200
+@@ -95,7 +95,7 @@
+         goto error;
+ 
+     p_item->i_flags = i_flags;
+-    atomic_init(&p_item->refs, 1);
++    atomic_init((unsigned int*)&p_item->refs, 1);
+     vlc_UrlClean(&url);
+     return p_item;
+ 
+@@ -159,7 +159,7 @@
+ {
+     assert(p_item != NULL);
+ 
+-    atomic_fetch_add(&p_item->refs, 1);
++    atomic_fetch_add((unsigned int*)&p_item->refs, 1);
+     return p_item;
+ }
+ 
+@@ -168,7 +168,7 @@
+ {
+     assert(p_item != NULL);
+ 
+-    int refs = atomic_fetch_sub(&p_item->refs, 1);
++    int refs = atomic_fetch_sub((unsigned int*)&p_item->refs, 1);
+     assert(refs != 0 );
+     if( refs != 1 )
+         return;
+--- ./src/misc/orig.interrupt.c	2018-07-12 21:20:00.000000000 +0200
++++ ./src/misc/interrupt.c	2018-07-12 21:20:48.311776000 +0200
+@@ -52,7 +52,7 @@
+ {
+     vlc_mutex_init(&ctx->lock);
+     ctx->interrupted = false;
+-    atomic_init(&ctx->killed, false);
++    atomic_init((_Bool*)&ctx->killed, false);
+     ctx->callback = NULL;
+ }
+ 
+@@ -179,7 +179,7 @@
+ {
+     assert(ctx != NULL);
+ 
+-    atomic_store(&ctx->killed, true);
++    atomic_store((_Bool*)&ctx->killed, true);
+     vlc_interrupt_raise(ctx);
+ }
+ 
+@@ -187,7 +187,7 @@
+ {
+     vlc_interrupt_t *ctx = vlc_interrupt_var;
+ 
+-    return (ctx != NULL) && atomic_load(&ctx->killed);
++    return (ctx != NULL) && atomic_load((_Bool*)&ctx->killed);
+ }
+ 
+ static void vlc_interrupt_sem(void *opaque)
+@@ -254,7 +254,7 @@
+     vlc_interrupt_t *to = data[0];
+     vlc_interrupt_t *from = data[1];
+ 
+-    (atomic_load(&from->killed) ? vlc_interrupt_kill
++    (atomic_load((_Bool*)&from->killed) ? vlc_interrupt_kill
+                                 : vlc_interrupt_raise)(to);
+ }
+ 
+--- ./src/misc/orig.picture_pool.c	2018-07-12 21:11:07.000000000 +0200
++++ ./src/misc/picture_pool.c	2018-07-12 21:13:55.591776000 +0200
+@@ -53,7 +53,7 @@
+ 
+ static void picture_pool_Destroy(picture_pool_t *pool)
+ {
+-    if (atomic_fetch_sub(&pool->refs, 1) != 1)
++    if (atomic_fetch_sub((unsigned short*)&pool->refs, 1) != 1)
+         return;
+ 
+     vlc_cond_destroy(&pool->wait);
+@@ -136,7 +136,7 @@
+         pool->available = ~0ULL;
+     else
+         pool->available = (1ULL << cfg->picture_count) - 1;
+-    atomic_init(&pool->refs,  1);
++    atomic_init((unsigned short*)&pool->refs,  1);
+     pool->picture_count = cfg->picture_count;
+     memcpy(pool->picture, cfg->picture,
+            cfg->picture_count * sizeof (picture_t *));
+@@ -236,7 +236,7 @@
+         picture_t *clone = picture_pool_ClonePicture(pool, i - 1);
+         if (clone != NULL) {
+             assert(clone->p_next == NULL);
+-            atomic_fetch_add(&pool->refs, 1);
++            atomic_fetch_add((unsigned short*)&pool->refs, 1);
+         }
+         return clone;
+     }
+@@ -280,7 +280,7 @@
+     picture_t *clone = picture_pool_ClonePicture(pool, i - 1);
+     if (clone != NULL) {
+         assert(clone->p_next == NULL);
+-        atomic_fetch_add(&pool->refs, 1);
++        atomic_fetch_add((unsigned short*)&pool->refs, 1);
+     }
+     return clone;
+ }
+--- ./src/misc/orig.picture.c	2018-07-12 21:08:47.000000000 +0200
++++ ./src/misc/picture.c	2018-07-12 21:09:00.691776000 +0200
+@@ -239,7 +239,7 @@
+         return NULL;
+     }
+ 
+-    atomic_init( &priv->gc.refs, 1 );
++    atomic_init( (unsigned long*)&priv->gc.refs, 1 );
+     priv->gc.opaque = NULL;
+ 
+     if( p_resource )
+@@ -296,7 +296,7 @@
+     assert( p_picture != NULL );
+ 
+     picture_priv_t *priv = (picture_priv_t *)p_picture;
+-    uintptr_t refs = atomic_fetch_add( &priv->gc.refs, 1 );
++    uintptr_t refs = atomic_fetch_add( (unsigned long*)&priv->gc.refs, 1 );
+     assert( refs > 0 );
+     return p_picture;
+ }
+@@ -306,7 +306,7 @@
+     assert( p_picture != NULL );
+ 
+     picture_priv_t *priv = (picture_priv_t *)p_picture;
+-    uintptr_t refs = atomic_fetch_sub( &priv->gc.refs, 1 );
++    uintptr_t refs = atomic_fetch_sub( (unsigned long*)&priv->gc.refs, 1 );
+     assert( refs != 0 );
+     if( refs > 1 )
+         return;
+--- ./modules/video_filter/orig.colorthres.c	2018-07-12 21:59:51.000000000 +0200
++++ ./modules/video_filter/colorthres.c	2018-07-12 22:01:57.581776000 +0200
+@@ -143,11 +143,11 @@
+ 
+     config_ChainParse( p_filter, CFG_PREFIX, ppsz_filter_options,
+                        p_filter->p_cfg );
+-    atomic_init( &p_sys->i_color,
++    atomic_init( (int*)&p_sys->i_color,
+                  var_CreateGetIntegerCommand( p_filter, CFG_PREFIX "color" ) );
+-    atomic_init( &p_sys->i_simthres,
++    atomic_init( (int*)&p_sys->i_simthres,
+        var_CreateGetIntegerCommand( p_filter, CFG_PREFIX "similaritythres" ) );
+-    atomic_init( &p_sys->i_satthres,
++    atomic_init( (int*)&p_sys->i_satthres,
+        var_CreateGetIntegerCommand( p_filter, CFG_PREFIX "saturationthres" ) );
+ 
+     var_AddCallback( p_filter, CFG_PREFIX "color", FilterCallback, p_sys );
+@@ -210,9 +210,9 @@
+ {
+     picture_t *p_outpic;
+     filter_sys_t *p_sys = p_filter->p_sys;
+-    int i_simthres = atomic_load( &p_sys->i_simthres );
+-    int i_satthres = atomic_load( &p_sys->i_satthres );
+-    int i_color = atomic_load( &p_sys->i_color );
++    int i_simthres = atomic_load( (int*)&p_sys->i_simthres );
++    int i_satthres = atomic_load( (int*)&p_sys->i_satthres );
++    int i_color = atomic_load( (int*)&p_sys->i_color );
+ 
+     if( !p_pic ) return NULL;
+ 
+@@ -266,9 +266,9 @@
+ {
+     picture_t *p_outpic;
+     filter_sys_t *p_sys = p_filter->p_sys;
+-    int i_simthres = atomic_load( &p_sys->i_simthres );
+-    int i_satthres = atomic_load( &p_sys->i_satthres );
+-    int i_color = atomic_load( &p_sys->i_color );
++    int i_simthres = atomic_load( (int*)&p_sys->i_simthres );
++    int i_satthres = atomic_load( (int*)&p_sys->i_satthres );
++    int i_color = atomic_load( (int*)&p_sys->i_color );
+ 
+     if( !p_pic ) return NULL;
+ 
+@@ -331,11 +331,11 @@
+     filter_sys_t *p_sys = p_data;
+ 
+     if( !strcmp( psz_var, CFG_PREFIX "color" ) )
+-        atomic_store( &p_sys->i_color, newval.i_int );
++        atomic_store( (int*)&p_sys->i_color, newval.i_int );
+     else if( !strcmp( psz_var, CFG_PREFIX "similaritythres" ) )
+-        atomic_store( &p_sys->i_simthres, newval.i_int );
++        atomic_store( (int*)&p_sys->i_simthres, newval.i_int );
+     else /* CFG_PREFIX "saturationthres" */
+-        atomic_store( &p_sys->i_satthres, newval.i_int );
++        atomic_store( (int*)&p_sys->i_satthres, newval.i_int );
+ 
+     (void)p_this; (void)oldval;
+     return VLC_SUCCESS;
+--- ./modules/video_filter/orig.rotate.c	2018-07-12 22:07:38.000000000 +0200
++++ ./modules/video_filter/rotate.c	2018-07-12 22:07:50.641776000 +0200
+@@ -108,12 +108,12 @@
+ 
+     sincos.sin = lroundf(sinf(f_angle) * 4096.f);
+     sincos.cos = lroundf(cosf(f_angle) * 4096.f);
+-    atomic_store(&sys->sincos, sincos.u);
++    atomic_store((int*)&sys->sincos, sincos.u);
+ }
+ 
+ static void fetch_trigo( struct filter_sys_t *sys, int *i_sin, int *i_cos )
+ {
+-    sincos_t sincos = { .u = atomic_load(&sys->sincos) };
++    sincos_t sincos = { .u = atomic_load((int*)&sys->sincos) };
+ 
+     *i_sin = sincos.sin;
+     *i_cos = sincos.cos;
+--- ./modules/video_filter/orig.motionblur.c	2018-07-12 21:56:08.000000000 +0200
++++ ./modules/video_filter/motionblur.c	2018-07-12 21:56:34.891776000 +0200
+@@ -115,7 +115,7 @@
+     config_ChainParse( p_filter, FILTER_PREFIX, ppsz_filter_options,
+                        p_filter->p_cfg );
+ 
+-    atomic_init( &p_filter->p_sys->i_factor,
++    atomic_init( (int*)&p_filter->p_sys->i_factor,
+              var_CreateGetIntegerCommand( p_filter, FILTER_PREFIX "factor" ) );
+     var_AddCallback( p_filter, FILTER_PREFIX "factor",
+                      MotionBlurCallback, p_filter->p_sys );
+@@ -175,7 +175,7 @@
+ static void RenderBlur( filter_sys_t *p_sys, picture_t *p_newpic,
+                         picture_t *p_outpic )
+ {
+-    const int i_oldfactor = atomic_load( &p_sys->i_factor );
++    const int i_oldfactor = atomic_load( (int*)&p_sys->i_factor );
+     int i_newfactor = 128 - i_oldfactor;
+ 
+     for( int i_plane = 0; i_plane < p_outpic->i_planes; i_plane++ )
+@@ -212,6 +212,6 @@
+     VLC_UNUSED(p_this); VLC_UNUSED(psz_var); VLC_UNUSED(oldval);
+     filter_sys_t *p_sys = (filter_sys_t *)p_data;
+ 
+-    atomic_store( &p_sys->i_factor, VLC_CLIP( newval.i_int, 1, 127 ) );
++    atomic_store( (int*)&p_sys->i_factor, VLC_CLIP( newval.i_int, 1, 127 ) );
+     return VLC_SUCCESS;
+ }
+--- ./modules/video_filter/orig.mirror.c	2018-07-12 21:58:10.000000000 +0200
++++ ./modules/video_filter/mirror.c	2018-07-12 21:59:06.831776000 +0200
+@@ -147,9 +147,9 @@
+ 
+     config_ChainParse( p_filter, CFG_PREFIX, ppsz_filter_options,
+                        p_filter->p_cfg );
+-    atomic_init( &p_sys->i_split,
++    atomic_init( (int*)&p_sys->i_split,
+                  var_CreateGetIntegerCommand( p_filter, CFG_PREFIX "split" ) );
+-    atomic_init( &p_sys->i_direction,
++    atomic_init( (int*)&p_sys->i_direction,
+                  var_CreateGetIntegerCommand( p_filter,
+                                                     CFG_PREFIX "direction" ) );
+ 
+@@ -191,8 +191,8 @@
+     if( !p_pic ) return NULL;
+ 
+     filter_sys_t *p_sys = p_filter->p_sys;
+-    b_vertical_split = !atomic_load( &p_sys->i_split );
+-    b_left_to_right = !atomic_load( &p_sys->i_direction );
++    b_vertical_split = !atomic_load( (int*)&p_sys->i_split );
++    b_left_to_right = !atomic_load( (int*)&p_sys->i_direction );
+ 
+     p_outpic = filter_NewPicture( p_filter );
+     if( !p_outpic )
+@@ -590,9 +590,9 @@
+     filter_sys_t *p_sys = p_data;
+ 
+     if( !strcmp( psz_var, CFG_PREFIX "split" ) )
+-        atomic_store( &p_sys->i_split, newval.i_int );
++        atomic_store( (int*)&p_sys->i_split, newval.i_int );
+     else /* CFG_PREFIX "direction" */
+-        atomic_store( &p_sys->i_direction, newval.i_int );
++        atomic_store( (int*)&p_sys->i_direction, newval.i_int );
+ 
+     return VLC_SUCCESS;
+ }
+--- ./modules/video_filter/orig.sepia.c	2018-07-12 22:04:49.000000000 +0200
++++ ./modules/video_filter/sepia.c	2018-07-12 22:05:10.631776000 +0200
+@@ -140,7 +140,7 @@
+ 
+     config_ChainParse( p_filter, CFG_PREFIX, ppsz_filter_options,
+                        p_filter->p_cfg );
+-    atomic_init( &p_sys->i_intensity,
++    atomic_init( (int*)&p_sys->i_intensity,
+              var_CreateGetIntegerCommand( p_filter, CFG_PREFIX "intensity" ) );
+     var_AddCallback( p_filter, CFG_PREFIX "intensity", FilterCallback, NULL );
+ 
+@@ -177,7 +177,7 @@
+     if( !p_pic ) return NULL;
+ 
+     filter_sys_t *p_sys = p_filter->p_sys;
+-    int intensity = atomic_load( &p_sys->i_intensity );
++    int intensity = atomic_load( (int*)&p_sys->i_intensity );
+ 
+     p_outpic = filter_NewPicture( p_filter );
+     if( !p_outpic )
+@@ -488,6 +488,6 @@
+     filter_t *p_filter = (filter_t*)p_this;
+     filter_sys_t *p_sys = p_filter->p_sys;
+ 
+-    atomic_store( &p_sys->i_intensity, newval.i_int );
++    atomic_store( (int*)&p_sys->i_intensity, newval.i_int );
+     return VLC_SUCCESS;
+ }
+--- ./modules/video_filter/orig.antiflicker.c	2018-07-12 22:05:24.000000000 +0200
++++ ./modules/video_filter/antiflicker.c	2018-07-12 22:05:53.011776000 +0200
+@@ -122,10 +122,10 @@
+     p_filter->pf_video_filter = Filter;
+ 
+     /* Initialize the arguments */
+-    atomic_init( &p_filter->p_sys->i_window_size,
++    atomic_init( (int*)&p_filter->p_sys->i_window_size,
+                 var_CreateGetIntegerCommand( p_filter,
+                                              FILTER_PREFIX"window-size" ) );
+-    atomic_init( &p_filter->p_sys->i_softening,
++    atomic_init( (int*)&p_filter->p_sys->i_softening,
+                  var_CreateGetIntegerCommand( p_filter,
+                                              FILTER_PREFIX"softening-size" ) );
+ 
+@@ -212,8 +212,8 @@
+ 
+     /****************** Get variables *************************/
+ 
+-    int i_window_size = atomic_load( &p_filter->p_sys->i_window_size );
+-    int i_softening = atomic_load( &p_filter->p_sys->i_softening );
++    int i_window_size = atomic_load( (int*)&p_filter->p_sys->i_window_size );
++    int i_softening = atomic_load( (int*)&p_filter->p_sys->i_softening );
+ 
+     uint8_t *p_yplane_in = p_pic->p[Y_PLANE].p_pixels;
+     uint8_t *p_yplane_out = p_outpic->p[Y_PLANE].p_pixels;
+@@ -332,9 +332,9 @@
+     filter_sys_t *p_sys = (filter_sys_t *)p_data;
+ 
+     if( !strcmp( psz_var, FILTER_PREFIX "window-size" ) )
+-        atomic_store( &p_sys->i_window_size, newval.i_int );
++        atomic_store( (int*)&p_sys->i_window_size, newval.i_int );
+     else if( !strcmp( psz_var, FILTER_PREFIX "softening-size" ) )
+-        atomic_store( &p_sys->i_softening, newval.i_int );
++        atomic_store( (int*)&p_sys->i_softening, newval.i_int );
+ 
+     return VLC_SUCCESS;
+ }
+--- ./modules/video_filter/orig.posterize.c	2018-07-12 21:56:48.000000000 +0200
++++ ./modules/video_filter/posterize.c	2018-07-12 21:57:17.071776000 +0200
+@@ -130,7 +130,7 @@
+ 
+     config_ChainParse( p_filter, CFG_PREFIX, ppsz_filter_options,
+                        p_filter->p_cfg );
+-    atomic_init( &p_sys->i_level,
++    atomic_init( (int*)&p_sys->i_level,
+                  var_CreateGetIntegerCommand( p_filter, CFG_PREFIX "level" ) );
+ 
+     var_AddCallback( p_filter, CFG_PREFIX "level", FilterCallback, p_sys );
+@@ -168,7 +168,7 @@
+     if( !p_pic ) return NULL;
+ 
+     filter_sys_t *p_sys = p_filter->p_sys;
+-    int level = atomic_load( &p_sys->i_level );
++    int level = atomic_load( (int*)&p_sys->i_level );
+ 
+     p_outpic = filter_NewPicture( p_filter );
+     if( !p_outpic )
+@@ -442,7 +442,7 @@
+     filter_sys_t *p_sys = p_data;
+ 
+     if( !strcmp( psz_var, CFG_PREFIX "level" ) )
+-        atomic_store( &p_sys->i_level, newval.i_int );
++        atomic_store( (int*)&p_sys->i_level, newval.i_int );
+ 
+     return VLC_SUCCESS;
+ }
+--- ./modules/video_filter/orig.sharpen.c	2018-07-12 22:06:19.000000000 +0200
++++ ./modules/video_filter/sharpen.c	2018-07-12 22:07:06.251776000 +0200
+@@ -123,7 +123,7 @@
+     config_ChainParse( p_filter, FILTER_PREFIX, ppsz_filter_options,
+                    p_filter->p_cfg );
+ 
+-    atomic_init(&p_filter->p_sys->sigma,
++    atomic_init((int*)&p_filter->p_sys->sigma,
+                 var_CreateGetFloatCommand(p_filter, FILTER_PREFIX "sigma")
+                 * (1 << 20));
+ 
+@@ -168,7 +168,7 @@
+         const unsigned data_sz = sizeof(data_t);                        \
+         const int i_src_line_len = p_outpic->p[Y_PLANE].i_pitch / data_sz; \
+         const int i_out_line_len = p_pic->p[Y_PLANE].i_pitch / data_sz; \
+-        const int sigma = atomic_load(&p_filter->p_sys->sigma);         \
++        const int sigma = atomic_load((int*)&p_filter->p_sys->sigma);         \
+                                                                         \
+         memcpy(p_out, p_src, i_visible_pitch);                          \
+                                                                         \
+@@ -237,7 +237,7 @@
+     VLC_UNUSED(p_this); VLC_UNUSED(oldval); VLC_UNUSED(psz_var);
+     filter_sys_t *p_sys = (filter_sys_t *)p_data;
+ 
+-    atomic_store(&p_sys->sigma,
++    atomic_store((int*)&p_sys->sigma,
+                  VLC_CLIP(newval.f_float, 0.f, 2.f) * (1 << 20));
+ 
+     return VLC_SUCCESS;
+--- ./modules/video_filter/orig.adjust.c	2018-07-12 21:54:19.000000000 +0200
++++ ./modules/video_filter/adjust.c	2018-07-12 21:55:14.281776000 +0200
+@@ -192,7 +192,7 @@
+                            var_CreateGetFloatCommand( p_filter, "saturation" ) );
+     vlc_atomic_init_float( &p_sys->f_gamma,
+                            var_CreateGetFloatCommand( p_filter, "gamma" ) );
+-    atomic_init( &p_sys->b_brightness_threshold,
++    atomic_init( (_Bool*)&p_sys->b_brightness_threshold,
+                  var_CreateGetBoolCommand( p_filter, "brightness-threshold" ) );
+ 
+     var_AddCallback( p_filter, "contrast",   AdjustCallback, p_sys );
+@@ -280,7 +280,7 @@
+     /*
+      * Threshold mode drops out everything about luma, contrast and gamma.
+      */
+-    if( !atomic_load( &p_sys->b_brightness_threshold ) )
++    if( !atomic_load( (_Bool*)&p_sys->b_brightness_threshold ) )
+     {
+ 
+         /* Contrast is a fast but kludged function, so I put this gap to be
+@@ -477,7 +477,7 @@
+     /*
+      * Threshold mode drops out everything about luma, contrast and gamma.
+      */
+-    if( !atomic_load( &p_sys->b_brightness_threshold ) )
++    if( !atomic_load( (_Bool*)&p_sys->b_brightness_threshold ) )
+     {
+ 
+         /* Contrast is a fast but kludged function, so I put this gap to be
+@@ -608,7 +608,7 @@
+     else if( !strcmp( psz_var, "gamma" ) )
+         vlc_atomic_store_float( &p_sys->f_gamma, newval.f_float );
+     else if( !strcmp( psz_var, "brightness-threshold" ) )
+-        atomic_store( &p_sys->b_brightness_threshold, newval.b_bool );
++        atomic_store( (_Bool*)&p_sys->b_brightness_threshold, newval.b_bool );
+ 
+     return VLC_SUCCESS;
+ }
+--- ./modules/hw/vaapi/orig.vlc_vaapi.c	2018-07-12 21:51:37.000000000 +0200
++++ ./modules/hw/vaapi/vlc_vaapi.c	2018-07-12 21:52:54.021776000 +0200
+@@ -100,7 +100,7 @@
+     inst->dpy = dpy;
+     inst->native = native;
+     inst->native_destroy_cb = native_destroy_cb;
+-    atomic_init(&inst->pic_refcount, 1);
++    atomic_init((unsigned int*)&inst->pic_refcount, 1);
+ 
+     return inst;
+ error:
+@@ -171,14 +171,14 @@
+ VADisplay
+ vlc_vaapi_HoldInstance(struct vlc_vaapi_instance *inst)
+ {
+-    atomic_fetch_add(&inst->pic_refcount, 1);
++    atomic_fetch_add((unsigned int*)&inst->pic_refcount, 1);
+     return inst->dpy;
+ }
+ 
+ void
+ vlc_vaapi_ReleaseInstance(struct vlc_vaapi_instance *inst)
+ {
+-    if (atomic_fetch_sub(&inst->pic_refcount, 1) == 1)
++    if (atomic_fetch_sub((unsigned int*)&inst->pic_refcount, 1) == 1)
+     {
+         vaTerminate(inst->dpy);
+         if (inst->native != NULL && inst->native_destroy_cb != NULL)
+@@ -556,7 +556,7 @@
+     picture_sys_t *p_sys = pic->p_sys;
+     struct pic_sys_vaapi_instance *instance = p_sys->instance;
+ 
+-    if (atomic_fetch_sub(&instance->pic_refcount, 1) == 1)
++    if (atomic_fetch_sub((int*)&instance->pic_refcount, 1) == 1)
+     {
+         vaDestroySurfaces(instance->va_dpy, instance->render_targets,
+                           instance->num_render_targets);
+@@ -610,7 +610,7 @@
+     if (!instance)
+         return NULL;
+     instance->num_render_targets = count;
+-    atomic_init(&instance->pic_refcount, 0);
++    atomic_init((int*)&instance->pic_refcount, 0);
+ 
+     VASurfaceAttrib *attribs = NULL;
+     unsigned num_attribs = 0;
+@@ -665,7 +665,7 @@
+     if (!pool)
+         goto error_pic;
+ 
+-    atomic_store(&instance->pic_refcount, count);
++    atomic_store((int*)&instance->pic_refcount, count);
+     instance->va_dpy = vlc_vaapi_HoldInstance(va_inst);
+     instance->va_inst = va_inst;
+ 
+--- ./modules/codec/avcodec/orig.video.c	2018-07-12 21:38:05.000000000 +0200
++++ ./modules/codec/avcodec/video.c	2018-07-12 21:38:39.341776000 +0200
+@@ -515,7 +515,7 @@
+ 
+     /* ***** libavcodec direct rendering ***** */
+     p_sys->b_direct_rendering = false;
+-    atomic_init(&p_sys->b_dr_failure, false);
++    atomic_init((_Bool*)&p_sys->b_dr_failure, false);
+     if( var_CreateGetBool( p_dec, "avcodec-dr" ) &&
+        (p_codec->capabilities & AV_CODEC_CAP_DR1) &&
+         /* No idea why ... but this fixes flickering on some TSCC streams */
+@@ -1393,14 +1393,14 @@
+     {
+         if (pic->p[i].i_pitch % aligns[i])
+         {
+-            if (!atomic_exchange(&sys->b_dr_failure, true))
++            if (!atomic_exchange((_Bool*)&sys->b_dr_failure, true))
+                 msg_Warn(dec, "plane %d: pitch not aligned (%d%%%d): disabling direct rendering",
+                          i, pic->p[i].i_pitch, aligns[i]);
+             goto error;
+         }
+         if (((uintptr_t)pic->p[i].p_pixels) % aligns[i])
+         {
+-            if (!atomic_exchange(&sys->b_dr_failure, true))
++            if (!atomic_exchange((_Bool*)&sys->b_dr_failure, true))
+                 msg_Warn(dec, "plane %d not aligned: disabling direct rendering", i);
+             goto error;
+         }
+--- src/video_output/orig.opengl.c	2017-12-21 10:51:17.000000000 +0100
++++ src/video_output/opengl.c	2018-07-12 22:18:42.981776000 +0200
+@@ -77,7 +77,7 @@
+         vlc_object_release(&glpriv->gl);
+         return NULL;
+     }
+-    atomic_init(&glpriv->ref_count, 1);
++    atomic_init((unsigned int*)&glpriv->ref_count, 1);
+ 
+     return &glpriv->gl;
+ }
+@@ -85,13 +85,13 @@
+ void vlc_gl_Hold(vlc_gl_t *gl)
+ {
+     struct vlc_gl_priv_t *glpriv = (struct vlc_gl_priv_t *)gl;
+-    atomic_fetch_add(&glpriv->ref_count, 1);
++    atomic_fetch_add((unsigned int*)&glpriv->ref_count, 1);
+ }
+ 
+ void vlc_gl_Release(vlc_gl_t *gl)
+ {
+     struct vlc_gl_priv_t *glpriv = (struct vlc_gl_priv_t *)gl;
+-    if (atomic_fetch_sub(&glpriv->ref_count, 1) != 1)
++    if (atomic_fetch_sub((unsigned int*)&glpriv->ref_count, 1) != 1)
+         return;
+     module_unneed(gl, gl->module);
+     vlc_object_release(gl);
