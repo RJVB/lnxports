@@ -2,6 +2,7 @@
 
 PortSystem          1.0
 PortGroup           gobject_introspection 1.0
+PortGroup           locale_select 1.0
 
 name                gdl3
 set gname           gdl
@@ -29,7 +30,7 @@ checksums           rmd160  80b379e41f6923efe3998886b51adacffaba95f4 \
 
 depends_build       port:pkgconfig \
                     port:intltool \
-                    port:gtk-doc \
+                    bin:gtkdoc-mkman:gtk-doc \
                     port:gnome-common \
                     port:autoconf \
                     port:automake \
@@ -38,17 +39,31 @@ depends_build       port:pkgconfig \
 depends_lib         port:gtk3 \
                     port:libxml2
 
-gobject_introspection yes
+gobject_introspection no
+platform darwin {
+    gobject_introspection yes
+}
 
 # reconfigure using upstream autogen.sh for intltool 0.51 compatibility
 
-post-patch {
-    xinstall -m 755 ${filespath}/autogen.sh ${worksrcpath}
+platform darwin {
+    post-patch {
+        xinstall -m 755 ${filespath}/autogen.sh ${worksrcpath}
+    }
+
+    pre-configure {
+        if {![file exists ${worksrcpath}/config.log]} {
+            configure.cmd ./autogen.sh
+        }
+    }
 }
 
-configure.cmd       ./autogen.sh
+configure.env-append \
+                    LIBS="-L${prefix}/lib -lintl"
+build.env-append    LIBS="-L${prefix}/lib -lintl"
 
-configure.args      --disable-silent-rules
+configure.args      --disable-silent-rules \
+                    --disable-gtk-doc
 
 livecheck.type      gnome
 livecheck.name      ${gname}

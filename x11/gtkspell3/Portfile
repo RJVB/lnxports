@@ -2,6 +2,7 @@
 
 PortSystem          1.0
 PortGroup           gobject_introspection 1.0
+PortGroup           locale_select 1.0
 
 name                gtkspell3
 version             3.0.9
@@ -23,30 +24,41 @@ checksums           rmd160  44345ff911f8d6e8af29b89b82caa3805a131057 \
 
 depends_build       port:pkgconfig \
                     port:intltool \
-                    port:gtk-doc \
+                    bin:gtkdoc-mkman:gtk-doc \
                     port:autoconf \
                     port:automake \
                     port:libtool
 
 depends_lib         port:gtk3 \
                     port:iso-codes \
-                    port:enchant \
-                    port:vala
+                    bin:enchant:enchant \
+                    bin:valac:vala
 
-gobject_introspection yes
+gobject_introspection no
+platform darwin {
+    gobject_introspection yes
+}
 
 # reconfigure using upstream autogen.sh for intltool 0.51 compatibility
 
 patchfiles          patch-autogen.sh.diff
 
-configure.cmd       ./autogen.sh
+platform darwin {
+    configure.cmd ./autogen.sh
+}
+
+configure.env-append \
+                    LIBS="-L${prefix}/lib -lintl"
+build.env-append    LIBS="-L${prefix}/lib -lintl"
+
 configure.args      --disable-gtk2 \
                     --enable-gtk3 \
-                    --enable-vala=yes \
-                    --disable-silent-rules
+                    --enable-vala=no \
+                    --disable-silent-rules \
+                    --disable-gtk-doc
 
 variant gtk2 description {Build with support for GTK+ 2} {
-    depends_lib-append  port:gtk2
+#     depends_lib-append  port:gtk2
     configure.args-replace  --disable-gtk2 --enable-gtk2
 }
 
