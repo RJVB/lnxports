@@ -26,9 +26,11 @@ checksums                   rmd160  09afbf4efee05759aef49de8d41c7d089a41ed05 \
 
 depends_lib                 port:jpeg \
                             port:libusb-compat \
-                            port:net-snmp \
                             port:tiff \
                             port:zlib
+platform darwin {
+    depends_lib-append      port:net-snmp
+}
 
 patchfiles                  patch-configure.diff
 
@@ -41,7 +43,10 @@ configure.args              --mandir=${prefix}/share/man \
                             --enable-libusb \
                             --disable-avahi \
                             --disable-latex \
-                            --without-gphoto2
+                            --without-gphoto2 \
+                            --enable-locking \
+                            --disable-silent-rules \
+                            --disable-dependency-tracking
 
 post-configure {
     reinplace -E {s|-arch [a-z0-9_]+||g} \
@@ -50,10 +55,10 @@ post-configure {
 
 build.env-append LC_CTYPE="C"
 
-use_parallel_build          no
+# use_parallel_build          no
 
 pre-destroot {
-    xinstall -d -o root -g admin -m 775 ${destroot}${prefix}/var/lock
+    xinstall -d -o root -g adm -m 775 ${destroot}${prefix}/var/lock
 }
 
 destroot.keepdirs ${destroot}${prefix}/var/lock
@@ -79,13 +84,19 @@ variant with_gphoto2 conflicts disable_localbackends description "include the gp
 }
 
 variant avahi description "enable Avahi support for saned and the net backend" {
-    depends_lib-append      port:avahi
+    platform darwin {
+        depends_lib-append  port:avahi
+    }
     configure.args-delete   --disable-avahi
     configure.args-append   --enable-avahi
 }
 
-# This project uses u_long *everywhere* and doesn't bother including sys/types.h
+# This project uses u_long *everywhere* and doesn't bother including sys/types.h,
 configure.cppflags-append   -include sys/types.h
+
+post-configure {
+    reinplace "s|#include <machine/endian.h>|// #include <machine/endian.h>|g" ${worksrcpath}/include/byteorder.h
+}
 
 livecheck.type              regex
 livecheck.url               https://alioth.debian.org/frs/?group_id=30186
