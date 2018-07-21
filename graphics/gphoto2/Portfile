@@ -1,13 +1,12 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 147083 2016-03-26 07:45:45Z ryandesign@macports.org $
 
 PortSystem          1.0
 
 name                gphoto2
-version             2.5.10
+version             2.5.17
 categories          graphics
 platforms           darwin
-maintainers         ryandesign openmaintainer
+maintainers         {ryandesign @ryandesign} openmaintainer
 license             LGPL-2.1+
 
 description         command line interface to libgphoto2.
@@ -19,19 +18,34 @@ homepage            http://www.gphoto.org/proj/gphoto2/
 master_sites        sourceforge:project/gphoto/gphoto/${version}
 use_bzip2           yes
 
-checksums           rmd160  5c48ab795558182579ca51d3cfc163e92c6ad796 \
-                    sha256  66cc2f535d54b7e5a2164546a8955a58e23745e91e916757c0bf070699886690
+checksums           rmd160  54b545862952c4516a9ab09d23bf695a8c80f04e \
+                    sha256  aa571039240c68a053be710ca41645aed0239fa2f0b737b8ec767fef29e3544f
 
 depends_build       port:pkgconfig
 
-depends_lib         port:jpeg \
+depends_lib         port:gettext \
+                    port:jpeg \
+                    port:libexif \
                     port:libgphoto2 \
-                    port:libiconv
+                    port:libiconv \
+                    port:libusb-compat
 
-configure.env       POPT_CFLAGS="-I${prefix}/include" \
-                    POPT_LIBS="-L${prefix}/lib -lpopt"
+# configure.env       POPT_CFLAGS="-I${prefix}/include" \
+#                     POPT_LIBS="-L${prefix}/lib -lpopt"
+pre-configure {
+    set poptflags   "[exec ${prefix}/bin/pkg-config --cflags popt]"
+    set poptlibs    "[exec ${prefix}/bin/pkg-config --libs popt]"
+    configure.env-append \
+                    POPT_CFLAGS="${poptflags}" \
+                    POPT_LIBS="${poptlibs}"
+}
+configure.env-append \
+                    LIBS="-L${prefix}/lib -lintl"
+build.env-append    LIBS="-L${prefix}/lib -lintl"
+
 configure.args      --disable-nls --without-aalib \
                     --without-cdk \
+                    --disable-dependency-tracking \
                     ac_cv_prog_AWK=/usr/bin/awk
 
 destroot.target     install-strip
