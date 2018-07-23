@@ -3,7 +3,7 @@
 PortSystem          1.0
 
 name                libinput
-version             1.8.1
+version             1.11.2
 categories          devel
 maintainers         gmail.com:rjvbertin
 license             MIT
@@ -12,12 +12,12 @@ description         A library that handles input devices for display servers and
 long_description    libinput is a library that handles input devices for display servers and other applications \
                     that need to deal directly with input devices.
 homepage            https://wayland.freedesktop.org/libinput/doc/${version}
-master_sites        http://www.freedesktop.org/software/libinput/
+master_sites        https://www.freedesktop.org/software/libinput/
 use_xz              yes
 platforms           linux
 
-checksums           rmd160  d6481e6269d8f32e0f27d6c8c4dcbca702d9d6a3 \
-                    sha256  e3590a9037e561a5791c8bd3b34bfd30fad5cacd8cbefc0d75fafe3a41d07147
+checksums           rmd160  5c7eef361ada720a2301b03a6859d75eb256afc8 \
+                    sha256  6b36e1163d306c292ec8359b35aa65431cd29d0a5254923775e8019ff5018107
 
 installs_libs       yes
 
