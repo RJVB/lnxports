@@ -1,33 +1,4 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: python-1.0.tcl 146556 2016-03-11 23:33:20Z ryandesign@macports.org $
-#
-# Copyright (c) 2011-2016 The MacPorts Project
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met:
-#
-# 1. Redistributions of source code must retain the above copyright
-#    notice, this list of conditions and the following disclaimer.
-# 2. Redistributions in binary form must reproduce the above copyright
-#    notice, this list of conditions and the following disclaimer in the
-#    documentation and/or other materials provided with the distribution.
-# 3. Neither the name of The MacPorts Project nor the names of its
-#    contributors may be used to endorse or promote products derived from
-#    this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
 # Usage:
 # name should be of the form py-foo for modules
@@ -53,6 +24,14 @@ use_configure   no
 universal_variant yes
 
 build.target    build
+
+post-extract {
+    # Prevent setuptools' easy_install from downloading dependents
+    set fs [open $env(HOME)/.pydistutils.cfg w+]
+    puts $fs {[easy_install]}
+    puts $fs {allow_hosts = None}
+    close $fs
+}
 
 pre-destroot    {
     xinstall -d -m 755 ${destroot}${prefix}/share/doc/${subport}/examples
@@ -84,7 +63,7 @@ proc python_get_version {} {
 proc python_get_default_version {} {
     global python.versions
     if {[info exists python.versions]} {
-        if {[lsearch -exact ${python.versions} 27] != -1} {
+        if {27 in ${python.versions}} {
             return 27
         } else {
             return [lindex ${python.versions} end]
@@ -105,7 +84,7 @@ proc python_set_versions {option action args} {
             subport py${v}[string trimleft $name py] { depends_lib-append port:python${v} }
         }
         if {$subport eq $name || $subport eq ""} {
-            # Ensure the stub port does not do anything with distfiles?not
+            # Ensure the stub port does not do anything with distfiles—not
             # if the port overrides distfiles, not if there's a post-extract
             # block (e.g. the github portgroup).
             distfiles
@@ -140,21 +119,28 @@ proc python_set_versions {option action args} {
     }
     if {[info exists addcode] && ![info exists python._addedcode]} {
         pre-build {
+            set pycxxflags ""
             if {${python.add_archflags}} {
                 if {[variant_exists universal] && [variant_isset universal]} {
                     build.env-append    CFLAGS="${configure.universal_cflags}" \
                                         OBJCFLAGS="${configure.universal_cflags}" \
-                                        CXXFLAGS="${configure.universal_cxxflags}" \
                                         LDFLAGS="${configure.universal_ldflags}"
+                    set pycxxflags ${configure.universal_cxxflags}
                 } else {
                     build.env-append    CFLAGS="${configure.cc_archflags}" \
                                         OBJCFLAGS="${configure.objc_archflags}" \
-                                        CXXFLAGS="${configure.cxx_archflags}" \
                                         FFLAGS="${configure.f77_archflags}" \
                                         F90FLAGS="${configure.f90_archflags}" \
                                         FCFLAGS="${configure.fc_archflags}" \
                                         LDFLAGS="${configure.ld_archflags}"
+                    set pycxxflags ${configure.cxx_archflags}
                 }
+            }
+            if {${python.set_cxx_stdlib}} {
+                set pycxxflags [portconfigure::construct_cxxflags $pycxxflags]
+            }
+            if {$pycxxflags ne ""} {
+                build.env-append        CXXFLAGS="$pycxxflags"
             }
             if {${python.set_compiler}} {
                 foreach var {cc objc cxx fc f77 f90} {
@@ -165,21 +151,28 @@ proc python_set_versions {option action args} {
             }
         }
         pre-destroot {
+            set pycxxflags ""
             if {${python.add_archflags} && ${python.consistent_destroot}} {
                 if {[variant_exists universal] && [variant_isset universal]} {
                     destroot.env-append CFLAGS="${configure.universal_cflags}" \
                                         OBJCFLAGS="${configure.universal_cflags}" \
-                                        CXXFLAGS="${configure.universal_cxxflags}" \
                                         LDFLAGS="${configure.universal_ldflags}"
+                    set pycxxflags ${configure.universal_cxxflags}
                 } else {
                     destroot.env-append CFLAGS="${configure.cc_archflags}" \
                                         OBJCFLAGS="${configure.objc_archflags}" \
-                                        CXXFLAGS="${configure.cxx_archflags}" \
                                         FFLAGS="${configure.f77_archflags}" \
                                         F90FLAGS="${configure.f90_archflags}" \
                                         FCFLAGS="${configure.fc_archflags}" \
                                         LDFLAGS="${configure.ld_archflags}"
+                    set pycxxflags ${configure.cxx_archflags}
                 }
+            }
+            if {${python.set_cxx_stdlib}} {
+                set pycxxflags [portconfigure::construct_cxxflags $pycxxflags]
+            }
+            if {$pycxxflags ne ""} {
+                destroot.env-append     CXXFLAGS="$pycxxflags"
             }
             if {${python.set_compiler} && ${python.consistent_destroot}} {
                 foreach var {cc objc cxx fc f77 f90} {
@@ -228,12 +221,12 @@ proc python_set_default_version {option action args} {
 options python.branch python.prefix python.bin python.lib python.libdir \
         python.include python.pkgd
 # for pythonXY, python.branch is X.Y
-default python.branch {[string range ${python.version} 0 end-1].[string index ${python.version} end]}
-default python.prefix {[python_get_defaults prefix]}
-default python.bin  {[python_get_defaults bin]}
-default python.lib  {[python_get_defaults lib]}
-default python.pkgd {[python_get_defaults pkgd]}
-default python.libdir {${python.prefix}/lib/python${python.branch}}
+default python.branch   {[string range ${python.version} 0 end-1].[string index ${python.version} end]}
+default python.prefix   {[python_get_defaults prefix]}
+default python.bin      {[python_get_defaults bin]}
+default python.lib      {[python_get_defaults lib]}
+default python.pkgd     {[python_get_defaults pkgd]}
+default python.libdir   {${python.prefix}/lib/python${python.branch}}
 default python.include  {[python_get_defaults include]}
 
 default build.cmd       {"${python.bin} setup.py [python_get_defaults setup_args]"}
@@ -334,15 +327,16 @@ proc python_get_defaults {var} {
     }
 }
 
-options python.add_archflags
-default python.add_archflags yes
-options python.set_compiler
-default python.set_compiler yes
+options python.add_archflags python.set_compiler python.set_cxx_stdlib \
+        python.link_binaries python.link_binaries_suffix \
+        python.move_binaries python.move_binaries_suffix
 
-options python.link_binaries python.link_binaries_suffix
+default python.add_archflags yes
+default python.set_compiler yes
+default python.set_cxx_stdlib yes
+
 default python.link_binaries {[python_get_defaults link_binaries]}
 default python.link_binaries_suffix {[python_get_defaults binary_suffix]}
 
-options python.move_binaries python.move_binaries_suffix
 default python.move_binaries {[python_get_defaults move_binaries]}
 default python.move_binaries_suffix {[python_get_defaults binary_suffix]}
