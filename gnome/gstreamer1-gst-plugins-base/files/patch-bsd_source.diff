@@ -1,0 +1,10 @@
+--- gst-libs/gst/rtsp/orig.gstrtspconnection.c	2018-03-23 21:44:42.000000000 +0100
++++ gst-libs/gst/rtsp/gstrtspconnection.c	2018-08-01 19:34:33.744067000 +0200
+@@ -50,6 +50,7 @@
+  * to receive and send bytes and messages.
+  */
+ 
++#define _BSD_SOURCE
+ #ifdef HAVE_CONFIG_H
+ #  include <config.h>
+ #endif

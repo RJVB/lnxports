@@ -1,0 +1,227 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           gobject_introspection 1.0
+PortGroup           compiler_blacklist_versions 1.0
+
+# https://bugzilla.gnome.org/show_bug.cgi?id=636134
+# PortGroup           muniversal 1.0
+
+name                gstreamer1-gst-plugins-base
+set my_name         gst-plugins-base
+# please only commit stable updates (even numbered releases)
+version             1.14.1
+revision            5
+description         This is gst-plugins, a set of plug-ins for GStreamer.
+long_description    ${description}
+maintainers         nomaintainer
+categories          gnome
+platforms           darwin
+license             LGPL-2+
+homepage            https://gstreamer.freedesktop.org/modules/${my_name}.html
+
+master_sites        https://gstreamer.freedesktop.org/src/${my_name}/
+distname            ${my_name}-${version}
+
+use_xz              yes
+
+checksums           rmd160  459cd94a0bae76ed1ac216ae3f8069896903e69e \
+                    sha256  1026c7c3082d825d9b5d034c1a6dd8a4ebab60eb3738b0a0afde4ad2dc0b0db5 \
+                    size    3689184
+
+depends_build       port:pkgconfig
+# depends_lib         port:gstreamer1 \
+#                     port:graphene \
+#                     port:libopus \
+#                     port:orc \
+#                     path:lib/pkgconfig/pango.pc:pango \
+#                     port:zlib
+depends_lib         port:gstreamer1 \
+                    port:libopus \
+                    path:lib/pkgconfig/pango.pc:pango \
+                    port:zlib \
+                    port:gettext
+
+gobject_introspection no
+
+pre-configure {
+    use_autoreconf  [expr ![file exists ${worksrcpath}/config.log]]
+}
+autoreconf.args     -fvi
+
+# patchfiles          patch-allow-MESA-GL-on-macOS.diff
+# patchfiles-append   patch-bsd_source.diff
+
+# Embedded systems are not our primary target, so disable OpenGL|ES support.
+# configure.args-append \
+#                     --disable-fatal-warnings \
+#                     --disable-silent-rules \
+#                     --disable-examples \
+#                     --disable-libvisual \
+#                     --disable-alsa \
+#                     --disable-cdparanoia \
+#                     --disable-glx \
+#                     --disable-ogg \
+#                     --disable-vorbis \
+#                     --disable-theora \
+#                     --disable-ivorbis \
+#                     --disable-x \
+#                     --disable-xvideo \
+#                     --disable-cocoa \
+#                     --disable-opengl \
+#                     --disable-gles2 \
+#                     --disable-xshm
+configure.args-append \
+                    --disable-fatal-warnings \
+                    --disable-silent-rules \
+                    --disable-examples \
+                    --disable-cdparanoia \
+                    --disable-ogg \
+                    --disable-vorbis \
+                    --disable-theora \
+                    --disable-ivorbis \
+                    --disable-x \
+                    --disable-xvideo \
+                    --disable-cocoa \
+                    --disable-opengl \
+                    --disable-gles2 \
+                    --disable-xshm
+
+#gstbasetextoverlay.c:1511: error: 'for' loop initial declaration used outside C99 mode
+# but must use GNU C99!
+configure.cflags-append -std=gnu99
+
+configure.env-append    LIBS="-L${prefix}/lib -lintl"
+
+#gst-libs/gst/gl/gstgldebug.h:28: error: redefinition of typedef ‘GstGLAsyncDebug’
+compiler.blacklist-append *gcc-3.* *gcc-4.* {clang < 212}
+
+platform darwin {
+    # graphene currently fails to build on 10.5 and earlier due to lack of an aligned memory alloc function
+    # the dependency on graphene is optional and is used only for the gl plugins gltransformation and glvideoflip
+    # which are disabled without it
+    if {${os.major} < 10 } {
+        depends_lib-delete port:graphene
+    }
+}
+
+variant x11 conflicts cocoa {
+#     depends_lib-append \
+#                     port:mesa \
+#                     port:xorg-libX11 \
+#                     port:xorg-libXext \
+#                     port:xorg-libXv
+
+    configure.args-replace  --disable-x \
+                            --enable-x \
+                            --disable-xshm \
+                            --enable-xshm \
+                            --disable-xvideo \
+                            --enable-xvideo \
+                            --disable-glx \
+                            --enable-glx \
+                            --disable-opengl \
+                            --enable-opengl \
+                            --disable-gles2 \
+                            --enable-gles2
+}
+
+# variant cocoa conflicts universal x11 description {Add support for the OpenGL Cocoa backend. Only supported for pure x86_64 builds.} {
+#     if {${build_arch} ne "x86_64"} {
+#         ui_error "The variant cocoa is not supported on architectures other than x86_64"
+#         error "Cocoa output only supported on x86_64 architecture"
+#     }
+# 
+#     if {${os.major} < 13} {
+#         ui_error "The variant cocoa is not supported on platforms older than 10.9"
+#         error "Platform too old to support Cocoa output"
+#     }
+# 
+#     configure.args-replace  --disable-cocoa \
+#                             --enable-cocoa \
+#                             --disable-opengl \
+#                             --enable-opengl
+# }
+
+# base has variant_set, but no variant_unset, so emulate it.
+global variations
+# Prefer x11 variant, only enable cocoa by default if supported.
+# We disable the other conflicting variant explicitly for a smooth upgrade path.
+if {${os.major} >= 13 && ![variant_isset universal] && ![variant_isset x11] && ${build_arch} eq "x86_64"} {
+    default_variants +cocoa
+
+    default_variants -x11
+    set variations(x11) -
+} else {
+    default_variants +x11
+
+    default_variants -cocoa
+    set variations(cocoa) -
+}
+
+variant ogg description {Build with support for libogg, libvorbis, libtheora} {
+    depends_lib-append    port:libogg port:libvorbis port:libtheora
+    configure.args-replace  --disable-ogg \
+                            --enable-ogg \
+                            --disable-vorbis \
+                            --enable-vorbis \
+                            --disable-theora \
+                            --enable-theora
+}
+
+default_variants +ogg
+
+#
+# current cdparanoia port (cdparanoia III 10.2) appears to not be API compatible
+# with gst-plugins-base.  See #19843.
+# disable by default until this is rectified.
+#
+
+variant cdparanoia description {Enable (currently broken) cdparanoia plugin} {
+#     depends_lib-append port:cdparanoia
+    configure.args-replace  --disable-cdparanoia \
+                            --enable-cdparanoia
+}
+
+
+#-fgcse (from -O2) causes build failures, but -O2 -fno-gcse doesn't seem to work
+if {[string match "*gcc-4.2" ${configure.compiler}]} {
+    lappend merger_configure_cflags(i386) -O1 -fexpensive-optimizations
+    if {![variant_isset universal] && ${build_arch} eq "i386"} {
+        configure.cflags-delete -O2
+        configure.cflags-append -O1 -fexpensive-optimizations
+    }
+}
+
+if {[variant_isset universal]} {
+    set merger_host(x86_64) x86_64-apple-${os.platform}${os.major}
+    set merger_host(i386) i686-apple-${os.platform}${os.major}
+    set merger_configure_args(x86_64) --build=x86_64-apple-${os.platform}${os.major}
+    set merger_configure_args(i386) --build=i686-apple-${os.platform}${os.major}
+} else {
+    if {${build_arch} eq "i386"} {
+        configure.args-append \
+            --host=i686-apple-${os.platform}${os.major} \
+            --build=i686-apple-${os.platform}${os.major}
+    } elseif {${build_arch} eq "x86_64"} {
+        configure.args-append \
+            --host=${build_arch}-apple-${os.platform}${os.major} \
+            --build=${build_arch}-apple-${os.platform}${os.major}
+    }
+}
+
+# in version 1.14.0 some functionality moved here from bad
+# deactivate the old port before activating the new one
+pre-activate {
+    if {![catch {set installed [lindex [registry_active gstreamer1-gst-plugins-bad] 0]}]} {
+        set _version [lindex $installed 1]
+        if {[vercmp $_version 1.14.0] < 0} {
+            registry_deactivate_composite gstreamer1-gst-plugins-bad "" [list ports_nodepcheck 1]
+        }
+    }
+}
+
+livecheck.type      regex
+livecheck.name      ${my_name}
+livecheck.url       ${master_sites}
+livecheck.regex     "${my_name}-(\\d+\\\.\\d*\[02468\](?:\\.\\d+)*)${extract.suffix}"
