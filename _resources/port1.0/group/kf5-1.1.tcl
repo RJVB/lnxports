@@ -57,8 +57,8 @@ if {${kf5::includecounter} == 0} {
         }
                 notes-append "It is strongly advised to install KF5 ports against port:qt5-kde or port:qt5-kde-devel; any other configuration is not supported."
         # pull in a build dependency that port:qt5-kde includes by default in the main port:
-        depends_build-append \
-                        qt5-qttools
+        qt5.depends_component \
+                        qttools
     }
 }
 
@@ -104,7 +104,7 @@ if { ![ info exists kf5.project ] } {
 
 # KF5 frameworks current version, which is the same for all frameworks
 if {![info exists kf5.version]} {
-    set kf5.version     5.42.0
+    set kf5.version     5.47.0
     # kf5.latest_version is supposed to be used only in the KF5-Frameworks Portfile
     # when updating it to the new version (=kf5.latest_version). This feature is
     # activated only when a file `port dir KF5-Frameworks`/files/enable_latest exists.
@@ -527,30 +527,33 @@ if {${kf5::includecounter} == 0} {
                     # this appears to be necessary, sometimes:
                     system "chmod 755 ${workpath}/apidocs"
                     if {[info exists kf5.framework]} {
-                        if {[catch {system -W ${build.dir} "kapidox_generate --qhp --searchengine --api-searchbox --indexing \
+                        set kapidox_dir ${build.dir}/kapidox
+                        file delete -force ${kapidox_dir}
+                        xinstall -m 755 -d ${kapidox_dir}
+                        if {[catch {system -W ${kapidox_dir} "kapidox_generate --qhp \
                             ${chmargs} \
                             --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${qt_bins_dir}/qhelpgenerator \
                             ${worksrcpath}"} result context]} {
                             ui_warn "Failure generating documentation: ${result}"
                         }
                         # after creating the destination, copy all generated qch documentation to it
-                        foreach doc [glob -nocomplain ${build.dir}/frameworks/*/qch/*.qch \
-                                ${build.dir}/*/qch/*.qch ${build.dir}/*/html/*.chm] {
+                        foreach doc [glob -nocomplain ${kapidox_dir}/frameworks/*/qch/*.qch \
+                            ${kapidox_dir}/*/qch/*.qch ${kapidox_dir}/*/html/*.chm] {
                             if {[file tail ${doc}] ne "None.qch"} {
                                 system "chmod 644 ${doc}"
                                 xinstall -m 644 ${doc} ${workpath}/apidocs/
                             }
                         }
-                        if {[file exists ${build.dir}/${kf5.framework}-${version}/html/Makefile]} {
+                        if {[file exists ${kapidox_dir}/${kf5.framework}-${version}/html/Makefile]} {
                             ui_debug "generating .docset version"
-                            system -W ${build.dir}/${kf5.framework}-${version}/html \
+                            system -W ${kapidox_dir}/${kf5.framework}-${version}/html \
                                 "make > /dev/null"
-                            set docset ${build.dir}/${kf5.framework}-${version}/html/org.kde.${kf5.framework}-${version}.docset
+                            set docset ${kapidox_dir}/${kf5.framework}-${version}/html/org.kde.${kf5.framework}-${version}.docset
                             if {[file exists ${docset}]} {
                                 file rename ${docset} ${workpath}/apidocs
                             }
                         }
-                        file delete -force ${build.dir}/${kf5.framework}-${version}
+                        file delete -force ${kapidox_dir}
                     } else {
                         system -W ${build.dir} "kgenapidox --qhp --searchengine --api-searchbox \
                             ${chmargs} \
@@ -878,34 +881,13 @@ if {${kf5::includecounter} == 0} {
         }
     }
 
-# all Qt5 PGs should now have a qt5.depends_component procedure
-#     if {[info procs qt5.depends_component] eq ""} {
-#         # apparently the qt5-kde PortGroup is not being used,
-#         # provide a simplified local copy of qt5.depends_component;
-#         # a procedure for declaring dependencies on Qt5 components, which will expand them
-#         # into the appropriate subports for the Qt5 flavour installed (presumably port:qt5)
-#         # e.g. qt5.depends_component qtbase qtsvg qtdeclarative
-#         # We ignore the new port:qt55 because KF5 requires Qt >= 5.6.0
-#         proc qt5.depends_component {first args} {
-#             # join ${first} and (the optional) ${args}
-#             set args [linsert $args[set list {}] 0 ${first}]
-#             set qt5pprefix "qt5"
-#             foreach comp ${args} {
-#                 if {${comp} eq "qt5"} {
-#                     depends_lib-append port:${qt5pprefix}
-#                 } else {
-#                     set portname "${qt5pprefix}-${comp}"
-#                     depends_lib-append port:${portname}
-#                 }
-#             }
-#         }
-#     }
-
     proc kf5.depends_qt5_components {first args} {
         global qt5.using_kde
         set args [linsert $args[set list {}] 0 ${first}]
         if {![info exists qt5.using_kde] || !${qt5.using_kde}} {
-            qt5.depends_component ${args}
+            foreach comp ${args} {
+                qt5.depends_component ${comp}
+            }
         } else {
             foreach comp ${args} {
                 switch ${comp} {

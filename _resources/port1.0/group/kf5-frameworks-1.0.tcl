@@ -167,10 +167,15 @@ namespace eval kf5 {
 
     proc has_translations {} {
         global prefix
-        ui_debug "Adding gettext and ${kf5::pythondep} build dependencies because of KI18n"
+        ui_debug "Adding gettext and ${kf5::pythondep} (build) dependencies because of KI18n"
+        depends_lib-append \
+                        port:gettext
         depends_build-append \
-                        port:gettext \
                         ${kf5::pythondep}
+        ifplatform other {
+            depends_build-append \
+                    port:gettext-dev
+        }
         configure.args-append \
                         -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion}
     }
@@ -291,6 +296,7 @@ kf5::framework_dependency    krunner libKF5Runner
 kf5::framework_dependency    kwayland libKF5WaylandClient
 kf5::framework_dependency    kuserfeedback libKUserFeedbackCore
 kf5::framework_dependency    kactivities-stats libKF5ActivitiesStats
+kf5::framework_dependency    purpose libKF5Purpose
 
 # QML frameworks, should be used as runtime deps:
 set kf5::kirigami_dep        path:${qt_qml_dir}/org/kde/kirigami/libkirigamiplugin.${kf5::libs_ext}:kf5-kirigami
