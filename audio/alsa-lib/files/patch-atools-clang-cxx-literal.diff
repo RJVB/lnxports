@@ -1,0 +1,11 @@
+--- us428control/orig.us428control.cc	2018-04-03 09:01:37.000000000 +0200
++++ us428control/us428control.cc	2018-08-01 14:02:42.854067000 +0200
+@@ -63,7 +63,7 @@
+ {
+ 	printf("Tascam US-428 Control\n");
+ 	printf("version %s\n", VERSION);
+-	printf("usage: "PROGNAME" [-v verbosity_level 0..2] [-c card] [-D device] [-u usb-device] [-m mode]\n");
++	printf("usage: " PROGNAME " [-v verbosity_level 0..2] [-c card] [-D device] [-u usb-device] [-m mode]\n");
+ 	printf("mode is one of (us224, us428, mixxx)\n");
+ }
+ /*
