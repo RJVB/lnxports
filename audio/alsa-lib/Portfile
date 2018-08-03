@@ -4,7 +4,7 @@ PortSystem 1.0
 
 set basename        alsa
 name                ${basename}-lib
-version             1.1.5
+version             1.1.6
 categories          audio
 license             LGPL-2.1
 maintainers         gmail.com:rjvbertin
@@ -32,8 +32,8 @@ switch ${subport} {
         description     alsa-lib contains the user space library that developers compile ALSA applications against.
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/lib/
-        checksums       rmd160  f787813b0b13a92185e5afdf0dfeaadc61a5ae0e \
-                        sha256  f4f68ad3c6da36b0b5241ac3c798a7a71e0e97d51f972e9f723b3f20a9650ae6
+        checksums       rmd160  4f2e3d55555e38aca53431008b0b2319eee53f77 \
+                        sha256  5f2cd274b272cae0d0d111e8a9e363f08783329157e8dd68b3de0c096de6d724
 
         configure.args-append \
                         --disable-dependency-tracking \
@@ -54,8 +54,8 @@ switch ${subport} {
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/plugins/
         distname        ${subport}-${version}
-        checksums       rmd160  7e06e33bc971c2b0fc4218695506471fb4cccd40 \
-                        sha256  797da5f8f53379fbea28817bc466de16affd2c07849e84f1af8d5e22f7bb7f1c
+        checksums       rmd160  f0911d3db34d382628a8812bc18742450ec147bb \
+                        sha256  6f1d31ebe3b1fa1cc8dade60b7bed1cb2583ac998167002d350dc0a5e3e40c13
 
         depends_lib     port:${basename}-lib \
                         port:ffmpeg \
@@ -68,13 +68,14 @@ switch ${subport} {
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/tools/
         distname        ${subport}-${version}
-        checksums       rmd160  76bf1c2404c218e7fd1fa27bbb829cb2349f0c6c \
-                        sha256  bc3c6567de835223ee7d69487b8c22fb395a2e8c613341b0c96e6a5f6a2bd534
+        checksums       rmd160  9a109f135af007aa3c714985ddfce3f6923b601a \
+                        sha256  d69c4dc2fb641a974d9903e9eb78c94cb0c7ac6c45bae664f0c9d6c0a1593227
 
         depends_lib     port:${basename}-lib
         depends_run     port:${basename}-plugins
         patchfiles-append \
-                        patch-atools-makefile.diff
+                        patch-atools-makefile.diff \
+                        patch-atools-clang-cxx-literal.diff
 
         configure.env   CONFIGURE_ARGS=\"${configure.pre_args} --disable-dependency-tracking \"
         configure.cmd   make
@@ -93,12 +94,15 @@ switch ${subport} {
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/utils/
         distname        ${subport}-${version}
-        checksums       rmd160  55dae43c8b2311c12c8b55505c63e10028e3cbb6 \
-                        sha256  320bd285e91db6e7fd7db3c9ec6f55b02f35449ff273c7844780ac6a5a3de2e8
+        checksums       rmd160  c2a44d30336069fa0550f68f213e2347d253e3c1 \
+                        sha256  155caecc40b2220f686f34ba3655a53e3bdbc0586adb1056733949feaaf7d36e
 
-        conflicts_configure gettext-dev
-        depends_lib     port:${basename}-lib
+#         conflicts_configure gettext-dev
+        depends_lib     port:${basename}-lib \
+                        port:gettext
         depends_run     port:${basename}-plugins
+        configure.env-append \
+                        LIBS="-L${prefix}/lib -lintl"
         configure.args-append \
                         --disable-dependency-tracking \
                         --with-udev-rules-dir=${prefix}/lib/udev \
