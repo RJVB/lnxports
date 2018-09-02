@@ -42,6 +42,14 @@ configure.args      --enable-pic \
                     --disable-gpac \
                     --disable-lsmash
 
+platform linux {
+    if {[string match *clang* ${configure.cc}]} {
+        configure.args-replace \
+                    --enable-lto \
+                    --disable-lto
+    }
+}
+
 # as of this build (148) asm optimizations are believed to work with x86_64 Snow Leopard and up
 # please file a ticket if you have evidence to the contrary
 # i386 clang build issues remain which break i386 build when asm optimizations are enabled
