@@ -63,9 +63,9 @@ set qt5.add_spec    no
 build.dir           ${configure.dir}
 
 platform darwin {
-    # MacPorts base can add -stdlib=libc++ to configure.cxxflags, in which case it also has
-    # to be added to configure.ldflags
-    if {![string match "*stdc=libc++*" ${configure.cxxflags}]} {
+    # MacPorts base adds -stdlib=libc++ to configure.cxxflags on systems that require this.
+    # If so, it the option has to be added to configure.ldflags too
+    if {[string first "-stdlib=libc++" ${configure.cxxflags}] >= 0} {
         configure.ldflags-append \
                     -stdlib=libc++
     }
@@ -96,17 +96,21 @@ post-configure {
 }
 
 destroot {
-    platform darwin {
+    if {${os.platform} eq "darwin"} {
         # Destroot xxdiff.
         xinstall -d ${destroot}${qt_apps_dir}
-        copy "${build.dir}/bin/xxdiff.app"   ${destroot}${qt_apps_dir}/
-        xinstall ${filespath}/xxdiff.sh ${destroot}${prefix}/bin/xxdiff
-        reinplace "s|@@QT_APPS_DIR@@|${qt_apps_dir}|g" ${destroot}${prefix}/bin/xxdiff
+        copy "${build.dir}/bin/xxdiff.app" \
+                    ${destroot}${qt_apps_dir}/
+        xinstall -m 755 ${filespath}/xxdiff.sh \
+                    ${destroot}${prefix}/bin/xxdiff
+        reinplace "s|@@QT_APPS_DIR@@|${qt_apps_dir}|g" \
+                    ${destroot}${prefix}/bin/xxdiff
+    } else {
+        xinstall -m 755 "${build.dir}/bin/xxdiff" \
+                    ${destroot}${prefix}/bin
     }
-    platform linux {
-        xinstall -m 755 "${build.dir}/bin/xxdiff"   ${destroot}${prefix}/bin
-    }
-    xinstall ${worksrcpath}/src/xxdiff.1 ${destroot}${prefix}/share/man/man1
+    xinstall ${worksrcpath}/src/xxdiff.1 \
+                    ${destroot}${prefix}/share/man/man1
 }
 
 variant doc description {Install documentation} {}
