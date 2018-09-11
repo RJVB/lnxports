@@ -23,26 +23,36 @@ checksums           rmd160  28159a202787e8f4e132de81c269b7a816da34c0 \
 use_xz              yes
 
 depends_lib         port:gettext
+depends_build       port:gettext-dev
 
-patchfiles          patch-src_system.h.diff
+# patchfiles          patch-src_system.h.diff
 configure.args      --program-prefix=g \
                     --infodir=${prefix}/share/info \
                     --mandir=${prefix}/share/man
 
 set docdir          ${prefix}/share/doc/${name}
 
+variant stocknames description {don't prefix a 'g' to the binary names} {
+    configure.args-delete \
+                    --program-prefix=g
+}
+
+configure.env       LIBS="-L${prefix}/lib -lintl"
+
 post-destroot {
     xinstall -m 0755 -d ${destroot}${docdir}
     xinstall -m 0644 -W ${worksrcpath} ABOUT-NLS AUTHORS ChangeLog COPYING NEWS README THANKS \
         ${destroot}${docdir}
 
-    xinstall -m 755 -d ${destroot}${prefix}/libexec/gnubin
-    foreach binary [glob -tails -directory ${destroot}${prefix}/bin g*] {
-        ln -s ${prefix}/bin/${binary} ${destroot}${prefix}/libexec/gnubin/[string range $binary 1 end]
-    }
-    xinstall -m 755 -d ${destroot}${prefix}/libexec/gnubin/man/man1
-    foreach manpage [glob -tails -directory ${destroot}${prefix}/share/man/man1 g*] {
-        ln -s ${prefix}/share/man/man1/${manpage}.gz ${destroot}${prefix}/libexec/gnubin/man/man1/[string range $manpage 1 end].gz
+    if {![variant_isset stocknames]} {
+        xinstall -m 755 -d ${destroot}${prefix}/libexec/gnubin
+        foreach binary [glob -tails -directory ${destroot}${prefix}/bin g*] {
+            ln -s ${prefix}/bin/${binary} ${destroot}${prefix}/libexec/gnubin/[string range $binary 1 end]
+        }
+        xinstall -m 755 -d ${destroot}${prefix}/libexec/gnubin/man/man1
+        foreach manpage [glob -tails -directory ${destroot}${prefix}/share/man/man1 g*] {
+            ln -s ${prefix}/share/man/man1/${manpage}.gz ${destroot}${prefix}/libexec/gnubin/man/man1/[string range $manpage 1 end].gz
+        }
     }
 }
 
