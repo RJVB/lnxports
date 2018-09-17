@@ -25,15 +25,16 @@ checksums           md5     1581a588fde9d89f6bc6201e8129afaf \
                     rmd160  95a040e0c32e09d01f37fc7d2defd2c41a184db6 \
                     sha256  55cc554efec5fdaad70de921cd5a5eeb6c29a95524c715f3bbf849235b0800c0
 
-depends_lib         port:popt port:libiconv
+# depends_lib         port:popt port:libiconv
+depends_lib         port:libiconv
 
 # these come from http://rsync.samba.org/ftp/rsync/rsync-patches-3.1.3.tar.gz
 # and need to be updated with each release
 # hfs-compression.diff is marked by upstream as broken as of 3.1.3
 # removed: patch-hfs-compression.diff patch-hfs-compression-options.diff
-patchfiles          patch-fileflags.diff \
-                    patch-crtimes.diff \
-                    patch-acls-unpack-error.diff
+# patch-fileflags.diff
+# patch-crtimes.diff 
+patchfiles          patch-acls-unpack-error.diff
 patch.pre_args      -p1
 
 configure.args      --with-rsyncd-conf=${prefix}/etc/rsyncd.conf
@@ -60,12 +61,14 @@ post-destroot {
 livecheck.type      regex
 livecheck.regex     "Rsync version (\\d+(?:\\.\\d+)*) released"
 
-startupitem.create  yes
-startupitem.name    rsyncd
-startupitem.logfile ${prefix}/var/log/rsyncd.log
-startupitem.start   "${prefix}/bin/rsync --daemon --config=${prefix}/etc/rsyncd.conf"
-startupitem.stop    "kill `cat ${prefix}/var/run/rsyncd.pid`"
-startupitem.pidfile auto ${prefix}/var/run/rsyncd.pid
+platform darwin {
+    startupitem.create  yes
+    startupitem.name    rsyncd
+    startupitem.logfile ${prefix}/var/log/rsyncd.log
+    startupitem.start   "${prefix}/bin/rsync --daemon --config=${prefix}/etc/rsyncd.conf"
+    startupitem.stop    "kill `cat ${prefix}/var/run/rsyncd.pid`"
+    startupitem.pidfile auto ${prefix}/var/run/rsyncd.pid
+}
 
 notes "
 To use the rsyncd server you must copy\
