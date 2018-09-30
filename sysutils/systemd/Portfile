@@ -1,15 +1,14 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem 1.0
-PortGroup       conflicts_build 1.0
 
 name            systemd
 set orig.version 234
 set ubuntu.version 2ubuntu5
-version         ${orig.version}.${ubuntu.version}
+version         ${orig.version}.${ubuntu.version} ; revision 1
 description     The systemd meta-package
 long_description \
-                Corresponds to the following Ubuntu \"ArtVark\" ports: \
+                Corresponds to the following Ubuntu \"ArtVark\" packages: \
                 systemd systemd-sysv systemd-container systemd-journal-remote \
                 systemd-coredump systemd-tests libpam-systemd libnss-myhostname \
                 libnss-mymachines libnss-resolve libnss-systemd libsystemd0 \
@@ -25,8 +24,8 @@ checksums       rmd160  499d645f6df29f59f8bc5b642773e678747feedb \
                 sha256  da3e69d10aa1c983d33833372ad4929037b411ac421fb085c8cee79ae1d80b6a
 worksrcdir      ${name}-${orig.version}
 
-conflicts_build-append \
-                gettext-dev
+configure.env-append \
+                LIBS="-L${prefix}/lib -lintl"
 
 # an undoubtedly tiny selection of all required dependencies; debian/control lists:
 #                pkg-config,
@@ -78,6 +77,7 @@ depends_build-append \
                 port:perl5 \
                 port:py36-lxml
 depends_lib-append \
+                port:gettext \
                 port:zlib \
                 port:bzip2 \
                 port:xz \
@@ -101,10 +101,15 @@ if {[file exists ${filespath}/series]} {
         patchfiles-append ${p}
     }
 }
+# fix a number of files that need to include sys/mount.h before linux/fs.h
+# somehow this wasn't necessary when I built this port before.
+patchfiles-append \
+                patch-include-order-fix.diff
 
 post-patch {
     ui_msg "--->  Running autogen.sh"
     system -W ${worksrcpath} "./autogen.sh"
+    reinplace "s|-Werror=format=2||g" ${worksrcpath}/configure.ac
 }
 
 configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
@@ -142,12 +147,13 @@ configure.args-append \
                 PYTHON=${prefix}/bin/python3.6
 
 platform linux {
-    configure.ldflags-append -Wl,-rpath=${prefix}/lib
-    build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
-    destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
+    configure.ldflags-append -Wl,-rpath=${prefix}/lib  -Wl,-rpath=${prefix}/lib/systemd
+    build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib  -Wl,-rpath=${prefix}/lib/systemd
+    destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib  -Wl,-rpath=${prefix}/lib/systemd
 }
 
-destroot.violate_mtree       yes
+build.post_args-append      V=1 VERBOSE=1 -k
+destroot.violate_mtree      yes
 
 post-destroot {
     foreach b [glob -nocomplain ${destroot}/bin/*] {

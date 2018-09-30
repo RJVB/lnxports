@@ -1,0 +1,219 @@
+--- ./src/journal/orig.journalctl.c	2018-09-30 11:11:32.000000000 +0200
++++ ./src/journal/journalctl.c	2018-09-30 11:11:35.913303999 +0200
+@@ -21,6 +21,8 @@
+ #include <fcntl.h>
+ #include <fnmatch.h>
+ #include <getopt.h>
++// RJVB
++#include <sys/mount.h>
+ #include <linux/fs.h>
+ #include <locale.h>
+ #include <poll.h>
+--- ./src/journal/orig.journal-file.c	2018-09-30 10:52:49.000000000 +0200
++++ ./src/journal/journal-file.c	2018-09-30 10:53:08.443303999 +0200
+@@ -19,6 +19,8 @@
+ 
+ #include <errno.h>
+ #include <fcntl.h>
++// RJVB
++#include <sys/mount.h>
+ #include <linux/fs.h>
+ #include <pthread.h>
+ #include <stddef.h>
+--- ./src/tmpfiles/orig.tmpfiles.c	2018-09-30 11:10:43.000000000 +0200
++++ ./src/tmpfiles/tmpfiles.c	2018-09-30 11:10:50.373303999 +0200
+@@ -24,6 +24,8 @@
+ #include <getopt.h>
+ #include <glob.h>
+ #include <limits.h>
++// RJVB
++#include <sys/mount.h>
+ #include <linux/fs.h>
+ #include <stdbool.h>
+ #include <stddef.h>
+--- ./src/import/orig.import-tar.c	2018-09-30 11:14:11.000000000 +0200
++++ ./src/import/import-tar.c	2018-09-30 11:14:14.633303999 +0200
+@@ -17,6 +17,8 @@
+   along with systemd; If not, see <http://www.gnu.org/licenses/>.
+ ***/
+ 
++// RJVB
++#include <sys/mount.h>
+ #include <linux/fs.h>
+ 
+ #include "sd-daemon.h"
+--- ./src/import/orig.pull-raw.c	2018-09-30 11:13:14.000000000 +0200
++++ ./src/import/pull-raw.c	2018-09-30 11:13:18.233303999 +0200
+@@ -18,6 +18,8 @@
+ ***/
+ 
+ #include <curl/curl.h>
++// RJVB
++#include <sys/mount.h>
+ #include <linux/fs.h>
+ #include <sys/xattr.h>
+ 
+--- ./src/import/orig.import-raw.c	2018-09-30 11:13:29.000000000 +0200
++++ ./src/import/import-raw.c	2018-09-30 11:13:34.703303999 +0200
+@@ -17,6 +17,8 @@
+   along with systemd; If not, see <http://www.gnu.org/licenses/>.
+ ***/
+ 
++// RJVB
++#include <sys/mount.h>
+ #include <linux/fs.h>
+ 
+ #include "sd-daemon.h"
+--- ./src/shared/orig.machine-image.c	2018-09-30 10:30:41.000000000 +0200
++++ ./src/shared/machine-image.c	2018-09-30 10:30:57.583303999 +0200
+@@ -26,6 +26,7 @@
+ #include <sys/file.h>
+ #include <sys/stat.h>
+ #include <unistd.h>
++#include <sys/mount.h>
+ #include <linux/fs.h>
+ 
+ #include "alloc-util.h"
+--- ./src/basic/orig.missing.h	2018-09-29 18:16:49.000000000 +0200
++++ ./src/basic/missing.h	2018-09-30 10:07:00.423303999 +0200
+@@ -37,6 +37,8 @@
+ #include <sys/resource.h>
+ #include <sys/socket.h>
+ #include <sys/syscall.h>
++// RJVB
++#include <sys/mount.h>
+ #include <uchar.h>
+ #include <unistd.h>
+ 
+@@ -490,41 +492,38 @@
+ #define BPF_FS_MAGIC 0xcafe4a11
+ #endif
+ 
+-#ifndef MS_MOVE
+-#define MS_MOVE 8192
+-#endif
+-
+-#ifndef MS_REC
+-#define MS_REC 16384
+-#endif
+-
+-#ifndef MS_PRIVATE
+-#define MS_PRIVATE      (1<<18)
+-#endif
+-
+-#ifndef MS_REC
+-#define MS_REC          (1<<19)
+-#endif
+-
+-#ifndef MS_SHARED
+-#define MS_SHARED       (1<<20)
+-#endif
+-
+-#ifndef MS_RELATIME
+-#define MS_RELATIME     (1<<21)
+-#endif
+-
+-#ifndef MS_KERNMOUNT
+-#define MS_KERNMOUNT    (1<<22)
+-#endif
+-
+-#ifndef MS_I_VERSION
+-#define MS_I_VERSION    (1<<23)
+-#endif
+-
+-#ifndef MS_STRICTATIME
+-#define MS_STRICTATIME  (1<<24)
+-#endif
++// from sys/mount.h
++   #ifndef MS_MOVE
++   #define MS_MOVE 8192
++   #endif
++
++   #ifndef MS_REC
++   #define MS_REC 16384
++   #endif
++
++   #ifndef MS_PRIVATE
++   #define MS_PRIVATE      (1<<18)
++   #endif
++
++   #ifndef MS_REC
++   #define MS_REC          (1<<19)
++   #endif
++
++   #ifndef MS_SHARED
++   #define MS_SHARED       (1<<20)
++   #endif
++
++   #ifndef MS_RELATIME
++   #define MS_RELATIME     (1<<21)
++   #endif
++
++   #ifndef MS_KERNMOUNT
++   #define MS_KERNMOUNT    (1<<22)
++   #endif
++
++   #ifndef MS_STRICTATIME
++   #define MS_STRICTATIME  (1<<24)
++   #endif
+ 
+ #ifndef MS_LAZYTIME
+ #define MS_LAZYTIME     (1<<25)
+@@ -570,16 +569,16 @@
+ #  define EVIOCREVOKE _IOW('E', 0x91, int)
+ #endif
+ 
+-#ifndef EVIOCSMASK
++   #ifndef EVIOCSMASK
+ 
+-struct input_mask {
+-        uint32_t type;
+-        uint32_t codes_size;
+-        uint64_t codes_ptr;
+-};
++   struct input_mask {
++           uint32_t type;
++           uint32_t codes_size;
++           uint64_t codes_ptr;
++   };
+ 
+-#define EVIOCSMASK _IOW('E', 0x93, struct input_mask)
+-#endif
++   #define EVIOCSMASK _IOW('E', 0x93, struct input_mask)
++   #endif
+ 
+ #ifndef DRM_IOCTL_SET_MASTER
+ #  define DRM_IOCTL_SET_MASTER _IO('d', 0x1e)
+--- ./src/basic/orig.btrfs-util.c	2018-09-30 10:23:36.000000000 +0200
++++ ./src/basic/btrfs-util.c	2018-09-30 10:23:55.843303999 +0200
+@@ -20,6 +20,8 @@
+ #include <errno.h>
+ #include <fcntl.h>
+ #include <inttypes.h>
++// RJVB
++#include <sys/mount.h>
+ #include <linux/fs.h>
+ #include <linux/loop.h>
+ #include <stddef.h>
+--- ./src/core/orig.load-fragment.c	2018-09-30 10:19:29.000000000 +0200
++++ ./src/core/load-fragment.c	2018-09-30 10:55:21.673303999 +0200
+@@ -20,6 +20,8 @@
+ 
+ #include <errno.h>
+ #include <fcntl.h>
++// RJVB
++#include <sys/mount.h>
+ #include <linux/fs.h>
+ #include <linux/oom.h>
+ #ifdef HAVE_SECCOMP
+--- ./src/core/orig.manager.h	2018-09-30 09:54:59.000000000 +0200
++++ ./src/core/manager.h	2018-09-30 10:26:10.433303999 +0200
+@@ -19,6 +19,8 @@
+   along with systemd; If not, see <http://www.gnu.org/licenses/>.
+ ***/
+ 
++// RJVB
++#include <sys/mount.h>
+ #include <libmount.h>
+ #include <stdbool.h>
+ #include <stdio.h>
