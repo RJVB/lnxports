@@ -1,0 +1,52 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+platform darwin {
+    PortGroup       gobject_introspection 1.0
+}
+
+name                libnotify
+version             0.7.7
+set branch          [join [lrange [split ${version} .] 0 1] .]
+categories          devel gnome
+maintainers         nomaintainer
+description         pop-up notification library
+long_description \
+                    The Desktop Notifications framework provides a standard way of doing \
+                    passive pop-up notifications.
+
+platforms           darwin
+license             LGPL-2.1+
+
+homepage            http://library.gnome.org/devel/libnotify/
+master_sites        gnome:sources/${name}/${branch}
+
+use_xz              yes
+
+checksums           rmd160  5d2e10b8e25c7ba383ce884ba8faeb3635a80893 \
+                    sha256  9cb4ce315b2655860c524d46b56010874214ec27e854086c1a1d0260137efc04
+
+depends_build       port:pkgconfig
+
+depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:gdk-pixbuf2 \
+                    port:gtk3
+platform darwin {
+    depends_lib-append \
+                    port:xorg-libsm
+}
+
+configure.args      --disable-silent-rules
+
+platform darwin {
+    gobject_introspection yes
+}
+
+pre-activate {
+	if {${os.major} == 11 && ${os.minor} < 2 && ${os.platform} eq "darwin"} {
+		ui_error "You must first update to OS X 10.7.2."
+		return -code error "You must first update to OS X 10.7.2."
+	}
+}
+
+livecheck.type      gnome-with-unstable
