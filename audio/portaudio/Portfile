@@ -26,7 +26,8 @@ distname            pa_stable_v[strsed ${version} {g/\./_/}]
 extract.suffix      .tgz
 
 checksums           rmd160  e6e5cd3f3cb7469aa17549c189e445d573567e13 \
-                    sha256  f5a21d7dcd6ee84397446fa1fa1a0675bb2e8a4a6dceb4305a8404698d8d1513
+                    sha256  f5a21d7dcd6ee84397446fa1fa1a0675bb2e8a4a6dceb4305a8404698d8d1513 \
+                    size    1450572
 
 worksrcdir          ${name}
 
@@ -34,7 +35,14 @@ worksrcdir          ${name}
 # To build a non-universal library for the host architecture,
 # simply use the --disable-mac-universal option with configure.
 # http://www.portaudio.com/trac/wiki/TutorialDir/Compile/MacintoshCoreAudio
-configure.args      --disable-mac-universal --enable-cxx --disable-jack
+configure.args      --disable-mac-universal \
+                    --enable-cxx \
+                    --enable-option-checking \
+                    --without-alsa \
+                    --without-jack \
+                    --without-oss \
+                    --without-asihpi \
+                    --without-winapi
 
 variant jack description {enable JACK support} {
     configure.args-replace --disable-jack \
@@ -59,18 +67,19 @@ variant tools description "install the example and test utilities to ${prefix}/l
 }
 
 # patch-configure removes -Werror, and adds -DNDEBUG.
-patchfiles          patch-configure \
+patchfiles          patch-configure.diff \
                     patch-ltmain.sh.diff \
-                    patch-src__common__pa_types.h \
+                    patch-src__common__pa_types.h.diff \
                     patch-audacity-portmixer.diff
 
 platform darwin {
     if {${os.major} >= 10} {
-        patchfiles-append patch-src__hostapi__coreaudio__pa_mac_core.c
+        patchfiles-append patch-src__hostapi__coreaudio__pa_mac_core.c.diff
     }
 }
 platform linux {
-    configure.args-append \
+    configure.args-replace \
+                    --without-alsa \
                     --with-alsa
 }
 
