@@ -48,6 +48,9 @@ depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
 depends_run         port:shared-mime-info \
                     port:hicolor-icon-theme
 
+# highly recommended to the point it should be a runtime dependency
+depends_run-append  port:dconf
+
 ####################
 PortGroup devport 1.0
 create_devport port:${name}
