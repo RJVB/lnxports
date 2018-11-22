@@ -9,8 +9,10 @@ PortGroup           preserve_runtime_libraries 1.0
 
 name                ffmpeg
 conflicts           ffmpeg-devel
+# Please increase the revision of mpv whenever ffmpeg's version is updated.
 epoch               1
-version             4.0
+version             4.1
+revision            2
 license             LGPL-2.1+
 categories          multimedia
 maintainers         {devans @dbevans} {jeremyhu @jeremyhu} openmaintainer
@@ -48,14 +50,14 @@ long_description    FFmpeg is a complete solution to record, convert and \
                     This is a variant adapted for Linux, taking most dependencies from the host.
 
 platforms           darwin
-homepage            http://www.ffmpeg.org/
-master_sites        http://www.ffmpeg.org/releases/
+homepage            https://ffmpeg.org/
+master_sites        ${homepage}releases/
 
 use_xz              yes
 
-checksums           rmd160  905285cf32e1b00d320c51c0a94cbd670fab6649 \
-                    sha256  ed945daf40b124e77a685893cc025d086f638bc703183460aff49508edb3a43f \
-                    size    8656948
+checksums           rmd160  04a511df8a1bedc3baf51c3601414ce78d7a71a9 \
+                    sha256  a38ec4d026efb58506a99ad5cd23d5a9793b4bf415f2c4c2e9c1bb444acd1994
+#                     size    8890608
 
 depends_build       port:pkgconfig
 
@@ -337,6 +339,14 @@ variant jack description {Enable jack library and indev support} {
                             --disable-indev=jack
 }
 
+platform darwin {
+variant darwinssl description {Enable https support using Apple built-in TLS library instead of GNU TLS} {
+    configure.args-delete   --disable-securetransport
+    configure.args-delete   --enable-gnutls
+    depends_lib-delete      port:gnutls
+}
+}
+
 variant gpl2 description {Enable GPL code, license will be GPL-2+} {
     configure.args-append   --enable-gpl \
                             --enable-postproc \
@@ -355,8 +365,7 @@ variant gpl3 requires gpl2 description {Enable GPL code, license will be GPL-3+}
                             --enable-libsmbclient
 
     platform darwin {
-    depends_lib-append      port:opencore-amr \
-                            port:samba3
+    depends_lib-append      port:samba3
     }
 
     license                 GPL-3+
@@ -371,10 +380,21 @@ variant nonfree description {enable nonfree code, libraries and binaries will no
     configure.args-append   --enable-nonfree \
                             --enable-libfdk-aac
     platform darwin {
-    depends_lib-append      port:libfdk-aac \
-                            port:faac
+    depends_lib-append      port:libfdk-aac
     }
     license                 Restrictive
+}
+
+variant debug description {build with additional debug info but otherwise optimised as usual} {}
+if {[variant_isset debug]} {
+    configure.args-append   --enable-debug \
+                            --enable-optimizations \
+                            --disable-stripping
+    configure.optflags-append -g
+    configure.cflags-append -g
+    configure.cxxflags-append -g
+    configure.objcflags-append -g
+    configure.ldflags-append -g
 }
 
 if {[variant_isset nonfree]} {
