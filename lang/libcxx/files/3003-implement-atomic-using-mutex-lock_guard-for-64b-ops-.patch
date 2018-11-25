@@ -1,7 +1,7 @@
-From 6f54ac5a46909c0f47aac1829ce19d7dc8321687 Mon Sep 17 00:00:00 2001
+From 6edfb88a439f007e5b22f06389ff65fb20a8900a Mon Sep 17 00:00:00 2001
 From: David Fang <fang@csl.cornell.edu>
 Date: Wed, 15 Jan 2014 21:27:34 -0800
-Subject: [PATCH 3003/3008] implement atomic<> using mutex/lock_guard for 64b
+Subject: [PATCH 3003/3003] implement atomic<> using mutex/lock_guard for 64b
  ops on 32b PPC not pretty, not fast, but passes atomic tests
 
 ===
@@ -10,11 +10,11 @@ Subject: [PATCH 3003/3008] implement atomic<> using mutex/lock_guard for 64b
  2 files changed, 286 insertions(+)
  create mode 100644 include/__atomic_locked
 
-diff --git libcxx-6.0.0.src/projects/libcxx/include/__atomic_locked libcxx-6.0.0.src/projects/libcxx/include/__atomic_locked
+diff --git llvm_master/projects/libcxx/include/__atomic_locked macports_master/projects/libcxx/include/__atomic_locked
 new file mode 100644
 index 000000000..f10dd747e
 --- /dev/null
-+++ libcxx-6.0.0.src/projects/libcxx/include/__atomic_locked
++++ macports_master/projects/libcxx/include/__atomic_locked
 @@ -0,0 +1,240 @@
 +// -*- C++ -*-
 +//===--------------------------- __atomic_locked --------------------------===//
@@ -256,10 +256,10 @@ index 000000000..f10dd747e
 +_LIBCPP_END_NAMESPACE_STD
 +
 +#endif  // _LIBCPP_ATOMIC_LOCKED
-diff --git libcxx-6.0.0.src/projects/libcxx/include/atomic libcxx-6.0.0.src/projects/libcxx/include/atomic
+diff --git llvm_master/projects/libcxx/include/atomic macports_master/projects/libcxx/include/atomic
 index f55e28ff5..9ccf1ca75 100644
---- libcxx-6.0.0.src/projects/libcxx/include/atomic
-+++ libcxx-6.0.0.src/projects/libcxx/include/atomic
+--- llvm_master/projects/libcxx/include/atomic
++++ macports_master/projects/libcxx/include/atomic
 @@ -1885,4 +1885,50 @@ typedef atomic<uintmax_t> atomic_uintmax_t;
  
  _LIBCPP_END_NAMESPACE_STD
@@ -312,5 +312,5 @@ index f55e28ff5..9ccf1ca75 100644
 +
  #endif  // _LIBCPP_ATOMIC
 -- 
-2.15.1
+2.13.2
 
