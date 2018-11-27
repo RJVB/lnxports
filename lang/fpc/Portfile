@@ -4,7 +4,7 @@
 PortSystem          1.0
 
 name                fpc
-version             3.0.0
+version             3.0.4
 categories          lang
 platforms           darwin
 license             GPL-2 LGPL-2
@@ -14,11 +14,12 @@ long_description    Open source compiler for Pascal and Object Pascal
 homepage            http://www.freepascal.org
 master_sites        sourceforge:freepascal
 
-set bin             fpc-3.0.0.x86_64-linux.tar
-set src             fpcbuild-3.0.0.tar.gz
-distfiles           ${src}
-checksums           rmd160  07a8692836f7e85d6333f7e3074a69aa107ed2d4 \
-                    sha256  c952a6f1fc9a32da7a3f77c309e64fa1b536516e4fae16ff58ac10d5ece85dd4
+distname            fpc-${version}.x86_64-linux
+# set src             fpcbuild-${version}.tar.gz
+extract.suffix      .tar
+distfiles           ${distname}${extract.suffix}
+checksums           rmd160  e503857fd6c5cf77878f575d6fa58a1bd641eeab \
+                    sha256  7e965baf13c9822a0ff39e7bbfa040bd5599e94d0f3338f1ac4efa989081fd77
 
 universal_variant   no
 
@@ -62,9 +63,6 @@ subport "chmcmd-${name}" {
 #     destroot {
 #         xinstall -m 755 ${build.dir}/chmcmd ${destroot}${prefix}/bin
 #     }
-    distfiles           ${bin}
-    checksums           rmd160  07a8692836f7e85d6333f7e3074a69aa107ed2d4 \
-                        sha256  c952a6f1fc9a32da7a3f77c309e64fa1b536516e4fae16ff58ac10d5ece85dd4
     worksrcdir          ${name}-${version}.x86_64-linux
 
     extract.suffix      .tar
@@ -83,10 +81,8 @@ subport "chmcmd-${name}" {
 
 if {${subport} eq "${name}"} {
 
-    distfiles           ${bin}
-    checksums           rmd160  07a8692836f7e85d6333f7e3074a69aa107ed2d4 \
-                        sha256  c952a6f1fc9a32da7a3f77c309e64fa1b536516e4fae16ff58ac10d5ece85dd4
     worksrcdir          ${name}-${version}.x86_64-linux
+    distname            ${worksrcdir}
 
     extract.suffix      .tar
     extract.cmd         cat
