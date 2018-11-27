@@ -15,7 +15,6 @@ homepage            http://www.freepascal.org
 master_sites        sourceforge:freepascal
 
 distname            fpc-${version}.x86_64-linux
-# set src             fpcbuild-${version}.tar.gz
 extract.suffix      .tar
 distfiles           ${distname}${extract.suffix}
 checksums           rmd160  e503857fd6c5cf77878f575d6fa58a1bd641eeab \
@@ -29,50 +28,55 @@ subport "chmcmd-${name}" {
     description         The FPC Pascal htmlhelp (CHM) compiler
     long_description    chmcmd is an cross-platform utility to generate compressed HTML (.chm)\
                         documentation, written in Free Pascal
-#     distfiles           ${src}
-#     checksums           rmd160  e921a79d1898b959ee71909d6cd2f036b00477bd \
-#                         sha256  d5913b1d5d3d13190ae7ee72c305d5da49ac2ddc1b375b814751ef09ae5c80ec
-#     depends_build-append \
-#                     port:${name}
-#     extract.post_args-append \
-#                     ${name}build-${version}/fpcsrc/packages/chm \
-#                     ${name}build-${version}/fpcsrc/packages/fcl-xml \
-#                     ${name}build-${version}/fpcsrc/packages/fcl-base \
-#                     ${name}build-${version}/fpcsrc/packages/fcl-process \
-#                     ${name}build-${version}/fpcsrc/packages/fpmkunit \
-#                     ${name}build-${version}/fpcsrc/packages/hash \
-#                     ${name}build-${version}/fpcsrc/packages/iconvenc \
-#                     ${name}build-${version}/fpcsrc/packages/libtar \
-#                     ${name}build-${version}/fpcsrc/packages/paszlib \
-#                     ${name}build-${version}/fpcsrc/packages/univint \
-#                     ${name}build-${version}/fpcsrc/rtl
-#     worksrcdir      ${name}build-${version}/fpcsrc/packages/chm
-#     configure.cmd   ${fpcbasepath}/bin/fpcmake
-#     configure.pre_args
-#     configure.args  -r -v -T all
-#     configure.post_args
-#     build.env       PREFIX=${prefix} \
-#                     CPU_TARGET=${build_arch} \
-#                     OS_TARGET=${os.platform}
-#     build.target    all
-#     build.post_args-append \
-#                     V=1 VERBOSE=1
-#     post-configure {
-#         xinstall -m 755 -d ${build.dir}/units/${build_arch}-darwin/
-#     }
-#     destroot {
-#         xinstall -m 755 ${build.dir}/chmcmd ${destroot}${prefix}/bin
-#     }
-    worksrcdir          ${name}-${version}.x86_64-linux
+#     set build_from_source yes
+    if {[tbool build_from_source]} {
+        distname    fpcbuild-${version}
+        extract.suffix \
+                    .tar.gz
+        distfiles   ${distname}${extract.suffix}
+        checksums   rmd160  f9414fe72342cff4317029f3a83a90e8dc710389 \
+                    sha256  f66514e6f2c2e4e1bccccb4d554c24b77682ed61c87811ae5dd210f421855e76 \
+        depends_build-append \
+                    port:${name}
+        extract.post_args-append \
+                    ${name}build-${version}/fpcsrc/packages/chm \
+                    ${name}build-${version}/fpcsrc/packages/fcl-xml \
+                    ${name}build-${version}/fpcsrc/packages/fcl-base \
+                    ${name}build-${version}/fpcsrc/packages/fcl-process \
+                    ${name}build-${version}/fpcsrc/packages/fpmkunit \
+                    ${name}build-${version}/fpcsrc/packages/hash \
+                    ${name}build-${version}/fpcsrc/packages/iconvenc \
+                    ${name}build-${version}/fpcsrc/packages/libtar \
+                    ${name}build-${version}/fpcsrc/packages/paszlib \
+                    ${name}build-${version}/fpcsrc/packages/univint \
+                    ${name}build-${version}/fpcsrc/rtl
+        worksrcdir  ${name}build-${version}/fpcsrc/packages/chm
+        use_configure \
+                    yes
+        configure.cmd \
+                    ${fpcbasepath}/bin/fpcmake
+        configure.pre_args
+        configure.args \
+                    -r -v Makefile.fpc.fpcmake
+        configure.env \
+                    FPCOPT="${configure.optflags}"
+        configure.post_args
+        build.env   PREFIX=${prefix}
+        build.target
+        build.post_args-append \
+                    -k V=1 VERBOSE=1 FPCOPT+="${configure.optflags}"
+    } else {
+        worksrcdir      ${name}-${version}.x86_64-linux
 
-    extract.suffix      .tar
-    extract.cmd         cat
-    extract.pre_args
+        extract.suffix  .tar
+        extract.cmd     cat
+        extract.pre_args
 
-    use_configure       no
-    build {
-        system -W ${worksrcpath} "tar -xf binary.x86_64-linux.tar units-chm.x86_64-linux.tar.gz"
-        system -W ${worksrcpath} "tar -xf units-chm.x86_64-linux.tar.gz bin/chmcmd"
+        use_configure   no
+        build {
+            system -W ${worksrcpath} "tar -xf binary.x86_64-linux.tar units-chm.x86_64-linux.tar.gz"
+            system -W ${worksrcpath} "tar -xf units-chm.x86_64-linux.tar.gz bin/chmcmd"
+        }
     }
     destroot {
         xinstall -m 755 ${build.dir}/bin/chmcmd ${destroot}${prefix}/bin
