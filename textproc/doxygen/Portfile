@@ -2,10 +2,10 @@
 
 PortSystem              1.0
 PortGroup               cmake 1.1
+PortGroup 		    conflicts_build 1.0
 
 name                    doxygen
-version                 1.8.13
-revision                2
+version                 1.8.14
 categories              textproc devel
 maintainers             css openmaintainer
 license                 GPL-2
@@ -36,8 +36,11 @@ master_sites            http://ftp.stack.nl/pub/users/dimitri/ \
 distfiles               ${distname}.src${extract.suffix}
 
 checksums               ${distname}.src${extract.suffix} \
-                        rmd160  00f6f8baeead8c3d99eabe1d61ffefa4e48af1f9 \
-                        sha256  af667887bd7a87dc0dbf9ac8d86c96b552dfb8ca9c790ed1cbffaa6131573f6b
+                        rmd160  e8d806ff3efa4e7e954209d466f2d81b258bdbbf \
+                        sha256  d1757e02755ef6f56fd45f1f4398598b920381948d6fcfa58f5ca6aa56f59d4d \
+                        size    4877980
+
+installs_libs           no
 
 depends_build-append    bin:perl:perl5 \
                         bin:python2.7:python27 
@@ -45,22 +48,17 @@ depends_build-append    bin:perl:perl5 \
 #                         port:bison
 license_noconflict      perl5 python27
 
-depends_lib             port:libpng \
-                        port:libiconv
-
-# patchfiles              patch-src-portable_c.c.diff
-patchfiles-append       fix_dumb_cxxflags.patch \
-                        patch-findiconv.diff
-
-# temporary patch to fix possible use of NULL pointer.
-# see also: https://github.com/doxygen/doxygen/commit/381d9d286dd27ce0ba14989b51011070d8583d62
-patchfiles-append       patch-src-xmlgen.cpp.diff
+depends_lib             port:libpng
+conflicts_build-append  libiconv-dev
 
 configure.cflags-append -pthread
 configure.cxxflags-append -pthread
+#patchfiles              patch-src-portable_c.c.diff 
+patchfiles              patch-CMakeLists.txt.diff
 
 # see #50342
-configure.args-append -DPython_ADDITIONAL_VERSIONS=2.7
+configure.args-append -DPython_ADDITIONAL_VERSIONS=2.7 \
+                      -DICONV_DIR=${prefix}/lib
 
 # cmake PortGroup sets arch flags
 # duplicate archflags can cause problems
@@ -105,7 +103,15 @@ post-extract {
     delete ${worksrcpath}/src/vhdlparser.h
 }
 
+if {[string match *clang* ${configure.cxx}]} {
+    variant libcxx description {highly experimental option to build against libc++. \
+            Requires using clang and an independently provided libc++ installation.} {
+        configure.cxx_stdlib \
+                        libc++
+    }
+}
 set cxx_stdlibflags {}
+
 if {[string match *clang* ${configure.cxx}]} {
     set cxx_stdlibflags -stdlib=${configure.cxx_stdlib}
 }
