@@ -48,6 +48,13 @@ if {${kf5::includecounter} == 0} {
     PortGroup           qt5 1.0
     PortGroup           active_variants 1.1
 
+    pre-fetch {
+        if {${os.platform} eq "darwin" && ${os.major} < 13} {
+            ui_error "KF5 no longer supports Mac OS versions older than 10.9"
+            return -code error "KF5 requires 10.9 or newer"
+        }
+    }
+
     if {![info exists qt5.using_kde] || !${qt5.using_kde}} {
         pre-fetch {
             ui_warn "It is strongly advised to install KF5 ports against port:qt5-kde or port:qt5-kde-devel; any other configuration is not supported."
@@ -104,7 +111,7 @@ if { ![ info exists kf5.project ] } {
 
 # KF5 frameworks current version, which is the same for all frameworks
 if {![info exists kf5.version]} {
-    set kf5.version     5.47.0
+    set kf5.version     5.52.0
     # kf5.latest_version is supposed to be used only in the KF5-Frameworks Portfile
     # when updating it to the new version (=kf5.latest_version). This feature is
     # activated only when a file `port dir KF5-Frameworks`/files/enable_latest exists.
@@ -159,6 +166,13 @@ if {${kf5::includecounter} == 0} {
         if {![variant_isset nativeQSP]} {
             configure.cppflags-append \
                             -DQT_USE_EXTSTANDARDPATHS -DQT_EXTSTANDARDPATHS_ALT_DEFAULT=true
+            # experimental:
+            configure.args-append \
+                            -DAPPLE_FORCE_UNIX_DIRS=ON -DAPPLE_SUPPRESS_INSTALLDIRS_WARNING=OFF
+        } else {
+            # experimental:
+            configure.args-append \
+                            -DAPPLE_FORCE_UNIX_DIRS=OFF -DAPPLE_SUPPRESS_INSTALLDIRS_WARNING=ON
         }
     }
 
@@ -206,7 +220,6 @@ if {${kf5::includecounter} == 0} {
                             ${prefix}/lib/pkgconfig
         configure.args-append \
                             -DBUNDLE_INSTALL_DIR=${kf5.applications_dir} \
-                            -DCMAKE_DISABLE_FIND_PACKAGE_X11=ON \
                             -DAPPLE_SUPPRESS_X11_WARNING=ON \
                             -DCMAKE_INSTALL_LIBEXECDIR=${prefix}/libexec \
                             -DKDE_INSTALL_LIBEXECDIR=${kf5.libexec_dir} \
@@ -454,7 +467,7 @@ proc kf5.set_project {project} {
                             ${kf5.release}
                     }
                     livecheck.url \
-                            http://download.kde.org/stable/${kf5.virtualPath}
+                            https://download.kde.org/stable/${kf5.virtualPath}
                     livecheck.regex \
                             (\\d+\\.\\d+\\.\\d)
                     set kf5::cat "KF5-Applications"
@@ -484,7 +497,7 @@ proc kf5.set_project {project} {
         }
         distname            ${project}-${kf5.version}.git
     } else {
-        master_sites        http://download.kde.org/${dbranch}/${f}
+        master_sites        https://download.kde.org/${dbranch}/${f}
     }
 }
 
@@ -524,6 +537,11 @@ if {${kf5::includecounter} == 0} {
                     } else {
                         set chmargs ""
                     }
+                    if {[file exists ${qt_bins_dir}/qhelpgeneratorng]} {
+                        set QHELPGENERATOR "${qt_bins_dir}/qhelpgeneratorng"
+                    } else {
+                        set QHELPGENERATOR "${qt_bins_dir}/qhelpgenerator"
+                    }
                     # this appears to be necessary, sometimes:
                     system "chmod 755 ${workpath}/apidocs"
                     if {[info exists kf5.framework]} {
@@ -532,7 +550,7 @@ if {${kf5::includecounter} == 0} {
                         xinstall -m 755 -d ${kapidox_dir}
                         if {[catch {system -W ${kapidox_dir} "kapidox_generate --qhp \
                             ${chmargs} \
-                            --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${qt_bins_dir}/qhelpgenerator \
+                            --qtdoc-dir ${qt_docs_dir} --qhelpgenerator ${QHELPGENERATOR} \
                             ${worksrcpath}"} result context]} {
                             ui_warn "Failure generating documentation: ${result}"
                         }
@@ -558,7 +576,7 @@ if {${kf5::includecounter} == 0} {
                         system -W ${build.dir} "kgenapidox --qhp --searchengine --api-searchbox \
                             ${chmargs} \
                             --qtdoc-dir ${qt_docs_dir} --kdedoc-dir ${kf5.docs_dir} \
-                            --qhelpgenerator ${qt_bins_dir}/qhelpgenerator ${worksrcpath}"
+                            --qhelpgenerator ${QHELPGENERATOR} ${worksrcpath}"
                         # after creating the destination, copy all generated qch documentation to it
                         foreach doc [glob -nocomplain ${build.dir}/apidocs/qch/*.qch  ${build.dir}/apidocs/html/*.chm] {
                             if {[file tail ${doc}] ne "None.qch"} {
@@ -598,10 +616,10 @@ if {${kf5::includecounter} == 0} {
         # specific for +docs and -docs !
         post-patch {
             if {[file exists ${worksrcpath}/CMakeLists.txt]} {
-                reinplace "/add_subdirectory.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
-                reinplace "/add_subdirectory.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
-                reinplace "/ADD_SUBDIRECTORY.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
-                reinplace "/ADD_SUBDIRECTORY.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+                reinplace -q "/add_subdirectory.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+                reinplace -q "/add_subdirectory.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+                reinplace -q "/ADD_SUBDIRECTORY.*(\[ ]*docs\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
+                reinplace -q "/ADD_SUBDIRECTORY.*(\[ \]*doc\[ \]*)/d" ${worksrcpath}/CMakeLists.txt
             }
         }
     }
@@ -727,7 +745,7 @@ if {${kf5::includecounter} == 0} {
     options kf5.wrapper_env_additions
     default kf5.wrapper_env_additions ""
     proc kf5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""}} {
-        global kf5.applications_dir os.platform kf5.wrapper_env_additions
+        global kf5.applications_dir os.platform kf5.wrapper_env_additions destroot prefix
 
         qt5.wrapper_env_additions "[join ${kf5.wrapper_env_additions}]"
         if {${os.platform} eq "darwin"} {
@@ -750,6 +768,10 @@ if {${kf5::includecounter} == 0} {
             }
         }
         qt5.add_app_wrapper ${wrappername} ${bundlename} ${bundleexec} ${kf5.applications_dir}
+        # modify the Exec entry in the port's .desktop files
+        foreach df [glob -nocomplain ${destroot}${prefix}/share/applications/*${bundlename}*.desktop] {
+            reinplace -q "s|Exec=${bundlename}|Exec=${prefix}/bin/${wrappername}|g" ${df}
+        }
     }
 
     # procedure to record a conflict with a KDE4 port if kde4compat isn't active. This procedure
@@ -916,6 +938,15 @@ if {${kf5::includecounter} == 0} {
         cmake.save_configure_cmd
     }
 
+#     if {[variant_exists LTO] && [variant_isset LTO]} {
+#         if {[string match *clang++-mp* ${configure.cxx}]} {
+#             configure.args-append   -DCMAKE_AR=[string map {"clang++" "llvm-ar"} ${configure.cxx}] \
+#                                     -DCMAKE_RANLIB=[string map {"clang++" "llvm-ranlib"} ${configure.cxx}]
+#         } elseif {[string match *clang-mp* ${configure.cc}]} {
+#             configure.args-append   -DCMAKE_AR=[string map {"clang" "llvm-ar"} ${configure.cc}] \
+#                                     -DCMAKE_RANLIB=[string map {"clang" "llvm-ranlib"} ${configure.cc}]
+#         }
+#     }
 }
 
 set kf5::includecounter [expr ${kf5::includecounter} + 1]

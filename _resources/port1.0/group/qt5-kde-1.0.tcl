@@ -577,16 +577,29 @@ if {![tbool QT53] && ![tbool qt5.no_LTO_variant]} {
 
 if {![info exists building_qt5]} {
     if {[variant_exists LTO] && [variant_isset LTO]} {
-        configure.cflags-append         -flto
-        configure.cxxflags-append       -flto
-        configure.objcflags-append      -flto
-        configure.objcxxflags-append    -flto
+        set clang_version [string map {"macports-clang-" ""} ${configure.compiler}]
+        if {"${clang_version}" ne "${configure.compiler}" && [vercmp ${clang_version} "4.0"] >= 0} {
+            # the compiler supports "ThinLTO", use it
+            set lto_flag                "-flto=thin"
+        } else {
+            set lto_flag                "-flto"
+        }
+        configure.cflags-append         ${lto_flag}
+        configure.cxxflags-append       ${lto_flag}
+        configure.objcflags-append      ${lto_flag}
+        configure.objcxxflags-append    ${lto_flag}
         # ${configure.optflags} is a list, and that can lead to strange effects
         # in certain situations if we don't treat it as such here.
         foreach opt ${configure.optflags} {
             configure.ldflags-append ${opt}
         }
-        configure.ldflags-append        -flto
+        configure.ldflags-append        ${lto_flag}
+        platform darwin {
+            pre-configure {
+                xinstall -m 755 -d ${build.dir}/.lto_cache
+            }
+            configure.ldflags-append    -Wl,-cache_path_lto,${build.dir}/.lto_cache
+        }
         # assume any compiler not clang will be gcc
         if {![string match "*clang*" ${configure.compiler}]} {
             configure.cflags-append     -fuse-linker-plugin -ffat-lto-objects
@@ -778,7 +791,12 @@ proc qt5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""} {appdir ""
             if {${bundleexec} eq ""} {
                 set bundleexec [file tail ${bundlename}]
             }
-            puts ${fd} "exec \"${appdir}/${bundlename}.app/Contents/MacOS/${bundleexec}\" \"\$\@\""
+            if {[file dirname ${bundleexec}] eq "."} {
+                puts ${fd} "exec \"${appdir}/${bundlename}.app/Contents/MacOS/${bundleexec}\" \"\$\@\""
+            } else {
+                # fully qualified bundleexec, use "as is"
+                puts ${fd} "exec \"${bundleexec}\" \"\$\@\""
+            }
         } else {
             global qt_libs_dir
             # no app bundles on this platform, but provide the same API by pretending there are.
@@ -790,8 +808,16 @@ proc qt5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""} {appdir ""
             if {${bundleexec} eq ""} {
                 set bundleexec ${bundlename}
             }
-            puts ${fd} "export LD_LIBRARY_PATH=\$\{LD_LIBRARY_PATH\}:${prefix}/lib:${qt_libs_dir}"
-            puts ${fd} "exec \"${appdir}/${bundleexec}\" \"\$\@\""
+            puts ${fd} "if \[ \"\$\{LD_LIBRARY_PATH\}\" = \"\" \] \;then"
+            puts ${fd} "    export LD_LIBRARY_PATH=${prefix}/lib:${qt_libs_dir}"
+            puts ${fd} "else"
+            puts ${fd} "    export LD_LIBRARY_PATH=\$\{LD_LIBRARY_PATH\}:${prefix}/lib:${qt_libs_dir}"
+            puts ${fd} "fi"
+            if {[file dirname ${bundleexec}] eq "."} {
+                puts ${fd} "exec \"${appdir}/${bundleexec}\" \"\$\@\""
+            } else {
+                puts ${fd} "exec \"${bundleexec}\" \"\$\@\""
+            }
         }
         close ${fd}
         system "chmod 755 ${destroot}${prefix}/bin/${wrappername}"
@@ -948,6 +974,11 @@ post-activate {
             set needs_generate yes
         }
         if {${needs_generate}} {
+            if {[file exists ${qt_bins_dir}/qhelpgeneratorng]} {
+                set QHELPGENERATOR "${qt_bins_dir}/qhelpgeneratorng"
+            } else {
+                set QHELPGENERATOR "${qt_bins_dir}/qcollectiongenerator"
+            }
             # we only store documentation that's not from Qt in the generated collection file;
             # this appears to be necessary with Qt >= 5.8 to prevent indexing and too-many-open-files errors
             set candidates {}
@@ -978,7 +1009,9 @@ post-activate {
                 puts ${fp} "  </docFiles>"
                 puts ${fp} "</QHelpCollectionProject>"
                 close ${fp}
-                catch {system -W ${qhcdir} "time ${qt_bins_dir}/qcollectiongenerator ${qhcpfile} -o ${qhcfile}"}
+                catch {system -W ${qhcdir} "time ${QHELPGENERATOR} ${qhcpfile} -o ${qhcdir}/${qhcfile}"}
+                # this file has to be world-writable, annoyingly
+                file attributes ${qhcdir}/${qhcfile} -permissions ugo+rw
                 file delete -force ${qhcdir}/${qhcpfile}
             } else {
                 ui_debug "cannot create ${qhcdir}/${qhcpfile}: ${err}"
@@ -986,7 +1019,7 @@ post-activate {
             if {[file exists "${qhcdir}/${qhcfile}"]} {
                 # (re)register all candidates
                 foreach q ${candidates} {
-                    catch {system -W ${qhcdir} "${prefix}/bin/assistant-qt5 -collectionFile ${qhcfile} -register [file normalize ${q}]"}
+                    catch {system -W ${qhcdir} "${prefix}/bin/assistant-qt5 -collectionFile ${qhcdir}/${qhcfile} -register [file normalize ${q}]"}
                 }
                 # be sure the file mdate is updated"
                 system "touch \"${qhcdir}/${qhcfile}\""

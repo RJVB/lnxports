@@ -5,7 +5,7 @@ PortGroup           python 1.0
 
 name                py-sip
 categories-append   devel
-maintainers         michaelld openmaintainer
+maintainers         {michaelld @michaelld} openmaintainer
 license             {GPL-2 GPL-3 PSF}
 platforms           macosx
 
@@ -18,11 +18,16 @@ long_description \
     but can be used to create bindings for any \
     C or C++ library.
 
-homepage            http://www.riverbankcomputing.co.uk/software/sip/intro
+homepage            https://www.riverbankcomputing.com/software/sip/intro
 
-version             4.19.1
+version             4.19.12
 
-# from siplib/sip.h.in:
+# bumped the epoch to revert from 4.19.10 to 4.19.8. The former caused
+# configuration errors in py*-qscitilla-qt5 and py*-pyqt4, and
+# possibly others. See also: https://trac.macports.org/ticket/56746 .
+epoch               1
+
+# from siplib/sip.h[.in]:
 #
 # Define the current API version number.  SIP must handle modules with
 # the same major number and with the same or earlier minor number.
@@ -31,7 +36,13 @@ version             4.19.1
 # removed or the order changed then the major number must be
 # incremented and the minor number set to 0.
 #
-# SIP 4.19.1 provides SIP API 12.1
+# SIP 4.19.12 provides SIP API 12.5
+# SIP 4.19.[9-11] do not work with MacPorts
+# -> see the "epoch" note above for more info
+# SIP 4.19.8 provides SIP API 12.4
+# SIP 4.19.[4-7] provides SIP API 12.3
+# SIP 4.19.3 provides SIP API 12.2
+# SIP 4.19.[1-2] provides SIP API 12.1
 # SIP 4.19.0 provides SIP API 12.0
 # SIP 4.18.[0-1] provides SIP API 11.3
 # SIP 4.17.0 provides SIP API 11.2
@@ -44,7 +55,7 @@ version             4.19.1
 set branch          [join [lrange [split ${version} .] 0 1] .]
 set patch           [lindex [split ${version} .] 2]
 
-python.versions     27 34 35 36
+python.versions     27 34 35 36 37
 python.default_version 27
 
 if {${name} ne ${subport}} {
@@ -57,20 +68,23 @@ if {${name} ne ${subport}} {
         distname        sip-${version}
     }
 
-    checksums           rmd160 007bd447c1baab2874999e2fc9783d7464425573 \
-                        sha256 501852b8325349031b769d1c03d6eab04f7b9b97f790ec79f3d3d04bf065d83e
+    checksums           rmd160 8269298e6625165161505f9426d57abfdf2ea7af \
+                        sha256 24617fc31b983df075500ecac0e99d2fb48bf63ba82d4a17518659e571923822
+#                         size 1036410
 
     patchfiles          patch-siputils.py.diff \
-                        patch-configure.py.diff
+                        patch-specs_linux-g++.diff \
+                        patch-configure.py.diff \
+                        patch-add_ppc64.diff
 
     use_configure       yes
-#     pre-configure {
-#         # Ensure correct compilers are used
-#         reinplace "s|@CC@|${configure.cc}|" \
-#             ${worksrcpath}/specs/macx-g++
-#         reinplace "s|@CXX@|${configure.cxx}|" \
-#             ${worksrcpath}/specs/macx-g++
-#     }
+    pre-configure {
+        # Ensure correct compilers are used
+        reinplace "s|@CC@|${configure.cc}|" \
+            ${worksrcpath}/specs/linux-g++
+        reinplace "s|@CXX@|${configure.cxx}|" \
+            ${worksrcpath}/specs/linux-g++
+    }
 
     post-configure {
         # fix sip bin name
@@ -82,50 +96,58 @@ if {${name} ne ${subport}} {
     configure.pre_args  -d ${python.bin} \
                         -e ${python.include} \
                         -v ${prefix}/share/sip \
+                        -p linux-g++ \
                         --bindir=${prefix}/bin \
                         --destdir=${python.pkgd} \
                         --incdir=${python.include} \
                         --sipdir=${prefix}/share/${subport}
 
-#     # always add some arch flags, since the user might have overridden
-#     # the default arch build (e.g., ticket #44086).
-# 
-#     python.add_archflags    no
-#     if {[variant_isset universal]} {
-# 
-#         foreach arch ${configure.universal_archs} {
-#             configure.args-append   "--arch=${arch}"
-#         }
-#         configure.universal_args
-#         configure.post_args LFLAGS="-F${frameworks_dir} -L${prefix}/lib \
-#                                     ${configure.universal_ldflags}"
-#         configure.post_args-append  CFLAGS="${configure.universal_cflags}"
-#         configure.post_args-append  CXXFLAGS="${configure.universal_cxxflags}"
-# 
-#     } else {
-# 
-#         configure.args-append       "--arch=${configure.build_arch}"
-#         configure.post_args LFLAGS="-F${frameworks_dir} -L${prefix}/lib \
-#                                     ${configure.ld_archflags}"
-#         configure.post_args-append  CFLAGS="${configure.cc_archflags}"
-#         configure.post_args-append  CXXFLAGS="${configure.cxx_archflags}"
-# 
-#     }
+    platform darwin {
+    # always add some arch flags, since the user might have overridden
+    # the default arch build (e.g., ticket #44086).
 
-#     if {[vercmp ${xcodeversion} 4.3] < 0} {
-#         set sdk_dir ${developer_dir}/SDKs
-#     } else {
-#         set sdk_dir ${developer_dir}/Platforms/MacOSX.platform/Developer/SDKs
-#     }
-# 
-#     switch ${os.major} {
-#         8   { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.4u.sdk" }
-#         9   { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.5.sdk" }
-#         10  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.6.sdk" }
-#         11  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.7.sdk" }
-#         12  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.8.sdk" }
-#         13  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.9.sdk" }
-#     }
+    python.add_archflags    no
+    if {[variant_isset universal]} {
+
+        foreach arch ${configure.universal_archs} {
+            configure.args-append   "--arch=${arch}"
+        }
+        configure.universal_args
+        configure.post_args LFLAGS="-F${frameworks_dir} -L${prefix}/lib \
+                                    ${configure.universal_ldflags}"
+        configure.post_args-append  CFLAGS="${configure.universal_cflags}"
+        configure.post_args-append  CXXFLAGS="${configure.universal_cxxflags}"
+
+    } else {
+
+        configure.args-append       "--arch=${configure.build_arch}"
+        configure.post_args LFLAGS="-F${frameworks_dir} -L${prefix}/lib \
+                                    ${configure.ld_archflags}"
+        configure.post_args-append  CFLAGS="${configure.cc_archflags}"
+        configure.post_args-append  CXXFLAGS="${configure.cxx_archflags}"
+
+    }
+
+    if {[vercmp ${xcodeversion} 4.3] < 0} {
+        set sdk_dir ${developer_dir}/SDKs
+    } else {
+        set sdk_dir ${developer_dir}/Platforms/MacOSX.platform/Developer/SDKs
+    }
+
+    switch ${os.major} {
+        8   { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.4u.sdk" }
+        9   { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.5.sdk" }
+        10  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.6.sdk" }
+        11  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.7.sdk" }
+        12  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.8.sdk" }
+        13  { configure.args-append   "--sdk=${sdk_dir}/MacOSX10.9.sdk" }
+    }
+    }
+    platform linux {
+        configure.post_args         LFLAGS="-F${frameworks_dir} -L${prefix}/lib"
+        configure.post_args-append  CFLAGS="${configure.cflags}"
+        configure.post_args-append  CXXFLAGS="${configure.cxxflags}"
+    }
 
     build.cmd           make
     build.target        all
@@ -164,7 +186,7 @@ if {[string last devel ${subport}] != -1} {
 } else {
 
     livecheck.type   regex
-    livecheck.url       http://www.riverbankcomputing.co.uk/software/sip/download
-    livecheck.regex     sip-(\\d+(\\.\\d+)+)${extract.suffix}
+    livecheck.url    https://www.riverbankcomputing.com/software/sip/download
+    livecheck.regex  sip-(\\d+(\\.\\d+)+)${extract.suffix}
 
 }
