@@ -35,7 +35,8 @@ checksums               ${name}-${version}.src${extract.suffix} \
 if {${os.platform} eq "linux"} {
     PortGroup           cmake 1.1
     worksrcdir          llvm-${version}.src
-    depends_lib         port:libedit port:libffi port:ncurses port:zlib
+    depends_build       port:libedit
+    depends_lib         port:libffi port:ncurses port:zlib
 
     post-extract {
         file rename ${workpath}/${name}-${version}.src ${worksrcpath}/projects/libcxx
