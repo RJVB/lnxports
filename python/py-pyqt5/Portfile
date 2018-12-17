@@ -22,6 +22,7 @@ checksums               rmd160  01f76afac6ddc9267dda3a0510795b8d2df57247 \
 
 
 python.versions 27 34 35 36 37
+subport "${name}-common" {}
 
 # if {${os.major} <= 14 && ${os.platform} eq "darwin"} {
 #     version             5.9.2
@@ -32,7 +33,21 @@ python.versions 27 34 35 36 37
 # #                         size    3102848
 # }
 
-if {${name} ne ${subport}} {
+if {${subport} eq "${name}-common"} {
+    description-append          (.sip sourcefiles)
+    long_description-append     This port contains the .sip source files.
+    depends_lib
+    use_configure               no
+    universal_variant           no
+    build                       {}
+    destroot {
+        xinstall -m 755 -d ${destroot}${prefix}/share/sip/PyQt5
+        # copy all relevant directories from ${worksrcpath}/sip into the destination.
+        # This is exactly what the regular build system does.
+        file copy {*}[glob -directory ${worksrcpath}/sip/ Q*] ${destroot}${prefix}/share/sip/PyQt5
+        file copy ${worksrcpath}/sip/Enginio ${destroot}${prefix}/share/sip/PyQt5
+    }
+} elseif {${name} ne ${subport}} {
     PortGroup           qmake5 1.0
 
     # pull in the Qt5 meta-port
@@ -46,6 +61,11 @@ if {${name} ne ${subport}} {
         depends_lib-append \
                         port:py${python.version}-sip
     }
+
+    # declare a runtime, arch-independent dependency on ${name}-common
+    depends_run-append  port:${name}-common
+    depends_skip_archcheck-append \
+                        ${name}-common
 
     use_configure       yes
     configure.pre_args
@@ -79,7 +99,7 @@ if {${name} ne ${subport}} {
                         --confirm-license \
                         --sip=${prefix}/bin/sip-${python.branch} \
                         --sip-incdir=${python.include} \
-                        -b ${prefix}/bin \
+                        -b ${python.prefix}/bin \
                         -d ${python.pkgd} \
                         --designer-plugindir=${qt_plugins_dir}/designer/Py${python.version}Qt5 \
                         --qml-plugindir=${qt_plugins_dir}/Py${python.version}Qt5 \
@@ -89,7 +109,8 @@ if {${name} ne ${subport}} {
                         --disable=QtWebEngine \
                         --disable=QtWebEngineCore \
                         --disable=QtWebEngineWidgets \
-                        --no-dist-info
+                        --no-dist-info \
+                        --no-sip-files
     }
     configure.args-append \
                         --disable=Qt3D
@@ -128,24 +149,24 @@ if {${name} ne ${subport}} {
 
     variant webengine conflicts universal description {Build QtWebEngine module} {
         qt5.depends_component qtwebengine
-        configure.args-delete --disable=QtWebEngine \
-                              --disable=QtWebEngineCore \
-                              --disable=QtWebEngineWidgets
+        configure.args-delete   --disable=QtWebEngine \
+                                --disable=QtWebEngineCore \
+                                --disable=QtWebEngineWidgets
     }
 
     variant webkit description {Build QtWebKit module} {
         qt5.depends_component qtwebkit
-        configure.args-delete --disable=QtWebKit \
-                              --disable=QtWebKitWidgets
+        configure.args-delete   --disable=QtWebKit \
+                                --disable=QtWebKitWidgets
     }
 
     variant qt3d description {Build the Qt3D module} {
         qt5.depends_component qt3d
-        configure.args-delete --disable=Qt3D
+        configure.args-delete   --disable=Qt3D
     }
 
     variant graceful description {Don't abort (crash) on Python errors} {
-        patchfiles-append  patch-no-abort-on-python-errors.diff
+        patchfiles-append       patch-no-abort-on-python-errors.diff
     }
 
 }
