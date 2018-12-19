@@ -1,19 +1,19 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 143592 2015-12-15 15:02:40Z ryandesign@macports.org $
 
 PortSystem              1.0
 PortGroup               muniversal 1.0
+PortGroup               locale_select 1.0
 
 name                    wget
-version                 1.17.1
+version                 1.19.5
 categories              net www
-maintainers             ryandesign openmaintainer
+maintainers             {ryandesign @ryandesign} openmaintainer
 license                 GPL-3+
-homepage                http://www.gnu.org/software/wget/
+homepage                https://www.gnu.org/software/wget/
 platforms               darwin freebsd
 use_parallel_build      yes
 master_sites            gnu
-use_xz                  yes
+use_lzip                yes
 
 description \
     internet file retriever
@@ -24,50 +24,91 @@ long_description \
     non-interactive commandline tool, so it may easily be called from \
     scripts, cron jobs, terminals without Xsupport, etc.
 
-checksums               rmd160  8ad5e9936c66ced9ad4ffc5012484a38f4a15cee \
-                        sha256  fe559b61eb9cc01635ac6206a14e02cb51591838c35fa83c7a4aacae0bdd97c9
+checksums               rmd160  8da0bc988f14e340d00c02b589b86f454cb8cb04 \
+                        sha256  29fbe6f3d5408430c572a63fe32bd43d5860f32691173dfd84edc06869edca75 \
+                        size    2204066
 
-configure.args \
-    --without-ssl
+configure.args          --enable-option-checking \
+                        --disable-silent-rules \
+                        --enable-opie \
+                        --enable-digest \
+                        --enable-ntlm \
+                        --enable-debug \
+                        --disable-valgrind-tests \
+                        --disable-assert \
+                        --enable-largefile \
+                        --enable-threads=posix \
+                        --enable-nls \
+                        --enable-ipv6 \
+                        --enable-iri \
+                        --enable-pcre \
+                        --without-ssl \
+                        --with-zlib \
+                        --with-metalink \
+                        --without-cares \
+                        --with-libiconv-prefix=${prefix} \
+                        --with-libintl-prefix=${prefix} \
+                        --with-libunistring-prefix=${prefix} \
+                        --without-libpth-prefix \
+                        --without-included-regex \
+                        --without-gpgme-prefix \
+                        --with-libidn \
+                        --without-libuuid
+
+# use a specific MacPorts perl version
+# older system perl versions (10.6 and earlier) do not support pod2man --utf8
+# https://trac.macports.org/ticket/50164
+
+set perl_version        5.26
 
 depends_build           bin:pod2man:perl5 \
+                        bin:makeinfo:texinfo \
                         port:pkgconfig
 
-depends_lib \
-    port:libidn \
-    port:gettext \
-    port:pcre
+depends_test            port:p${perl_version}-libwww-perl \
+                        port:p${perl_version}-io-socket-ssl
 
-patchfiles              nawk.patch \
-                        prefix.patch
+depends_lib \
+    port:libiconv \
+    port:libidn2 \
+    port:libunistring \
+    port:libpsl \
+    port:gettext \
+    port:nettle \
+    port:pcre \
+    port:zlib \
+    port:libmetalink \
+    port:gpgme
+
+patchfiles              prefix.patch
+
+# configure.perl          ${prefix}/bin/perl${perl_version}
+# configure.env-append    POD2MAN=${prefix}/bin/pod2man-${perl_version}
 
 # Ensure libuuid doesn't get used even if the ossp-uuid port is installed.
 configure.args-append       ac_cv_header_uuid_uuid_h=no
 
-# Remove test variant and use depends_test when that becomes available (#38208)
-pre-test {
-    if {![variant_isset test]} {
-        ui_error "To run the tests, you must select the +test variant."
-        return -code error "+test variant not selected"
-    }
-}
-variant test description {Add dependencies needed to run tests} {
-    depends_build-append    port:p5-libwww-perl \
-                            port:p5-io-socket-ssl
-    test.run                yes
-    test.target             check
+test.run                yes
+test.target             check
+
+variant gnutls conflicts ssl description {SSL support via GnuTLS} {
+    configure.args-replace  --without-ssl --with-ssl=gnutls
+    configure.args-append   --with-libgnutls-prefix=${prefix}
+    depends_lib-append      port:gnutls
 }
 
-variant ssl description {Build with SSL support using GnuTLS} {
-#     depends_lib-append      port:gnutls
-    configure.args-delete   --without-ssl
+variant ssl conflicts gnutls description {SSL support via OpenSSL} {
+    configure.args-replace  --without-ssl --with-ssl=openssl
+    configure.args-append   --with-libssl-prefix=${prefix}
+    depends_lib-append      path:lib/libssl.dylib:openssl
 }
 
-default_variants        +ssl
+if {![variant_isset gnutls]} {
+    default_variants +ssl
+}
 
 post-patch {
     reinplace "s|@PREFIX@|${prefix}|g" \
-        ${worksrcpath}/ChangeLog \
         ${worksrcpath}/README \
         ${worksrcpath}/NEWS \
         ${worksrcpath}/doc/sample.wgetrc \
