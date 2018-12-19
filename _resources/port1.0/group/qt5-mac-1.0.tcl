@@ -7,12 +7,13 @@
 
 global available_qt_versions
 array set available_qt_versions {
-    qt5  {qt5-qtbase  5.11}
-    qt59 {qt59-qtbase 5.9}
-    qt58 {qt58-qtbase 5.8}
-    qt57 {qt57-qtbase 5.7}
-    qt56 {qt56-qtbase 5.6}
-    qt55 {qt55-qtbase 5.5}
+    qt5   {qt5-qtbase   5.12}
+    qt511 {qt511-qtbase 5.11}
+    qt59  {qt59-qtbase  5.9}
+    qt58  {qt58-qtbase  5.8}
+    qt57  {qt57-qtbase  5.7}
+    qt56  {qt56-qtbase  5.6}
+    qt55  {qt55-qtbase  5.5}
 }
 #qt5-kde {qt5-kde 5.8}
 
@@ -87,30 +88,34 @@ proc qt5.get_default_name {} {
         #
         # OS X Yosemite (10.10)
         #
-        # Qt 5.10: Not Supported but seems to work
+        # Qt 5.10: Not Supported and QtWebEngine fails
         # Qt 5.9:  Supported
         # Qt 5.8:  Supported
         # Qt 5.7:  Supported
         # Qt 5.6:  Supported
         #
-        return qt5
+        return qt59
         #
     } elseif { ${os.major} == 15 } {
         #
         # OS X El Capitan (10.11)
         #
+        # Qt 5.12: Not Supported
+        # Qt 5.11: Supported
         # Qt 5.10: Supported
         # Qt 5.9:  Supported
         # Qt 5.8:  Supported
         # Qt 5.7:  Supported
         # Qt 5.6:  Supported
         #
-        return qt5
+        return qt511
         #
     } elseif { ${os.major} == 16 } {
         #
         # macOS Sierra (10.12)
         #
+        # Qt 5.12: Supported
+        # Qt 5.11: Supported
         # Qt 5.10: Supported
         # Qt 5.9:  Supported
         # Qt 5.8:  Supported
@@ -122,7 +127,17 @@ proc qt5.get_default_name {} {
         #
         # macOS High Sierra (10.13)
         #
+        # Qt 5.12: Supported
+        # Qt 5.11: Supported
         # Qt 5.10: Supported
+        #
+        return qt5
+        #
+    } elseif { ${os.major} == 18 } {
+        #
+        # macOS Mojave (10.14)
+        #
+        # Qt 5.12: Supported
         #
         return qt5
         #
@@ -165,83 +180,6 @@ if {[info exists name]} {
 if {[tbool just_want_qt5_version_info]} {
     return
 }
-
-###########################################################################################
-# Check what Qt5 port and PortGroup we should be using, based on indicated port preference,
-# what is already installed and OS version.
-# Given that ports exist for multiple Qt5 versions it is easier to distinguish port:qt5 and
-# port:qt5-kde from differences in install layout than from active installed portnames.
-
-# first, check if port:qt5-kde or a port:qt5-kde-devel is installed, or if we're on Mac OS X 10.6
-# NB: the qt5-kde-devel ports may never exist officially in MacPorts but is used locally by KF5 port maintainers!
-# NB2 : ${prefix} isn't set by portindex but registry_active can be used!!
-if {[file exists ${prefix}/include/qt5/QtCore/QtCore] || ${os.major} == 10
-        || ([catch {registry_active "qt5-kde"}] == 0 || [catch {registry_active "qt5-kde-devel"}] == 0) } {
-    set qt5PGname "qt5-kde"
-} elseif {[file exists ${prefix}/libexec/qt5/plugins/platforms/libqcocoa.dylib]
-        && [file type ${prefix}/libexec/qt5/plugins] eq "directory"} {
-    # qt5-qtbase is installed: Qt5 has been installed through a standard port:qt5 port
-    # (checking if "plugins" is a directory is probably redundant)
-    # We're already in the correct PortGroup
-    set qt5PGname "qt5"
-} elseif {[info exists qt5.prefer_kde] || [variant_isset qt5kde]} {
-    # The calling port has indicated a preference and no Qt5 port is installed already
-    # transfer control to qt5-kde-1.0.tcl
-    ui_debug "port:qt5-kde has been requested explicitly"
-    set qt5PGname "qt5-kde"
-} else {
-    set qt5PGname "qt5"
-}
-
-if {[tbool just_want_qt5_variables]} {
-    ui_debug "just_want_qt5_variables is set, we need to use the Qt5 PG"
-    set qt5PGname "qt5"
-} elseif {[tbool building_qt5] && ![tbool qt5.prefer_kde]} {
-    ui_debug "building port:qt5-qtbase, we need to use the Qt5 PG"
-    set qt5PGname "qt5"
-} elseif {[tbool qt5.prefer_default]} {
-    ui_debug "qt5.prefer_default is set, we will use the Qt5 PG"
-    set qt5PGname "qt5"
-}
-
-switch -exact ${qt5PGname} {
-    qt5-kde {
-        # Qt5 has been installed through port:qt5-kde or port:qt5-kde-devel or we're on 10.6
-        # transfer control to qt5-kde-1.0.tcl
-        ui_debug "Qt5 is provided by port:qt5-kde; transferring to PortGroup qt5-kde 1.0"
-        PortGroup           ${qt5PGname} 1.0
-        return
-    }
-    default {
-        # default situation: we're already in the correct PortGroup, unless:
-        if {[variant_isset qt5kde] || ([info exists qt5.prefer_kde] && [info exists building_qt5])} {
-            if {[variant_isset qt5kde]} {
-                ui_error "You cannot install ports with the +qt5kde variant when port:qt5 or one of its subports installed!"
-            } else {
-                # user tries to install say qt5-kde-qtwebkit against qt5-qtbase etc.
-                ui_error "You cannot install a Qt5-KDE port with port:qt5 or one of its subports installed!"
-            }
-            # print the error but only raise it when attempting to fetch or configure the port.
-            pre-fetch {
-                return -code error "Deactivate the conflicting port:qt5 port(s) first!"
-            }
-            pre-configure {
-                return -code error "Deactivate the conflicting port:qt5 port(s) first!"
-            }
-        }
-    }
-}
-
-if {[info exists qt5.prefer_kde]} {
-    # this is a port that prefers port:qt5-kde and thus expects most of Qt5 to be installed
-    # through that single port rather than enumerate all components it depends on.
-    depends_lib-append  port:qt5
-    # the port may also use a variable that is still provided by qt5-kde-1.0.tcl;
-    # set it to an empty value so that it can be referenced without side-effects.
-    global qt_cmake_defines
-    set qt_cmake_defines ""
-}
-###########################################################################################
 
 # standard install directory
 global qt_dir
@@ -627,6 +565,83 @@ namespace eval qt5pg {
     #           as of 5.9, still maintained by community
 }
 
+###########################################################################################
+# Check what Qt5 port and PortGroup we should be using, based on indicated port preference,
+# what is already installed and OS version.
+# Given that ports exist for multiple Qt5 versions it is easier to distinguish port:qt5 and
+# port:qt5-kde from differences in install layout than from active installed portnames.
+
+# first, check if port:qt5-kde or a port:qt5-kde-devel is installed, or if we're on Mac OS X 10.6
+# NB: the qt5-kde-devel ports may never exist officially in MacPorts but is used locally by KF5 port maintainers!
+# NB2 : ${prefix} isn't set by portindex but registry_active can be used!!
+if {[file exists ${prefix}/include/qt5/QtCore/QtCore] || ${os.major} == 10
+        || ([catch {registry_active "qt5-kde"}] == 0 || [catch {registry_active "qt5-kde-devel"}] == 0) } {
+    set qt5PGname "qt5-kde"
+} elseif {[file exists ${prefix}/libexec/qt5/plugins/platforms/libqcocoa.dylib]
+        && [file type ${prefix}/libexec/qt5/plugins] eq "directory"} {
+    # qt5-qtbase is installed: Qt5 has been installed through a standard port:qt5 port
+    # (checking if "plugins" is a directory is probably redundant)
+    # We're already in the correct PortGroup
+    set qt5PGname "qt5"
+} elseif {[info exists qt5.prefer_kde] || [variant_isset qt5kde]} {
+    # The calling port has indicated a preference and no Qt5 port is installed already
+    # transfer control to qt5-kde-1.0.tcl
+    ui_debug "port:qt5-kde has been requested explicitly"
+    set qt5PGname "qt5-kde"
+} else {
+    set qt5PGname "qt5"
+}
+
+if {[tbool just_want_qt5_variables]} {
+    ui_debug "just_want_qt5_variables is set, we need to use the Qt5 PG"
+    set qt5PGname "qt5"
+} elseif {[tbool building_qt5] && ![tbool qt5.prefer_kde]} {
+    ui_debug "building port:qt5-qtbase, we need to use the Qt5 PG"
+    set qt5PGname "qt5"
+} elseif {[tbool qt5.prefer_default]} {
+    ui_debug "qt5.prefer_default is set, we will use the Qt5 PG"
+    set qt5PGname "qt5"
+}
+
+switch -exact ${qt5PGname} {
+    qt5-kde {
+        # Qt5 has been installed through port:qt5-kde or port:qt5-kde-devel or we're on 10.6
+        # transfer control to qt5-kde-1.0.tcl
+        ui_debug "Qt5 is provided by port:qt5-kde; transferring to PortGroup qt5-kde 1.0"
+        PortGroup           ${qt5PGname} 1.0
+        return
+    }
+    default {
+        # default situation: we're already in the correct PortGroup, unless:
+        if {[variant_isset qt5kde] || ([info exists qt5.prefer_kde] && [info exists building_qt5])} {
+            if {[variant_isset qt5kde]} {
+                ui_error "You cannot install ports with the +qt5kde variant when port:qt5 or one of its subports installed!"
+            } else {
+                # user tries to install say qt5-kde-qtwebkit against qt5-qtbase etc.
+                ui_error "You cannot install a Qt5-KDE port with port:qt5 or one of its subports installed!"
+            }
+            # print the error but only raise it when attempting to fetch or configure the port.
+            pre-fetch {
+                return -code error "Deactivate the conflicting port:qt5 port(s) first!"
+            }
+            pre-configure {
+                return -code error "Deactivate the conflicting port:qt5 port(s) first!"
+            }
+        }
+    }
+}
+
+if {[info exists qt5.prefer_kde]} {
+    # this is a port that prefers port:qt5-kde and thus expects most of Qt5 to be installed
+    # through that single port rather than enumerate all components it depends on.
+    depends_lib-append  port:qt5
+    # the port may also use a variable that is still provided by qt5-kde-1.0.tcl;
+    # set it to an empty value so that it can be referenced without side-effects.
+    global qt_cmake_defines
+    set qt_cmake_defines ""
+}
+###########################################################################################
+
 if {[tbool just_want_qt5_variables]} {
     return
 }
@@ -655,6 +670,9 @@ proc qt5.depends_runtime_component {args} {
 
 options qt5.kde_variant
 default qt5.kde_variant no
+
+options qt5.min_version
+default qt5.min_version 5.0
 
 # use PKGCONFIG for Qt discovery in configure scripts
 depends_build-append    port:pkgconfig
@@ -794,7 +812,7 @@ proc eval_variants {variations} {
 
 namespace eval qt5pg {
     proc register_dependents {} {
-        global qt5_private_components qt5_private_build_components qt5_private_runtime_components qt5.name
+        global qt5_private_components qt5_private_build_components qt5_private_runtime_components qt5.name qt5.version qt5.min_version
 
         if { ![exists qt5_private_components] } {
             # no Qt components have been requested
@@ -865,7 +883,16 @@ namespace eval qt5pg {
                 } elseif { [info exists qt5pg::qt5_component_lib(${component})] } {
                     set component_info $qt5pg::qt5_component_lib(${component})
                     set path           [lindex ${component_info} 2]
-                    depends_lib-append path:${path}:${qt5.name}-${component}
+                    set version_intro  [lindex ${component_info} 0]
+                    if {[vercmp ${qt5.version} ${version_intro}] >= 0} {
+                        depends_lib-append path:${path}:${qt5.name}-${component}
+                    } else {
+                        if {[vercmp ${qt5.version} ${qt5.min_version}] >= 0} {
+                            ui_warn "${component} does not exist in Qt ${qt5.version}"
+                        } else {
+                            # port will fail during pre-fetch
+                        }
+                    }
                 } else {
                     return -code error "unknown component ${component}"
                 }
@@ -874,7 +901,16 @@ namespace eval qt5pg {
                 if { [info exists qt5pg::qt5_component_lib(${component})] } {
                     set component_info $qt5pg::qt5_component_lib(${component})
                     set path           [lindex ${component_info} 2]
-                    depends_build-append path:${path}:${qt5.name}-${component}
+                    set version_intro  [lindex ${component_info} 0]
+                    if {[vercmp ${qt5.version} ${version_intro}] >= 0} {
+                        depends_build-append path:${path}:${qt5.name}-${component}
+                    } else {
+                        if {[vercmp ${qt5.version} ${qt5.min_version}] >= 0} {
+                            ui_warn "${component} does not exist in Qt ${qt5.version}"
+                        } else {
+                            # port will fail during pre-fetch
+                        }
+                    }
                 } else {
                     return -code error "unknown component ${component}"
                 }
@@ -883,7 +919,16 @@ namespace eval qt5pg {
                 if { [info exists qt5pg::qt5_component_lib(${component})] } {
                     set component_info $qt5pg::qt5_component_lib(${component})
                     set path           [lindex ${component_info} 2]
-                    depends_run-append path:${path}:${qt5.name}-${component}
+                    set version_intro  [lindex ${component_info} 0]
+                    if {[vercmp ${qt5.version} ${version_intro}] >= 0} {
+                        depends_run-append path:${path}:${qt5.name}-${component}
+                    } else {
+                        if {[vercmp ${qt5.version} ${qt5.min_version}] >= 0} {
+                            ui_warn "${component} does not exist in Qt ${qt5.version}"
+                        } else {
+                            # port will fail during pre-fetch
+                        }
+                    }
                 } else {
                     return -code error "unknown component ${component}"
                 }
@@ -894,6 +939,13 @@ namespace eval qt5pg {
 
 if {!${private_building_qt5}} {
     port::register_callback qt5pg::register_dependents
+}
+
+pre-fetch {
+    if {[vercmp ${qt5.version} ${qt5.min_version}] < 0} {
+        ui_error "Qt version ${qt5.min_version} or above is required, but Qt version ${qt5.version} is installed"
+        return -code error "Qt version too old"
+    }
 }
 
 unset private_building_qt5
