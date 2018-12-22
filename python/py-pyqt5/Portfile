@@ -24,15 +24,6 @@ checksums               rmd160  01f76afac6ddc9267dda3a0510795b8d2df57247 \
 python.versions 27 34 35 36 37
 subport "${name}-common" {}
 
-# if {${os.major} <= 14 && ${os.platform} eq "darwin"} {
-#     version             5.9.2
-#     revision            1
-#     distname            PyQt5_gpl-${version}
-#     checksums           rmd160  744f54000240c25ce2b39dbe62f5b3d2afd83e8b \
-#                         sha256  c190dac598c97b0113ca5e7a37c71c623f02d1d713088addfacac4acfa4b8394
-# #                         size    3102848
-# }
-
 if {${subport} eq "${name}-common"} {
     description-append          (.sip sourcefiles)
     long_description-append     This port contains the .sip source files.
@@ -43,7 +34,9 @@ if {${subport} eq "${name}-common"} {
     destroot {
         xinstall -m 755 -d ${destroot}${prefix}/share/sip/PyQt5
         # copy all relevant directories from ${worksrcpath}/sip into the destination.
-        # This is exactly what the regular build system does.
+        # This is exactly what the regular build system does, except that here we
+        # use the same location as used on Linux, not the one hidden in the Python
+        # framework that is apparently the default on Mac.
         file copy {*}[glob -directory ${worksrcpath}/sip/ Q*] ${destroot}${prefix}/share/sip/PyQt5
         file copy ${worksrcpath}/sip/Enginio ${destroot}${prefix}/share/sip/PyQt5
     }
@@ -81,6 +74,7 @@ if {${subport} eq "${name}-common"} {
                         --designer-plugindir=${qt_plugins_dir}/designer/Py${python.version}Qt5 \
                         --qml-plugindir=${qt_plugins_dir}/Py${python.version}Qt5 \
                         --no-qsci-api \
+                        --no-sip-files \
                         --disable=QtWebKit \
                         --disable=QtWebKitWidgets \
                         --disable=QtWebEngine \
@@ -129,33 +123,44 @@ if {${subport} eq "${name}-common"} {
     destroot.cmd        ${build.cmd}
     destroot.destdir    DESTDIR=${destroot}
 
+    post-destroot {
+        # make the .sip files accessible via the "normal" path too
+        file delete -force ${destroot}${python.prefix}/share/sip/PyQt5
+        xinstall -m 755 -d ${destroot}${python.prefix}/share/sip
+        ln -s ${prefix}/share/sip/PyQt5 ${destroot}${python.prefix}/share/sip
+        # as well as via the actual sip repository of the version we're using
+        xinstall -m 755 -d ${destroot}${prefix}/share/py${python.version}-sip
+        ln -s ../sip/PyQt5 ${destroot}${prefix}/share/py${python.version}-sip
+    }
+
     variant debug description "Build debug libraries" {
         configure.cmd-append --debug
     }
 
     variant scintilla description {Build the PyQt API for QScintilla} {
-        depends_lib-append \
-                        port:qscintilla-qt5
-        configure.args-replace \
-                        --no-qsci-api \
-                        --qsci-api
+        depends_lib-append      port:qscintilla-qt5
+        configure.args-replace  --no-qsci-api \
+                                --qsci-api
 
         post-destroot {
             # move the Qsci API file to a Python specific name
+            # it is generated during the configure step and differs only
+            # (and slightly) for python 2.x vs. python 3.x .
+            # Figure out a way to install only a single copy...
             move ${destroot}${qt_data_dir}/qsci/api/python/PyQt5.api \
                 ${destroot}${qt_data_dir}/qsci/api/python/PyQt5-Python${python.branch}.api
         }
     }
 
     variant webengine conflicts universal description {Build QtWebEngine module} {
-        qt5.depends_component qtwebengine
+        qt5.depends_component   qtwebengine
         configure.args-delete   --disable=QtWebEngine \
                                 --disable=QtWebEngineCore \
                                 --disable=QtWebEngineWidgets
     }
 
     variant webkit description {Build QtWebKit module} {
-        qt5.depends_component qtwebkit
+        qt5.depends_component   qtwebkit
         configure.args-delete   --disable=QtWebKit \
                                 --disable=QtWebKitWidgets
     }
