@@ -51,8 +51,6 @@ destroot.violate_mtree  yes
 
 universal_variant   no
 
-ui_msg "${os.arch} ${build_arch}"
-
 post-destroot {
     set archdir "${prefix}/${os.arch}-pc-linux-gnu"
     # the MacPorts install/activation process breaks hard symlinks
