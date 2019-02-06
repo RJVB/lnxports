@@ -14,6 +14,7 @@ if {${os.platform} eq "linux"} {
 #     our own site-packages directory to the path.
     maintainers     gmail.com:rjvbertin
     version         [exec /usr/bin/python2.7 -c "import sys ; print '%d.%d.%d' %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro)"]
+    revision        1
 } else {
     # Remember to keep py27-tkinter and py27-gdbm's versions sync'd with this
     version             2.7.10
@@ -61,6 +62,9 @@ if {${os.platform} eq "linux"} {
         xinstall -m 755 -d ${destroot}${python.prefix}/bin
         xinstall -m 755 -d ${destroot}${python.libdir}
         ln -s ../../../../../../../lib/python${branch}/site-packages ${destroot}${python.libdir}/site-packages
+        # for debuntu
+        ln -s site-packages ${destroot}${python.libdir}/dist-packages
+        ln -s site-packages ${destroot}${prefix}/lib/python${branch}/dist-packages
     }
 } else {
 
