@@ -69,11 +69,11 @@ variant LTO description {build with link-time optimisation} {}
 if {[variant_isset LTO]} {
     if {[string match *clang* ${configure.compiler}]} {
         configure.cflags-append \
-                    -flto
+                    -flto -fPIC
         configure.cxxflags-append \
-                    -flto
+                    -flto -fPIC
         configure.ldflags-append \
-                    ${configure.optflags} -flto
+                    ${configure.optflags} -flto -fPIC
     } else {
         configure.cflags-append \
                     -ftracer -flto -fuse-linker-plugin -ffat-lto-objects
