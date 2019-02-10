@@ -1,0 +1,82 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           compiler_blacklist_versions 1.0
+PortGroup           meson 1.0
+PortGroup           github 1.0
+PortGroup           muniversal 1.0
+
+github.setup        hughsie appstream-glib c77a7968137a4385024bf60880f786359f99188a
+fetch.type          git
+# appstream_glib_0_7_14-46-gc77a796
+version             0.7.14.46
+license             LGPL-2+
+categories          devel
+maintainers         {devans @dbevans} openmaintainer
+platforms           darwin
+homepage            https://people.freedesktop.org/~hughsient/appdata/
+
+description         This library provides objects and helper methods to help \
+                    reading and writing AppStream metadata.
+
+long_description    ${description}
+
+# checksums           rmd160  40b1eaad37286a6a7c1ca75c660e8340a1d60feb \
+#                     sha256  d582015388b2e5a2a91d9772f3fb8968331a8ebd8eddce0805551a9d238cb7d6 \
+#                     size    2401783
+worksrcdir          ${name}-git
+distname            ${name}-git
+
+depends_build-append  \
+                    port:pkgconfig \
+                    port:gperf
+
+depends_lib-append \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:libarchive \
+                    port:libstemmer \
+                    port:libxslt \
+                    port:libyaml \
+                    port:docbook-xml \
+                    port:docbook-xsl-nons \
+                    port:gtk3 \
+                    port:gdk-pixbuf2 \
+                    port:freetype \
+                    port:json-glib
+platform darwin {
+    depends_lib-append \
+                    port:libsoup \
+                    port:gobject-introspection \
+                    port:fontconfig
+}
+
+platform darwin {
+    patchfiles      use-system-uuid.patch \
+                    dont-use-version-script.patch
+}
+
+post-patch {
+    reinplace "s|__SDK_PATH__|${configure.sdkroot}|g" ${worksrcpath}/meson.build
+}
+
+# attempt to fix build on 10.6 by blacklisting troublesome compilers
+compiler.blacklist-append  *gcc-3.* *gcc-4.* {clang < 300}
+
+configure.ldflags-append -lintl
+
+# gobject-introspection uses g-ir-scanner, which uses $CC from env
+if {[variant_isset universal]} {
+    foreach arch ${configure.universal_archs} {
+        lappend merger_build_env(${arch})  CC='${configure.cc} -arch ${arch}'
+        lappend merger_destroot_env(${arch})  CC='${configure.cc} -arch ${arch}'
+    }
+} else {
+    build.env-append       CC="${configure.cc} ${configure.cc_archflags}"
+    destroot.env-append    CC="${configure.cc} ${configure.cc_archflags}"
+}
+
+configure.args      -Drpm=false \
+                    -Dbuilder=true \
+                    -Dintrospection=false
+
+meson.save_configure_cmd "log too"
