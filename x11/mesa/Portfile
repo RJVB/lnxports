@@ -1,0 +1,342 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           compiler_blacklist_versions 1.0
+# PortGroup           muniversal 1.0
+PortGroup           meson 1.0
+
+platform darwin {
+    if {${os.major} < 13} {
+        PortGroup   cxx11 1.1
+    }
+}
+
+name                mesa
+epoch               1
+# version             17.1.6 ; revision 1
+version             18.3.3
+categories          x11 graphics
+maintainers         {jeremyhu @jeremyhu} openmaintainer
+license             MIT
+license_noconflict  py26-libxml2 py27-libxml2
+description         Mesa 3D Graphics Library
+long_description    Mesa is an open-source implementation of the OpenGL specification, a system for rendering interactive 3D graphics.
+
+homepage            https://www.mesa3d.org
+platforms           macosx darwin
+use_xz              yes
+master_sites        https://mesa.freedesktop.org/archive
+
+checksums           rmd160  3db679c94bb3c168f6607f16ae4ae288b2b4f767 \
+                    sha256  2ab6886a6966c532ccbcc3b240925e681464b658244f0cbed752615af3936299
+#                     size    11874468
+
+platform linux {
+    depends_fetch-append \
+                    bin:wget:wget
+    # avoid certificate issues on freedesktop.org
+    fetch {
+        system "wget ${master_sites}/${distname}${extract.suffix} --no-check-certificate --progress=bar:force -O ${distpath}/${distname}${extract.suffix}"
+    }
+}
+
+depends_build       port:pkgconfig
+platform darwin {
+    depends_build-append \
+                    port:flex \
+                    port:bison \
+                    port:gindent
+
+    depends_lib     port:xorg-xorgproto \
+                    port:xorg-libxcb \
+                    port:xorg-libX11 \
+                    port:xorg-libXext \
+                    port:xorg-libXdamage \
+                    port:xorg-libXfixes \
+                    port:xorg-libXi \
+                    port:xorg-libXmu \
+                    port:xorg-libXxf86vm
+}
+platform linux {
+    depends_lib-append \
+                    port:xorg-libxcb
+}
+
+patch.pre_args      -p1
+platform darwin {
+    patchfiles      0003-applegl-Provide-requirements-of-_SET_DrawBuffers.patch
+}
+platform linux {
+    patchfiles      patch-linux-memfd_create.diff
+}
+
+if {[string match *gcc* ${configure.compiler}]} {
+    # Older gcc fail to do -Werror=missing-prototypes correctly
+    # https://trac.macports.org/ticket/46827
+    patchfiles-append no-missing-prototypes-error.patch
+}
+
+if {[string match *meson* ${configure.cmd}]} {
+    platform darwin {
+        patchfiles-append \
+                    patch-meson.diff
+
+        configure.args-append \
+                    -Ddri3=false \
+                    -Degl=false \
+                    -Dgbm=false \
+                    -Dosmesa=none \
+                    -Dshared-llvm=false \
+                    -Dgallium-drivers=
+    }
+    platform linux {
+        # platform wayland requires wayland-egl-backend which we don't offer yet
+        configure.args-append \
+                    -Dvulkan-drivers=intel \
+                    -Dplatforms=x11,drm,surfaceless \
+                    -Dgallium-drivers=r300,r600,nouveau,swrast,tegra,svga,virgl,swr \
+                    -Dbuild-tests=true
+    }
+} else {
+    if {![file exists ${worksrcpath}/configure]} {
+        use_autoreconf  yes
+    }
+    autoreconf.args -fvi
+    configure.args  --disable-dependency-tracking \
+                    --disable-silent-rules
+    platform darwin {
+        configure.args-append \
+                    --with-platforms=x11 \
+                    --disable-dri3 \
+                    --disable-egl \
+                    --disable-gbm \
+                    --disable-osmesa \
+                    --disable-llvm-shared-libs \
+                    --with-gallium-drivers=
+    }
+}
+
+platform darwin {
+    configure.env-append \
+                    INDENT=${prefix}/bin/gindent
+}
+configure.env-append \
+                    STRIP=echo
+
+if {[string match macports-clang* ${configure.compiler}]} {
+    configure.env-append \
+                    AR="[string map {"clang" "llvm-ar"} ${configure.cc}]" \
+                    NM="[string map {"clang" "llvm-nm"} ${configure.cc}]" \
+                    RANLIB="[string map {"clang" "llvm-ranlib"} ${configure.cc}]"
+}
+
+# This project is affected by a bug in Apple's gcc driver driver that I fixed in the apple-gcc42 port.
+# Use that or clang.
+# clang-700.1.81 (Xcode 7.2.1) fails at:
+#     disk_cache.c:637:7: error: cannot compile this atomic library call yet
+#           p_atomic_add(cache->size, - (uint64_t)sb.st_blocks * 512);
+#           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compiler.blacklist gcc-3.3 gcc-4.0 gcc-4.2 llvm-gcc-4.2 {clang < 800}
+
+platform darwin {
+    if {${os.major} < 11} {
+        # https://bugs.freedesktop.org/show_bug.cgi?id=89088
+        configure.env-append INDENT=cat
+
+        patchfiles-append static-strndup.patch
+    }
+
+    if {${os.major} < 10} {
+        # https://trac.macports.org/ticket/52811
+        patchfiles-append patch-include-GL-mesa_glinterop_h.diff
+    }
+
+    if {${os.major} < 11} {
+        # See https://trac.macports.org/ticket/54643
+        if {[string match *meson* ${configure.cmd}]} {
+            patchfiles-append \
+                    patch-disable-glx_tls.diff
+        } else {
+            configure.args-append \
+                    --disable-glx-tls
+        }
+    }
+
+    if {${os.major} < 14} {
+        # See https://trac.macports.org/ticket/54638
+        # See https://trac.macports.org/ticket/54643
+        # disk_cache uses the fstatat() function
+        patchfiles-append disable_shader_cache.patch
+        if {[string match *meson* ${configure.cmd}]} {
+            configure.args-append \
+                    -Dshader-cache=false
+        }
+    }
+
+    if { ![file exists /usr/include/Xplugin.h] } {
+        # Xplugin.h is missing on Tiger
+        configure.cppflags-append -I${filespath}/include
+    }
+
+    pre-configure {
+        if { ![file exists /usr/lib/libXplugin.dylib] } {
+            ui_error "Detected a problem with your development environment.  Please work around it by executing:"
+            ui_error "sudo ln -s libXplugin.1.dylib /usr/lib/libXplugin.dylib"
+            return -code error "missing libXplugin.dylib"
+        }
+    }
+}
+
+configure.cppflags-delete -I${prefix}/include
+configure.cxxflags-append -std=c++11
+
+platform linux {
+    post-extract {
+        if {![file exists /usr/include/linux/memfd.h]} {
+            set kernel [exec uname -r]
+            if {![file exists ${worksrcpath}/include/linux/memfd.h]} {
+                xinstall -m 755 -d ${worksrcpath}/include/linux
+                ln -s /usr/src/linux-headers-${kernel}/include/linux/memfd.h ${worksrcpath}/include/linux/
+                xinstall -m 755 -d ${worksrcpath}/include/asm-generic
+                ln -s /usr/src/linux-headers-${kernel}/include/asm-generic/hugetlb_encode.h ${worksrcpath}/include/asm-generic
+            }
+        }
+    }
+}
+
+# variant python27 description {Use python 2.7} {
+#     depends_build-append \
+#         port:py27-libxml2
+#     configure.env-append \
+#         PYTHON2="${prefix}/bin/python2.7"
+# }
+# 
+# if {![variant_isset python27]} {
+#     default_variants-append +python27
+# }
+
+platform darwin {
+    variant egl description {enable EGL support} {
+        depends_lib-append      port:xorg-libxshmfence
+        if {[string match *meson* ${configure.cmd}]} {
+            configure.args-replace \
+                               -Degl=false \
+                               -Degl=true
+            configure.args-replace \
+                                -Dgallium-drivers= \
+                                -Dgallium-drivers=swrast
+        } else {
+            configure.args-replace \
+                                --disable-egl \
+                                --enable-egl
+            configure.args-replace \
+                                --with-gallium-drivers= \
+                                --with-gallium-drivers=swrast
+        }
+        patchfiles-append       patch-support-egl_dri2.diff
+        post-patch {
+            reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/egl/drivers/dri2/egl_dri2.c
+        }
+    }
+}
+
+    set lldversions {3.8 3.9 4.0 5.0 6.0}
+    set llvariant ""
+    foreach ldv ${lldversions} {
+        set llv [join [lrange [split ${ldv} .] 0 1] ""]
+        set conflist ""
+        foreach v ${lldversions} {
+            if {${v} ne ${ldv}} {
+                set v [join [lrange [split ${v} .] 0 1] ""]
+                set conflist "${conflist} llvm${v}"
+            }
+        }
+        variant llvm${llv} conflicts ${conflist} description "Use LLVM/Clang ${ldv} for the \"accelerated\" Gallium swrast driver" {}
+        if {[variant_isset llvm${llv}]} {
+            set llvariant llvm${llv}
+        }
+    }
+    foreach ldv ${lldversions} {
+        set llv [join [lrange [split ${ldv} .] 0 1] ""]
+        if {[variant_isset llvm${llv}]} {
+            depends_lib-append \
+                port:llvm-${ldv} port:clang-${ldv}
+            if {[string match *meson* ${configure.cmd}]} {
+                configure.args-append \
+                    -Dllvm=true
+                set PATH $env(PATH)
+                set env(PATH) ${prefix}/libexec/llvm-${ldv}/bin:${PATH}
+                configure.args-replace \
+                    -Dgallium-drivers= \
+                    -Dgallium-drivers=swrast
+            } else {
+                configure.args-append \
+                    --enable-llvm \
+                    --with-llvm-prefix=${prefix}/libexec/llvm-${ldv}
+                configure.args-replace \
+                    --with-gallium-drivers= \
+                    --with-gallium-drivers=swrast
+            }
+        }
+    }
+
+variant osmesa description {enable OSMesa library} {
+    if {[string match *meson* ${configure.cmd}]} {
+        configure.args-replace \
+                    -Dosmesa=none \
+                    -Dosmesa=gallium
+    } else {
+        configure.args-replace \
+                    --disable-osmesa \
+                    --enable-osmesa
+    }
+}
+default_variants-append +osmesa
+
+#variant openvg description {enable support for OpenVG API} {
+#    configure.args-delete --disable-egl --disable-openvg
+#    configure.args-append --enable-egl --enable-openvg
+#}
+#default_variants-append +openvg
+
+if {[string match *meson* ${configure.cmd}]} {
+    build.post_args-append -k 0
+} else {
+    build.post_args-append -k
+}
+
+livecheck.type  regex
+livecheck.url   http://www.mesa3d.org/
+livecheck.regex {relnotes/([0-9.]+)\.html}
+
+# optional support for HFS-compression of the source and build dirs
+if {[info exists qt5::currentportgroupdir] && [file exists ${qt5::currentportgroupdir}/compress_workdir-1.0.tcl]} {
+    PortGroup       compress_workdir 1.0
+}
+
+configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
+pre-configure {
+    set cmd [join "${configure.cmd} ${configure.pre_args} ${configure.args}"]
+    configure.pre_args-prepend "-cf '${configure.cmd} "
+    configure.cmd "/bin/csh"
+    ui_debug "configure command set to `${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}`"
+    system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.log"
+}
+post-configure {
+    if {![catch {set fd [open "${workpath}/.macports.${subport}.configure.cmd" "w"]} err]} {
+        foreach var [array names ::env] {
+            puts ${fd} "${var}=$::env(${var})"
+        }
+        puts ${fd} "[join [lrange [split ${configure.env} " "] 0 end] "\n"]\n"
+        puts ${fd} "cd ${worksrcpath}"
+        if {[info exists configure.post_args]} {
+            puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}"
+        } else {
+            puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args}"
+        }
+    } else {
+        if {[info exists fd]} {
+            unset fd
+        }
+    }
+}
