@@ -67,7 +67,7 @@ configure.args-append \
                     -DENABLE_GOBJECT_INTROSPECTION=OFF
 
 # C++11 for thread_local (contrary to what the mainstream port claims)
-configure.cxxflags-append -std=c++11
+configure.cxxflags-append -std=c++14
 compiler.blacklist-append {clang < 800.0.38}
 foreach clv {3.3 3.4 3.5 3.6 3.7 3.8 3.9 4.0} {
     compiler.blacklist macports-clang-${clv}
