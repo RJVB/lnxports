@@ -2,12 +2,12 @@
 
 PortSystem          1.0
 PortGroup           cmake 1.1
+PortGroup           github 1.0
+PortGroup           preserve_runtime_libraries 1.0
 
-name                fluidsynth
-version             1.1.6
-revision            5
+github.setup        FluidSynth fluidsynth 2.0.3 v
 categories          multimedia audio
-maintainers         gmail.com:rjvbertin mojca openmaintainer
+maintainers         gmail.com:rjvbertin {mojca @mojca} openmaintainer
 license             LGPL
 
 description         FluidSynth is a real-time software synthesizer based on the SoundFont 2 specifications.
@@ -18,12 +18,11 @@ long_description    FluidSynth is a cross-platform real-time software synthesize
 
 platforms           darwin
 
-homepage            http://fluidsynth.sourceforge.net/
-master_sites        sourceforge:project/${name}/${name}-${version}
-use_bzip2           yes
+homepage            http://www.fluidsynth.org/
 
-checksums           rmd160  27b17e1e097004dd3cf8fb88d8e4499eeb339ea8 \
-                    sha256  d28b47dfbf7f8e426902ae7fa2981d821fbf84f41da9e1b85be933d2d748f601
+checksums           rmd160  e277d4ff6a84cfc71434f3e636188fa2c89307e6 \
+                    sha256  e74e87f9a29b1f209125e581d931d5e7ae116c66acc36cf472ebb0b66d84b497
+#                     size    1374923
 
 depends_build       port:pkgconfig
 depends_lib         port:flac \
@@ -34,55 +33,51 @@ depends_lib         port:flac \
                     port:libsndfile \
                     port:libvorbis \
                     port:ncurses \
-                    port:portaudio
+                    port:portaudio \
+                    port:readline \
+                    port:ncurses
 depends_build-append \
                     port:gettext-dev
 
-patchfiles          yosemite-libtool.patch
-### Remove this block at the next version upgrade ###
-# prevent a forced rebuild due to changed library versioning when the library itself didn't change
-post-patch {
-    reinplace "s|SOVERSION \$\{LIB_VERSION_CURRENT\}|SOVERSION 7|g" ${worksrcpath}/src/CMakeLists.txt
-}
-post-destroot {
-    ln -s libfluidsynth.7.dylib ${destroot}${prefix}/lib/libfluidsynth.1.dylib
-}
-#####################################################
+cmake.save_configure_cmd "log too"
 
-# autotools:
-# configure.args-append \
-#                     --disable-dependency-tracking \
-#                     --disable-pulse-support
+patchfiles-append   patch-fix-readline.diff
+post-patch {
+    reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/CMakeLists.txt
+}
+
 configure.args-append \
+                    -Denable-jack=OFF \
+                    -Denable-dbus=OFF \
                     -Denable-pulseaudio=ON \
                     -Denable-framework=OFF \
-                    -DLIB_SUFFIX=
+                    -Denable-portaudio=ON \
+                    -DLIB_SUFFIX="" \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=ON
+
+# configure.ldflags-append \
+#                     ${prefix}/lib/libncurses.so
 
 # support for JACK makes JACK output the default and requires the daemon to be running
-variant jack description {enable JACK support} {
+variant jack description {Enable JACK support (requires the deamon to be running)} {}
+if {[variant_isset jack]} {
     depends_lib-append \
                     port:jack
-}
-if {![variant_isset jack]} {
-# autotools:
-#     configure.args-append \
-#                     --disable-jack-support
-    configure.args-append \
-                    -Denable-jack=OFF
+    configure.args-replace \
+                    -Denable-jack=OFF -Denable-jack=ON
 }
 
-variant dbus description {enable D-Bus support} {
-#     depends_lib-append \
-#                     port:dbus
-}
-if {![variant_isset dbus]} {
-# autotools:
-#     configure.args-append \
-#                     --disable-dbus-support
-    configure.args-append \
-                    -Denable-dbus=OFF
+variant dbus description {Enable D-Bus support} {}
+if {[variant_isset dbus]} {
+    platform darwin {
+        depends_lib-append \
+                    port:dbus
+    }
+    configure.args-replace \
+                    -Denable-dbus=OFF -Denable-dbus=ON
 }
 default_variants    +dbus
 
-livecheck.type      sourceforge
-livecheck.regex     /${name}-(\[0-9.\]+)${extract.suffix}
+post-destroot {
+    preserve_libraries ${prefix}/lib "libfluidsynth.*.dylib libfluidsynth.so.*"
+}
