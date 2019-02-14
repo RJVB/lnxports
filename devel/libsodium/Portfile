@@ -4,11 +4,14 @@ PortSystem          1.0
 PortGroup           github 1.0
 PortGroup           muniversal 1.0
 platform darwin {
-    PortGroup       cxx11 1.1
+    if {${os.major} < 13} {
+        PortGroup   cxx11 1.1
+    }
 }
 
 github.setup        jedisct1 libsodium 1.0.17
 github.tarball_from releases
+# TODO: retire; synched with the version from macstrop
 
 categories          devel security
 platforms           darwin
@@ -46,10 +49,12 @@ if {[variant_isset LTO]} {
             ui_error "unsupported combination +LTO with configure.compiler=${configure.compiler}"
             return -code error "Unsupported variant/compiler combination in ${subport}"
         }
-        configure.env-append \
+        if {[string match macports-clang* ${configure.compiler}]} {
+            configure.env-append \
                     AR="[string map {"clang" "llvm-ar"} ${configure.cc}]" \
                     NM="[string map {"clang" "llvm-nm"} ${configure.cc}]" \
                     RANLIB="[string map {"clang" "llvm-ranlib"} ${configure.cc}]"
+        }
         configure.cflags-append \
                     -flto
         configure.ldflags-append \
