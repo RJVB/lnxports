@@ -3,7 +3,7 @@
 PortSystem          1.0
 
 name                binutils
-version             2.30
+version             2.30 ; revision 1
 
 checksums           rmd160  5b6152ff36d55da3b5da3a21b372897da66d953c \
                     sha256  efeade848067e9a03f1918b1da0d37aaffa0b0127a06b5e9236229851d9d0c09
@@ -22,19 +22,26 @@ master_sites        gnu:binutils
 use_bzip2           yes
 
 depends_lib-append  port:zlib port:libiconv port:gettext
-configure.env-append \
-                    LIBS="-L${prefix}/lib -lintl"
-build.env-append    LIBS="-L${prefix}/lib -lintl"
 
 
-configure.args      --infodir='${prefix}/share/info' \
+configure.args      --enable-option-checking \
+                    --infodir='${prefix}/share/info' \
                     --mandir='${prefix}/share/man' \
                     --disable-werror \
                     --enable-shared \
                     --enable-lto \
-                    --enable-obj-c \
-                    --enable-ssp \
+                    --enable-objc-gc \
+                    --enable-libssp \
                     --with-isl=${prefix}
+
+platform linux {
+    configure.args-append \
+                    --enable-compressed-debug-sections=all
+    configure.env-append \
+                    LIBS="-L${prefix}/lib -lintl"
+    build.env-append \
+                    LIBS="-L${prefix}/lib -lintl"
+}
 
 # The Makefile runs configure again in subdirectories.
 # It correcty passes along most configure variables (CFLAGS, LDFLAGS, ...),
@@ -67,3 +74,30 @@ post-destroot {
 
 # notes "Having ${name} installed will cause some other ports to\
 # fail to build. Consider uninstalling ${name}."
+
+configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
+pre-configure {
+    set cmd [join "${configure.cmd} ${configure.pre_args} ${configure.args}"]
+    configure.pre_args-prepend "-cf '${configure.cmd} "
+    configure.cmd "/bin/csh"
+    ui_debug "configure command set to `${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}`"
+    system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.log"
+}
+post-configure {
+    if {![catch {set fd [open "${workpath}/.macports.${subport}.configure.cmd" "w"]} err]} {
+        foreach var [array names ::env] {
+            puts ${fd} "${var}=$::env(${var})"
+        }
+        puts ${fd} "[join [lrange [split ${configure.env} " "] 0 end] "\n"]\n"
+        puts ${fd} "cd ${worksrcpath}"
+        if {[info exists configure.post_args]} {
+            puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}"
+        } else {
+            puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args}"
+        }
+    } else {
+        if {[info exists fd]} {
+            unset fd
+        }
+    }
+}
