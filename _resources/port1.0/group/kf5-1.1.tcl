@@ -195,7 +195,9 @@ if {${kf5::includecounter} == 0} {
     # The QML install location also has to be set
     configure.args-append   -DPLUGIN_INSTALL_DIR=${qt_plugins_dir} \
                             -DKDE_INSTALL_QTPLUGINDIR=${qt_plugins_dir} \
-                            -DQML_INSTALL_DIR=${qt_qml_dir}
+                            -DQML_INSTALL_DIR=${qt_qml_dir} \
+                            -DKDE_INSTALL_MANDIR=${prefix}/share/man
+
 
     # # This is why we need destroo.violate_mtree set to "yes"
     # configure.args-append   -DCONFIG_INSTALL_DIR="/Library/Preferences" \
@@ -233,6 +235,13 @@ if {${kf5::includecounter} == 0} {
                 configure.ldflags-append \
                                 -stdlib=libc++
             }
+        } else {
+            if {[variant_isset libcxx]} {
+                ui_warn "+libcxx is supported only with g++ from port:gcc7+libcxxXY!"
+                pre-configure {
+                    return -code error "${subport}: Illegal variant requested"
+                }
+            }
         }
         # 20160914: may need to set -DCMAKE_POLICY_DEFAULT_CMP0042=NEW
     } elseif {${os.platform} eq "linux"} {
@@ -253,8 +262,7 @@ if {${kf5::includecounter} == 0} {
                 configure.cxx_stdlib \
                                 libc++
             }
-        }
-        if {[string match *g*-mp-7* ${configure.cxx}]} {
+        } elseif {[string match *g*-mp-7* ${configure.cxx}]} {
             variant libcxx description {highly experimental option to build against libc++. \
                     Requires using port:gcc7+libcxx and an independently provided libc++ installation.} {}
             if {[variant_isset libcxx]} {
@@ -263,7 +271,16 @@ if {${kf5::includecounter} == 0} {
                 configure.ldflags-append \
                                 -stdlib=libc++
             }
+        } else {
+            variant libcxx description {Not supported. Use libc++ when building with clang or a libc++-enabled GCC port} {}
+            if {[variant_isset libcxx]} {
+                ui_warn "+libcxx is supported only with clang or with g++ from port:gcc7+libcxxXY!"
+                pre-configure {
+                    return -code error "${subport}: Invalid variant requested"
+                }
+            }
         }
+
     }
     configure.args-append   -DSYSCONF_INSTALL_DIR="${prefix}/etc"
     set kf5.docs_dir        ${prefix}/share/doc/kf5
@@ -770,7 +787,10 @@ if {${kf5::includecounter} == 0} {
         qt5.add_app_wrapper ${wrappername} ${bundlename} ${bundleexec} ${kf5.applications_dir}
         # modify the Exec entry in the port's .desktop files
         foreach df [glob -nocomplain ${destroot}${prefix}/share/applications/*${bundlename}*.desktop] {
-            reinplace -q "s|Exec=${bundlename}|Exec=${prefix}/bin/${wrappername}|g" ${df}
+            reinplace -q "s|Exec=${bundlename} |Exec=${prefix}/bin/${wrappername} |g" ${df}
+        }
+        foreach df [glob -nocomplain ${destroot}${prefix}/share/metainfo/*.${bundlename}.appdata.xml] {
+            reinplace "s|<binary>${bundlename}</binary>|<binary>${prefix}/bin/${wrappername}</binary>|g" ${df}
         }
     }
 
@@ -938,15 +958,6 @@ if {${kf5::includecounter} == 0} {
         cmake.save_configure_cmd
     }
 
-#     if {[variant_exists LTO] && [variant_isset LTO]} {
-#         if {[string match *clang++-mp* ${configure.cxx}]} {
-#             configure.args-append   -DCMAKE_AR=[string map {"clang++" "llvm-ar"} ${configure.cxx}] \
-#                                     -DCMAKE_RANLIB=[string map {"clang++" "llvm-ranlib"} ${configure.cxx}]
-#         } elseif {[string match *clang-mp* ${configure.cc}]} {
-#             configure.args-append   -DCMAKE_AR=[string map {"clang" "llvm-ar"} ${configure.cc}] \
-#                                     -DCMAKE_RANLIB=[string map {"clang" "llvm-ranlib"} ${configure.cc}]
-#         }
-#     }
 }
 
 set kf5::includecounter [expr ${kf5::includecounter} + 1]

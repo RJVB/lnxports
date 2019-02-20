@@ -120,6 +120,7 @@ default destroot.target             install/fast
 # make sure cmake is available:
 # can use cmake or cmake-devel; default to cmake if not installed
 depends_build-append                path:bin/cmake:cmake
+depends_skip_archcheck-append       cmake
 
 
 proc cmake::rpath_flags {} {
@@ -182,6 +183,8 @@ proc cmake::handle_generator {option action args} {
                 ui_debug "Selecting the 'Unix Makefiles' generator ($args)"
                 depends_build-delete \
                                 port:ninja
+                depends_skip_archcheck-delete \
+                                ninja
                 build.cmd       make
                 build.post_args VERBOSE=ON
                 destroot.target install/fast
@@ -202,9 +205,13 @@ proc cmake::handle_generator {option action args} {
                 ui_debug "Selecting the Ninja generator ($args)"
                 depends_build-append \
                                 port:ninja
+                depends_skip_archcheck-append \
+                                ninja
                 build.cmd       ninja
-                # force Ninja to use the exact number of requested build jobs
-                build.post_args -j${build.jobs} -v
+                # force Ninja not to exceed the probably-expected CPU load by too much;
+                # for larger projects one can reach as much as build.jobs*2 CPU load otherwise.
+                # inspired by the old guideline as many compile jobs as you have CPUs, plus 1.
+                build.post_args -l[expr ${build.jobs} + 1] -v
                 destroot.target install
                 # ninja needs the DESTDIR argument in the environment
                 destroot.destdir
@@ -372,7 +379,26 @@ pre-configure {
     configure.args-delete -DCMAKE_BUILD_TYPE=debugFull
     # set matching CMAKE_AR and CMAKE_RANLIB when using a macports-clang compiler
     # (and they're not set explicitly by the port)
-    if {[string match *clang++-mp* ${configure.cxx}]} {
+    # NB NB NB!
+    # FIXME!
+    # These should be set to absolute, full paths. We ought to check for that.
+    # NB NB NB!
+    if {[info exists configure.ar] && [info exists configure.nm] && [info exists configure.ranlib]} {
+        if {[option LTO.use_archive_helpers]} {
+            if {[string first "DCMAKE_AR=" ${configure.args}] eq -1} {
+                configure.args-append \
+                                -DCMAKE_AR="${configure.ar}"
+            }
+            if {[string first "DCMAKE_NM=" ${configure.args}] eq -1} {
+                configure.args-append \
+                                -DCMAKE_NM="${configure.nm}"
+            }
+            if {[string first "DCMAKE_RANLIB=" ${configure.args}] eq -1} {
+                configure.args-append \
+                                -DCMAKE_RANLIB="${configure.ranlib}"
+            }
+        }
+    } elseif {[string match *clang++-mp* ${configure.cxx}]} {
         if {[string first "DCMAKE_AR=" ${configure.args}] eq -1} {
             configure.args-append \
                                 -DCMAKE_AR=[string map {"clang++" "llvm-ar"} ${configure.cxx}]
@@ -397,6 +423,16 @@ pre-configure {
         if {[string first "DCMAKE_RANLIB=" ${configure.args}] eq -1} {
             configure.args-append \
                                 -DCMAKE_RANLIB=[string map {"clang" "llvm-ranlib"} ${configure.cc}]
+        }
+    }
+    if {[info exists qt_qmake_spec]} {
+        if {(![string first "-DCMAKE_MKPEC" ${configure.pre_args}])
+            && (![string first "-DCMAKE_MKPEC" ${configure.args}])
+            && (![string first "-DCMAKE_MKPEC" ${configure.post_args}])} {
+            configure.args-append \
+                                "-DCMAKE_MKSPEC=${qt_qmake_spec}"
+        } else {
+            ui_debug "CMAKE_MKSPEC already set"
         }
     }
 
@@ -484,9 +520,20 @@ proc cmake.save_configure_cmd {{save_log_too ""}} {
                 puts ${fd} "OBJCXXFLAGS=\"${configure.objcxxflags}\""
             }
             puts ${fd} "LDFLAGS=\"${configure.ldflags}\""
+            puts ${fd} "# Commandline configure options:"
             if {${configure.optflags} ne ""} {
-                puts ${fd} "configure.optflags=\"${configure.optflags}\""
+                puts -nonewline ${fd} " configure.optflags=\"${configure.optflags}\""
             }
+            if {${configure.compiler} ne ""} {
+                puts -nonewline ${fd} " configure.compiler=\"${configure.compiler}\""
+            }
+            if {${configure.cxx_stdlib} ne ""} {
+                puts -nonewline ${fd} " configure.cxx_stdlib=\"${configure.cxx_stdlib}\""
+            }
+            if {${configureccache} ne ""} {
+                puts -nonewline ${fd} " configureccache=\"${configureccache}\""
+            }
+            puts ${fd} ""
             puts ${fd} "\ncd ${worksrcpath}"
             puts ${fd} "${configure.cmd} [join ${configure.pre_args}] [join ${configure.args}] [join ${configure.post_args}]"
             close ${fd}
