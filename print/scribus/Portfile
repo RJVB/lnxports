@@ -13,6 +13,8 @@ license             GPL-2+
 platforms           darwin
 maintainers         nomaintainer
 
+conflicts           ${name}-devel
+
 description         qt4-based WYSIWYG desktop publishing application
 
 long_description    Scribus is an open source desktop publishing program. It \
