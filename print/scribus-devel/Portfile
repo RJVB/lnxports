@@ -6,9 +6,11 @@ PortGroup           cmake 1.1
 PortGroup           qt5 1.0
 
 set git_commit      b0a8577cd8aee7702823b2c1b080bcc0db5dea54
-set git_date        20190220
 fetch.type          git
 github.setup        scribusproject scribus ${git_commit}
+# limit the clone history depth
+git.url-prepend     --depth 334
+
 conflicts           ${name}
 name                ${name}-devel
 # after git tag 1.5.5.svn -a -m "tag 1.5.5.svn" a96a68dc0a097ce84671b8717f41d6aab6a419ce
@@ -32,6 +34,19 @@ master_sites        sourceforge:project/scribus/scribus-devel/${version}
 worksrcdir          ${name}-git
 distname            ${worksrcdir}
 
+variant dtp description {add support for well-known DTP applications (Pagemaker, Freehand and MS Publisher)} {}
+if {[variant_isset dtp]} {
+    depends_lib-append \
+                    port:libpagemaker \
+                    port:libfreehand \
+                    port:libmspub
+} else {
+    PortGroup       conflicts_build 1.0
+    conflicts_build-append \
+                    libpagemaker \
+                    libfreehand \
+                    libmspub
+}
 
 # Builds forever with llvm-gcc-4.2. https://trac.macports.org/ticket/30835
 compiler.blacklist-append   llvm-gcc-4.2
