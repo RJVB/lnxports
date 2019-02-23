@@ -12,5 +12,9 @@ aqua/qt5-mac-angel
 .DS_Store
 PortIndex*
 work
-*.bak
+PortIndex*
+.kate-swp
+enable_latest
 .AppleDouble
+_crud_
+graphics/fontconfig/files/ultimate
