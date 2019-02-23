@@ -63,6 +63,9 @@ depends_lib-append  port:icu \
                     port:libcdr-0.1 \
                     port:libvisio-0.1
 
+patch.pre_args      -Np1
+patchfiles-append   patch-allow-native-dialogs.diff
+
 configure.args-append \
                     -DWITH_PODOFO=ON \
                     -DWANT_GRAPHICSMAGICK=ON
