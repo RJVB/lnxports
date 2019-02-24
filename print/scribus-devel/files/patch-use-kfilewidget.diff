@@ -1,24 +1,59 @@
-diff --git a/scribus/CMakeLists.txt b/scribus/CMakeLists.txt
-index c21ab492736b573b6ad4c28ba0bfc1d43650bd67..5b74a7b45ffd28026cb93185634a4447b064aa66 100644
---- a/scribus/CMakeLists.txt
-+++ b/scribus/CMakeLists.txt
-@@ -1293,6 +1293,11 @@ target_link_libraries(${EXE_NAME}
- 	${WIN32_ONLY_LIBS}
- 	${GMAGICK_LIBRARIES}
- )
-+if(KF5_FOUND)
-+    target_link_libraries(${EXE_NAME}
-+        KF5::KIOFileWidgets
-+    )
-+endif()
+diff --git a/scribus/ui/newfile.cpp b/scribus/ui/newfile.cpp
+index ec68e74047a47d6b15cbc321b477ff121fcef08d..a12aa3010bca3ffeab419780668f26c2971f1289 100644
+--- a/scribus/ui/newfile.cpp
++++ b/scribus/ui/newfile.cpp
+@@ -363,10 +363,10 @@ void NewDoc::createOpenDocPage()
+ 	openDocLayout->setSpacing(5);
+ 	m_selectedFile = "";
  
- if (NOT WIN32 AND NOT HAIKU)
- 	target_link_libraries(${EXE_NAME}
+-	fileDialog = new QFileDialog(openDocFrame, tr("Open"), docDir, formats);
++	fileDialog = new ScFileDialog(openDocFrame, tr("Open"), docDir, formats);
+ 	fileDialog->setFileMode(QFileDialog::ExistingFile);
+ 	fileDialog->setAcceptMode(QFileDialog::AcceptOpen);
+-	fileDialog->setOption(QFileDialog::DontUseNativeDialog);
++// 	fileDialog->setOption(QFileDialog::DontUseNativeDialog);
+ 	fileDialog->setIconProvider(new ImIconProvider());
+ 	fileDialog->setNameFilterDetailsVisible(false);
+ 	fileDialog->setReadOnly(true);
+diff --git a/scribus/ui/newfile.h b/scribus/ui/newfile.h
+index d7aa0000131935f9251ca4c101bd0ea7babb6e44..08d8bdf373274e383051160cc4bd7e0d3b412113 100644
+--- a/scribus/ui/newfile.h
++++ b/scribus/ui/newfile.h
+@@ -30,12 +30,20 @@ class QPushButton;
+ #include "ui/customfdialog.h"
+ #include "ui/nftwidget.h"
+ 
++#include "ui/scfilewidget.h"
++
+ class PrefsManager;
+ class MarginWidget;
+ class ScrSpinBox;
+ class ScComboBox;
+ class QFileDialog;
+ 
++#ifdef SCFILEWIDGET_IS_KFILEWIDGET
++using ScFileDialog = ScFileWidget;
++#else
++using ScFileDialog = QFileDialog;
++#endif
++
+ class SCRIBUS_API PageLayoutsWidget : public QListWidget
+ {
+ 	Q_OBJECT
+@@ -100,7 +108,7 @@ public:
+ 	ScrSpinBox* widthSpinBox;
+ 	ScrSpinBox* heightSpinBox;
+ 	QFrame* openDocFrame;
+-	QFileDialog *fileDialog;
++	ScFileDialog *fileDialog;
+ 	QFrame* newFromTempFrame;
+ 	nftwidget *nftGui;
+ 	QFrame* recentDocFrame;
 diff --git a/scribus/ui/scfilewidget.cpp b/scribus/ui/scfilewidget.cpp
-index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43fa0eee945 100644
+index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..b89990622cc66c697964b6aac4388724de97161e 100644
 --- a/scribus/ui/scfilewidget.cpp
 +++ b/scribus/ui/scfilewidget.cpp
-@@ -18,16 +18,82 @@ for which a new license (GPL+exception) is in place.
+@@ -18,16 +18,100 @@ for which a new license (GPL+exception) is in place.
  #include "filedialogeventcatcher.h"
  #include "scfilewidget.h"
  
@@ -57,8 +92,7 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43f
 +
 +    return filter;
 +}
- 
--ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
++
 +/*
 + * Map a KDE filter string into a Qt one.
 + */
@@ -79,12 +113,31 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43f
 +}
 +#endif
 +
++#ifndef SCFILEWIDGET_IS_KFILEWIDGET
 +ScFileWidget::ScFileWidget(QWidget * parent)
-+#ifdef SCFILEWIDGET_IS_KFILEWIDGET
-+    : KFileWidget(QUrl(), parent)
-+#else
 +    : QFileDialog(parent, Qt::Widget)
++#else
++ScFileWidget::ScFileWidget(QWidget *parent
++                           , const QString &caption,
++                           const QString &directory, const QString &filter
++                          )
++    : KFileWidget(directory.isEmpty() ? QUrl() : QUrl(directory), parent)
 +#endif
++{
++    init();
++#ifdef SCFILEWIDGET_IS_KFILEWIDGET
++    if (!caption.isEmpty()) {
++        setWindowTitle(caption);
++    }
++    if (!filter.isEmpty()) {
++        setNameFilter(filter);
++    }
++#endif
++}
++
+ 
+-ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
++void ScFileWidget::init()
  {
  	m_forceDoubleClickActivation = false;
  
@@ -96,14 +149,14 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43f
  	setViewMode(QFileDialog::List);
  	setWindowFlags(Qt::Widget);
 +#else
-+    if (parent) {
-+        parent->layout()->addWidget(this);
++    if (parentWidget()) {
++        parentWidget()->layout()->addWidget(this);
 +    }
 +#endif
  
  #ifdef Q_OS_MAC
  	QList<QUrl> urls;
-@@ -61,6 +127,10 @@ ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
+@@ -61,6 +145,10 @@ ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
  		i.next()->setVisible(false);
  	setMinimumSize(QSize(480, 310));
  	setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
@@ -114,7 +167,14 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43f
  }
  
  void ScFileWidget::forceDoubleClickActivation(bool force)
-@@ -80,12 +150,127 @@ void ScFileWidget::forceDoubleClickActivation(bool force)
+@@ -76,16 +164,147 @@ void ScFileWidget::forceDoubleClickActivation(bool force)
+ 	else
+ 		setStyleSheet(QString());
+ 	m_forceDoubleClickActivation = force;
++#ifdef SCFILEWIDGET_IS_KFILEWIDGET
++    dirOperator()->setOnlyDoubleClickSelectsFiles(force);
++#endif
+ }
  
  QString ScFileWidget::selectedFile()
  {
@@ -129,6 +189,17 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43f
 +}
 +
 +#ifdef SCFILEWIDGET_IS_KFILEWIDGET
++// TODO
++// implement slots reject()
++// implement signals ScFileWidget::currentChanged(const QString &)
++//                  ScFileWidget::rejected()
++//                  ScFileWidget::filesSelected(const QStringList &)
++
++void ScFileWidget::setAcceptMode(QFileDialog::AcceptMode mode)
++{
++    setOperationMode(mode == QFileDialog::AcceptOpen ? KFileWidget::Opening : KFileWidget::Saving);
++}
++
 +QSize ScFileWidget::sizeHint() const
 +{
 +    return dialogSizeHint();
@@ -137,8 +208,8 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43f
 +QDir ScFileWidget::directory() const
 +{
 +    return QDir(baseUrl().toLocalFile());
-+}
-+
+ }
+ 
 +void ScFileWidget::setDirectory(const QString &path)
 +{
 +    setUrl(path);
@@ -147,17 +218,13 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43f
 +void ScFileWidget::setDirectory(const QDir &path)
 +{
 +    setUrl(path.absolutePath());
- }
- 
++}
++
 +void ScFileWidget::selectFile(const QString &path)
 +{
 +    QUrl dirUrl = QUrl(path).adjusted(QUrl::RemoveFilename);
 +    setUrl(dirUrl);
 +    setSelectedUrl(path);
-+}
-+
-+void ScFileWidget::setIconProvider(QFileIconProvider*)
-+{
 +}
 +
 +void ScFileWidget::setFileMode(QFileDialog::FileMode mode)
@@ -237,12 +304,18 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43f
 +{
 +}
 +
++// unsupported/non-implemented
++void ScFileWidget::setIconProvider(QFileIconProvider*) {}
++void ScFileWidget::setReadOnly(bool) {}
++void ScFileWidget::setSizeGripEnabled(bool) {}
++void ScFileWidget::setModal(bool) {}
++
 +#endif
 +
  void ScFileWidget::locationDropped(const QString& fileUrl)
  {
  	QFileInfo fi(fileUrl);
-@@ -104,9 +289,13 @@ void ScFileWidget::locationDropped(const QString& fileUrl)
+@@ -104,9 +323,13 @@ void ScFileWidget::locationDropped(const QString& fileUrl)
  
  void ScFileWidget::gotoParentDirectory()
  {
@@ -257,7 +330,7 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..2960831ac9b3d12e4602c6aa9cc2b43f
  
  void ScFileWidget::gotoSelectedDirectory()
 diff --git a/scribus/ui/scfilewidget.h b/scribus/ui/scfilewidget.h
-index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..54fb640240ded848c918f817f971eedfc70cd516 100644
+index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..9344bb9f7afed101dc036a0adfd88c52a76e3b2d 100644
 --- a/scribus/ui/scfilewidget.h
 +++ b/scribus/ui/scfilewidget.h
 @@ -8,9 +8,14 @@ for which a new license (GPL+exception) is in place.
@@ -275,7 +348,7 @@ index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..54fb640240ded848c918f817f971eedf
  /*! \brief Simple wrapper simulating the QFileDialog as a common widget.
  Usage is simple - everything is like in QFileDialog except it is not
  a dialog, it's a widget. It can be used for extension features etc.
-@@ -22,7 +27,7 @@ user e.g. doubleclicks the "open" file (in the parent (new) dialog):
+@@ -22,16 +27,42 @@ user e.g. doubleclicks the "open" file (in the parent (new) dialog):
  connect(fileWidget, SIGNAL(accepted()), this, SLOT(accept()));
  \author Petr Vanek <petr@scribus.info>
  */
@@ -284,17 +357,29 @@ index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..54fb640240ded848c918f817f971eedf
  {
  	Q_OBJECT
  
-@@ -39,8 +44,28 @@ public slots:
- 	void gotoDesktopDirectory();
- 	void gotoHomeDirectory();
+ public:
+-	ScFileWidget(QWidget * parent);
++	ScFileWidget(QWidget * parent
++#ifdef SCFILEWIDGET_IS_KFILEWIDGET
++        , const QString &caption = QString()
++        , const QString &directory = QString(), const QString &filter = QString()
++#endif
++    );
+ 
+ 	QString selectedFile();
+ 	void forceDoubleClickActivation(bool force);
  
 +#ifdef SCFILEWIDGET_IS_KFILEWIDGET
++    void setAcceptMode(QFileDialog::AcceptMode mode);
 +    QSize sizeHint() const;
 +    QDir directory() const;
 +    void setDirectory(const QString &path);
 +    void setDirectory(const QDir &path);
 +    void selectFile(const QString &path);
 +    void setIconProvider(QFileIconProvider*);
++    void setReadOnly(bool);
++    void setSizeGripEnabled(bool);
++    void setModal(bool);
 +    void setFileMode(QFileDialog::FileMode mode);
 +    QFileDialog::FileMode fileMode() const;
 +    void setNameFilter(const QString &filter);
@@ -305,7 +390,14 @@ index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..54fb640240ded848c918f817f971eedf
 +    void setNameFilterDetailsVisible(bool);
 +#endif
 +
+ public slots:
+ 	void locationDropped(const QString& fileUrl);
+ 	void gotoParentDirectory();
+@@ -40,7 +71,11 @@ public slots:
+ 	void gotoHomeDirectory();
+ 
  private:
++    void init();
  	bool m_forceDoubleClickActivation;
 +#ifdef SCFILEWIDGET_IS_KFILEWIDGET
 +    QStringList m_nameFilters;
@@ -314,7 +406,7 @@ index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..54fb640240ded848c918f817f971eedf
  
  #endif
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 305e11b06797f209999e5d64463803ba2873e285..925fc59d5d20396856cb83ce3fe830ad96644d4b 100644
+index 305e11b06797f209999e5d64463803ba2873e285..d372bfb806087f45304ff65bab4ad9d0ed8f0329 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -50,7 +50,10 @@ include(GNUInstallDirs)
@@ -333,8 +425,8 @@ index 305e11b06797f209999e5d64463803ba2873e285..925fc59d5d20396856cb83ce3fe830ad
  #endif()
  #>> Qt
  
-+find_package(KF5 COMPONENTS KIO)
-+if(KF5_FOUND)
++find_package(KF5KIO)
++if(KF5KIO_FOUND)
 +    message(STATUS "----- USE KF5::KIO -----")
 +endif()
  
@@ -387,3 +479,35 @@ index 305e11b06797f209999e5d64463803ba2873e285..925fc59d5d20396856cb83ce3fe830ad
  	pkg_check_modules(GMAGICK GraphicsMagick)
  	# find_package(GMAGICK)
  	if(GMAGICK_FOUND)
+diff --git a/scribus/CMakeLists.txt b/scribus/CMakeLists.txt
+index c21ab492736b573b6ad4c28ba0bfc1d43650bd67..cb296f75cedc185102e56d21c415e5ecd15dbdf1 100644
+--- a/scribus/CMakeLists.txt
++++ b/scribus/CMakeLists.txt
+@@ -1293,6 +1293,11 @@ target_link_libraries(${EXE_NAME}
+ 	${WIN32_ONLY_LIBS}
+ 	${GMAGICK_LIBRARIES}
+ )
++if(KF5KIO_FOUND)
++    target_link_libraries(${EXE_NAME}
++        KF5::KIOFileWidgets
++    )
++endif()
+ 
+ if (NOT WIN32 AND NOT HAIKU)
+ 	target_link_libraries(${EXE_NAME}
+diff --git a/scribus/plugins/scriptplugin/CMakeLists.txt b/scribus/plugins/scriptplugin/CMakeLists.txt
+index bb3110572434c9c8ddbf08b5452bc344879289bc..08d7bdde17fb6d34e1f79b893fb387765e1f916d 100644
+--- a/scribus/plugins/scriptplugin/CMakeLists.txt
++++ b/scribus/plugins/scriptplugin/CMakeLists.txt
+@@ -72,6 +72,11 @@ target_link_libraries(${SCRIBUS_SCRIPTER_PLUGIN}
+ )
+ 
+ target_link_libraries(${SCRIBUS_SCRIPTER_PLUGIN} ${PLUGIN_LIBRARIES})
++if(KF5KIO_FOUND)
++    target_link_libraries(${SCRIBUS_SCRIPTER_PLUGIN}
++        KF5::KIOFileWidgets
++    )
++endif()
+ 
+ install(TARGETS ${SCRIBUS_SCRIPTER_PLUGIN}
+ 	LIBRARY
