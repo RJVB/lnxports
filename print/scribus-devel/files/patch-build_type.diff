@@ -2,18 +2,6 @@ diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 305e11b06797f209999e5d64463803ba2873e285..925fc59d5d20396856cb83ce3fe830ad96644d4b 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -50,7 +50,10 @@ include(GNUInstallDirs)
- #enable_testing()
- 
- #Set the custom CMake module directory where our include/lib finders are
--set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
-+find_package(ECM NO_MODULE)
-+
-+set(SCRIBUS_CMAKE_MODULES "${CMAKE_SOURCE_DIR}/cmake/modules")
-+set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH} ${ECM_KDE_MODULE_DIR} ${SCRIBUS_CMAKE_MODULES})
- 
- ##############################################################################################################
- ########## toplevel compiler flags                                                                  ##########
 @@ -448,7 +451,7 @@ endif()
  if (WANT_RELEASEWITHDEBUG)
  	set(CMAKE_BUILD_TYPE RelWithDebInfo)
