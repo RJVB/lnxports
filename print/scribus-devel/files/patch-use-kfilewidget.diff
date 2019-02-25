@@ -1,3 +1,19 @@
+diff --git a/scribus/ui/customfdialog.cpp b/scribus/ui/customfdialog.cpp
+index 22da78bf3e8486589e88482245f284380856fb7e..574cc5039bba1e3250827d47e8a2d4570cc10678 100644
+--- a/scribus/ui/customfdialog.cpp
++++ b/scribus/ui/customfdialog.cpp
+@@ -493,7 +493,11 @@ CustomFDialog::CustomFDialog(QWidget *parent, const QString& wDir, const QString
+ 	connect(fileDialog, SIGNAL(filesSelected(const QStringList &)), this, SLOT(accept()));
+ 	connect(fileDialog, SIGNAL(accepted()), this, SLOT(accept()));
+ 	connect(fileDialog, SIGNAL(rejected()), this, SLOT(reject()));
++#ifndef SCFILEWIDGET_IS_KFILEWIDGET
+ 	resize(minimumSizeHint());
++#else
++    fileDialog->disablePreviewOption();
++#endif
+ }
+ 
+ 
 diff --git a/scribus/ui/newfile.cpp b/scribus/ui/newfile.cpp
 index ec68e74047a47d6b15cbc321b477ff121fcef08d..3d0195049a7da5be7e93af3c23257c3322ad074a 100644
 --- a/scribus/ui/newfile.cpp
@@ -41,7 +57,7 @@ index ec68e74047a47d6b15cbc321b477ff121fcef08d..3d0195049a7da5be7e93af3c23257c33
  
  void NewDoc::openFile()
 diff --git a/scribus/ui/newfile.h b/scribus/ui/newfile.h
-index d7aa0000131935f9251ca4c101bd0ea7babb6e44..08d8bdf373274e383051160cc4bd7e0d3b412113 100644
+index d7aa0000131935f9251ca4c101bd0ea7babb6e44..39eb114f0a4007e20fe4de720c8175cffadc12a1 100644
 --- a/scribus/ui/newfile.h
 +++ b/scribus/ui/newfile.h
 @@ -30,12 +30,20 @@ class QPushButton;
@@ -57,7 +73,7 @@ index d7aa0000131935f9251ca4c101bd0ea7babb6e44..08d8bdf373274e383051160cc4bd7e0d
  class QFileDialog;
  
 +#ifdef SCFILEWIDGET_IS_KFILEWIDGET
-+using ScFileDialog = ScFileWidget;
++using ScFileDialog = KFileDialog;
 +#else
 +using ScFileDialog = QFileDialog;
 +#endif
@@ -75,10 +91,10 @@ index d7aa0000131935f9251ca4c101bd0ea7babb6e44..08d8bdf373274e383051160cc4bd7e0d
  	nftwidget *nftGui;
  	QFrame* recentDocFrame;
 diff --git a/scribus/ui/scfilewidget.cpp b/scribus/ui/scfilewidget.cpp
-index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114dc61be4c 100644
+index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..7fda5d60c8c87a717a87dca3437b16b9832af79c 100644
 --- a/scribus/ui/scfilewidget.cpp
 +++ b/scribus/ui/scfilewidget.cpp
-@@ -18,16 +18,306 @@ for which a new license (GPL+exception) is in place.
+@@ -18,16 +18,334 @@ for which a new license (GPL+exception) is in place.
  #include "filedialogeventcatcher.h"
  #include "scfilewidget.h"
  
@@ -144,9 +160,10 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
 +KFileDialog::KFileDialog(QWidget * parent, const QString &caption, const QString &directory, const QString &filter)
 +    : QDialog(parent, Qt::Widget)
 +    , m_sizeRestored(false)
++    , m_restoredSize(QSize(-1,-1))
 +{
 +    setLayout(new QVBoxLayout);
-+    m_fileWidget = new KFileWidget(directory.isEmpty() ? QUrl() : QUrl(directory), this);
++    m_fileWidget = new KFileWidget(directory.isEmpty() ? QUrl() : QUrl::fromLocalFile(directory), this);
 +    layout()->addWidget(m_fileWidget);
 +    if (!caption.isEmpty()) {
 +        setWindowTitle(caption);
@@ -166,6 +183,11 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
 +    connect(m_fileWidget, &KFileWidget::accepted, this, &KFileDialog::saveSize);
 +    connect(this, &KFileDialog::rejected, this, &KFileDialog::saveSize);
 +    connect(this, &KFileDialog::accepted, this, &KFileDialog::saveSize);
++    m_fileWidget->dirOperator()->setAcceptDrops(true);
++    disablePreviewOption();
++    // save & restore dialog size but only if our parent is a QDialog
++    m_saveSize = qobject_cast<QDialog*>(parent);
++    restoreSize();
 +}
 +
 +KFileDialog::~KFileDialog()
@@ -175,13 +197,23 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
 +
 +void KFileDialog::restoreSize()
 +{
-+    if (!m_sizeRestored) {
++    if (!m_sizeRestored && m_saveSize) {
 +        winId();
 +        KSharedConfig::Ptr conf = KSharedConfig::openConfig();
 +        KWindowConfig::restoreWindowSize(windowHandle(), conf->group("FileDialogSize"));
-+        qWarning() << Q_FUNC_INFO << "size restore" << windowHandle()->size();
-+        resize(windowHandle()->size());
 +        m_sizeRestored = true;
++        m_restoredSize = windowHandle()->size();
++        resize(windowHandle()->size());
++    }
++}
++
++void KFileDialog::saveSize()
++{
++    if (m_saveSize) {
++        KSharedConfig::Ptr conf = KSharedConfig::openConfig();
++        KConfigGroup group = conf->group("FileDialogSize");
++        KWindowConfig::saveWindowSize(windowHandle(), group);
++        m_sizeRestored = false;
 +    }
 +}
 +
@@ -204,7 +236,12 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
 +
 +QSize KFileDialog::sizeHint() const
 +{
-+    return m_fileWidget->dialogSizeHint();
++    return m_restoredSize.isValid() ? m_restoredSize : m_fileWidget->dialogSizeHint();
++}
++
++QSize KFileDialog::minimumSizeHint() const
++{
++    return sizeHint();
 +}
 +
 +QDir KFileDialog::directory() const
@@ -219,16 +256,17 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
 +
 +void KFileDialog::setDirectory(const QDir &path)
 +{
-+    m_fileWidget->setUrl(path.absolutePath());
++    m_fileWidget->setUrl(QUrl::fromLocalFile(path.absolutePath()));
 +}
 +
 +void KFileDialog::selectFile(const QString &path)
 +{
-+    QUrl dirUrl = QUrl(path).adjusted(QUrl::RemoveFilename);
++    QUrl dirUrl = QUrl::fromLocalFile(path).adjusted(QUrl::RemoveFilename);
 +    m_fileWidget->setUrl(dirUrl);
 +    m_fileWidget->setSelectedUrl(path);
 +}
-+
+ 
+-ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
 +void KFileDialog::setFileMode(QFileDialog::FileMode mode)
 +{
 +    KFile::Modes kmode = KFile::LocalOnly;
@@ -251,11 +289,12 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
 +    }
 +    m_fileWidget->setMode(kmode);
 +}
- 
--ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
++
 +QFileDialog::FileMode KFileDialog::fileMode() const
 +{
-+    const auto kmode = m_fileWidget->mode();
++    auto kmode = m_fileWidget->mode();
++    // remove the LocalOnly flag
++    kmode &= ~KFile::LocalOnly;
 +    switch (kmode) {
 +        default:
 +            qWarning() << Q_FUNC_INFO << "unforeseen KFileWidget::mode" << kmode;
@@ -286,23 +325,26 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
 +    if (list.isEmpty()) {
 +        return;
 +    }
-+//     qWarning() << Q_FUNC_INFO << filter
-+//         << "\nvs." << qt2KdeFilter(list);
 +    if (!m_nameFilters.contains(filter)) {
 +        m_nameFilters.append(filter);
 +    }
-+    m_fileWidget->filterWidget()->setFilter(qt2KdeFilter(list));
++    auto fWidget = m_fileWidget->filterWidget();
++    fWidget->setFilter(qt2KdeFilter(list));
++    fWidget->setCurrentFilter(fWidget->filters().at(0));
 +}
 +
 +void KFileDialog::selectNameFilter(const QString &filter)
 +{
-+    const auto list = filter.split(QStringLiteral(";;"));
-+//     qWarning() << Q_FUNC_INFO << filter
-+//         << "\nvs." << qt2KdeFilter(list);
-+    if (!m_nameFilters.contains(filter)) {
-+        m_nameFilters.append(filter);
++    if (m_nameFilters.contains(filter)) {
++        const auto listQt = filter.split(QStringLiteral(";;"));
++        // User can try to select a composed filter, in which case we don't
++        // really know if s/he wants something other than the 1st filter
++        // in that list. Just take the 1st.
++        const auto f = qt2KdeFilter(QStringList(listQt.at(0)));
++        m_fileWidget->filterWidget()->setCurrentFilter(f);
++    } else {
++        qWarning() << Q_FUNC_INFO << "ignoring unknown filter" << filter;
 +    }
-+    m_fileWidget->filterWidget()->setCurrentFilter(qt2KdeFilter(list));
 +}
 +
 +QStringList KFileDialog::nameFilters() const
@@ -312,13 +354,18 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
 +
 +QString KFileDialog::selectedNameFilter() const
 +{
-+    if (m_fileWidget->filterWidget()->currentFilter().isEmpty()) {
-+        qWarning() << Q_FUNC_INFO << "empty filter!";
-+        m_fileWidget->filterWidget()->setFilter(QStringLiteral("*"));
++    auto fWidget = m_fileWidget->filterWidget();
++    if (fWidget->currentFilter().isEmpty()) {
++        // this shouldn't happen anymore (happens when calling setCurrentFilter() with
++        // a composite/multi filter pattern instead of with the 1st element from that pattern).
++        qWarning() << Q_FUNC_INFO << "empty filter! Known=" << fWidget->filters();
++        if (fWidget->filters().isEmpty()) {
++            fWidget->setFilter(tr("*"));
++        } else {
++            fWidget->setCurrentFilter(fWidget->filters().at(0));
++        }
 +    }
-+    qWarning() << Q_FUNC_INFO << m_fileWidget->filterWidget()->currentFilter()
-+        << "\nvs." << kde2QtFilter(m_nameFilters, m_fileWidget->filterWidget()->currentFilter());
-+    return kde2QtFilter(m_nameFilters, m_fileWidget->filterWidget()->currentFilter());
++    return kde2QtFilter(m_nameFilters, fWidget->currentFilter());
 +}
 +
 +void KFileDialog::setNameFilterDetailsVisible(bool)
@@ -335,26 +382,23 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
 +    emit filesSelected(m_fileWidget->selectedFiles());
 +}
 +
-+void KFileDialog::slotFilterSelected(const QString &filter)
++void KFileDialog::slotFilterSelected(const QString &)
 +{
 +    const QString f = selectedNameFilter();
-+    qWarning() << Q_FUNC_INFO << filter << "\nvs." << f;
++//     qWarning() << Q_FUNC_INFO << filter << "\nvs." << f;
 +    emit filterSelected(f);
 +    reload();
-+}
-+
-+void KFileDialog::saveSize()
-+{
-+    KSharedConfig::Ptr conf = KSharedConfig::openConfig();
-+    KConfigGroup group = conf->group("FileDialogSize");
-+    KWindowConfig::saveWindowSize(windowHandle(), group);
-+    m_sizeRestored = false;
 +}
 +
 +void KFileDialog::reload()
 +{
 +    m_fileWidget->dirOperator()->rereadDir();
 +    m_fileWidget->dirOperator()->updateDir();
++}
++
++void KFileDialog::disablePreviewOption()
++{
++    m_fileWidget->dirOperator()->setPreviewWidget(nullptr);
 +}
 +
 +// unsupported/non-implemented
@@ -388,7 +432,7 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
  
  #ifdef Q_OS_MAC
  	QList<QUrl> urls;
-@@ -40,10 +330,13 @@ ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
+@@ -40,10 +358,14 @@ ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
  	QUrl dt(QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)));
  	if (!urls.contains(dt))
  		urls << dt;
@@ -399,11 +443,12 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
  #endif
  
 -	FileDialogEventCatcher* keyCatcher = new FileDialogEventCatcher(this);
++    // TODO: do we need this when using the KFileDialog?
 +    FileDialogEventCatcher* keyCatcher = new FileDialogEventCatcher(this);
  	QList<QListView *> lv = findChildren<QListView *>();
  	QListIterator<QListView *> lvi(lv);
  	while (lvi.hasNext())
-@@ -61,8 +354,12 @@ ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
+@@ -61,8 +383,12 @@ ScFileWidget::ScFileWidget(QWidget * parent) : QFileDialog(parent, Qt::Widget)
  		i.next()->setVisible(false);
  	setMinimumSize(QSize(480, 310));
  	setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
@@ -416,7 +461,7 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
  void ScFileWidget::forceDoubleClickActivation(bool force)
  {
  	// Hack to make the previews in our file dialogs useable again,
-@@ -73,17 +370,24 @@ void ScFileWidget::forceDoubleClickActivation(bool force)
+@@ -73,17 +399,24 @@ void ScFileWidget::forceDoubleClickActivation(bool force)
  
  	if (force)
  		setStyleSheet(QStringLiteral("QAbstractItemView { activate-on-singleclick: 0; }"));
@@ -442,7 +487,7 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
  }
  
  void ScFileWidget::locationDropped(const QString& fileUrl)
-@@ -104,14 +408,18 @@ void ScFileWidget::locationDropped(const QString& fileUrl)
+@@ -104,14 +437,18 @@ void ScFileWidget::locationDropped(const QString& fileUrl)
  
  void ScFileWidget::gotoParentDirectory()
  {
@@ -463,10 +508,10 @@ index f6577b9806ca4ecad1fa5b83d6773cdde72b997d..8d36e00f7547c51805464e34c0313114
  	{
  		QFileInfo fi(s.first());
 diff --git a/scribus/ui/scfilewidget.h b/scribus/ui/scfilewidget.h
-index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..68b563f8b39ae5b86e44c97c3901a0b2e99bec7d 100644
+index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..d4d3b09cad832607bd6d7bd83e4bae69c9962f25 100644
 --- a/scribus/ui/scfilewidget.h
 +++ b/scribus/ui/scfilewidget.h
-@@ -8,9 +8,78 @@ for which a new license (GPL+exception) is in place.
+@@ -8,9 +8,82 @@ for which a new license (GPL+exception) is in place.
  #define SCFILEWIDGET_H
  
  #include <QFileDialog>
@@ -478,7 +523,7 @@ index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..68b563f8b39ae5b86e44c97c3901a0b2
 +class QFileIconProvider;
 +
 +#ifdef SCFILEWIDGET_IS_KFILEWIDGET
-+class KFileDialog : public QDialog
++class SCRIBUS_API KFileDialog : public QDialog
 +{
 +    Q_OBJECT
 +public:
@@ -490,6 +535,7 @@ index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..68b563f8b39ae5b86e44c97c3901a0b2
 +
 +    void setAcceptMode(QFileDialog::AcceptMode mode);
 +    QSize sizeHint() const;
++    QSize minimumSizeHint() const;
 +    QDir directory() const;
 +    void setDirectory(const QString &path);
 +    void setDirectory(const QDir &path);
@@ -516,6 +562,7 @@ index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..68b563f8b39ae5b86e44c97c3901a0b2
 +    void show();
 +
 +    void reload();
++    void disablePreviewOption();
 +
 +signals:
 +    void currentChanged(const QString &path);
@@ -536,6 +583,8 @@ index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..68b563f8b39ae5b86e44c97c3901a0b2
 +    KFileWidget *m_fileWidget;
 +    QStringList m_nameFilters;
 +    bool m_sizeRestored;
++    bool m_saveSize;
++    QSize m_restoredSize;
 +    friend class ScFileWidget;
 +};
 +
@@ -545,7 +594,7 @@ index 7ee83382f784cb3c2f5ffd7ce4b733cd3f1e5e81..68b563f8b39ae5b86e44c97c3901a0b2
  /*! \brief Simple wrapper simulating the QFileDialog as a common widget.
  Usage is simple - everything is like in QFileDialog except it is not
  a dialog, it's a widget. It can be used for extension features etc.
-@@ -22,12 +91,17 @@ user e.g. doubleclicks the "open" file (in the parent (new) dialog):
+@@ -22,12 +95,17 @@ user e.g. doubleclicks the "open" file (in the parent (new) dialog):
  connect(fileWidget, SIGNAL(accepted()), this, SLOT(accept()));
  \author Petr Vanek <petr@scribus.info>
  */
