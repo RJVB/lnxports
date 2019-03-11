@@ -79,7 +79,8 @@ depends_lib-append  port:icu \
                     port:libvisio-0.1
 
 patch.pre_args      -Np1
-patchfiles-append   patch-allow-native-dialogs.diff
+patchfiles-append   patch-build_type.diff \
+                    patch-allow-native-dialogs.diff
 
 # should make a difference here:
 cmake.generator     Ninja
