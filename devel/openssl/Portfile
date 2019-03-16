@@ -30,21 +30,23 @@ homepage            https://www.openssl.org
 conflicts           libressl libressl-devel
 
 ####################
-PortGroup devport 1.0
+if {${os.platform} ne "darwin"} {
+    PortGroup devport 1.0
 
-create_devport port:${name}
+    create_devport port:${name}
 
-post-destroot {
-    if {${subport} eq "${name}"} {
-        register_devport_standard_content
-        create_devport_content_archive
+    post-destroot {
+        if {${subport} eq "${name}"} {
+            register_devport_standard_content
+            create_devport_content_archive
+        }
     }
-}
 
-if {${subport} eq "${name}-dev"} {
-    # openssl-dev doesn't care about anything that follows,
-    # return here to avoid having to add more subport checks.
-    return
+    if {${subport} eq "${name}-dev"} {
+        # openssl-dev doesn't care about anything that follows,
+        # return here to avoid having to add more subport checks.
+        return
+    }
 }
 ####################
 
@@ -88,7 +90,7 @@ if {${configure.sdkroot} ne ""} {
                             -Wl,-syslibroot,${configure.sdkroot}
 }
 
-if {${os.platform} eq "darwin"} {
+platform darwin {
     set merger_arch_compiler no
     array set merger_configure_args {
         ppc     darwin-ppc-cc
@@ -96,8 +98,6 @@ if {${os.platform} eq "darwin"} {
         ppc64   darwin64-ppc-cc
         x86_64  darwin64-x86_64-cc
     }
-}
-platform darwin {
     # Don't use i386 assembly on Tiger (#38015, #43303).
     if {${os.major} <= 8} {
         append merger_configure_args(i386) { no-asm}
@@ -121,7 +121,7 @@ use_parallel_build  no
 
 post-configure {
     # splice in our build options
-    reinplace "s|^CFLAG=.*|& ${configure.optflags}|g" ${worksrcpath}/Makefile
+    reinplace "s|^CFLAG=.*|& ${configure.cflags}|g" ${worksrcpath}/Makefile
     reinplace "s|^SHARED_LDFLAGS=.*|& ${configure.ldflags}|g" ${worksrcpath}/Makefile
 }
 
