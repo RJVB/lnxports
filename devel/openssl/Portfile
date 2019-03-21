@@ -6,7 +6,7 @@ PortGroup           LTO 1.0
 
 name                openssl
 epoch               1
-version             1.0.2r ; revision 1
+version             1.0.2r ; revision 2
 # distname            openssl-${version}
 
 # Please revbump these ports when updating OpenSSL.
@@ -148,6 +148,7 @@ post-destroot {
     } else {
         # temporary config; make the "hidden" files available where they're expected
         # by current dependents (until they're rebuilt)
+        ln -s openssl-1.0/openssl ${destroot}${prefix}/include/openssl
         ln -s openssl-1.0 ${destroot}${prefix}/bin/openssl
         foreach pc [glob ${destroot}${prefix}/lib/openssl-1.0/pkgconfig/*.pc] {
             ln -s ../openssl-1.0/pkgconfig/[file tail ${pc}] ${destroot}${prefix}/lib/pkgconfig/
