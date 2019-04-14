@@ -1,0 +1,76 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+
+name                NetworkManager
+version             1.14.6
+categories          net
+maintainers         gmail.com:rjvbertin openmaintainer
+license             GPL-2+
+description         Networking that Just Works
+long_description    NetworkManager attempts to keep an active network connection available at all \
+                    times.  The point of NetworkManager is to make networking configuration and \
+                    setup as painless and automatic as possible.  NetworkManager is intended to \
+                    replace default route, replace other routes, set IP addresses, and in general \
+                    configure networking as NM sees fit (with the possibility of manual override as \
+                    necessary).  In effect, the goal of NetworkManager is to make networking Just \
+                    Work with a minimum of user hassle, but still allow customization and a high \
+                    level of manual network control.
+homepage            https://wiki.gnome.org/Projects/NetworkManager
+platforms           linux
+set branch          [join [lrange [split ${version} .] 0 1] .]
+master_sites        https://download.gnome.org/sources/NetworkManager/${branch}
+use_xz              yes
+
+checksums           rmd160  a2a151cc04e625eb074e1bcae49cb7fcd6415ab7 \
+                    sha256  693bcdad15eec7f07a06cbc6e43ddb3b1c13b2d2d23ec165fbb5adf4c3323a5d
+
+depends_lib-append  port:gettext \
+                    port:python27 \
+                    port:nss \
+                    port:glib2 \
+                    port:util-linux \
+                    port:systemd \
+                    port:libiconv \
+                    port:pcre \
+                    port:libffi \
+                    port:zlib \
+                    port:xz \
+                    port:lz4 \
+                    port:libgpg-error \
+                    port:dbus \
+                    port:p11-kit \
+                    port:libtasn1 \
+                    port:policykit \
+                    port:readline \
+                    port:ncurses
+
+depends_build-append \
+                    port:gettext-dev \
+                    port:pkgconfig
+
+configure.args      --disable-ovs \
+                    --enable-introspection=no \
+                    --with-suspend-resume=upower \
+                    --with-systemd-journal=no \
+                    --with-libnm-glib
+configure.env-append \
+                    LIBS="-L${prefix}/lib -lintl"
+
+post-destroot {
+    set docdir ${destroot}${prefix}/share/doc/${name}
+    xinstall -d ${docdir}
+    xinstall -m 644 -W ${worksrcpath} \
+        AUTHORS \
+        COPYING \
+        ChangeLog \
+        NEWS \
+        README \
+        TODO \
+        ${docdir}
+
+}
+
+livecheck.type      regex
+livecheck.url       [lindex ${master_sites} 0]
+livecheck.regex     ${name}-(\[0-9.\]+)\\.tar
