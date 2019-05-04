@@ -34,10 +34,10 @@ subport ${name}-qt5 {
     if {[variant_isset master]} {
         fetch.type      git
         git.url         git://anongit.kde.org/phonon
-        git.branch      8c3054f09bdb0472c0e3ee7f8a256f9c911059c0
-        # v4.10.0
+        git.branch      f7575f8befb7f0e37ecb6023a9237267bae3675c
+        # v4.10.2-4-gf7575f8b
         set base_version ${version}
-        version         4.10.0
+        version         4.10.2.4
         post-configure {
             if {[vercmp ${version} ${base_version}] == 0} {
                 ui_warn "The +master variant provides the same version as the standard variant, currently"
