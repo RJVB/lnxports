@@ -113,7 +113,14 @@ if {${os.platform} ne "darwin"} {
 configure.perl              /usr/bin/perl
 configure.python            /usr/bin/python
 configure.env-append        PERL_PATH=${configure.perl}
-# build.env-append            "MAKEFLAGS=LIBTOOL=${prefix}/bin/slibtool"
+build.env-append            "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
+destroot.env-append         "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
+if {[info exists configure.ar]} {
+    build.env-append        SLIBTOOL_AR="${configure.ar}" \
+                            SLIBTOOL_RANLIB="${configure.ranlib}"
+    destroot.env-append     SLIBTOOL_AR="${configure.ar}" \
+                            SLIBTOOL_RANLIB="${configure.ranlib}"
+}
 
 variant static description {build static libraries too} {}
 if {[variant_isset static]} {
