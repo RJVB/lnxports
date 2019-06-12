@@ -102,7 +102,8 @@ platform darwin powerpc {
 default_variants-append +gpl2
 
 configure.cflags-append -DHAVE_LRINTF ${configure.cppflags}
-configure.args      --enable-swscale \
+configure.args-append \
+                    --enable-swscale \
                     --enable-avfilter \
                     --enable-avresample \
                     --enable-libmp3lame \
