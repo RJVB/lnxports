@@ -14,7 +14,7 @@ if {${os.platform} eq "linux"} {
 #     our own site-packages directory to the path.
     maintainers     gmail.com:rjvbertin
     version         [exec /usr/bin/python2.7 -c "import sys ; print '%d.%d.%d' %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro)"]
-    revision        1
+    revision        2
 } else {
     # Remember to keep py27-tkinter and py27-gdbm's versions sync'd with this
     version             2.7.10
@@ -49,14 +49,12 @@ if {${os.platform} eq "linux"} {
     use_configure   no
     build           {}
     destroot {
-        xinstall -m 755 ${filespath}/python-wrapper.sh ${destroot}${prefix}/bin/python${branch}
-        reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/python${branch}
-        reinplace "s|@SUFFIX@|${branch}|g" ${destroot}${prefix}/bin/python${branch}
-        reinplace "s|@BRANCH@|${branch}|g" ${destroot}${prefix}/bin/python${branch}
-        xinstall -m 755 ${filespath}/python-wrapper.sh ${destroot}${prefix}/bin/python${major}
-        reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/python${major}
-        reinplace "s|@SUFFIX@|${major}|g" ${destroot}${prefix}/bin/python${major}
-        reinplace "s|@BRANCH@|${branch}|g" ${destroot}${prefix}/bin/python${major}
+        foreach p [list python${branch} python${major} python${branch}-config] {
+            xinstall -m 755 ${filespath}/python-wrapper.sh ${destroot}${prefix}/bin/${p}
+            reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/${p}
+            reinplace "s|@SUFFIX@|${branch}|g" ${destroot}${prefix}/bin/${p}
+            reinplace "s|@BRANCH@|${branch}|g" ${destroot}${prefix}/bin/${p}
+        }
         xinstall -m 755 -d ${destroot}${prefix}/lib/python${branch}/site-packages
         touch ${destroot}${prefix}/lib/python${branch}/site-packages/placeholder
         xinstall -m 755 -d ${destroot}${python.prefix}/bin
