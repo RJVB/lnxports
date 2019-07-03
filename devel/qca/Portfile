@@ -3,7 +3,7 @@
 
 PortSystem          1.0
 
-name                qca
+name                qca-old
 
 # Qt version handling logic
 global Qt_Major
