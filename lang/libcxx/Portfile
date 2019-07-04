@@ -1,9 +1,10 @@
 PortSystem              1.0
 PortGroup               compiler_blacklist_versions 1.0
+PortGroup               LTO 1.0
 
 name                    libcxx
 epoch                   1
-version                 7.0.0
+version                 8.0.0
 categories              lang
 platforms               darwin
 license                 MIT NCSA
@@ -21,16 +22,19 @@ homepage                http://libcxx.llvm.org/
 master_sites            http://www.llvm.org/releases/${version}/
 dist_subdir             llvm
 
+livecheck.url           http://www.llvm.org/
+livecheck.regex         download.html\#(\\d+\\.\\d+(\\.\\d+)+)
+
 use_xz                  yes
 distname                ${name}-${version}.src
 distfiles-append        llvm-${version}.src${extract.suffix}
 
 checksums               ${name}-${version}.src${extract.suffix} \
-                        rmd160  7dfefd22edb305f68882a5f503f31c881fe5dc05 \
-                        sha256  9b342625ba2f4e65b52764ab2061e116c0337db2179c6bce7f9a0d70c52134f0 \
+                        rmd160  bc1e240208c88e1718a4892932f40b299628301a \
+                        sha256  c2902675e7c84324fb2c1e45489220f250ede016cc3117186785d9dc291f9de2 \
                         llvm-${version}.src${extract.suffix} \
-                        rmd160  af7af75c7fb15a004f887f81d71eae58c24c11e6 \
-                        sha256  8bc1f844e6cbde1b652c19c1edebc1864456fd9c78b8c1bea038e51b363fe222
+                        rmd160  a0740d83ae981506ddb7cfd389cafc52b7f317b2 \
+                        sha256  8872be1b12c61450cacc82b3d153eab02be2546ef34fa3580ed14137bb26224c
 
 if {${os.platform} eq "linux"} {
     PortGroup           cmake 1.1
