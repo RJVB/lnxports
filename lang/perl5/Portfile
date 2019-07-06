@@ -2,6 +2,7 @@
 
 PortSystem          1.0
 PortGroup           perl5 1.0
+PortGroup           LTO 1.0
 
 name                perl5
 version             5.26.1
@@ -67,15 +68,17 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
         # https://trac.macports.org/ticket/55207
         patchfiles-append   ${perl5.major}/fix-db_file-paths.patch
 
-        # - Prevent build from picking up the bind9 port's static libbind, which
-        #   duplicates symbols from /usr/lib/libdl (r10638).
-        # - Don't link against cryptlib
-        #   https://trac.macports.org/ticket/53446
-        patchfiles-append   ${perl5.major}/patch-Configure-remove-libs.diff
+        platform darwin {
+            # - Prevent build from picking up the bind9 port's static libbind, which
+            #   duplicates symbols from /usr/lib/libdl (r10638).
+            # - Don't link against cryptlib
+            #   https://trac.macports.org/ticket/53446
+            patchfiles-append   ${perl5.major}/patch-Configure-remove-libs.diff
 
-        # Prevent miniperl linking from accidentally finding our libstdc++
-        # https://trac.macports.org/ticket/36438
-        patchfiles-append   ${perl5.major}/fix-miniperl-linking-PR36438.patch
+            # Prevent miniperl linking from accidentally finding our libstdc++
+            # https://trac.macports.org/ticket/36438
+            patchfiles-append   ${perl5.major}/fix-miniperl-linking-PR36438.patch
+        }
 
         # Install files under 5.xx rather than 5.xx.yy
         # https://trac.macports.org/ticket/43480
@@ -152,16 +155,26 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                             -Dpager='/usr/bin/less -sR' \
                             -Dperlpath="${perl5.bin}" \
                             -Dstartperl="#!${perl5.bin}" \
-                           {-Acppflags="$CPPFLAGS"} \
-                           {-Accflags="$CFLAGS"} \
-                           {-Alddlflags="$LDFLAGS"} \
-                           {-Aldflags="$LDFLAGS"}
+                           {-A append:cppflags="$CPPFLAGS"} \
+                           {-A append:ccflags="$CFLAGS"} \
+                           {-A append:lddlflags="$LDFLAGS -shared"} \
+                           {-A append:ldflags="$LDFLAGS"}
+        # Note the use of "append:" in the -A options, which is to ensure that OS-specific flags
+        # are not overwritten. That could lead to errors like "undefined reference to `main'" when
+        # linking libperl.so ... because the linker tries to build an executable.
+        # Idem for the explicit -shared in lddlflags
 
         if {[variant_isset universal]} {
             post-configure {
                 system "cd ${worksrcpath} && ed - ${worksrcpath}/config.h < ${filespath}/${perl5.major}/config.h.ed"
             }
         }
+        post-configure {
+            ui_debug "> cat myconfig"
+            system -W ${worksrcpath} "cat myconfig"
+        }
+
+        build.post_args-append -w -k
 
         post-build {
             reinplace -E {s/-arch [a-z0-9_]+//g} \
@@ -211,7 +224,7 @@ if {$subport eq $name} {
     perl5.require_variant   yes
     perl5.conflict_variants yes
     perl5.branches          5.26 5.28
-    perl5.default_branch    5.28
+    perl5.default_branch    5.26
     perl5.create_variants   ${perl5.branches}
 
     distfiles
