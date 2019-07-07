@@ -48,9 +48,9 @@ if {${subport} eq "${name}"} {
     set PPREFIX     ./
 } else {
     conflicts       "${name}"
-    # git describe --tags : Audacity-2.3.2-361-g660b8c07a
-    github.setup    audacity audacity 660b8c07ad63c83dc5f9d34f359bd4480e43f9eb
-    version         2.3.2.361
+    # git describe --tags : Audacity-2.3.2-535-ge03c9cdee
+    github.setup    audacity audacity e03c9cdee3b7362ed0ce78c0a091fcd05715e31c
+    version         2.3.2.535
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
@@ -186,6 +186,11 @@ platform linux {
 #     set wxWidgets.wxconfig /usr/bin/wx-config
 }
 patchfiles-append   patch-wxw-31x.diff
+
+# the port doesn't use CMake for now as it appears to be a WIP, but
+# this build mechanism can be useful for opening the source as a project
+# in IDEs like KDevelop.
+patchfiles-append   patch-cmakefiles.diff
 
 configure.args-append \
                     --disable-dependency-tracking \
