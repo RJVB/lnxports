@@ -2,10 +2,11 @@
 
 PortSystem          1.0
 PortGroup           perl5 1.0
+set LTO.allow_ThinLTO no
+PortGroup           LTO 1.0
 
 name                git
-version             2.16.2
-revision            1
+version             2.22.0
 
 description         A fast version control system
 long_description    Git is a fast, scalable, distributed open source version \
@@ -14,7 +15,7 @@ maintainers         {ciserlohn @ci42} openmaintainer
 categories          devel
 license             GPL-2 LGPL-2.1+
 platforms           darwin
-homepage            http://git-scm.com/
+homepage            https://git-scm.com/
 master_sites        https://www.kernel.org/pub/software/scm/git/ \
                     https://cdn.kernel.org/pub/software/scm/git/
 distname            git-${version}
@@ -22,16 +23,16 @@ use_xz              yes
 distfiles           git-${version}${extract.suffix} \
                     git-manpages-${version}${extract.suffix}
 
-checksums           git-${version}${extract.suffix} \
-                    rmd160  bfc6cbbf54c0c9ea10952005a91f93db141c88be \
-                    sha256  5560578bd21468d98637f41515c165d32f69caff0838b8989dee5ce10022c717 \
-                    git-manpages-${version}${extract.suffix} \
-                    rmd160  e64a6fe167af57b2d1d88f634850d97cb429db0d \
-                    sha256  42eee5134cc8b3b64c736025edfbfee86c2ecb76e37980a0aff26c86b5abcb05 \
+checksums           git-${version}.tar.xz \
+                    rmd160  a427f61cbc0bc40de23570f1f35fa082221e5c90 \
+                    sha256  159e4b599f8af4612e70b666600a3139541f8bacc18124daf2cbe8d1b934f29f \
+                    git-manpages-${version}.tar.xz \
+                    rmd160  ea77ed9691557fa8675b7539b650b6b27512e2f5 \
+                    sha256  4e2cfda33d8e86812bfcdb907478d1144412ce472c32edd0219b3c0201c7ee3a
 
 perl5.require_variant   yes
-perl5.conflict_variants no
-perl5.branches          5.24 5.26
+perl5.conflict_variants yes
+perl5.branches          5.24 5.26 5.28
 perl5.default_branch    5.26
 perl5.create_variants   ${perl5.branches}
 
@@ -58,8 +59,9 @@ if {${os.platform} eq "darwin"} {
 patchfiles          git-subtree.1.diff
 platform darwin {
     patchfiles-append \
-                    patch-Makefile.diff
-    use_configure       no
+                    patch-Makefile.diff \
+                    patch-sha1dc-older-apple-gcc-versions.diff
+    use_configure   no
 }
 patch.pre_args      -p1
 
@@ -102,6 +104,7 @@ build.args          CFLAGS="${CFLAGS}" \
                     NO_FINK=1 \
                     NO_DARWIN_PORTS=1 \
                     NO_R_TO_GCC_LINKER=1 \
+                    NO_PERL_CPAN_FALLBACK=1 \
                     V=1
 
 test.run            yes
@@ -172,9 +175,9 @@ variant pcre {
 
 variant doc description {Install HTML and plaintext documentation} {
     distfiles-append        git-htmldocs-${version}${extract.suffix}
-    checksums-append        git-htmldocs-${version}${extract.suffix} \
-                            rmd160  187e341b9f2adf92ee3d40a696fde997e975e5ec \
-                            sha256  dbaf94de882e6ad6827a79935e6982021f0908bd7cccf984d3130fc77ecccb19
+    checksums-append        git-htmldocs-${version}.tar.xz \
+                            rmd160  d6fe388483ad3dc4236a7d26c6e5e947e805cf29 \
+                            sha256  5c7e010abfca5ff2eabf3616bf7216609cfb93dbc12b7c4e13f4ae3e539dbc79
 
     patchfiles-append       git-subtree.html.diff
 
@@ -246,19 +249,40 @@ variant credential_osxkeychain description {Install git credential-osxkeychain u
     }
 }
 
+variant diff_highlight description {Install git diff-highlight utility from contrib} {
+
+    patchfiles-append   patch-contrib-diff-highlight-Makefile.diff
+
+    post-patch {
+        reinplace "s|%PREFIX%|${prefix}|" \
+        ${worksrcpath}/contrib/diff-highlight/Makefile
+    }
+
+    post-build {
+        system -W "${worksrcpath}/contrib/diff-highlight" "make [join ${build.args}]"
+    }
+
+    post-destroot {
+        xinstall -m 755 "${worksrcpath}/contrib/diff-highlight/diff-highlight" \
+            "${destroot}${prefix}/bin/"
+    }
+}
+
 platform darwin 8 {
     build.args-append   NO_APPLE_COMMON_CRYPTO=1
 }
 
-default_variants    +doc +pcre
+default_variants    +doc +pcre +diff_highlight
 platform darwin {
     default_variants \
                     +doc +pcre +credential_osxkeychain
 }
 
 platform linux {
-    PortGroup conflicts_build 1.0
-    conflicts_build gettext-dev
+#     PortGroup conflicts_build 1.0
+#     conflicts_build gettext-dev
+    depends_lib-append \
+                    port:gettext
     use_configure   yes
     pre-configure {
         # recreate the configure script with the build.args collected above
@@ -271,8 +295,14 @@ platform linux {
     }
     configure.args-append \
                     --with-python="${prefix}/bin/python2.7"
+    configure.env-append \
+                    LIBS="-L${prefix}/lib -lintl"
+    configure.ldflags-append \
+                    -lintl
     build.args      V=1
 }
+
+build.post_args-append  -wk
 
 livecheck.type          regexm
 livecheck.regex         {<span class="version">.*?(\d+\.\d+\.\d+).*?</span>}
