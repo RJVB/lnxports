@@ -1,0 +1,72 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index bf0ad318f6cad2b3077bdb038df7aba1e2f84709..2230979bacb3f9a577eb2bef3b20ae8701ded964 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -41,12 +41,12 @@ include_directories(${top_dir}/lib-src/lv2/lv2)
+ include_directories(${top_dir}/lib-src/lv2/suil)
+ include_directories(${top_dir}/lib-src/lame)
+ 
+-#if(MSVC)
++if(MSVC)
+     add_definitions(/FI"AudacityHeaders.h")
+-#else()
++else()
+     # GCC or Clang
+-#    add_definitions(-include AudacityHeaders.h)
+-#endif()
++   add_definitions(-include AudacityHeaders.h)
++endif()
+ 
+ 
+ 
+@@ -60,10 +60,10 @@ add_definitions( -DXML_STATIC )
+ add_definitions( -D__STDC_CONSTANT_MACROS )
+ add_definitions( -DWXINTL_NO_GETTEXT_MACRO )
+ add_definitions( -DWXUSINGDLL )
+-add_definitions( -D__WXMSW__ )
++# add_definitions( -D__WXMSW__ )
+ add_definitions( -DwxDEBUG_LEVEL=0 )
+ add_definitions( -DNDEBUG )
+-add_definitions( -DWIN32 )
++# add_definitions( -DWIN32 )
+ add_definitions( -DSTRICT )
+ 
+ 
+@@ -391,12 +391,12 @@ set( TRACKS_SOURCE
+    ${CMAKE_SOURCE_DIRECTORY}tracks/labeltrack/ui/LabelGlyphHandle.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/labeltrack/ui/LabelTextHandle.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/labeltrack/ui/LabelTrackControls.cpp
+-   ${CMAKE_SOURCE_DIRECTORY}tracks/labeltrack/ui/LabelTrackUI.cpp
++#    ${CMAKE_SOURCE_DIRECTORY}tracks/labeltrack/ui/LabelTrackUI.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/labeltrack/ui/LabelTrackVRulerControls.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/notetrack/ui/NoteTrackButtonHandle.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/notetrack/ui/NoteTrackControls.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/notetrack/ui/NoteTrackSliderHandles.cpp
+-   ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/notetrack/ui/NoteTrackUI.cpp
++#    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/notetrack/ui/NoteTrackUI.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/notetrack/ui/NoteTrackVRulerControls.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/notetrack/ui/NoteTrackVZoomHandle.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/notetrack/ui/StretchHandle.cpp
+@@ -405,11 +405,11 @@ set( TRACKS_SOURCE
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/wavetrack/ui/SampleHandle.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/wavetrack/ui/WaveTrackControls.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/wavetrack/ui/WaveTrackSliderHandles.cpp
+-   ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/wavetrack/ui/WaveTrackUI.cpp
++#    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/wavetrack/ui/WaveTrackUI.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/wavetrack/ui/WaveTrackVRulerControls.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/playabletrack/wavetrack/ui/WaveTrackVZoomHandle.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/timetrack/ui/TimeTrackControls.cpp
+-   ${CMAKE_SOURCE_DIRECTORY}tracks/timetrack/ui/TimeTrackUI.cpp
++#    ${CMAKE_SOURCE_DIRECTORY}tracks/timetrack/ui/TimeTrackUI.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/timetrack/ui/TimeTrackVRulerControls.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/ui/BackgroundCell.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/ui/ButtonHandle.cpp
+@@ -424,7 +424,7 @@ set( TRACKS_SOURCE
+    ${CMAKE_SOURCE_DIRECTORY}tracks/ui/TrackButtonHandles.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/ui/TrackControls.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/ui/TrackSelectHandle.cpp
+-   ${CMAKE_SOURCE_DIRECTORY}tracks/ui/TrackUI.cpp
++#    ${CMAKE_SOURCE_DIRECTORY}tracks/ui/TrackUI.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/ui/TrackVRulerControls.cpp
+    ${CMAKE_SOURCE_DIRECTORY}tracks/ui/ZoomHandle.cpp
+ )
