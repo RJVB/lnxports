@@ -66,6 +66,19 @@ platform linux {
 #         destroot.env-append \
 #                 "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
     }
+    # from Ubuntu: add ELF versioning info to the libraries
+    patchfiles-append \
+                libldap-symbol-versions \
+                gssapi.diff
+    pre-configure {
+        if {![file exists ${worksrcpath}/config.log]} {
+            use_autoreconf \
+                yes
+            autoreconf.cmd ${prefix}/bin/autoconf
+            autoreconf.args \
+                -f -v -i
+        }
+    }
     configure.args-append \
                 --enable-crypt \
                 --enable-modules \
