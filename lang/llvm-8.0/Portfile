@@ -94,7 +94,7 @@ if {${subport} eq "llvm-${llvm_version}"} {
     }
 } elseif {${subport} eq "lldb-${llvm_version}"} {
     destroot {
-        foreach bin [glob -nocomplain /usr/lib/llvm-${llvm_version}/bin/lldb*] {
+        foreach bin [glob -nocomplain /usr/lib/llvm-${llvm_short}/bin/lldb*] {
             set bname [file tail ${bin}]
             set bin_filename ${destroot}${prefix}/bin/${bname}${llvm_suffix}
 
