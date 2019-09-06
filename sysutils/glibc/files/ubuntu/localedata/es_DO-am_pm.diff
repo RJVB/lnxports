@@ -1,0 +1,18 @@
+Description: Define 12-hours a.m./p.m. format
+Bug-Ubuntu: https://launchpad.net/bugs/1288843
+Forwarded: http://sourceware.org/bugzilla/show_bug.cgi?id=16045
+Author: Gunnar Hjalmarsson <gunnarhj@ubuntu.com>
+
+--- a/localedata/locales/es_DO	2012-03-06 10:10:20.000000000 +0100
++++ b/localedata/locales/es_DO	2014-03-09 01:03:37.309958275 +0100
+@@ -114,8 +114,8 @@
+ d_t_fmt "%a %d %b %Y %T %Z"
+ d_fmt   "%d//%m//%y"
+ t_fmt   "%T"
+-am_pm   "";""
+-t_fmt_ampm ""
++am_pm         "a.m.";"p.m."
++t_fmt_ampm    "%I:%M:%S %p"
+ week 7;19971130;1
+ END LC_TIME
+ 

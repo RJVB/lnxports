@@ -1,3 +1,5 @@
+Good, you're reading this. Please read the entire document! :)
+
 This is a "local port repository" for use with MacPorts on Linux, overriding ports from the main repository. At this point it contains ports that are not already and have no current business being in my generic "MacStrop" repository. The difference with the official ports will likely be limited mostly to removed dependencies, making ports accept dependencies from the host.
 
 The principal actor in this *non-supported* (by official MacPorts; it breaks the reproducible build principle) is port:pkgconfig. The port version provided here has a +proxy variant that makes ${prefix}/bin/pkg-config a proxy (wrapper) of the host pkg-config command, configured to look first in the MacPorts pkgconfig directory before searching in the host pkgconfig repository/ies.
@@ -27,6 +29,12 @@ NB: this repository also contains PortGroup definitions. These apply only to the
 A note about upgrades: I am not very religous at all in bumping the Portfile revision variable each time I change something. Any port can be reinstalled ("upgraded") even without that revbumping with the command
 `port -ns upgrade --force foo`
 (the -n is strongly advisable here; without it all ports which `foo` depends on would be reinstalled).
+
+## C library
+There now is an optional and highly experimental port for glibc, the GNU C library. It builds, but it isn't designed as a set
+of libraries and binaries of which you can install a different (notably newer) version in parallel prefix. It *may* be possible to use
+it when installed as the very first port so that all other ports use it, but they may then be unable to use libraries from the host.
+And as mentioned above, this ports tree expects to be able to use lots of libraries from the host.
 
 Legal disclaimer (FWIW):
 Many of the files in this repositories are more or less verbatim copies of files available elsewhere. I have neither removed nor added copyright or license information/claims. The commit history will make it clear which portfiles and patches have been authored by me. Those are explicitly put in the public domain, for use in any way seen fit, including incorporation (of code in the patch files) in commercially available software (like Qt) as long as a reference is made to my original authorship. Contact me in case of doubt or necessity.

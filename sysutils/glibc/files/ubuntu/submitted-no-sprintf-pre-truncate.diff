@@ -1,0 +1,38 @@
+Description: when a program is compiled with -D_FORTIFY_SOURCE=2, the
+ vsprintf_chk function is called to handle sprintf/snprintf, but it
+ needlessly pretruncates the destination which changes the results of
+ sprintf(foo, "%sbar", baz). This patch restores the original behavior
+ that many programs have depended on.
+Bug: http://sourceware.org/bugzilla/show_bug.cgi?id=7075
+Bug-Ubuntu: https://launchpad.net/bugs/305901
+Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=563637
+Author: Kees Cook <kees@ubuntu.com>
+Author: Adam Conrad <adconrad@ubuntu.com>
+
+Index: glibc-2.9/libio/iovsprintf.c
+===================================================================
+--- glibc-2.9.orig/libio/iovsprintf.c	2008-12-23 21:30:07.000000000 -0800
++++ glibc-2.9/libio/iovsprintf.c	2008-12-23 21:30:19.000000000 -0800
+@@ -76,7 +76,6 @@
+   if ((mode_flags & PRINTF_CHK) != 0)
+     {
+       _IO_JUMPS (&sf._sbf) = &_IO_str_chk_jumps;
+-      string[0] = '\0';
+     }
+   else
+     _IO_JUMPS (&sf._sbf) = &_IO_str_jumps;
+--- glibc-2.9.orig/libio/tst-sprintf-ub.c.orig	2019-02-20 02:25:11.467294842 -0700
++++ glibc-2.9/libio/tst-sprintf-ub.c	2019-02-21 08:30:37.129814828 -0700
+@@ -38,12 +38,7 @@
+   va_list args;
+   char *arg;
+ 
+-  /* Expected results for fortified and non-fortified sprintf.  */
+-#if defined _FORTIFY_SOURCE && _FORTIFY_SOURCE > 1
+-  const char *expected = "CD";
+-#else
+   const char *expected = "ABCD";
+-#endif
+ 
+   va_start (args, buf);
+   arg = va_arg (args, char *);

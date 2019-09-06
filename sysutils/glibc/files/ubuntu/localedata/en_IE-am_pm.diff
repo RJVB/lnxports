@@ -1,0 +1,14 @@
+# Description: Add am_pm for en_IE.
+# Ubuntu: https://launchpad.net/bugs/199899
+# Upstream: http://sourceware.org/bugzilla/show_bug.cgi?id=3236
+--- a/localedata/locales/en_IE
++++ b/localedata/locales/en_IE
+@@ -110,7 +110,7 @@ mon         "January";/
+ d_t_fmt     "%a %d %b %Y %T %Z"
+ d_fmt       "%d//%m//%y"
+ t_fmt       "%T"
+-am_pm       "";""
++am_pm       "AM";"PM"
+ t_fmt_ampm  ""
+ week 7;19971130;4
+ END LC_TIME

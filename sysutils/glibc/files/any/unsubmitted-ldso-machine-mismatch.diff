@@ -1,0 +1,15 @@
+--- glibc-2.29/elf/dl-load.c.orig	2019-09-04 22:24:22.325185623 +0200
++++ glibc-2.29/elf/dl-load.c	2019-09-04 22:31:05.075185623 +0200
+@@ -1601,6 +1601,12 @@
+ 	      *found_other_class = true;
+ 	      goto close_and_out;
+ 	    }
++	  else if (! __builtin_expect (elf_machine_matches_host (ehdr), 1))
++	    {
++	      /* Another non-fatal error, let's skip right past the
++	         the libraries obviously built for other machines.  */
++	      goto close_and_out;
++	    }
+ 	  else if (ehdr->e_ident[EI_DATA] != byteorder)
+ 	    {
+ 	      if (BYTE_ORDER == BIG_ENDIAN)
