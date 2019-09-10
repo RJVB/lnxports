@@ -5,7 +5,12 @@ PortGroup               muniversal 1.0
 PortGroup               locale_select 1.0
 
 name                    wget
-version                 1.19.5
+version                 1.20.3
+revision                2
+checksums               rmd160  799ac821c7ffde9d2cb3007a6ce4114a66181ce6 \
+                        sha256  69607ce8216c2d1126b7a872db594b3f21e511e660e07ca1f81be96650932abb
+#                         size    2135272
+
 categories              net www
 maintainers             {ryandesign @ryandesign} openmaintainer
 license                 GPL-3+
@@ -24,10 +29,6 @@ long_description \
     non-interactive commandline tool, so it may easily be called from \
     scripts, cron jobs, terminals without Xsupport, etc.
 
-checksums               rmd160  8da0bc988f14e340d00c02b589b86f454cb8cb04 \
-                        sha256  29fbe6f3d5408430c572a63fe32bd43d5860f32691173dfd84edc06869edca75 \
-                        size    2204066
-
 configure.args          --enable-option-checking \
                         --disable-silent-rules \
                         --enable-opie \
@@ -41,7 +42,7 @@ configure.args          --enable-option-checking \
                         --enable-nls \
                         --enable-ipv6 \
                         --enable-iri \
-                        --enable-pcre \
+                        --enable-pcre2 \
                         --without-ssl \
                         --with-zlib \
                         --with-metalink \
@@ -75,7 +76,7 @@ depends_lib \
     port:libpsl \
     port:gettext \
     port:nettle \
-    port:pcre \
+    port:pcre2 \
     port:zlib \
     port:libmetalink \
     port:gpgme
