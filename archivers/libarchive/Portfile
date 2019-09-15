@@ -1,11 +1,13 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem 1.0
+PortGroup        LTO 1.0
 
 name             libarchive
+
 categories       archivers
 license          BSD
-maintainers      toby openmaintainer
+maintainers      {toby @tobypeterson} openmaintainer
 description      functions for reading and writing streaming archives
 long_description \
 	Libarchive is a programming library that can create and \
@@ -14,16 +16,19 @@ long_description \
 	also write shar archives.
 platforms        darwin
 
-version          3.3.2
-checksums        rmd160  2a50a7ba2a213b0c0c251b20fdee23ebbd3703a5 \
-                 sha256  ed2dbd6954792b2c054ccf8ec4b330a54b85904a80cef477a1c74643ddafa0ce
+version          3.4.0
+revision         1
+checksums        rmd160  7aa43082eeea7b72c1442b995ef9f69135cf7481 \
+                 sha256  8643d50ed40c759f5412a3af4e353cffbce4fdf3b5cf321cb72cacf06b2d825e
+#                  size    6908093
 
-homepage         http://libarchive.org/
+homepage         https://libarchive.org/
 master_sites     ${homepage}downloads/
+
 
 depends_lib      port:bzip2 port:zlib port:libxml2 port:xz \
                  port:lzo2 port:libiconv \
-                 port:lz4 port:expat
+                 port:lz4 port:zstd
 
 # patchfiles       patch-libarchive__archive_read_support_format_lha.c.diff
 
@@ -47,19 +52,19 @@ if {${os.platform} eq "linux"} {
 }
 
 configure.args   --enable-bsdtar=shared --enable-bsdcpio=shared \
-                 --disable-silent-rules --without-nettle --with-lzo2
+                 --disable-silent-rules --without-nettle --with-lzo2 --with-zstd
 
-if {[string match *clang++-mp* ${configure.cxx}]} {
-    configure.env-append \
-                AR="[string map {"clang++" "llvm-ar"} ${configure.cxx}]" \
-                NM="[string map {"clang++" "llvm-nm"} ${configure.cxx}]" \
-                RANLIB="[string map {"clang++" "llvm-ranlib"} ${configure.cxx}]"
-} elseif {[string match *clang-mp* ${configure.cc}]} {
-    configure.env-append \
-                AR="[string map {"clang" "llvm-ar"} ${configure.cc}]" \
-                NM="[string map {"clang" "llvm-nm"} ${configure.cc}]" \
-                RANLIB="[string map {"clang" "llvm-ranlib"} ${configure.cc}]"
-}
+# if {[string match *clang++-mp* ${configure.cxx}]} {
+#     configure.env-append \
+#                 AR="[string map {"clang++" "llvm-ar"} ${configure.cxx}]" \
+#                 NM="[string map {"clang++" "llvm-nm"} ${configure.cxx}]" \
+#                 RANLIB="[string map {"clang++" "llvm-ranlib"} ${configure.cxx}]"
+# } elseif {[string match *clang-mp* ${configure.cc}]} {
+#     configure.env-append \
+#                 AR="[string map {"clang" "llvm-ar"} ${configure.cc}]" \
+#                 NM="[string map {"clang" "llvm-nm"} ${configure.cc}]" \
+#                 RANLIB="[string map {"clang" "llvm-ranlib"} ${configure.cc}]"
+# }
 
 livecheck.type  regex
 livecheck.regex libarchive-(\[0-9.\]+)\\.tar.gz
