@@ -2,9 +2,10 @@
 
 PortSystem          1.0
 # PortGroup           gobject_introspection 1.0
+PortGroup           meson 1.0
 
 name                json-glib
-version             1.2.8
+version             1.4.4
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          devel
 license             LGPL-2.1+
@@ -23,19 +24,35 @@ master_sites        gnome:sources/${name}/${branch}/
 
 use_xz              yes
 
-checksums           rmd160  c13f30676cb2ca224f1c21e4ef4f9aa77c19a0c5 \
-                    sha256  fd55a9037d39e7a10f0db64309f5f0265fa32ec962bf85066087b83a2807f40a
+checksums           rmd160  210e602a33672d3ddf978810164692479a61c015 \
+                    sha256  720c5f4379513dc11fd97dc75336eb0c0d3338c53128044d9fabec4374f4bc47 
+#                     size    165584
 
 # gobject_introspection yes
 
-configure.args      --disable-silent-rules
 if {${os.platform} ne "darwin"} {
     configure.args-append \
-                    --enable-introspection=no
+                    -Dintrospection=false \
+                    -Ddocs=false \
+                    -Dman=false \
+                    --libdir=${prefix}/lib
 }
-configure.env-append \
-                    LIBS="-L${prefix}/lib -lintl"
-build.env-append    LIBS="-L${prefix}/lib -lintl"
-
+configure.ldflags-append \
+                    -L${prefix}/lib -lintl
+# configure.env-append \
+#                     LIBS="-L${prefix}/lib -lintl"
+# build.env-append    LIBS="-L${prefix}/lib -lintl"
+destroot.post_args-append \
+                    -v
+post-destroot {
+    # the destroot step seems to strip rpath information that is present in the build dir
+    set LIB libjson-glib-1.0.so.0.400.4
+    file delete -force ${destroot}${prefix}/lib/${LIB} \
+        ${destroot}${prefix}/bin/json-glib-format \
+        ${destroot}${prefix}/bin/json-glib-validate
+    xinstall -m 755 ${build.dir}/json-glib/${LIB} ${destroot}${prefix}/lib
+    xinstall -m 755 ${build.dir}/json-glib/json-glib-format ${destroot}${prefix}/bin
+    xinstall -m 755 ${build.dir}/json-glib/json-glib-validate ${destroot}${prefix}/bin
+}
 
 livecheck.type      gnome
