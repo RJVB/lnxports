@@ -30,6 +30,8 @@ checksums           rmd160  210e602a33672d3ddf978810164692479a61c015 \
 
 # gobject_introspection yes
 
+patchfiles-append   patch-compat-version.diff
+
 if {${os.platform} ne "darwin"} {
     configure.args-append \
                     -Dintrospection=false \
