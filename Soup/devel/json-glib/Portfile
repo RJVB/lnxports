@@ -1,7 +1,6 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
-# PortGroup           gobject_introspection 1.0
 PortGroup           meson 1.0
 
 name                json-glib
@@ -28,8 +27,6 @@ checksums           rmd160  210e602a33672d3ddf978810164692479a61c015 \
                     sha256  720c5f4379513dc11fd97dc75336eb0c0d3338c53128044d9fabec4374f4bc47 
 #                     size    165584
 
-# gobject_introspection yes
-
 patchfiles-append   patch-compat-version.diff
 
 if {${os.platform} ne "darwin"} {
@@ -38,23 +35,25 @@ if {${os.platform} ne "darwin"} {
                     -Ddocs=false \
                     -Dman=false \
                     --libdir=${prefix}/lib
-}
-configure.ldflags-append \
+    configure.ldflags-append \
                     -L${prefix}/lib -lintl
-# configure.env-append \
-#                     LIBS="-L${prefix}/lib -lintl"
-# build.env-append    LIBS="-L${prefix}/lib -lintl"
+
+    post-destroot {
+        # the destroot step seems to strip rpath information that is present in the build dir
+        set LIB libjson-glib-1.0.so.0.400.4
+        file delete -force ${destroot}${prefix}/lib/${LIB} \
+            ${destroot}${prefix}/bin/json-glib-format \
+            ${destroot}${prefix}/bin/json-glib-validate
+        xinstall -m 755 ${build.dir}/json-glib/${LIB} ${destroot}${prefix}/lib
+        xinstall -m 755 ${build.dir}/json-glib/json-glib-format ${destroot}${prefix}/bin
+        xinstall -m 755 ${build.dir}/json-glib/json-glib-validate ${destroot}${prefix}/bin
+    }
+} else {
+    configure.args-append \
+                    -Dintrospection=true
+}
+
 destroot.post_args-append \
                     -v
-post-destroot {
-    # the destroot step seems to strip rpath information that is present in the build dir
-    set LIB libjson-glib-1.0.so.0.400.4
-    file delete -force ${destroot}${prefix}/lib/${LIB} \
-        ${destroot}${prefix}/bin/json-glib-format \
-        ${destroot}${prefix}/bin/json-glib-validate
-    xinstall -m 755 ${build.dir}/json-glib/${LIB} ${destroot}${prefix}/lib
-    xinstall -m 755 ${build.dir}/json-glib/json-glib-format ${destroot}${prefix}/bin
-    xinstall -m 755 ${build.dir}/json-glib/json-glib-validate ${destroot}${prefix}/bin
-}
 
 livecheck.type      gnome
