@@ -50,7 +50,7 @@ if {${subport} eq "VLC-test" || ${subport} eq "libVLC-test"} {
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.7.1 ; revision 1
+version             3.0.8
 license             GPL-2
 
 platforms           darwin
@@ -60,9 +60,9 @@ dist_subdir         VLC
 distname            vlc-${version}
 use_xz              yes
 
-checksums           rmd160  9ed6e0f890582efb455c6ff005233cff6c83fcf3 \
-                    sha256  0655804371096772f06104b75c21cde8a76e3b6c8a2fdadc97914f082c6264f5
-#                     size    26052372
+checksums           rmd160  ccb9cf848ba3aa3d57e1dc6a4ccec9f59002883c \
+                    sha256  e0149ef4a20a19b9ecd87309c2d27787ee3f47dfd47c6639644bc1f6fd95bdf6ib
+#                     size    26041520
 
 platform darwin {
     # Enable HFS compression of the workdir if the compress_workdir PortGroup is installed
@@ -203,7 +203,9 @@ depends_lib-append  port:libdvdread \
                     port:libdvbpsi \
                     port:libbdplus \
                     port:soxr \
-                    port:libsecret
+                    port:libsecret \
+                    port:libmodplug \
+                    port:libebml
 configure.ldflags-append \
                     -Wl,-rpath=${prefix}/lib
 configure.args-append \
@@ -279,7 +281,9 @@ autoreconf.args
 depends_build-append port:libtool port:autoconf port:automake
 
 configure.env-append \
-                    CXXCPP="${configure.cxx} -E"
+                    CXXCPP="${configure.cxx} -E" \
+                    MATROSKA_CFLAGS="${prefix}/include/ebml" \
+                    MATROSKA_LIBS="-lmatroska -lebml"
 build.args-append   DESTDIR=${worksrcpath}/dest_ignore V=1 -k
 
 # gl.c:121:3: error: Platform not recognized.
