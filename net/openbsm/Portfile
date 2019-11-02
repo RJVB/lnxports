@@ -1,0 +1,33 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       github 1.0
+
+github.setup    openbsm openbsm 48bdb287594ae4ee4426efdc7e931e3d1a2a3e31
+fetch.type      git
+# OPENBSM_1_2_ALPHA_5-82-g48bdb28
+version         1.1.95.82
+distname        openbsm-git
+
+categories      net
+platforms       linux
+license         BSD
+maintainers     gmail.com:rjvbertin openmaintainer
+description     OpenBSM open audit implementation
+long_description  OpenBSM is an open-source implementation of Sun's BSM event auditing file format and API. \
+                Originally created for Apple Computer by McAfee Research, OpenBSM is now maintained by volunteers \
+                and through the generous contributions of several organisations.
+homepage        https://www.openbsm.org
+
+depends_lib     path:lib/libssl.dylib:openssl
+
+patch.pre_args  -Np1
+
+pre-configure {
+    use_autoreconf  [expr ![file exists ${worksrcpath}/config.log]]
+    autoreconf.cmd sh ${worksrcpath}/autogen.sh
+}
+
+configure.args-append \
+                --disable-dependency-tracking
+
