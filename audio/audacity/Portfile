@@ -6,6 +6,7 @@ PortGroup           github 1.0
 PortGroup           wxWidgets 1.0
 PortGroup           conflicts_build 1.0
 PortGroup           active_variants 1.1
+PortGroup           LTO 1.0
 
 platform darwin {
     if {${os.major} < 13} {
@@ -48,9 +49,9 @@ if {${subport} eq "${name}"} {
     set PPREFIX     ./
 } else {
     conflicts       "${name}"
-    # git describe --tags : Audacity-2.3.2-535-ge03c9cdee
-    github.setup    audacity audacity e03c9cdee3b7362ed0ce78c0a091fcd05715e31c
-    version         2.3.2.535
+    # git describe --tags : Audacity-2.3.2-752-gb3539ed2b
+    github.setup    audacity audacity b3539ed2b84e2c678f9e645c55150d6fee0c2ea8
+    version         2.3.2.752
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
@@ -148,6 +149,11 @@ platform darwin {
                     patch-libnyquist-symbol-visibility.diff \
                     patch-skip-gcc-version-test.diff \
                     patch-fix-audiounits.diff
+    # use lame from MacPorts (partial revert of ae431bc5)
+    # load ffmpeg libs from MacPorts (reverts of 1d40f33e)
+    patchfiles-append \
+                    patch-use-MPlame.diff \
+                    ${PPREFIX}patch-use-MPffmpeg.diff
     # reported upstream, patch accepted as the proper fix:
     patchfiles-append \
                     patch-unordered_map-fixes.diff
@@ -177,6 +183,11 @@ platform linux {
                     patch-libnyquist-symbol-visibility.diff \
                     patch-skip-gcc-version-test.diff \
                     patch-fix-audiounits.diff
+    # use lame from MacPorts (partial revert of ae431bc5)
+    # load ffmpeg libs from MacPorts (reverts of 1d40f33e)
+    patchfiles-append \
+                    patch-use-MPlame.diff \
+                    ${PPREFIX}patch-use-MPffmpeg.diff
     # strange C++ errors, why would upstream builds not be affected?
 #     patchfiles-append \
 #                     patch-unordered_map-fixes.diff
