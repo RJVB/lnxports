@@ -4,6 +4,7 @@ PortSystem          1.0
 PortGroup           github          1.0
 PortGroup           select          1.0
 PortGroup           wxWidgets       1.0
+PortGroup           qt5             1.0
 
 # Instead of backports a huge number of patches to support the newer macOS versions,
 # simply fetch a newer version from git (master) until 3.1.1 comes out.
@@ -21,7 +22,8 @@ name                wxWidgets-${shortversion}
 wxWidgets.use       wxWidgets-${shortversion}
 
 # set wxtype          osx_cocoa
-set wxtype          gtk2
+set wxtype          qt
+set wxWidgets.prefix [string map {"wxWidgets" "wxQt"} ${wxWidgets.prefix}]
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
 
@@ -68,6 +70,10 @@ depends_run         port:wxWidgets-common \
 patchfiles          patch-configure.diff \
                     patch-relax-buildoption-check.diff
 
+patchfiles-append   patch-wxqt-install-missing-headers.diff \
+                    patch-wxqt-standard-menus.diff \
+                    patch-wxqt-temp-fixes.diff
+
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|g" ${patch.dir}/configure
 
@@ -84,7 +90,8 @@ platform darwin {
                     --with-libpng \
                     --with-zlib \
                     --with-opengl \
-                    --with-cocoa \
+                    --with-qt \
+                    --enable-cxx11 \
                     --without-sdl \
                     --enable-aui \
                     --disable-sdltest \
@@ -130,7 +137,8 @@ platform linux {
                     --with-libpng \
                     --with-zlib \
                     --with-opengl \
-                    --with-gtk=2 \
+                    --with-qt \
+                    --enable-cxx11 \
                     --without-sdl \
                     --enable-aui \
                     --disable-sdltest \
@@ -138,16 +146,29 @@ platform linux {
                     --enable-display \
                     --enable-xrc \
                     --enable-graphics_ctx \
+    configure.ldflags-append \
+                    -Wl,-rpath=${qt_libs_dir}
     variant compat30 description {enable wxWidgets 3.0 compatibility (will become default)} {
         configure.args-replace \
                     --disable-compat30 \
                     --enable-compat30
     }
 }
+default_variants    +compat30
 
 post-destroot {
     set confscript ${wxWidgets.prefix}/lib/wx/config/${wxtype}-unicode-${branch}
     ln -sf ${confscript} ${destroot}${wxWidgets.prefix}/bin/wx-config
+
+    foreach h {caret.h clrpickerg.h fdrepdlg.h filepickerg.h fontpickerg.h} {
+        set target ${destroot}${wxWidgets.prefix}/include/wx-${branch}/wx/generic/${h}
+        if {![file exists ${target}]} {
+            xinstall -m 755 ${worksrcpath}/include/wx/generic/${h} ${target}
+        } else {
+            # missing install fixed upstream
+            ui_warn "${target} already exists"
+        }
+    }
 }
 
 # TODO: --disable-precomp-headers should hopefully no longer be needed (try building wxGTK with universal)
