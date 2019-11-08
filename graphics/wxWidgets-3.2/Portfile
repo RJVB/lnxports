@@ -4,24 +4,29 @@ PortSystem          1.0
 PortGroup           github          1.0
 PortGroup           select          1.0
 PortGroup           wxWidgets       1.0
+PortGroup           LTO             1.0
+PortGroup           preserve_runtime_libraries 1.0
 
-# Instead of backports a huge number of patches to support the newer macOS versions,
-# simply fetch a newer version from git (master) until 3.1.1 comes out.
-# This is a development port anyway and generally not used as dependency.
-
-# github.setup        wxWidgets wxWidgets 3.1.2 v
-github.setup        wxWidgets wxWidgets b383d539b5867828049d2e98d305867442f06003
-fetch.type          git
-# v3.1.2-916-gb383d539b5
-version             3.1.2.916
+variant cmake conflicts universal description {build using cmake} {}
+if {[variant_isset cmake] && ![variant_isset universal]} {
+    PortGroup       cmake 1.1
+    cmake.save_configure_cmd "log too"
+}
 
 set shortversion    3.2
 
+# remember to bump version of wxWidgets-common
+# github.setup        wxWidgets wxWidgets 3.1.3 v
+github.setup        wxWidgets wxWidgets e19e9bce79624d6523d89537d604794b9202418d
 name                wxWidgets-${shortversion}
 wxWidgets.use       wxWidgets-${shortversion}
 
 # set wxtype          osx_cocoa
 set wxtype          gtk2
+
+fetch.type          git
+# v3.1.3-50-ge19e9bce79
+version             3.1.3.50
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
 
@@ -36,20 +41,25 @@ long_description    wxWidgets ${branch} is an open-source cross-platform C++ \
 
 homepage            http://www.wxwidgets.org/
 
-# checksums           rmd160  f359c3c076d872b70d49055b5b86eaec7f1750c1 \
-#                     sha256  79bdda90d672b098d37f2dcb494d2a62e9c95d94a8f7aaed60e245716a5eba8c \
-#                     size    20111698
+# checksums           rmd160  93c37f2dd0078bbbed2c0261f1e168c1e7fd0d4b \
+#                     sha256  30cd9b244f95521d5b008e346ee1277734fae92ce0dc73c5eef36ca0fa1eb420 \
+#                     size    20442994
 
 distname            wxWidgets-git
 dist_subdir         wxWidgets/${version}
-# worksrcdir          ${distname}/build
-# patch.dir           ${worksrcpath}/..
-build.dir           ${worksrcpath}/build
-configure.dir       ${worksrcpath}/build
+if {![string match *cmake ${configure.cmd}]} {
+    # worksrcdir      ${distname}/build
+    # patch.dir       ${worksrcpath}/..
+    build.dir       ${worksrcpath}/build
+    configure.dir   ${worksrcpath}/build
+}
 
 set selectdir       ${workpath}/select
 select.group        wxWidgets
 select.file         ${selectdir}/${subport}
+
+compiler.c_standard   2011
+compiler.cxx_standard 2011
 
 depends_lib-append  port:jpeg \
                     port:tiff \
@@ -75,9 +85,15 @@ post-patch {
     system "echo \"${wxWidgets.wxdir}/wx-config\n${wxWidgets.wxdir}/wxrc-${branch}\" > ${select.file}"
 }
 
-configure.cmd       ../configure
+if {![string match *cmake ${configure.cmd}]} {
+    configure.cmd    ../configure
+    set use_autoconf yes
+}
+
 platform darwin {
-    configure.args  --prefix=${wxWidgets.prefix} \
+    if {[tbool use_autoconf]} {
+        configure.args \
+                    --prefix=${wxWidgets.prefix} \
                     --with-libiconv-prefix=${prefix} \
                     --with-libjpeg \
                     --with-libtiff \
@@ -93,14 +109,38 @@ platform darwin {
                     --enable-graphics_ctx \
                     --with-macosx-sdk=no \
                     --with-macosx-version-min=no \
-                    --disable-compat30
+                    --disable-compat30 \
+                    --enable-cxx11
+    } else {
+        cmake.install_prefix ${wxWidgets.prefix}
+        configure.args-append \
+                    -DwxBUILD_TOOLKIT=cocoa \
+                    -DwxUSE_LIBICONV=sys \
+                    -DwxUSE_LIBJPEG=sys \
+                    -DwxUSE_LIBTIFF=sys \
+                    -DwxUSE_LIBPNG=sys \
+                    -DwxUSE_ZLIB=sys \
+                    -DwxUSE_OPENGL=ON \
+                    -DwxUSE_LIBSDL=OFF \
+                    -DwxUSE_AUI=ON \
+                    -DwxUSE_DISPLAY=ON \
+                    -DwxUSE_XRC=ON \
+                    -DwxUSE_GRAPHICS_CONTEXT=ON \
+                    -DwxBUILD_STRIPPED_RELEASE_DEFAULT=OFF \
+                    -DwxBUILD_CXX_STANDARD=11
+    }
 
     if { ${os.platform} eq "darwin" && ${os.major} == 11 } {
-        # https://trac.macports.org/ticket/58040
-        configure.args-replace --with-macosx-sdk=no \
-                           --with-macosx-sdk=${developer_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk
-        configure.args-replace --with-macosx-version-min=no \
-                           --with-macosx-version-min=${macosx_deployment_target}
+        if {[tbool use_autoconf]} {
+            # https://trac.macports.org/ticket/58040
+            configure.args-replace --with-macosx-sdk=no \
+                            --with-macosx-sdk=${developer_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk
+            configure.args-replace --with-macosx-version-min=no \
+                            --with-macosx-version-min=${macosx_deployment_target}
+        } else {
+            configure.sdkroot \
+                            ${developer_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk
+        }
     }
 
     # during the test period we could afford to disable compatibility to 3.0
@@ -108,22 +148,20 @@ platform darwin {
     #
     # for the moment provide a variant to allow testing *with* compatibility turned on
     variant compat30 description {enable wxWidgets 3.0 compatibility (will become default)} {
-        configure.args-replace \
+        if {[tbool use_autoconf]} {
+            configure.args-replace \
                     --disable-compat30 \
                     --enable-compat30
-    }
-
-# notes:
-#   --enable-unicode (already default)
-#   --enable-cxx11   (figure out how to use this switch)
-
-    if {[string match *clang* ${configure.cxx}]} {
-        configure.ldflags-append \
-                        -stdlib=${configure.cxx_stdlib}
+        } else {
+            configure.args-append \
+                    -DwxBUILD_COMPATIBILITY=3.0
+        }
     }
 }
 platform linux {
-    configure.args  --prefix=${wxWidgets.prefix} \
+    if {[tbool use_autoconf]} {
+        configure.args \
+                    --prefix=${wxWidgets.prefix} \
                     --with-libiconv-prefix=${prefix} \
                     --with-libjpeg \
                     --with-libtiff \
@@ -138,16 +176,63 @@ platform linux {
                     --enable-display \
                     --enable-xrc \
                     --enable-graphics_ctx \
+                    --enable-cxx11
+    } else {
+        cmake.install_prefix ${wxWidgets.prefix}
+        configure.args-append \
+                    -DwxBUILD_TOOLKIT=gtk2 \
+                    -DwxUSE_LIBICONV=sys \
+                    -DwxUSE_LIBJPEG=sys \
+                    -DwxUSE_LIBTIFF=sys \
+                    -DwxUSE_LIBPNG=sys \
+                    -DwxUSE_ZLIB=sys \
+                    -DwxUSE_OPENGL=ON \
+                    -DwxUSE_LIBSDL=OFF \
+                    -DwxUSE_AUI=ON \
+                    -wxUSE_UNICODE=ON \
+                    -DwxUSE_DISPLAY=ON \
+                    -DwxUSE_XRC=ON \
+                    -DwxUSE_GRAPHICS_CONTEXT=ON \
+                    -DwxBUILD_STRIPPED_RELEASE_DEFAULT=OFF \
+                    -DwxBUILD_CXX_STANDARD=11
+        configure.args-append \
+                    -DwxUSE_DETECT_SM=ON \
+                    -DwxUSE_SECRETSTORE=ON \
+                    -DwxBUILD_PRECOMP=OFF \
+                    -DwxBUILD_SAMPLES=SOME
+    }
+
     variant compat30 description {enable wxWidgets 3.0 compatibility (will become default)} {
-        configure.args-replace \
+        if {[tbool use_autoconf]} {
+            configure.args-replace \
                     --disable-compat30 \
                     --enable-compat30
+        } else {
+            configure.args-append \
+                    -DwxBUILD_COMPATIBILITY=3.0
+        }
+    }
+    variant gtk3 description {build against GTk 3 instead of GTk 2} {
+        set wxtype  gtk3
+        if {[tbool use_autoconf]} {
+            configure.args-replace \
+                    --with-gtk=2 \
+                    --with-gtk=3
+        } else {
+            depends_lib-append \
+                    port:gtk3
+            configure.args-append \
+                    -DwxBUILD_TOOLKIT=gtk2 \
+                    -DwxBUILD_TOOLKIT=gtk3
+        }
     }
 }
 
 post-destroot {
     set confscript ${wxWidgets.prefix}/lib/wx/config/${wxtype}-unicode-${branch}
     ln -sf ${confscript} ${destroot}${wxWidgets.prefix}/bin/wx-config
+
+    preserve_libraries ${wxWidgets.prefix}/lib "lib*.*.dylib lib*.so.*"
 }
 
 # TODO: --disable-precomp-headers should hopefully no longer be needed (try building wxGTK with universal)
@@ -161,15 +246,28 @@ variant universal {
 }
 
 variant debug description {add debug info to libraries} {
-    configure.args-append   --enable-debug
+    if {[tbool use_autoconf]} {
+        configure.args-append \
+                            --enable-debug
+    } else {
+        configure.args-append \
+                            -DwxBUILD_DEBUG_LEVEL=1
+    }
 }
 
 variant stdlib description {add support for various standard library features} {
-    configure.args-append   --enable-stl \
+    if {[tbool use_autoconf]} {
+        configure.args-append \
+                            --enable-stl \
                             --enable-std_containers \
                             --enable-std_iostreams \
                             --enable-std_string \
                             --enable-std_string_conv_in_wxstring
+    } else {
+        configure.args-append \
+                            -DwxUSE_STL=ON \
+                            -DwxUSE_STD_CONTAINERS=ON
+    }
 }
 
 livecheck.regex     {archive/v([0-9.]+).tar.gz}
