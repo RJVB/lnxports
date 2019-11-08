@@ -273,7 +273,7 @@ proc wxWidgets._set {option action args} {
     # preliminary support for wxWidgets 3.1/3.2
     } elseif {${args} eq "wxWidgets-3.2"} {
         wxWidgets.name      "wxWidgets"
-        wxWidgets.version   "3.1"
+        wxWidgets.version   "3.2"
         wxWidgets.port      "wxWidgets-3.2"
         if {${os.major} < 11} {platform darwin {
             pre-fetch {
@@ -283,7 +283,7 @@ proc wxWidgets._set {option action args} {
         } }
     } elseif {${args} eq "wxQt-3.2"} {
         wxWidgets.name      "wxQt"
-        wxWidgets.version   "3.1"
+        wxWidgets.version   "3.2"
         wxWidgets.port      "wxQt-3.2"
         if {${os.major} < 11} {platform darwin {
             pre-fetch {
