@@ -52,6 +52,9 @@
 #   https://trac.macports.org/wiki/LibcxxOnOlderSystems
 #
 # * 'wxWidgets-3.2'
+#   For Audacity ...
+#
+# * 'wxWidgets-3.2'
 #   At the moment still mainly for development purposes, for testing ports
 #   for compatibility with wxWidgets 3.1/3.2.
 #   It uses wxWidgets 3.1 at the moment, but will switch to wxWidgets 3.2
@@ -170,6 +173,7 @@ option_proc wxWidgets.use wxWidgets._set
 ## - wxGTK-3.0
 ## - wxPython-3.0
 ## - wxWidgets-3.0-cxx11
+## - wxWidgets-3.1
 ## - wxWidgets-3.2
 proc wxWidgets._set {option action args} {
     global prefix frameworks_dir os.major
@@ -255,6 +259,17 @@ proc wxWidgets._set {option action args} {
         } }
         # this doesn't work
         # PortGroup cxx11 1.1
+    # temporary(?) port for Audacity
+    } elseif {${args} eq "wxWidgets-3.1"} {
+        wxWidgets.name      "wxWidgets"
+        wxWidgets.version   "3.1"
+        wxWidgets.port      "wxWidgets-3.1"
+        if {${os.major} < 11} {platform darwin {
+            pre-fetch {
+                ui_error "${wxWidgets.port} requires macOS 10.7 or later."
+                return -code error "incompatible macOS version"
+            }
+        } }
     # preliminary support for wxWidgets 3.1/3.2
     } elseif {${args} eq "wxWidgets-3.2"} {
         wxWidgets.name      "wxWidgets"
@@ -278,7 +293,7 @@ proc wxWidgets._set {option action args} {
         } }
     } else {
         # throw an error
-        ui_error "invalid parameter for wxWidgets.use; use one of:\n\twxWidgets-2.8/wxGTK-2.8/wxWidgets-3.0/wxGTK-3.0/wxPython-3.0/wxWidgets-3.2/wxQt-3.2"
+        ui_error "invalid parameter for wxWidgets.use; use one of:\n\twxWidgets-2.8/wxGTK-2.8/wxWidgets-3.0/wxGTK-3.0/wxPython-3.0/wxWidgets-3.1/wxWidgets-3.2/wxQt-3.2"
         return -code return "invalid parameter for wxWidgets.use"
     }
 #     wxWidgets.prefix    ${frameworks_dir}/wxWidgets.framework/Versions/${wxWidgets.name}/${wxWidgets.version}
