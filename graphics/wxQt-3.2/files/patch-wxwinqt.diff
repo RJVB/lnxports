@@ -1,7 +1,7 @@
-diff --git a/src/qt/window.cpp b/src/qt/window.cpp
+diff --git src/qt/window.cpp src/qt/window.cpp
 index 7a31b7a92816126b32b53b8b89df5ada752426f2..ccaf7c07d0b43f084484fe10a29a8dcbf6a649fd 100644
---- a/src/qt/window.cpp
-+++ b/src/qt/window.cpp
+--- src/qt/window.cpp
++++ src/qt/window.cpp
 @@ -440,22 +440,25 @@ bool wxWindowQt::Show( bool show )
  
  void wxWindowQt::SetLabel(const wxString& label)

@@ -80,7 +80,7 @@ patchfiles          patch-configure.diff \
 # patchfiles-append   patch-wxqt-install-missing-headers.diff \
 #                     patch-wxqt-standard-menus.diff \
 #                     patch-wxqt-temp-fixes.diff
-patchfiles-append   patch-findgstreamer.diff \
+patchfiles-append   patch-fix-gstreamer.diff \
                     patch-use-qt-renderer.diff \
                     patch-wxwinqt.diff
 
