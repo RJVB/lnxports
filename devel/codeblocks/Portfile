@@ -115,7 +115,7 @@ post-destroot {
     }
     platform linux {
         if {[file size ${destroot}${prefix}/bin/codeblocks] < [file size ${worksrcpath}/src/src/.libs/codeblocks]} {
-            ui_debug "Fixing a [r]libtool oversight"
+            ui_debug "Fixing a \[r\]libtool oversight"
             xinstall -m 755 ${worksrcpath}/src/src/.libs/codeblocks ${destroot}${prefix}/bin/codeblocks
         }
     }
@@ -154,11 +154,17 @@ if {[variant_isset wxqt32]} {
 
 variant wxwidgets32 conflicts wxqt32 wxgtk30 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWidgets 3.2} {}
 if {[variant_isset wxwidgets32]} {
-    conflicts_build-append  wxWidgets-3.0
+#     conflicts_build-append  wxWidgets-3.0
     wxWidgets.use           wxWidgets-3.2
     depends_lib-append      port:${wxWidgets.port}
     autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
     configure.args-append   --with-wxdir=${wxWidgets.wxdir}
+    configure.args-replace  --with-contrib-plugins=all \
+                            --with-contrib-plugins=all,-NassiShneiderman
+    variant gtk3 description {} {}
+    if {[variant_isset gtk3]} {
+        require_active_variants wxWidgets-3.2 gtk3
+    }
 }
 
 variant wxwidgets30 conflicts wxwidgets32 wxqt32 wxwidgets28 wxgtk30 wxgtk28 description {Use Cocoa-based wxWidgets 3.0} {}
@@ -174,7 +180,6 @@ if {[variant_isset wxwidgets30]} {
     } elseif {[variant_isset gtk3]} {
         require_active_variants wxWidgets-3.0 gtk3
     }
-
 }
 
 variant wxwidgets28 conflicts wxwidgets32 wxqt32 wxwidgets30 wxgtk30 wxgtk28 description {Use 32-bit Carbon-based wxWidgets 2.8} {
