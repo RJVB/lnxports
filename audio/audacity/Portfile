@@ -77,8 +77,13 @@ use_parallel_build  yes
 
 homepage            http://www.audacityteam.org/
 
-# we want to use the wxWidgets-3.2 "bleeding edge" port!
-wxWidgets.use       wxWidgets-3.2
+# we want to use the temporary wxWidgets-3.1 "Audacity-special" port!
+variant qt description {build against wxQt-3.2 (experimental!!)} {}
+if {[variant_isset qt]} {
+    wxWidgets.use   wxQt-3.2
+} else {
+    wxWidgets.use   wxWidgets-3.1
+}
 
 depends_lib-append  port:${wxWidgets.port}
 
@@ -91,25 +96,6 @@ if {![catch {set wxw_stdlib [active_variants ${wxWidgets.port} stdlib]} err]} {
         }
     }
 }
-
-# if {[variant_exists wx32] && [variant_isset wx32]} {
-#     variant qt description {require wxWidgets-3.2 +qt (experimental!!)} {}
-#     if {[variant_isset qt]} {
-#         set qt_ok 0
-#         if {![catch {set wxw_qt [active_variants ${wxWidgets.port} stdlib]} err]} {
-#             if {${wxw_qt}} {
-#                 set qt_ok 1
-#             }
-#         }
-#         if {!${qt_ok}} {
-#             long_description-append "This port needs ${wxWidgets.port} with the +qt variant."
-#             pre-fetch {
-#                 ui_error "This port needs ${wxWidgets.port} with the +qt variant."
-#                 return -code error "reinstall port:${wxWidgets.port} with the +qt variant"
-#             }
-#         }
-#     }
-# }
 
 depends_build-append \
                     port:pkgconfig \
@@ -203,6 +189,11 @@ patchfiles-append   patch-wxw-31x.diff
 # in IDEs like KDevelop.
 patchfiles-append   patch-cmakefiles.diff
 
+if {[variant_isset qt]} {
+    patchfiles-append \
+                    patch-for-wxqt.diff
+}
+
 configure.args-append \
                     --disable-dependency-tracking \
                     --disable-quicktime \
@@ -218,7 +209,7 @@ configure.args-append \
                     --with-libsoxr \
                     --with-libvamp=local \
                     --with-libvorbis \
-                    --with-lv2=local \
+                    --with-lv2 \
                     --with-portmixer \
                     --with-sbsms=local \
                     --with-soundtouch \

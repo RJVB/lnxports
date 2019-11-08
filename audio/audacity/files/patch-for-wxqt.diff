@@ -1,0 +1,31 @@
+diff --git a/lib-src/FileDialog/FileDialog.h b/lib-src/FileDialog/FileDialog.h
+index acd57cff8..89b3829ef 100644
+--- a/lib-src/FileDialog/FileDialog.h
++++ b/lib-src/FileDialog/FileDialog.h
+@@ -49,6 +49,8 @@ protected:
+ #include "mac/FileDialogPrivate.h"
+ #elif defined(__WXMSW__)
+ #include "win/FileDialogPrivate.h"
++#elif defined(__WXQT__)
++using FileDialog = wxFileDialog;
+ #else
+ #error Unknown implementation
+ #endif
+diff --git a/lib-src/FileDialog/gtk/FileDialogPrivate.cpp b/lib-src/FileDialog/gtk/FileDialogPrivate.cpp
+index 0cff20b44..70078abaf 100644
+--- a/lib-src/FileDialog/gtk/FileDialogPrivate.cpp
++++ b/lib-src/FileDialog/gtk/FileDialogPrivate.cpp
+@@ -9,6 +9,8 @@
+ // Licence:     wxWindows licence
+ /////////////////////////////////////////////////////////////////////////////
+ 
++#ifdef __WXGTK__
++
+ #include <gtk/gtk.h>
+ 
+ #include "../FileDialog.h"
+@@ -612,3 +614,4 @@ void FileDialog::GTKFilterChanged()
+     GetEventHandler()->ProcessEvent(event);
+ }
+ 
++#endif //__WXGTK__

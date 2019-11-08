@@ -1,0 +1,13 @@
+diff --git Makefile.in Makefile.in
+index 14f8d01c538a0abcb03b77a9682592bbde66cd50..a828c6addb38fb0394b64551fe762d12cccc85f6 100644
+--- Makefile.in
++++ Makefile.in
+@@ -2786,6 +2786,7 @@ COND_TOOLKIT_QT_LOWLEVEL_HDR =  \
+ 	wx/qt/menuitem.h \
+ 	wx/qt/minifram.h \
+ 	wx/qt/msgdlg.h \
++	wx/qt/nonownedwnd.h \
+ 	wx/qt/notebook.h \
+ 	wx/qt/palette.h \
+ 	wx/qt/pen.h \
+
