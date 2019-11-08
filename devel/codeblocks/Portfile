@@ -7,10 +7,10 @@ PortGroup           active_variants 1.1
 
 fetch.type          svn
 svn.url             svn://svn.code.sf.net/p/codeblocks/code/trunk
-svn.revision        11321
+svn.revision        11901
 # Get the svn last changed date by running the following command:
 # svn info http://svn.code.sf.net/p/codeblocks/code/trunk| grep "^Last Changed Date:" | cut -d" " -f4,5
-set LCD             "2018-03-14 10:24:44"
+set LCD             "2019-11-04 20:35:26"
 
 name                codeblocks
 version             17.12-${svn.revision}
@@ -47,16 +47,21 @@ if {![file exists ${worksrcpath}/config.log]} {
 depends_build-append \
                     port:autoconf \
                     port:automake \
-                    port:libtool
+                    port:libtool \
+                    port:slibtool
 
-# this is because of linking to the system wxGTK:
-configure.ldflags-append \
-                    /usr/lib/x86_64-linux-gnu/libtiff.so
+build.post_args-append -k
+destroot.post_args-append -k
+
+# build.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
+destroot.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
 
 # FileManager requires "gamin" to be installed when using wxGTK,
 # not sure whether it works with Carbon/Cocoa at all,
 # so it was disabled for now
-configure.args      --with-contrib-plugins=all
+configure.args      --enable-fast-install \
+                    --disable-dependency-tracking \
+                    --with-contrib-plugins=all
 
 post-extract {
     # Fix svn revision and last changed date in app
@@ -67,11 +72,11 @@ post-extract {
 post-destroot {
     platform darwin {
         # TODO: this might need a review
-        system "strip -S ${destroot}${prefix}/bin/codeblocks"
-        system "strip -S ${destroot}${prefix}/lib/libcodeblocks*.so || true"
-        system "strip -S ${destroot}${prefix}/lib/libcodeblocks*.dylib || true"
-        system "strip -S ${destroot}${prefix}/lib/libwxsmithlib*.so || true"
-        system "strip -S ${destroot}${prefix}/lib/libwxsmithlib*.dylib || true"
+#         system "strip -S ${destroot}${prefix}/bin/codeblocks"
+#         system "strip -S ${destroot}${prefix}/lib/libcodeblocks*.so || true"
+#         system "strip -S ${destroot}${prefix}/lib/libcodeblocks*.dylib || true"
+#         system "strip -S ${destroot}${prefix}/lib/libwxsmithlib*.so || true"
+#         system "strip -S ${destroot}${prefix}/lib/libwxsmithlib*.dylib || true"
     #   system "strip -S ${destroot}${prefix}/lib/wxSmithContribItems/lib*.so || true"
     #   system "strip -S ${destroot}${prefix}/lib/wxSmithContribItems/lib*.dylib || true"
     #    system "strip -S ${destroot}${prefix}/lib/codeblocks/plugins/*.so"
@@ -108,6 +113,12 @@ post-destroot {
         xinstall -d -m 0755 ${appPath}/MacOS/share
         ln -sf ${prefix}/share/codeblocks ${appPath}/MacOS/share
     }
+    platform linux {
+        if {[file size ${destroot}${prefix}/bin/codeblocks] < [file size ${worksrcpath}/src/src/.libs/codeblocks]} {
+            ui_debug "Fixing a [r]libtool oversight"
+            xinstall -m 755 ${worksrcpath}/src/src/.libs/codeblocks ${destroot}${prefix}/bin/codeblocks
+        }
+    }
 }
 
 # disable precompiled headers for the universal build
@@ -118,11 +129,15 @@ variant universal {
 variant wxqt32 conflicts wxwidgets32 wxgtk30 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxQt 3.2 - experimental!} {}
 if {[variant_isset wxqt32]} {
     PortGroup               qt5 1.0
-    conflicts_build-append  wxWidgets-3.0
+#     conflicts_build-append  wxWidgets-3.0
     wxWidgets.use           wxQt-3.2
     depends_lib-append      port:${wxWidgets.port}
     patchfiles-append       patch-wxqt.diff
     autoconf.env-append     ACLOCAL_PATH=${wxWidgets.prefix}/share/aclocal
+    configure.args-append   --with-wxdir=${wxWidgets.wxdir} \
+                            --without-x
+    configure.args-replace  --with-contrib-plugins=all \
+                            --with-contrib-plugins=all,-NassiShneiderman,-wxsmith,-wxsmithcontrib,-wxsmithaui
     pre-configure {
         configure.cppflags-append \
                             -I${qt_includes_dir}
@@ -130,7 +145,9 @@ if {[variant_isset wxqt32]} {
         configure.ldflags-append \
                             [exec ${prefix}/bin/pkg-config --libs Qt5Gui]
     }
-    configure.args-append   --with-wxdir=${wxWidgets.wxdir}
+    post-configure {
+        system -W ${worksrcpath} "patch -Np1 -i ${filespath}/patch-no-cdNONE.diff"
+    }
 }
 
 variant wxwidgets32 conflicts wxqt32 wxgtk30 wxwidgets30 wxwidgets28 wxgtk28 description {Use wxWidgets 3.2} {}

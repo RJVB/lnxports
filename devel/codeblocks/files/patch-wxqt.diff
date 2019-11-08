@@ -1,125 +1,15 @@
---- ./src/sdk/wxscintilla/src/orig.wxscintilla.cpp	2016-02-06 15:26:58.801436000 +0100
-+++ ./src/sdk/wxscintilla/src/wxscintilla.cpp	2017-11-22 20:35:12.814098795 +0100
-@@ -153,7 +153,7 @@
-     EVT_LEFT_DCLICK             (wxScintilla::OnMouseLeftDown)
-     EVT_MOTION                  (wxScintilla::OnMouseMove)
-     EVT_LEFT_UP                 (wxScintilla::OnMouseLeftUp)
--#if defined(__WXGTK__) || defined(__WXMAC__)
-+#if defined(__WXGTK__) || defined(__WXMAC__) || defined(__WXQT__)
-     EVT_RIGHT_UP                (wxScintilla::OnMouseRightUp)
- #else
-     EVT_CONTEXT_MENU            (wxScintilla::OnContextMenu)
---- ./src/plugins/contrib/wxSmithSTC/stc/orig.stc.cpp	2012-04-28 12:01:45.271368000 +0200
-+++ ./src/plugins/contrib/wxSmithSTC/stc/stc.cpp	2017-11-22 20:32:48.334736211 +0100
-@@ -110,7 +110,7 @@
-     EVT_LEFT_DCLICK             (wxStyledTextCtrl::OnMouseLeftDown)
-     EVT_MOTION                  (wxStyledTextCtrl::OnMouseMove)
-     EVT_LEFT_UP                 (wxStyledTextCtrl::OnMouseLeftUp)
--#if defined(__WXGTK__) || defined(__WXMAC__)
-+#if defined(__WXGTK__) || defined(__WXMAC__) || defined(__WXQT__)
-     EVT_RIGHT_UP                (wxStyledTextCtrl::OnMouseRightUp)
- #else
-     EVT_CONTEXT_MENU            (wxStyledTextCtrl::OnContextMenu)
---- ./src/plugins/contrib/wxSmithDemo/orig.wxSmithDemoMain.cpp	2012-08-31 23:39:22.589685000 +0200
-+++ ./src/plugins/contrib/wxSmithDemo/wxSmithDemoMain.cpp	2017-11-22 20:32:19.865117869 +0100
-@@ -52,7 +52,7 @@
- }
- 
- // The application icon.
--#if defined(__WXGTK__) || defined(__WXMOTIF__) || defined(__WXMAC__) || defined(__WXMGL__) || defined(__WXX11__)
-+#if defined(__WXGTK__) || defined(__WXMOTIF__) || defined(__WXMAC__) || defined(__WXMGL__) || defined(__WXX11__) || defined(__WXQT__)
-     #include "media/wxsmith.xpm"
- #endif
- 
---- src/plugins/contrib/dragscroll/orig.dragscroll.cpp	2016-02-06 15:29:31.423286000 +0100
-+++ src/plugins/contrib/dragscroll/dragscroll.cpp	2017-11-24 14:05:15.110083579 +0100
-@@ -1633,12 +1633,14 @@
- //      __WXGTK__ MOUSE SCROLLING __WXGTK__
- // ----------------------------------------------------------------------------
- ///////////////////////////////////////////////////////////////////////////////
--#if defined(__WXGTK__) || defined(__WXMAC__)
-+#if defined(__WXGTK__) || defined(__WXMAC__) || defined(__WXQT__)
- // ----------------------------------------------------------------------------
- void MouseEventsHandler::OnMouseEvent(wxMouseEvent& event)    //GTK
- // ----------------------------------------------------------------------------
- {
- 
-+// for now:
-+#ifndef __WXQT__
-     // For efficiency, skip wheel events now
-     if ( event.GetEventType() ==  wxEVT_MOUSEWHEEL)
-         { event.Skip(); return; }
-@@ -1876,6 +1878,7 @@
- 
-     }//else if (event.Dragging() && m_dragMode != DRAG_NONE)
- 
-+#endif // __WXQT__
-     // pass on the event
-     event.Skip();
- 
---- ./src/plugins/contrib/FileManager/orig.directorymonitor.cpp	2016-02-13 17:01:49.283357000 +0100
-+++ ./src/plugins/contrib/FileManager/directorymonitor.cpp	2017-11-22 20:21:20.199277733 +0100
-@@ -22,7 +22,7 @@
-     m_info_uri=wxString(c.m_info_uri.c_str());
- }
- 
--#if defined(__WXGTK__) || defined(__WXMAC__)
-+#if defined(__WXGTK__) || defined(__WXMAC__) || defined(__WXQT__)
- 
- #include <map>
- 
---- ./src/plugins/contrib/codesnippets/editor/orig.dragscroll.cpp	2016-02-06 15:29:31.423286000 +0100
-+++ ./src/plugins/contrib/codesnippets/editor/dragscroll.cpp	2017-11-22 20:24:54.091462330 +0100
-@@ -1588,7 +1588,7 @@
- //      __WXGTK__ MOUSE SCROLLING __WXGTK__
- // ----------------------------------------------------------------------------
- ///////////////////////////////////////////////////////////////////////////////
--#if defined(__WXGTK__) || defined(__WXMAC__)
-+#if defined(__WXGTK__) || defined(__WXMAC__) || defined(__WXQT__)
- // ----------------------------------------------------------------------------
- void MouseEventsHandler::OnMouseEvent(wxMouseEvent& event)    //GTK
- // ----------------------------------------------------------------------------
---- ./src/plugins/contrib/keybinder/orig.menuutils.cpp	2016-02-06 15:29:31.423286000 +0100
-+++ ./src/plugins/contrib/keybinder/menuutils.cpp	2017-11-22 20:26:15.661829504 +0100
-@@ -299,7 +299,7 @@
- // wxMenuCmd
- // ----------------------------------------------------------------------------
- 
--#if defined( __WXGTK__) || defined(__WXMAC__)
-+#if defined( __WXGTK__) || defined(__WXMAC__) || defined(__WXQT__)
- // ----------------------------------------------------------------------------
- void wxMenuCmd::Update(wxMenuItem* pSpecificMenuItem) //for __WXGTK__
- // ----------------------------------------------------------------------------
---- ./src/plugins/contrib/SpellChecker/wxspellchecker/samples/wxWidgets/orig.wxSpellCheckerDemo.cpp	2011-08-05 11:48:57.115768000 +0200
-+++ ./src/plugins/contrib/SpellChecker/wxspellchecker/samples/wxWidgets/wxSpellCheckerDemo.cpp	2017-11-22 20:22:45.489117633 +0100
-@@ -27,7 +27,7 @@
- // ----------------------------------------------------------------------------
- 
- // the application icon (under Windows and OS/2 it is in resources)
--#if defined(__WXGTK__) || defined(__WXMOTIF__) || defined(__WXMAC__) || defined(__WXMGL__) || defined(__WXX11__)
-+#if defined(__WXGTK__) || defined(__WXMOTIF__) || defined(__WXMAC__) || defined(__WXMGL__) || defined(__WXX11__) || defined(__WXQT__)
-     #include "mondrian.xpm"
- #endif
- 
---- ./src/src/orig.app.h	2015-07-26 19:08:46.368079000 +0200
-+++ ./src/src/app.h	2017-11-22 20:36:07.431040327 +0100
-@@ -22,7 +22,7 @@
-     #include <wx/docview.h> // recent files history
- #endif
- 
--#if defined(__WXGTK__) || defined(__WXMOTIF__) || defined(__WXMAC__) || defined(__WXMGL__) || defined(__WXX11__)
-+#if defined(__WXGTK__) || defined(__WXMOTIF__) || defined(__WXMAC__) || defined(__WXMGL__) || defined(__WXX11__) || defined(__WXQT__)
-     #include "resources/icons/app.xpm"
- #endif
- 
---- orig.configure.ac	2017-05-11 01:33:01.814773000 +0200
-+++ configure.ac	2017-11-23 21:09:37.267459906 +0100
-@@ -259,6 +259,68 @@
+
+
+Index: ./trunk/configure.ac
+===================================================================
+--- ./trunk/configure.ac	(revision 11901)
++++ ./trunk/configure.ac	(working copy)
+@@ -272,6 +272,74 @@
  			WX_X11_LIBS="$WX_X11_LIBS -lX11 $X_EXTRA_LIBS"
  		fi
      ;;
 +    *wx_qt*)
-+        AC_MSG_RESULT(wxQT)
++        AC_MSG_RESULT(wxQt)
 +		dnl
 +		dnl pkg-config no longer needed by debugger plugin
 +		dnl but is needed by others
@@ -164,10 +54,12 @@
 +				fi
 +			fi
 +
-+    	fi
++		fi
 +
-+        dnl Check whether boost is installed
-+        AX_BOOST_BASE
++		if test "x$BUILD_NASSISHNEIDERMAN_TRUE" = "x" ; then
++			dnl Check whether boost is installed
++			AX_BOOST_BASE
++		fi
 +
 +		CB_GLIB2_CFLAGS="$GLIB2_CFLAGS"
 +		CB_GLIB2_LIBS="$GLIB2_LIBS"
@@ -177,9 +69,88 @@
 +		CB_HUNSPELL_LIBS="$HUNSPELL_LIBS"
 +		CB_FONTCONFIG_CFLAGS="$FONTCONFIG_CFLAGS"
 +		CB_FONTCONFIG_LIBS="$FONTCONFIG_LIBS"
-+		WX_QT_CFLAGS="$QT_CFLAGS"
-+		WX_QT_LIBS="$QT_LIBS"
++		AC_PATH_XTRA
++		WX_X11_CFLAGS="`echo $X_CFLAGS | sed 's/ -INONE//'`"
++		WX_X11_LIBS="`echo $X_LIBS | sed 's/ -LNONE//' | sed 's/ -RNONE//'`"
++		if test "$no_x" != yes; then
++			WX_X11_LIBS="$WX_X11_LIBS -lX11 $X_EXTRA_LIBS"
++		fi
 +    ;;
      *wx_msw*)
          AC_MSG_RESULT(wxMSW)
      ;;
+
+
+Index: ./trunk/src/src/app.h
+===================================================================
+--- ./trunk/src/src/app.h	(revision 11901)
++++ ./trunk/src/src/app.h	(working copy)
+@@ -22,7 +22,7 @@
+     #include <wx/docview.h> // recent files history
+ #endif
+ 
+-#if defined(__WXGTK__) || defined(__WXMOTIF__) || defined(__WXMAC__) || defined(__WXMGL__) || defined(__WXX11__)
++#if defined(__WXGTK__) || defined(__WXMOTIF__) || defined(__WXMAC__) || defined(__WXMGL__) || defined(__WXX11__) || defined(__WXQT__)
+     #include "resources/icons/app.xpm"
+ #endif
+ 
+
+
+Index: ./trunk/src/include/debuggermanager.h
+===================================================================
+--- ./trunk/src/include/debuggermanager.h	(revision 11901)
++++ ./trunk/src/include/debuggermanager.h	(working copy)
+@@ -29,6 +29,7 @@
+ class cbWatchesDlg;
+ class cbDebuggerMenuHandler;
+ class TextCtrlLogger;
++class wxPanel;
+ 
+ class DLLIMPORT cbBreakpoint
+ {
+
+
+Index: ./trunk/src/plugins/contrib/dragscroll/dragscroll.cpp
+===================================================================
+--- ./trunk/src/plugins/contrib/dragscroll/dragscroll.cpp	(revision 11901)
++++ ./trunk/src/plugins/contrib/dragscroll/dragscroll.cpp	(working copy)
+@@ -1666,7 +1666,7 @@
+ //      __WXGTK__ MOUSE SCROLLING __WXGTK__
+ // ----------------------------------------------------------------------------
+ ///////////////////////////////////////////////////////////////////////////////
+-#if defined(__WXGTK__) || defined(__WXMAC__)
++#if defined(__WXGTK__) || defined(__WXMAC__) || defined(__WXQT__)
+ // ----------------------------------------------------------------------------
+ void MouseEventsHandler::OnMouseEvent(wxMouseEvent& event)    //GTK
+ // ----------------------------------------------------------------------------
+
+ 
+
+Index: ./src/plugins/contrib/FileManager/directorymonitor.cpp
+===================================================================
+--- ./src/plugins/contrib/FileManager/directorymonitor.cpp	(revision 11901)
++++ ./src/plugins/contrib/FileManager/directorymonitor.cpp	(working copy)
+@@ -22,7 +22,7 @@
+     m_info_uri=wxString(c.m_info_uri.c_str());
+ }
+ 
+-#if defined(__WXGTK__) || defined(__WXMAC__)
++#if defined(__WXGTK__) || defined(__WXMAC__) || defined(__WXQT__)
+ 
+ #include <map>
+ 
+
+
+Index: ./src/plugins/contrib/keybinder/menuutils.cpp
+===================================================================
+--- ./src/plugins/contrib/keybinder/menuutils.cpp	(revision 11901)
++++ ./src/plugins/contrib/keybinder/menuutils.cpp	(working copy)
+@@ -280,7 +280,7 @@
+ // wxMenuCmd
+ // ----------------------------------------------------------------------------
+ 
+-#if defined( __WXGTK__) || defined(__WXMAC__)
++#if defined( __WXGTK__) || defined(__WXMAC__) || defined(__WXQT__)
+ // ----------------------------------------------------------------------------
+ void wxMenuCmd::Update(wxMenuItem* pSpecificMenuItem) //for __WXGTK__
+ // ----------------------------------------------------------------------------

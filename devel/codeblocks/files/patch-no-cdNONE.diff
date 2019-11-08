@@ -1,0 +1,15 @@
+--- trunk/orig.libtool	2019-11-07 20:01:33.973104977 +0100
++++ trunk/libtool	2019-11-07 20:01:59.113621711 +0100
+@@ -7483,10 +7483,12 @@
+ 	case $dir in
+ 	[\\/]* | [A-Za-z]:[\\/]*) ;;
+ 	*)
++	  if [ "$dir" != "NONE" ] ;then
+ 	  absdir=`cd "$dir" && pwd`
+ 	  test -z "$absdir" && \
+ 	    func_fatal_error "cannot determine absolute directory name of '$dir'"
+ 	  dir=$absdir
++	  fi
+ 	  ;;
+ 	esac
+ 	case "$deplibs " in
