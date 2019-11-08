@@ -1,0 +1,51 @@
+diff --git build/cmake/lib/media/CMakeLists.txt build/cmake/lib/media/CMakeLists.txt
+index 81028fabbe60e1141ad8aabd53adb262cb00d14d..02574e4bf4b957cb42de8b44043baa63fb08f06c 100644
+--- build/cmake/lib/media/CMakeLists.txt
++++ build/cmake/lib/media/CMakeLists.txt
+@@ -31,11 +31,17 @@ if(WXOSX_COCOA)
+         "-framework CoreMedia"
+         )
+ elseif(UNIX)
+-    wx_lib_include_directories(media PUBLIC ${GSTREAMER_INCLUDE_DIRS})
++    if(PC_GSTREAMER_INCLUDE_DIRS)
++        wx_lib_include_directories(media PUBLIC ${PC_GSTREAMER_INCLUDE_DIRS})
++    else()
++        wx_lib_include_directories(media PUBLIC ${GSTREAMER_INCLUDE_DIRS})
++    endif()
+     if(GSTREAMER_INTERFACES_INCLUDE_DIRS)
+         wx_lib_include_directories(media PUBLIC ${GSTREAMER_INTERFACES_INCLUDE_DIRS})
+     endif()
+-    if(GSTREAMER_VIDEO_INCLUDE_DIRS)
++    if(PC_GSTREAMER_VIDEO_INCLUDE_DIRS)
++        wx_lib_include_directories(media PUBLIC ${PC_GSTREAMER_VIDEO_INCLUDE_DIRS})
++    elseif(GSTREAMER_VIDEO_INCLUDE_DIRS)
+         wx_lib_include_directories(media PUBLIC ${GSTREAMER_VIDEO_INCLUDE_DIRS})
+     endif()
+     if(GSTREAMER_PLAYER_INCLUDE_DIRS)
+diff --git src/unix/mediactrl.cpp src/unix/mediactrl.cpp
+index 3c55b1ae33441804f1533955ea5314bc42ff97a3..782fc1ac997de1043499606db2fddbc4a98c9a40 100644
+--- src/unix/mediactrl.cpp
++++ src/unix/mediactrl.cpp
+@@ -38,6 +38,10 @@
+     #include <gdk/gdkx.h>
+ #endif
+ 
++#ifdef __WXQT__
++    #include <QWidget>
++#endif
++
+ //-----------------------------------------------------------------------------
+ // Discussion of internals
+ //-----------------------------------------------------------------------------
+@@ -677,8 +681,10 @@ void wxGStreamerMediaBackend::SetupXOverlay()
+ #endif
+ #ifdef __WXGTK__
+                         GDK_WINDOW_XID(window)
++#elif defined(__WXQT__)
++                        m_ctrl->GetHandle()->winId()
+ #else
+-                        ctrl->GetHandle()
++                        m_ctrl->GetHandle()
+ #endif
+                                   );
+ #ifdef __WXGTK__

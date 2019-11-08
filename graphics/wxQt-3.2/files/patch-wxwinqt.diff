@@ -1,0 +1,212 @@
+diff --git a/src/qt/window.cpp b/src/qt/window.cpp
+index 7a31b7a92816126b32b53b8b89df5ada752426f2..ccaf7c07d0b43f084484fe10a29a8dcbf6a649fd 100644
+--- a/src/qt/window.cpp
++++ b/src/qt/window.cpp
+@@ -440,22 +440,25 @@ bool wxWindowQt::Show( bool show )
+ 
+ void wxWindowQt::SetLabel(const wxString& label)
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     GetHandle()->setWindowTitle( wxQtConvertString( label ));
+ }
+ 
+ 
+ wxString wxWindowQt::GetLabel() const
+ {
+-    return ( wxQtConvertString( GetHandle()->windowTitle() ));
++    return ( GetHandle() ? wxQtConvertString( GetHandle()->windowTitle() ) : wxString() );
+ }
+ 
+ void wxWindowQt::DoEnable(bool enable)
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     GetHandle()->setEnabled(enable);
+ }
+ 
+ void wxWindowQt::SetFocus()
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     GetHandle()->setFocus();
+ }
+ 
+@@ -489,11 +492,13 @@ bool wxWindowQt::Reparent( wxWindowBase *parent )
+ 
+ void wxWindowQt::Raise()
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     GetHandle()->raise();
+ }
+ 
+ void wxWindowQt::Lower()
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     GetHandle()->lower();
+ }
+ 
+@@ -514,7 +519,9 @@ void wxWindowQt::Update()
+     {
+         QtGetScrollBarsContainer()->viewport()->update();
+     } else {
+-        GetHandle()->update();
++        if (GetHandle()) {
++            GetHandle()->update();
++        }
+     }
+ }
+ 
+@@ -552,10 +559,12 @@ bool wxWindowQt::SetCursor( const wxCursor &cursor )
+     if (!wxWindowBase::SetCursor(cursor))
+         return false;
+ 
+-    if ( cursor.IsOk() )
+-        GetHandle()->setCursor(cursor.GetHandle());
+-    else
+-        GetHandle()->unsetCursor();
++    if (GetHandle()) {
++        if ( cursor.IsOk() )
++            GetHandle()->setCursor(cursor.GetHandle());
++        else
++            GetHandle()->unsetCursor();
++    }
+ 
+     return true;
+ }
+@@ -577,18 +586,19 @@ bool wxWindowQt::SetFont( const wxFont &font )
+ 
+ int wxWindowQt::GetCharHeight() const
+ {
+-    return ( GetHandle()->fontMetrics().height() );
++    return ( GetHandle() ? GetHandle()->fontMetrics().height() : -1 );
+ }
+ 
+ 
+ int wxWindowQt::GetCharWidth() const
+ {
+-    return ( GetHandle()->fontMetrics().averageCharWidth() );
++    return ( GetHandle() ? GetHandle()->fontMetrics().averageCharWidth() : -1 );
+ }
+ 
+ void wxWindowQt::DoGetTextExtent(const wxString& string, int *x, int *y, int *descent,
+         int *externalLeading, const wxFont *font ) const
+ {
++    wxCHECK_RET( GetHandle() != NULL || font != NULL, wxT("invalid window") );
+     QFontMetrics fontMetrics( font != NULL ? font->GetHandle() : GetHandle()->font() );
+ 
+     if ( x != NULL )
+@@ -736,7 +746,7 @@ void wxWindowQt::ScrollWindow( int dx, int dy, const wxRect *rect )
+     else
+         widget = GetHandle();
+     // scroll the widget or the specified rect (not children)
+-    if ( rect != NULL )
++    if ( widget && rect != NULL )
+         widget->scroll( dx, dy, wxQtConvertRect( *rect ));
+     else
+         widget->scroll( dx, dy );
+@@ -899,6 +909,7 @@ void wxWindowQt::SetExtraStyle( long exStyle )
+ 
+ void wxWindowQt::DoClientToScreen( int *x, int *y ) const
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     QPoint screenPosition = GetHandle()->mapToGlobal( QPoint( *x, *y ));
+     *x = screenPosition.x();
+     *y = screenPosition.y();
+@@ -907,6 +918,7 @@ void wxWindowQt::DoClientToScreen( int *x, int *y ) const
+ 
+ void wxWindowQt::DoScreenToClient( int *x, int *y ) const
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     QPoint clientPosition = GetHandle()->mapFromGlobal( QPoint( *x, *y ));
+     *x = clientPosition.x();
+     *y = clientPosition.y();
+@@ -936,6 +948,7 @@ wxWindowQt *wxWindowBase::GetCapture()
+ 
+ void wxWindowQt::DoGetPosition(int *x, int *y) const
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     QWidget *qtWidget = GetHandle();
+     *x = qtWidget->x();
+     *y = qtWidget->y();
+@@ -944,13 +957,18 @@ void wxWindowQt::DoGetPosition(int *x, int *y) const
+ 
+ void wxWindowQt::DoGetSize(int *width, int *height) const
+ {
+-    QSize size = GetHandle()->frameSize();
+-    QRect rect = GetHandle()->frameGeometry();
+-    wxASSERT( size.width() == rect.width() );
+-    wxASSERT( size.height() == rect.height() );
+-
+-    if (width)  *width = rect.width();
+-    if (height) *height = rect.height();
++    auto handle = GetHandle();
++    if (handle) {
++        QSize size = handle->frameSize();
++        QRect rect = handle->frameGeometry();
++        wxASSERT( size.width() == rect.width() );
++        wxASSERT( size.height() == rect.height() );
++        if (width)  *width = rect.width();
++        if (height) *height = rect.height();
++    } else {
++        if (width)  *width = -1;
++        if (height) *height = -1;
++    }
+ }
+ 
+ 
+@@ -1018,6 +1036,7 @@ void wxWindowQt::DoSetClientSize(int width, int height)
+ 
+ void wxWindowQt::DoMoveWindow(int x, int y, int width, int height)
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     QWidget *qtWidget = GetHandle();
+ 
+     qtWidget->move( x, y );
+@@ -1038,6 +1057,7 @@ void wxWindowQt::DoMoveWindow(int x, int y, int width, int height)
+ #if wxUSE_TOOLTIPS
+ void wxWindowQt::QtApplyToolTip(const wxString& text)
+ {
++    wxCHECK_RET( GetHandle() != NULL, wxT("invalid window") );
+     GetHandle()->setToolTip(wxQtConvertString(text));
+ }
+ 
+@@ -1059,6 +1079,9 @@ void wxWindowQt::DoSetToolTip( wxToolTip *tip )
+ #if wxUSE_MENUS
+ bool wxWindowQt::DoPopupMenu(wxMenu *menu, int x, int y)
+ {
++    if (!GetHandle()) {
++        return false;
++    }
+     menu->UpdateUI();
+     menu->GetHandle()->exec( GetHandle()->mapToGlobal( QPoint( x, y ) ) );
+ 
+@@ -1149,6 +1172,9 @@ bool wxWindowQt::IsTransparentBackgroundSupported(wxString* WXUNUSED(reason)) co
+ 
+ bool wxWindowQt::SetTransparent(wxByte alpha)
+ {
++    if (!GetHandle()) {
++        return false;
++    }
+     // For Qt, range is between 1 (opaque) and 0 (transparent)
+     GetHandle()->setWindowOpacity(alpha/255.0);
+     return true;
+@@ -1175,7 +1201,9 @@ bool wxWindowQt::SetBackgroundColour(const wxColour& colour)
+         return false;
+ 
+     QWidget *widget = GetHandle();
+-    wxQtChangeRoleColour(widget->backgroundRole(), widget, colour);
++    if (widget) {
++        wxQtChangeRoleColour(widget->backgroundRole(), widget, colour);
++    }
+ 
+     return true;
+ }
+@@ -1186,7 +1214,9 @@ bool wxWindowQt::SetForegroundColour(const wxColour& colour)
+         return false;
+ 
+     QWidget *widget = GetHandle();
+-    wxQtChangeRoleColour(widget->foregroundRole(), widget, colour);
++    if (widget) {
++        wxQtChangeRoleColour(widget->foregroundRole(), widget, colour);
++    }
+ 
+     return true;
+ }

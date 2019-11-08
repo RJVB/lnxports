@@ -1,0 +1,58 @@
+diff --git build/cmake/files.cmake build/cmake/files.cmake
+index 49c01f7c49f62fa80b706e4c162990abd1a93374..e49495d977f54324b36db7065c67b6d1dc2f99af 100644
+--- build/cmake/files.cmake
++++ build/cmake/files.cmake
+@@ -174,7 +174,6 @@ set(QT_WIN32_SRC
+     src/msw/dialup.cpp
+     src/msw/dib.cpp
+     src/msw/joystick.cpp
+-    src/qt/graphics.cpp
+ )
+ 
+ set(QT_WIN32_HDR
+@@ -375,6 +374,7 @@ set(QT_SRC
+     src/qt/taskbar.cpp
+     ${QT_PLATFORM_SRC}
+     src/qt/treectrl.cpp
++    src/qt/graphics.cpp
+ )
+ 
+ set(MEDIA_QT_SRC
+diff --git src/generic/graphicc.cpp src/generic/graphicc.cpp
+index 60c09fa4daf7afbe9ef85498fd1cff7ffae28cd4..d213e1d117919386f67baedd91f1f1889cc420fe 100644
+--- src/generic/graphicc.cpp
++++ src/generic/graphicc.cpp
+@@ -3383,9 +3383,10 @@ wxGraphicsRenderer* wxGraphicsRenderer::GetCairoRenderer()
+ 
+ #endif  // wxUSE_CAIRO/!wxUSE_CAIRO
+ 
+-// MSW and OS X and Qt on Windows have their own native default renderers, but the other ports
+-// use Cairo by default.
+-#if !(defined(__WXMSW__) || defined(__WXOSX__) || (defined(__WXQT__) && defined(__WIN32__)))
++// MSW and OS X have their own native default renderers, but the other ports
++// use Cairo by default. Qt has its own renderer too that is used when Cairo
++// is not available/detected.
++#if !(defined(__WXMSW__) || defined(__WXOSX__) || (defined(__WXQT__) && defined(wxUSE_CAIRO)))
+ wxGraphicsRenderer* wxGraphicsRenderer::GetDefaultRenderer()
+ {
+     return GetCairoRenderer();
+diff --git src/qt/graphics.cpp src/qt/graphics.cpp
+index 9e0614807dcf78718475ebfbd87de66a91161dc6..7c72559cee0b4b89d235e1bcfdaa558941da45b7 100644
+--- src/qt/graphics.cpp
++++ src/qt/graphics.cpp
+@@ -1412,11 +1412,12 @@ void wxQtGraphicsRenderer::GetVersion(int *major, int *minor, int *micro) const
+     if ( micro ) *micro = QT_VERSION_PATCH;
+ }
+ 
+-static wxQtGraphicsRenderer gs_qtGraphicsRenderer;
++// static wxQtGraphicsRenderer gs_qtGraphicsRenderer;
++Q_GLOBAL_STATIC(wxQtGraphicsRenderer, gs_qtGraphicsRenderer)
+ 
+ wxGraphicsRenderer* wxGraphicsRenderer::GetDefaultRenderer()
+ {
+-    return &gs_qtGraphicsRenderer;
++    return (wxQtGraphicsRenderer*)(gs_qtGraphicsRenderer);
+ }
+ 
+ #endif // wxUSE_GRAPHICS_CONTEXT
+
