@@ -74,7 +74,8 @@ depends_run         port:wxWidgets-common \
                     port:wxWidgets_select
 
 patchfiles          patch-configure.diff \
-                    patch-relax-buildoption-check.diff
+                    patch-relax-buildoption-check.diff \
+                    patch-nullaccel.diff
 
 # patchfiles-append   patch-wxqt-install-missing-headers.diff \
 #                     patch-wxqt-standard-menus.diff \

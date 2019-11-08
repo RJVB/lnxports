@@ -1,0 +1,13 @@
+diff --git src/qt/accel.cpp src/qt/accel.cpp
+index 8037e95887f0eb5e63c54ebc2fdb31cb4863e7c3..205d525c2d4c8b64cb205248e1ae5f31ed49c46e 100644
+--- src/qt/accel.cpp
++++ src/qt/accel.cpp
+@@ -70,6 +70,8 @@ QShortcut *ConvertAccelerator( wxAcceleratorEntry *e, QWidget *parent )
+ 
+ wxAcceleratorTable::wxAcceleratorTable()
+ {
++    // there should always be a data table
++    m_refData = new wxAccelRefData;
+ }
+ 
+ wxAcceleratorTable::wxAcceleratorTable(int n, const wxAcceleratorEntry entries[])
