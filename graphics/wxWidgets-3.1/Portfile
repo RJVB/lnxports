@@ -65,8 +65,8 @@ platform linux {
 depends_run         port:wxWidgets-common \
                     port:wxWidgets_select
 
-patchfiles          patch-configure.diff \
-                    patch-relax-buildoption-check.diff
+# patchfiles          patch-configure.diff \
+patchfiles          patch-relax-buildoption-check.diff
 
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|g" ${patch.dir}/configure
@@ -93,7 +93,7 @@ platform darwin {
                     -DwxBUILD_STRIPPED_RELEASE_DEFAULT=OFF \
                     -DwxBUILD_CXX_STANDARD=11
 
-    if { ${os.platform} eq "darwin" && ${os.major} == 11 } {
+    if { ${os.major} == 11 } {
         if {[tbool use_autoconf]} {
             # https://trac.macports.org/ticket/58040
             configure.args-replace --with-macosx-sdk=no \
@@ -180,28 +180,12 @@ post-destroot {
 }
 
 variant debug description {add debug info to libraries} {
-    if {[tbool use_autoconf]} {
-        configure.args-append \
-                            --enable-debug
-    } else {
-        configure.args-append \
-                            -DwxBUILD_DEBUG_LEVEL=1
-    }
+    configure.args-append   -DwxBUILD_DEBUG_LEVEL=1
 }
 
 variant stdlib description {add support for various standard library features} {
-    if {[tbool use_autoconf]} {
-        configure.args-append \
-                            --enable-stl \
-                            --enable-std_containers \
-                            --enable-std_iostreams \
-                            --enable-std_string \
-                            --enable-std_string_conv_in_wxstring
-    } else {
-        configure.args-append \
-                            -DwxUSE_STL=ON \
+    configure.args-append   -DwxUSE_STL=ON \
                             -DwxUSE_STD_CONTAINERS=ON
-    }
 }
 
 livecheck.regex     {archive/v([0-9.]+).tar.gz}

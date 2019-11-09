@@ -52,6 +52,7 @@ if {![string match *cmake ${configure.cmd}]} {
     # patch.dir       ${worksrcpath}/..
     build.dir       ${worksrcpath}/build
     configure.dir   ${worksrcpath}/build
+    set use_autoconf yes
 }
 
 set selectdir       ${workpath}/select
@@ -75,8 +76,11 @@ platform linux {
 depends_run         port:wxWidgets-common \
                     port:wxWidgets_select
 
-patchfiles          patch-configure.diff \
-                    patch-relax-buildoption-check.diff
+if {[tbool use_autoconf]} {
+    patchfiles      patch-configure.diff
+}
+patchfiles-append   patch-relax-buildoption-check.diff \
+                    fix-datatransfer_h.patch
 
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|g" ${patch.dir}/configure
@@ -85,9 +89,8 @@ post-patch {
     system "echo \"${wxWidgets.wxdir}/wx-config\n${wxWidgets.wxdir}/wxrc-${branch}\" > ${select.file}"
 }
 
-if {![string match *cmake ${configure.cmd}]} {
+if {[tbool use_autoconf]} {
     configure.cmd    ../configure
-    set use_autoconf yes
 }
 
 platform darwin {
