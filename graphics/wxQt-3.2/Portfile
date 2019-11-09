@@ -106,7 +106,7 @@ platform darwin {
                     --with-libpng \
                     --with-zlib \
                     --with-opengl \
-                    --with-qt \
+                    --with-${wxtype} \
                     --without-sdl \
                     --enable-aui \
                     --disable-sdltest \
@@ -120,7 +120,7 @@ platform darwin {
     } else {
         cmake.install_prefix ${wxWidgets.prefix}
         configure.args-append \
-                    -DwxBUILD_TOOLKIT=qt \
+                    -DwxBUILD_TOOLKIT=${wxtype} \
                     -DwxUSE_LIBICONV=sys \
                     -DwxUSE_LIBJPEG=sys \
                     -DwxUSE_LIBTIFF=sys \

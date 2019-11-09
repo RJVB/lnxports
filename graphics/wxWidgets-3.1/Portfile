@@ -78,7 +78,7 @@ post-patch {
 platform darwin {
     cmake.install_prefix ${wxWidgets.prefix}
     configure.args-append \
-                    -DwxBUILD_TOOLKIT=cocoa \
+                    -DwxBUILD_TOOLKIT=${wxtype} \
                     -DwxUSE_LIBICONV=sys \
                     -DwxUSE_LIBJPEG=sys \
                     -DwxUSE_LIBTIFF=sys \
@@ -124,7 +124,7 @@ platform darwin {
 platform linux {
     cmake.install_prefix ${wxWidgets.prefix}
     configure.args-append \
-                    -DwxBUILD_TOOLKIT=gtk2 \
+                    -DwxBUILD_TOOLKIT=${wxtype} \
                     -DwxUSE_LIBICONV=sys \
                     -DwxUSE_LIBJPEG=sys \
                     -DwxUSE_LIBTIFF=sys \
