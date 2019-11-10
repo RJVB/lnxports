@@ -50,8 +50,8 @@ if {${subport} eq "${name}"} {
 } else {
     conflicts       "${name}"
     # git describe --tags : Audacity-2.3.2-752-gb3539ed2b
-    github.setup    audacity audacity b3539ed2b84e2c678f9e645c55150d6fee0c2ea8
-    version         2.3.2.752
+    github.setup    audacity audacity 1c44a1e061022a75ad60e622ef529fe0736d755d
+    version         2.3.2.754
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
@@ -150,7 +150,6 @@ platform darwin {
     patchfiles-append \
                     patch-implement-progdial=beep.diff
     patchfiles-append \
-                    patch-no-libatomic.diff \
                     patch-WindowMenus-objcxx.diff
 }
 platform linux {
@@ -182,7 +181,8 @@ platform linux {
                     patch-wxw-303.diff
 #     set wxWidgets.wxconfig /usr/bin/wx-config
 }
-patchfiles-append   patch-wxw-31x.diff
+patchfiles-append   patch-no-libatomic.diff \
+                    patch-wxw-31x.diff
 
 # the port doesn't use CMake for now as it appears to be a WIP, but
 # this build mechanism can be useful for opening the source as a project
@@ -193,6 +193,11 @@ if {[variant_isset qt]} {
     patchfiles-append \
                     patch-for-wxqt.diff
 }
+
+# pre-configure {
+#     use_autoreconf  [expr ![file exists ${worksrcpath}/config.status]]
+#     autoreconf.args -fvi --no-recursive
+# }
 
 configure.args-append \
                     --disable-dependency-tracking \
