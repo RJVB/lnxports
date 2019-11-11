@@ -221,7 +221,6 @@ configure.args-append \
                     --with-twolame \
                     --with-widgetextra=local \
                     --with-portmidi=system \
-                    CPPFLAGS=-I${prefix}/include \
                     WX_CONFIG=${wxWidgets.wxconfig}
 platform darwin {
     # Since version 2.2.0 we need to use the embedded (modified) Portaudio version.
@@ -234,13 +233,18 @@ configure.env-append \
 depends_lib-append \
                     port:portmidi
 platform linux {
-    if {[string match *clang* ${configure.cxx}]} {
-        variant libcxx description {highly experimental and probably broken option to build against libc++. \
-                Requires using clang and an independently provided libc++ installation.} {
-            configure.cxx_stdlib \
-                            libc++
-        }
-    }
+#     if {[string match *clang* ${configure.cxx}]} {
+#         variant libcxx description {highly experimental and probably broken option to build against libc++. \
+#                 Requires using clang and an independently provided libc++ installation.} {
+#             configure.cxx_stdlib \
+#                             libc++
+#             configure.cxxflags-replace \
+#                         -stdlib=libstdc++ \
+#                         -stdlib=libc++
+#             configure.cxxflags-append \
+#                         -DHAVE_TYPE_TRAITS
+#         }
+#     }
 
 #     configure.args-append \
 #                     --with-midi \
@@ -249,20 +253,14 @@ platform linux {
                     --with-midi \
                     --with-portaudio=local
     configure.cppflags-append \
-                    -I${prefix}/include
-    configure.cflags-append \
-                    -DUSE_AQUA_THEME
-    configure.cxxflags-append \
-                    -DUSE_AQUA_THEME \
-                    -std=gnu++11
+                    -I${prefix}/include -DUSE_AQUA_THEME
+#     configure.cxxflags-append \
+#                     -std=gnu++11
 #     # as long as we use the host's wxWidgets. We use the static library
 #     # because otherwise we might still be getting MacPorts' libtiff
 #     # which lacks the version symbols required by the host's wxWidgets libraries.
 #     configure.ldflags-append \
 #                     /usr/lib/x86_64-linux-gnu/libtiff.a
-    configure.args-replace \
-                    CPPFLAGS=-I${prefix}/include \
-                    CPPFLAGS=-I${prefix}/include -DUSE_AQUA_THEME
     configure.env-replace \
                     PORTMIDI_LIBS=${prefix}/lib/libportmidi.dylib \
                     PORTMIDI_LIBS=${prefix}/lib/libportmidi.so
@@ -272,6 +270,11 @@ platform linux {
 if {${configure.cxx_stdlib} ne "" && [string match *clang* ${configure.cxx}]} {
     configure.ldflags-append \
                     -stdlib=${configure.cxx_stdlib}
+}
+
+pre-configure {
+    configure.args-append \
+                    "CPPFLAGS=\"${configure.cppflags}\""
 }
 
 build.args-append   V=1 VERBOSE=1

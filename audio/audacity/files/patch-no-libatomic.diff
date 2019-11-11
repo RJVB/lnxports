@@ -27,7 +27,7 @@ index e9f23be5471f718b42e290c44d19634e16bc2610..810d7088245c4173efecf94991d8c1cb
 +        std::atomic<std::int64_t> v;
 +        int main() {
 +          bool f = std::atomic<double>{}.is_lock_free();
-+          return v;
++          return v && f;
 +        }
 +
 +_ACEOF
@@ -82,7 +82,7 @@ index 40fc326685dca2bd159321283d3d09bb0e8b7d55..dbb0c7a6672bae9c4a935c66fb7426ff
 +        std::atomic<std::int64_t> v;
 +        int main() {
 +          bool f = std::atomic<double>{}.is_lock_free();
-+          return v;
++          return v && f;
 +        }
 +      ]])], STD_ATOMIC_NEED_LIBATOMIC=no, STD_ATOMIC_NEED_LIBATOMIC=yes)
 +      if test "x$STD_ATOMIC_NEED_LIBATOMIC" = xyes; then
