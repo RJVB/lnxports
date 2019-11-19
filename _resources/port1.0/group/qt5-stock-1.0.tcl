@@ -24,11 +24,14 @@ array set available_qt_versions {
 # see https://doc.qt.io/qt-5/supported-platforms-and-configurations.html
 
 proc qt5.get_default_name {} {
-    global os.major os.platform
+    global os.major
 
+    ###RJVB###
+    global os.platform
     if {${os.platform} ne "darwin"} {
         return qt5
     }
+    ###RJVB###
 
     # see https://doc.qt.io/qt-5/supported-platforms-and-configurations.html
     # for older versions, see https://web.archive.org/web/*/http://doc.qt.io/qt-5/supported-platforms-and-configurations.html
@@ -201,7 +204,14 @@ if {[tbool just_want_qt5_version_info]} {
 
 # standard install directory
 global qt_dir
-set qt_dir               ${prefix}/libexec/qt5
+###RJVB###
+if {${os.platform} eq "darwin"} {
+    set qt_dir           ${prefix}/libexec/qt5
+} else {
+    # let's use another prefix for now...
+    set qt_dir           ${prefix}/libexec/qt512
+}
+###RJVB###
 
 # standard Qt non-.app executables directory
 global qt_bins_dir
@@ -298,8 +308,10 @@ set qt_lupdate_cmd     ${qt_dir}/bin/lupdate
 global qt_pkg_config_dir
 set qt_pkg_config_dir   ${qt_libs_dir}/pkgconfig
 
+###RJVB###
 global qt_install_registry
 set qt_install_registry ${qt_dir}/registry
+###RJVB###
 
 namespace eval qt5pg {
     ############################################################################### Component Format
@@ -595,8 +607,8 @@ namespace eval qt5pg {
 # first, check if port:qt5-kde or a port:qt5-kde-devel is installed, or if we're on Mac OS X 10.6
 # NB: the qt5-kde-devel ports may never exist officially in MacPorts but is used locally by KF5 port maintainers!
 # NB2 : ${prefix} isn't set by portindex but registry_active can be used!!
-if {[file exists ${prefix}/include/qt5/QtCore/QtCore] || ${os.major} == 10
-        || ([catch {registry_active "qt5-kde"}] == 0 || [catch {registry_active "qt5-kde-devel"}] == 0) } {
+if {![variant_isset qt5stock_kde] && ([file exists ${prefix}/include/qt5/QtCore/QtCore] || ${os.major} == 10
+        || ([catch {registry_active "qt5-kde"}] == 0 || [catch {registry_active "qt5-kde-devel"}] == 0)) } {
     set qt5PGname "qt5-kde"
 } elseif {[file exists ${prefix}/libexec/qt5/plugins/platforms/libqcocoa.dylib]
         && [file type ${prefix}/libexec/qt5/plugins] eq "directory"} {
@@ -674,6 +686,24 @@ if {[file exists "${qt_install_registry}/qt5-qtbase+qt5stock_kde"]} {
     }
     default_variants    +qt5stock_kde
 }
+# borrowed from qt5-kde-1.0.tcl:
+proc qt5.active_version {} {
+    global prefix
+    namespace upvar ::qt5 active_version av
+    if {[info exists av]} {
+        return ${av}
+    }
+    if {[info exists building_qt5]} {
+        set av ${version}
+        return ${av}
+    } elseif {[file exists ${prefix}/bin/pkg-config]} {
+        if {![catch {set av [exec ${prefix}/bin/pkg-config --modversion Qt5Core]} err]} {
+            return ${av}
+        }
+        # else: Qt5 isn't installed yet
+    }
+    return 0.0.0
+}
 ###########################################################################################
 
 if {[tbool just_want_qt5_variables]} {
@@ -733,6 +763,9 @@ if {[vercmp ${qt5.version} 5.10]>=0} {
     }
 }
 
+###RJVB###
+if {${os.platform} eq "darwin"} {
+###RJVB###
 if {[vercmp ${qt5.version} 5.9]>=0} {
     # in version 5.9, QT changed how it handles multiple architectures
     # see http://web.archive.org/web/20170621174843/http://doc.qt.io/qt-5/osx.html
@@ -781,6 +814,42 @@ if {[vercmp ${qt5.version} 5.9]>=0} {
     set qt_qmake_spec_32 macx-clang-32
     set qt_qmake_spec_64 macx-clang
 }
+###RJVB###
+} elseif {${os.platform} eq "linux"} {
+    if {[string match *clang* ${configure.compiler}]} {
+        set qt_qmake_spec_32    linux-clang
+        set qt_qmake_spec_64    linux-clang
+        pre-configure {
+            # this has probably not been taken care of:
+            if {![string match "*-std=c++*" ${configure.cxxflags}]} {
+                configure.cxxflags-append \
+                                -std=c++11
+            }
+        }
+    } else {
+        set qt_qmake_spec_32    linux-g++
+        set qt_qmake_spec_64    linux-g++-64
+#         compiler.blacklist-append \
+#                                 clang
+    }
+} else {
+    if {[string match *clang* ${configure.compiler}]} {
+        set qt_qmake_spec_32    "${os.platform}-clang"
+        pre-configure {
+            # this has probably not been taken care of:
+            if {![string match "*-std=c++*" ${configure.cxxflags}]} {
+                configure.cxxflags-append \
+                                -std=c++11
+            }
+        }
+    } else {
+        set qt_qmake_spec_32    "${os.platform}-g++"
+#         compiler.blacklist-append \
+#                                 clang
+    }
+    set qt_qmake_spec_64        ${qt_qmake_spec_32}
+}
+###RJVB###
 
 default qt_qmake_spec {[qt5pg::get_default_spec]}
 
