@@ -96,6 +96,19 @@ if {[string match *meson* ${configure.cmd}]} {
                     -Dplatforms=x11,drm,surfaceless \
                     -Dgallium-drivers=r300,r600,nouveau,swrast,tegra,svga,virgl,swr \
                     -Dbuild-tests=true
+        post-destroot {
+            # meson rebuilds to-be-installed libraries without rpath information, so replace those with
+            # the ones from the build dir that do have the info.
+            xinstall -m 755 ${build.dir}/src/glx/libGL.so.1.2.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+            xinstall -m 755 ${build.dir}/src/mapi/shared-glapi/libglapi.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+            xinstall -m 755 ${build.dir}/src/mapi/es1api/libGLESv1_CM.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+            xinstall -m 755 ${build.dir}/src/mapi/es2api/libGLESv2.so.2.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+            xinstall -m 755 ${build.dir}/src/gallium/drivers/swr/libswrAVX2.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+            xinstall -m 755 ${build.dir}/src/gallium/drivers/swr/libswrAVX.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+            xinstall -m 755 ${build.dir}/src/gallium/targets/xa/libxatracker.so.2.4.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+            xinstall -m 755 ${build.dir}/src/egl/libEGL.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+            xinstall -m 755 ${build.dir}/src/gbm/libgbm.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+        }
     }
 } else {
     if {![file exists ${worksrcpath}/configure]} {
@@ -191,6 +204,7 @@ configure.cppflags-delete -I${prefix}/include
 configure.cxxflags-append -std=c++11
 
 platform linux {
+    configure.ldflags-append -Wl,-rpath,${prefix}/${build_arch}-linux-gnu
     post-extract {
         if {![file exists /usr/include/linux/memfd.h]} {
             set kernel [exec uname -r]
@@ -240,7 +254,7 @@ platform darwin {
     }
 }
 
-    set lldversions {3.8 3.9 4.0 5.0 6.0}
+    set lldversions {6.0}
     set llvariant ""
     foreach ldv ${lldversions} {
         set llv [join [lrange [split ${ldv} .] 0 1] ""]
