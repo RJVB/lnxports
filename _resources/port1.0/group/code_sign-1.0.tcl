@@ -1,5 +1,4 @@
 # -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
-# $Id: code-sign-1.0.tcl -1 2016-00-01 06:40:18Z gmail.com:rjvbertin $
 
 # Copyright (c) 2015 The MacPorts Project
 # All rights reserved.
@@ -31,7 +30,7 @@
 #
 #
 # Usage:
-# PortGroup     code-sign 1.0
+# PortGroup     code_sign 1.0
 
 # checks for the existence of a file etc/macports/codesigning.conf and read options
 # from that file if it exists. If that provides a non-empty option `identity`, its
@@ -49,7 +48,7 @@
 # Note that care should be taken (in a post-activate block) that the activation procedure
 # doesn't abort.
 
-proc codesign {app {sign_identity 0} {sign_user ""}} {
+proc codesign {app {sign_identity 0} {sign_user ""} {preserve ""}} {
     global prefix
 #     if {[file exists ${prefix}/etc/macports/codesign-identity.tcl]} {
 #         if {[catch {source "${prefix}/etc/macports/codesign-identity.tcl"} err]} {
@@ -78,20 +77,25 @@ proc codesign {app {sign_identity 0} {sign_user ""}} {
         set user ${sign_user}
         ui_info "Set sign user from arguments; ${user}"
     }
+    if {${preserve} ne ""} {
+        set preserveoption "--preserve-metadata=${preserve}"
+    } else {
+        set preserveoption "--preserve-metadata"
+    }
     platform darwin {
         if {[info exists identity] && (${identity} ne "")} {
             if {[file exists ${app}]} {
                 if {[info exists user] && ${user} ne ""} {
                     set home [glob "~${user}"]
                     ui_info "Signing ${app} with ${identity} from ${user}'s keychains under HOME=${home}"
-                    if {[catch {system "env HOME=${home} codesign -s ${identity} --preserve-metadata -f -vvv --deep ${app}"} err]} {
+                    if {[catch {system "env HOME=${home} codesign -s ${identity} ${preserveoption} -f -vvv --deep ${app}"} err]} {
                         ui_error "Signing ${app} with ${identity} from ${user}'s keychains under HOME=${home}: ${err}"
                     } else {
                         return 0
                     }
                 } else {
                     ui_info "Signing ${app} with ${identity}"
-                    if {[catch {system "codesign -s ${identity} --preserve-metadata -f -vvv --deep ${app}"} err]} {
+                    if {[catch {system "codesign -s ${identity} ${preserveoption} -f -vvv --deep ${app}"} err]} {
                         ui_error "Signing ${app} with ${identity}: ${err}"
                         ui_msg "You will probably need to set the user option to your own username in ${codesigning_conf}"
                     }

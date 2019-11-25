@@ -1,5 +1,4 @@
 # -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
-# $Id: kf5-frameworks-1.0.tcl 134210 2015-03-20 06:40:18Z mk@macports.org $
 
 # Copyright (c) 2015 The MacPorts Project
 # Copyright (c) 2015, 2016 R.J.V. Bertin
@@ -32,7 +31,7 @@
 #
 #
 # Usage:
-# PortGroup     kf5-frameworks 1.0
+# PortGroup     kf5_frameworks 1.0
 #
 # This PortGroup provides the required macros to declare dependencies
 # on KF5 Frameworks for ports that cannot easily use the main KF5 1.1
@@ -198,6 +197,12 @@ proc kf5.depends_frameworks {first args} {
     if {[lsearch -exact ${args} "ki18n"] ne "-1"} {
         kf5::has_translations
     }
+    if {[lsearch -exact ${args} "kdoctools"] ne "-1"
+        && [lsearch [option depends_lib] "docbook-x"] eq -1
+    } {
+        depends_lib-append \
+                        port:docbook-xml port:docbook-xsl-nons
+    }
 }
 
 proc kf5.depends_build_frameworks {first args} {
@@ -209,6 +214,12 @@ proc kf5.depends_build_frameworks {first args} {
     }
     if {[lsearch -exact ${args} "ki18n"] ne "-1"} {
         kf5::has_translations
+    }
+    if {[lsearch -exact ${args} "kdoctools"] ne "-1"
+        && [lsearch [option depends_build] "docbook-x"] eq -1
+    } {
+        depends_build-append \
+                        port:docbook-xml port:docbook-xsl-nons
     }
 }
 
@@ -298,6 +309,8 @@ kf5::framework_dependency    kuserfeedback libKUserFeedbackCore
 kf5::framework_dependency    kactivities-stats libKF5ActivitiesStats
 kf5::framework_dependency    purpose libKF5Purpose
 kf5::framework_dependency    kjsembed libKF5JsEmbed
+kf5::framework_dependency    bluezqt libKF5BluezQt
+kf5::framework_dependency    networkmanagerqt libKF5NetworkManagerQt
 
 # QML frameworks, should be used as runtime deps:
 set kf5::kirigami_dep        path:${qt_qml_dir}/org/kde/kirigami/libkirigamiplugin.${kf5::libs_ext}:kf5-kirigami

@@ -111,7 +111,7 @@ if { ![ info exists kf5.project ] } {
 
 # KF5 frameworks current version, which is the same for all frameworks
 if {![info exists kf5.version]} {
-    set kf5.version     5.52.0
+    set kf5.version     5.60.0
     # kf5.latest_version is supposed to be used only in the KF5-Frameworks Portfile
     # when updating it to the new version (=kf5.latest_version). This feature is
     # activated only when a file `port dir KF5-Frameworks`/files/enable_latest exists.
@@ -152,7 +152,7 @@ if {${kf5::includecounter} == 0} {
     }
 
     # kf5.py* variable definitions (now kf5::py* namespaced variables) were
-    # here; moved to kf5-frameworks-1.0.tcl
+    # here; moved to kf5_frameworks-1.0.tcl
 
     platform darwin {
         variant nativeQSP description {use the native Apple-style QStandardPaths locations} {}
@@ -186,6 +186,8 @@ if {${kf5::includecounter} == 0} {
 
     # This is used by all KF5 frameworks
     depends_build-append    path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
+    depends_skip_archcheck-append \
+                            kde-extra-cmake-modules kde-extra-cmake-modules-devel
 
     # configure.args-append   -G "\"CodeBlocks - Unix Makefiles\""
 
@@ -293,6 +295,8 @@ if {${kf5::includecounter} == 0} {
     variant chm requires docs description {when building the API documentation, also create a .chm version} {
         depends_build-append \
                             port:chmcmd-fpc
+        depends_skip_archcheck-append \
+                            chmcmd-fpc
     }
     variant docs description {build and install the API documentation, for use with Qt's Assistant and KDevelop} {
         configure.args-delete \
@@ -317,6 +321,8 @@ if {${kf5::includecounter} == 0} {
                     kf5.depends_build_frameworks \
                             kgenapidox
                 }
+                depends_skip_archcheck-append \
+                            ${kf5::kapidox_dep} ${kf5::kgenapidox_dep}
             }
         }
     }
@@ -529,8 +535,8 @@ if {[info exists kf5.project]} {
 ### resides in the same directory as ourselves.
 ### Do NOT impose this restriction if we're reading a copy stored in the registry!
 if {[string first "registry/portgroup" ${kf5::currentportgroupdir}] < 0} {
-    if {![file exists ${kf5::currentportgroupdir}/kf5-frameworks-1.0.tcl]} {
-        ui_error "The kf5 1.0 and kf5-frameworks 1.0 PortGroups should reside in the same directory"
+    if {![file exists ${kf5::currentportgroupdir}/kf5_frameworks-1.0.tcl]} {
+        ui_error "The kf5 1.0 and kf5_frameworks 1.0 PortGroups should reside in the same directory"
         return -code error "KF5 PortGroup installation error"
     }
 } else {
@@ -540,7 +546,7 @@ if {[string first "registry/portgroup" ${kf5::currentportgroupdir}] < 0} {
 ### more things that should or needs to be parsed only once:
 
 if {${kf5::includecounter} == 0} {
-    PortGroup kf5-frameworks 1.0
+    PortGroup kf5_frameworks 1.0
     # TODO: raise error if inclusion failed
 
     if {[variant_isset docs]} {
@@ -792,7 +798,7 @@ if {${kf5::includecounter} == 0} {
             reinplace -q "s|Exec=${bundlename} |Exec=${prefix}/bin/${wrappername} |g" ${df}
         }
         foreach df [glob -nocomplain ${destroot}${prefix}/share/metainfo/*.${bundlename}.appdata.xml] {
-            reinplace "s|<binary>${bundlename}</binary>|<binary>${prefix}/bin/${wrappername}</binary>|g" ${df}
+            reinplace -q "s|<binary>${bundlename}</binary>|<binary>${prefix}/bin/${wrappername}</binary>|g" ${df}
         }
     }
 
@@ -948,8 +954,8 @@ if {${kf5::includecounter} == 0} {
 
     if {[variant_exists debug] && [variant_isset debug]} {
         if {[string match *clang* ${configure.cxx}] || [string match *clang* ${configure.cc}]} {
-            configure.cflags-append     -fno-limit-debug-info
-            configure.cxxflags-append   -fno-limit-debug-info
+            configure.cflags-append     -fno-limit-debug-info -fstandalone-debug
+            configure.cxxflags-append   -fno-limit-debug-info -fstandalone-debug
         }
     }
 
