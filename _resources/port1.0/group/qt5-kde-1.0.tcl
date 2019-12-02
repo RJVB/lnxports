@@ -42,7 +42,7 @@
 # Define qt5.depends_qtwebengine before including the portgroup to add
 # a dependency on qt5-kde-qtwebengine .
 
-# shameless copy from the qt5-mac 1.0 PortGroup
+# shameless copy from the qt5-stock 1.0 PortGroup
 # Qt has what is calls reference configurations, which are said to be thoroughly tested
 # Qt also has configurations which are occasionally tested
 # see http://doc.qt.io/qt-5/supported-platforms.html#reference-configurations
@@ -77,7 +77,7 @@ if {[tbool just_want_qt5_version_info]} {
 # first, check if port:qt5-kde or a port:qt5-kde-devel is installed, or if we're on Mac OS X 10.6
 # NB: the qt5-kde-devel ports may never exist officially in MacPorts but is used locally by KF5 port maintainers!
 # NB2 : ${prefix} isn't set by portindex but registry_active can be used!!
-# NB3 : this is a simpler variant of the equivalent block in qt5-1.0.tcl and qt5-mac-1.0.tcl;
+# NB3 : this is a simpler variant of the equivalent block in qt5-1.0.tcl and qt5-stock-1.0.tcl.tcl;
 # it can be because we have strict(er) control over who includes this, and the tests are redundant
 # if we come here via one of the aforementioned PortGroup files.
 if {[file exists ${prefix}/include/qt5/QtCore/QtCore] || ${os.major} == 10
@@ -149,43 +149,12 @@ if {[file exists ${prefix}/libexec/qt5/plugins/platforms/libqcocoa.dylib]
 if {[info exists qt5.using_kde] && !${qt5.using_kde}} {
     # checks if the other Qt5 PortGroup has already been included.
     # NB: this works only when that happened through the qt5-1.0.tcl!
-    ui_error "qt5-kde-1.0.tcl is being imported after qt5-mac-1.0.tcl"
+    ui_error "qt5-kde-1.0.tcl is being imported after qt5-stock-1.0.tcl.tcl"
     return -code error "importing 2 incompatible Qt5 PortGroups"
 }
 ####################################################
 
-namespace eval qt5 {
-    if {[info exists dont_include_twice] && [info exists currentportgroupdir]} {
-        ui_debug "not including qt5-kde-1.0.tcl again"
-        return
-    }
-    # our directory:
-    variable currentportgroupdir [file dirname [dict get [info frame 0] file]]
-}
-
-options qt5.min_version
-default qt5.min_version 5.0
-
-# Ports that want to provide a universal variant need to use the muniversal PortGroup explicitly.
-universal_variant no
-
-if {![variant_exists qt5kde]} {
-    # define a variant that will be set default when port:qt5-kde or port:qt5-kde-devel is
-    # installed. This means that a user doing a new install (or upgrade) of a port depending
-    # on Qt5 and with port:qt5-kde installed will request a variant the build bots should not
-    # consider a default variant. This meant to protect against pulling in a binary build against
-    # the wrong Qt5 port, which was relevant in the time of port:qt5-mac, and hopefully no
-    # longer now that port:qt5 installs to the same place as we do (but as an all-inclusive prefix).
-    variant qt5kde description {default variant set for port:qt5-kde* and ports that depend on them} {}
-}
-# it should no longer be necessary to set qt5kde but we will continue to do so for now.
-if {[variant_isset qt5kde]} {
-    ui_debug "+qt5kde is set for port:${subport}"
-} else {
-    ui_debug "+qt5kde is not yet set but will be for port:${subport}"
-}
-default_variants        +qt5kde
-
+### These should be set (re)set on each invocation:
 # standard Qt5 name. This should be just "qt5" (or qt53 for instance when more
 # specific version info must be included).
 global qt_name
@@ -260,24 +229,9 @@ if {![info exists qt_cmake_module_dir]} {
     global qt_host_data_dir
 
 global qt5_is_concurrent
-# check if we're building qt5 itself. We're aiming to phase out exclusive installs, but we
-# keep the this block for now that handles detection of the nature of the installed port.
-# if {![info exists building_qt5] || ![info exists name] \
-#     || (${name} ne "qt5-mac" && ${name} ne "qt5-mac-devel" && ${name} ne "qt5-kde" && ${name} ne "qt5-kde-devel")} {
-#     # no, this must be a dependent port: check the qt5 install:
-#     if {[file exists ${prefix}/libexec/${qt_name}/bin/qmake]} {
-#         # we have a "concurrent" install, which means we must look for the various components
-#         # in different locations (esp. qmake)
-#         set qt5_is_concurrent   1
-#     }
-# } else {
-#     # we're building qt5, qt5-mac or one of its subports/variants
-#     # we're asking for the standard concurrent install. No need to guess anything, give the user what s/he wants
-#     set qt5_is_concurrent   1
-# }
 set qt5_is_concurrent       1
 
-# NB: these have all already been set by the mainstream Qt5 PG (qt5-mac-1.0.tcl)
+# NB: these have all already been set by the mainstream Qt5 PG (qt5-stock-1.0.tcl.tcl)
 # that port family's layout is different so we have to reset everything here.
 # NB: That means we have to keep the variable list in sync!
 set qt_dir                  ${prefix}/libexec/${qt_name}
@@ -315,6 +269,39 @@ set qt_demos_dir            ${qt_apps_dir}/demos
 
 set qt_pkg_config_dir       ${prefix}/lib/pkgconfig
 set qt_host_data_dir        ${prefix}/share/${qt_name}
+
+### The remaining part can be skipped even if we just included the qt5-mac PG a 2nd time
+namespace eval qt5 {
+    if {[info exists dont_include_twice] && [info exists currentportgroupdir]} {
+        ui_debug "not including qt5-kde-1.0.tcl again"
+        return
+    }
+    # our directory:
+    variable currentportgroupdir [file dirname [dict get [info frame 0] file]]
+}
+
+options qt5.min_version
+default qt5.min_version 5.0
+
+# Ports that want to provide a universal variant need to use the muniversal PortGroup explicitly.
+universal_variant no
+
+if {![variant_exists qt5kde]} {
+    # define a variant that will be set default when port:qt5-kde or port:qt5-kde-devel is
+    # installed. This means that a user doing a new install (or upgrade) of a port depending
+    # on Qt5 and with port:qt5-kde installed will request a variant the build bots should not
+    # consider a default variant. This meant to protect against pulling in a binary build against
+    # the wrong Qt5 port, which was relevant in the time of port:qt5-mac, and hopefully no
+    # longer now that port:qt5 installs to the same place as we do (but as an all-inclusive prefix).
+    variant qt5kde description {default variant set for port:qt5-kde* and ports that depend on them} {}
+}
+# it should no longer be necessary to set qt5kde but we will continue to do so for now.
+if {[variant_isset qt5kde]} {
+    ui_debug "+qt5kde is set for port:${subport}"
+} else {
+    ui_debug "+qt5kde is not yet set but will be for port:${subport}"
+}
+default_variants        +qt5kde
 
 # ui_debug "qt_dir=${qt_dir}"
 # ui_debug "qt_dir_rel=${qt_dir_rel}"
@@ -491,11 +478,12 @@ proc qt5.active_version {} {
         set av ${version}
         return ${av}
     } elseif {[file exists ${prefix}/bin/pkg-config]} {
-        set av [exec ${prefix}/bin/pkg-config --modversion Qt5Core]
-        return ${av}
-    } else {
-        return 0.0.0
+        if {![catch {set av [exec ${prefix}/bin/pkg-config --modversion Qt5Core]} err]} {
+            return ${av}
+        }
+        # else: Qt5 isn't installed yet
     }
+    return 0.0.0
 }
 
 proc qt5.active_branch {} {
@@ -613,7 +601,7 @@ if {![tbool QT53] && ![tbool qt5.no_LTO_variant] && ![variant_exists LTO]} {
 
 if {![info exists building_qt5]} {
     if {${os.platform} ne "darwin"} {
-        configure.ldflags-append        -Wl,-rpath,${qt_libs_dir}
+        configure.ldflags-append        -Wl,-rpath,${qt_libs_dir} -Wl,-rpath,${prefix}/${build_arch}-linux-gnu
     }
 }
 
@@ -753,10 +741,10 @@ default qt5.wrapper_env_additions ""
 
 proc qt5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""} {appdir ""}} {
     global qt_apps_dir destroot prefix os.platform qt5.wrapper_env_additions subport
-    if {${appdir} eq ""} {
-        set appdir ${qt_apps_dir}
-    }
     if {${os.platform} eq "darwin"} {
+        if {${appdir} eq ""} {
+            set appdir ${qt_apps_dir}
+        }
         if {${bundlename} eq ""} {
             set bundlename ${wrappername}
         }
@@ -767,6 +755,9 @@ proc qt5.add_app_wrapper {wrappername {bundlename ""} {bundleexec ""} {appdir ""
         # no app bundles on this platform, but provide the same API by pretending there are.
         # If unset, use ${subport} to guess the exec. name because evidently we cannot
         # symlink ${wrappername} onto itself.
+        if {${appdir} eq ""} {
+            set appdir ${prefix}/bin
+        }
         if {${bundlename} eq ""} {
             set bundlename ${subport}
         }
