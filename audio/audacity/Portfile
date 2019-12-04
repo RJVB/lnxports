@@ -189,6 +189,11 @@ patchfiles-append   patch-no-libatomic.diff \
 # in IDEs like KDevelop.
 patchfiles-append   patch-cmakefiles.diff
 
+if {${subport} eq "${name}"} {
+    patchfiles-append \
+                    patch-wxtreectl-hdr.diff
+}
+
 if {[variant_isset qt]} {
     patchfiles-append \
                     patch-for-wxqt.diff
