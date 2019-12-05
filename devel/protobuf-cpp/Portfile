@@ -1,16 +1,14 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 137322 2015-06-09 05:06:34Z jeremyhu@macports.org $
 
 PortSystem 1.0
 PortGroup  github 1.0
 
 name            protobuf-cpp
-version         2.6.1
+version         2.6.1 ; revision 1
 categories      devel
 maintainers     blair
 license         BSD
 description     Encode data in an efficient yet extensible format.
-conflicts       protobuf3-cpp
 
 long_description \
                 Google Protocol Buffers are a flexible, efficient, \
@@ -59,6 +57,7 @@ post-destroot {
 }
 
 if {${subport} eq "${name}-dev"} {
+    conflicts   protobuf3-cpp-dev
     # we don't care about anything that follows,
     # return here to avoid having to add more subport checks.
     return
