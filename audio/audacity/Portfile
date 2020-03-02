@@ -48,10 +48,13 @@ if {${subport} eq "${name}"} {
 #                     size    62025555
     set PPREFIX     ./
 } else {
+    PortGroup       cmake 1.1
     conflicts       "${name}"
-    # git describe --tags : Audacity-2.3.2-752-gb3539ed2b
-    github.setup    audacity audacity 1c44a1e061022a75ad60e622ef529fe0736d755d
-    version         2.3.2.754
+#     # git describe --tags : Audacity-2.3.2-752-gb3539ed2b
+#     github.setup    audacity audacity 1c44a1e061022a75ad60e622ef529fe0736d755d
+    # git describe --tags : Audacity-2.3.3-841-g310b5dea3
+    github.setup    audacity audacity 310b5dea303a8add62d49fb88e3f3b3f8a2fe0a8
+    version         2.3.3.841
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
@@ -65,6 +68,7 @@ if {${subport} eq "${name}"} {
         system -W ${worksrcpath}/mac "scripts/get_gitident.sh"
     }
     build.post_args-append -k
+    cmake.save_configure_cmd "log too"
 }
 
 categories          audio
@@ -122,19 +126,25 @@ patch.pre_args      -Np1
 # - address a visibility issue with the slider_array variable in libnyquist
 # - make the AudioUnits plugin support build; on 64bit and also include AUControl.mm
 platform darwin {
+    depends_build-append \
+                    port:nasm
+
     patchfiles-append \
                     fix-minsrc-autoreconf.patch                             \
                     libvamp-Makefile-for-osx.diff                           \
                     src-Makefile-for-osx.diff                               \
                     portaudio-no-universal-build.diff                       \
-                    buildinfo-clarify-no-gstreamer.diff                     \
-                    patch-aboutdlg-compiler.diff                            \
+                    ${PPREFIX}buildinfo-clarify-no-gstreamer.diff                     \
+                    ${PPREFIX}patch-aboutdlg-compiler.diff                            \
                     add_enGB_translation.diff                               \
                     patch-more-decent-font-sizes.diff                       \
                     patch-python.diff                                       \
                     patch-libnyquist-symbol-visibility.diff \
-                    patch-skip-gcc-version-test.diff \
+                    patch-skip-gcc-version-test.diff
+    if {${subport} eq "${name}"} {
+        patchfiles-append \
                     patch-fix-audiounits.diff
+    }
     # use lame from MacPorts (partial revert of ae431bc5)
     # load ffmpeg libs from MacPorts (reverts of 1d40f33e)
     patchfiles-append \
@@ -159,15 +169,18 @@ platform linux {
     patchfiles-append \
                     fix-minsrc-autoreconf.patch                             \
                     libvamp-Makefile-for-linux.diff                         \
-                    buildinfo-clarify-no-gstreamer.diff                     \
-                    patch-aboutdlg-compiler.diff                            \
+                    ${PPREFIX}buildinfo-clarify-no-gstreamer.diff                     \
+                    ${PPREFIX}patch-aboutdlg-compiler.diff                            \
                     add_enGB_translation.diff                               \
                     patch-avoid-clang-choke-on-confbase.diff                \
                     patch-rearrange-control-buttons.diff                    \
-                    patch-python-linux.diff                                 \
+                    ${PPREFIX}patch-python-linux.diff                                 \
                     patch-libnyquist-symbol-visibility.diff \
-                    patch-skip-gcc-version-test.diff \
+                    patch-skip-gcc-version-test.diff
+    if {${subport} eq "${name}"} {
+        patchfiles-append \
                     patch-fix-audiounits.diff
+    }
     # use lame from MacPorts (partial revert of ae431bc5)
     # load ffmpeg libs from MacPorts (reverts of 1d40f33e)
     patchfiles-append \
@@ -184,14 +197,12 @@ platform linux {
 patchfiles-append   patch-no-libatomic.diff \
                     patch-wxw-31x.diff
 
-# the port doesn't use CMake for now as it appears to be a WIP, but
-# this build mechanism can be useful for opening the source as a project
-# in IDEs like KDevelop.
-patchfiles-append   patch-cmakefiles.diff
-
 if {${subport} eq "${name}"} {
     patchfiles-append \
                     patch-wxtreectl-hdr.diff
+} else {
+    patchfiles-append \
+                    patch-cmakefiles.diff
 }
 
 if {[variant_isset qt]} {
@@ -204,7 +215,8 @@ if {[variant_isset qt]} {
 #     autoreconf.args -fvi --no-recursive
 # }
 
-configure.args-append \
+if {${subport} eq "${name}"} {
+    configure.args-append \
                     --disable-dependency-tracking \
                     --disable-quicktime \
                     --disable-static \
@@ -227,10 +239,39 @@ configure.args-append \
                     --with-widgetextra=local \
                     --with-portmidi=system \
                     WX_CONFIG=${wxWidgets.wxconfig}
-platform darwin {
-    # Since version 2.2.0 we need to use the embedded (modified) Portaudio version.
-    configure.args-append \
+    platform darwin {
+        # Since version 2.2.0 we need to use the embedded (modified) Portaudio version.
+        configure.args-append \
                     --with-portaudio=local
+    }
+} else {
+    set _OPT "audacity_"
+    configure.args-append \
+                    -DwxWidgets_CONFIG_EXECUTABLE=${wxWidgets.wxconfig} \
+                    -D${_OPT}lib_preference=system \
+                    -D${_OPT}use_audiounits=off \
+                    -D${_OPT}use_pa_jack=off \
+                    -D${_OPT}use_wxwidgets=system \
+                    -D${_OPT}use_ffmpeg=linked \
+                    -D${_OPT}use_lame=system \
+                    -D${_OPT}use_flac=system \
+                    -D${_OPT}use_mad=system \
+                    -D${_OPT}use_soxr=system \
+                    -D${_OPT}use_vamp=local \
+                    -D${_OPT}use_ogg=system \
+                    -D${_OPT}use_vorbis=system \
+                    -D${_OPT}use_lv2=local \
+                    -D${_OPT}use_sbsms=local \
+                    -D${_OPT}use_soundtouch=system \
+                    -D${_OPT}use_twolame=system \
+                    -D${_OPT}use_midi=system
+    configure.env-append \
+                    WX_CONFIG=${wxWidgets.wxconfig}
+    platform darwin {
+        # Since version 2.2.0 we need to use the embedded (modified) Portaudio version.
+        configure.args-append \
+                    -Denable_portaudio=ON -Duse_system_portaudio=OFF \
+    }
 }
 configure.env-append \
                     PORTMIDI_CFLAGS=-I${prefix}/include \
@@ -288,8 +329,11 @@ build.args-append   V=1 VERBOSE=1
 # handle the post-patch step with its reinplace statements.
 post-patch {
     set python_bin ${prefix}/bin/python2.7
+    if {${subport} eq "${name}"} {
+        reinplace -W ${worksrcpath} "s|@@PYTHON@@|${python_bin}|g" \
+                                    lib-src/lv2/build
+    }
     reinplace -W ${worksrcpath} "s|@@PYTHON@@|${python_bin}|g" \
-                                lib-src/lv2/build \
                                 lib-src/lv2/configure
     reinplace -W ${worksrcpath} "s|/usr/local|${prefix}|g" \
                                 src/effects/ladspa/LadspaEffect.cpp \
