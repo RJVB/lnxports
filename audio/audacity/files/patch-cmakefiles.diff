@@ -23,53 +23,16 @@ index 0e545cb7bdbab6acfdf40e873340bb2942628eab..83efa516d8174af7573eb9ca130d04cd
  endif()
  
  # Our very own project
-@@ -130,13 +132,16 @@ if( GIT_FOUND )
-          output
-       OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
--
--   list( GET output 0 GIT_COMMIT_SHORT )
--   list( GET output 1 GIT_COMMIT_LONG )
--   list( GET output 2 GIT_COMMIT_TIME )
--
--   message( STATUS "  Current Commit: ${GIT_COMMIT_SHORT}" )
--   message( STATUS )
-+   if( output )
-+       list( GET output 0 GIT_COMMIT_SHORT )
-+       list( GET output 1 GIT_COMMIT_LONG )
-+       list( GET output 2 GIT_COMMIT_TIME )
-+
-+       message( STATUS "  Current Commit: ${GIT_COMMIT_SHORT}" )
-+       message( STATUS )
-+   else()
-+       unset(GIT_FOUND)
-+   endif()
- endif()
- 
- # Define option() prefix
-@@ -342,7 +347,8 @@ find_package( OpenGL QUIET )
+@@ -347,7 +349,8 @@ find_package( OpenGL QUIET )
  #     .../bin/Debug//
  # or:
  #     .../bin//Debug
--set( _DEST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/${CMAKE_BUILD_TYPE}" )
-+# set( _DEST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/${CMAKE_BUILD_TYPE}" )
-+set( _DEST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" )
+-set( _DESTDIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/${CMAKE_BUILD_TYPE}" )
++# set( _DESTDIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CMAKE_CFG_INTDIR}/${CMAKE_BUILD_TYPE}" )
++set( _DESTDIR "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}" )
+ set( _DEST "${_DESTDIR}" )
  set( _EXEDIR "${_DEST}" )
  string( REGEX REPLACE "/+$" "" _EXEDIR "${_EXEDIR}" )
- 
-diff --git a/help/CMakeLists.txt b/help/CMakeLists.txt
-index 3402a1e528f4cdce4fe545193008261f70b16b0f..a7af495f93f083ecccd1ca16d490be8010345129 100755
---- a/help/CMakeLists.txt
-+++ b/help/CMakeLists.txt
-@@ -50,7 +50,7 @@ if( NOT "${CMAKE_GENERATOR}" MATCHES "Xcode|Visual Studio*" )
-    install( DIRECTORY "${dst}" OPTIONAL
-             DESTINATION "${_DATADIR}/audacity/help" )
-    install( FILES "${_SRCDIR}/audacity.1"
--            DESTINATION "${_DATADIR}/man/man.1" )
-+            DESTINATION "${_DATADIR}/man/man1" )
-    install( FILES "${_SRCDIR}/audacity.appdata.xml"
-             DESTINATION "${_DATADIR}/appdata" )
- endif()
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
 index 2fd440ca33a3d50127ed54ee1a596aa7a9f5c393..5ed23759f74f36b406ce9ad69663f6487ea0e2bc 100644
 --- a/src/CMakeLists.txt
