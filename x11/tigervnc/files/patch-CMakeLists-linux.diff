@@ -1,0 +1,30 @@
+--- orig.CMakeLists.txt	2020-03-23 11:08:25.262624136 +0100
++++ CMakeLists.txt	2020-03-23 14:37:00.558846794 +0100
+@@ -135,6 +135,7 @@
+ 
+ # Check for gettext
+ option(ENABLE_NLS "Enable translation of program messages" ON)
++option(USE_GETTEXT_FROM_LIBINTL "Force the use of gettext functions from libintl instead of libc" OFF)
+ if(ENABLE_NLS)
+   # Tools
+   find_package(Gettext)
+@@ -151,7 +152,7 @@
+       set(CMAKE_REQUIRED_LIBRARIES ${ICONV_LIBRARIES})
+       set(CMAKE_REQUIRED_FLAGS -fno-builtin-dgettext)
+       check_function_exists(dgettext LIBC_HAS_DGETTEXT)
+-      if(LIBC_HAS_DGETTEXT)
++      if(LIBC_HAS_DGETTEXT AND NOT USE_GETTEXT_FROM_LIBINTL)
+         set(GETTEXT_FOUND TRUE)
+       else()
+         find_library(LIBINTL_LIBRARY NAMES intl libintl)
+--- orig.CMakeLists.txt	2017-01-18 13:39:28.000000000 +0100
++++ CMakeLists.txt	2020-03-23 14:33:11.433808796 +0100
+@@ -50,6 +50,8 @@
+ 
+ if(APPLE)
+   target_link_libraries(vncviewer "-framework Cocoa" "-framework Carbon")
++elseif(UNIX)
++  target_link_libraries(vncviewer "-ldl")
+ endif()
+ 
+ install(TARGETS vncviewer DESTINATION ${BIN_DIR})
