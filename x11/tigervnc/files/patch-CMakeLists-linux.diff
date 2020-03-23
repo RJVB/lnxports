@@ -1,5 +1,25 @@
+--- vncviewer/orig.CMakeLists.txt	2017-01-18 13:39:28.000000000 +0100
++++ vncviewer/CMakeLists.txt	2020-03-23 14:33:11.433808796 +0100
+@@ -50,6 +50,8 @@
+ 
+ if(APPLE)
+   target_link_libraries(vncviewer "-framework Cocoa" "-framework Carbon")
++elseif(UNIX)
++  target_link_libraries(vncviewer "-ldl")
+ endif()
+ 
+ install(TARGETS vncviewer DESTINATION ${BIN_DIR})
 --- orig.CMakeLists.txt	2020-03-23 11:08:25.262624136 +0100
-+++ CMakeLists.txt	2020-03-23 14:37:00.558846794 +0100
++++ CMakeLists.txt	2020-03-23 17:13:29.146830809 +0100
+@@ -126,7 +126,7 @@
+ endif()
+ 
+ # X11 stuff. It's in a if() so that we can say REQUIRED
+-if(UNIX AND NOT APPLE)
++if(UNIX)
+   find_package(X11 REQUIRED)
+ endif()
+ 
 @@ -135,6 +135,7 @@
  
  # Check for gettext
@@ -17,14 +37,15 @@
          set(GETTEXT_FOUND TRUE)
        else()
          find_library(LIBINTL_LIBRARY NAMES intl libintl)
---- orig.CMakeLists.txt	2017-01-18 13:39:28.000000000 +0100
-+++ CMakeLists.txt	2020-03-23 14:33:11.433808796 +0100
-@@ -50,6 +50,8 @@
- 
- if(APPLE)
-   target_link_libraries(vncviewer "-framework Cocoa" "-framework Carbon")
-+elseif(UNIX)
-+  target_link_libraries(vncviewer "-ldl")
+@@ -284,9 +285,9 @@
+   add_subdirectory(win)
+ else()
+   # No interest in building x related parts on Apple
+-  if(NOT APPLE)
++#   if(NOT APPLE)
+     add_subdirectory(unix)
+-  endif()
++#   endif()
  endif()
  
- install(TARGETS vncviewer DESTINATION ${BIN_DIR})
+ if(ENABLE_NLS)

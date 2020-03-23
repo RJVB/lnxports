@@ -9,3 +9,24 @@
  
  if(WIN32)
  set(BIN_DIR "${CMAKE_INSTALL_PREFIX}")
+@@ -126,7 +126,7 @@
+ endif()
+ 
+ # X11 stuff. It's in a if() so that we can say REQUIRED
+-if(UNIX AND NOT APPLE)
++if(UNIX)
+   find_package(X11 REQUIRED)
+ endif()
+ 
+@@ -284,9 +285,9 @@
+   add_subdirectory(win)
+ else()
+   # No interest in building x related parts on Apple
+-  if(NOT APPLE)
++#   if(NOT APPLE)
+     add_subdirectory(unix)
+-  endif()
++#   endif()
+ endif()
+ 
+ if(ENABLE_NLS)
