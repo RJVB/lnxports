@@ -4,8 +4,8 @@ PortSystem          1.0
 
 PortGroup           github 1.0
 PortGroup           wxWidgets 1.0
-PortGroup           conflicts_build 1.0
 PortGroup           active_variants 1.1
+PortGroup           compress_workdir 1.0
 PortGroup           LTO 1.0
 
 platform darwin {
@@ -53,8 +53,8 @@ if {${subport} eq "${name}"} {
 #     # git describe --tags : Audacity-2.3.2-752-gb3539ed2b
 #     github.setup    audacity audacity 1c44a1e061022a75ad60e622ef529fe0736d755d
     # git describe --tags : Audacity-2.3.3-841-g310b5dea3
-    github.setup    audacity audacity 210fc288638f284b52ea64c7a20eee959b78db3c
-    version         2.3.3.952
+    github.setup    audacity audacity e09b35f2c88425c9b79a11e3207c1c8b50853b01
+    version         2.3.3.994
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
@@ -114,6 +114,7 @@ depends_build-append \
 depends_lib-append  port:expat \
                     path:lib/libavcodec.dylib:ffmpeg \
                     port:flac \
+                    port:lame \
                     port:libogg \
                     port:libsndfile \
                     port:libvorbis
@@ -134,11 +135,11 @@ platform darwin {
                     libvamp-Makefile-for-osx.diff                           \
                     src-Makefile-for-osx.diff                               \
                     portaudio-no-universal-build.diff                       \
-                    ${PPREFIX}buildinfo-clarify-no-gstreamer.diff                     \
-                    ${PPREFIX}patch-aboutdlg-compiler.diff                            \
-                    add_enGB_translation.diff                               \
-                    patch-more-decent-font-sizes.diff                       \
-                    patch-python.diff                                       \
+                    ${PPREFIX}buildinfo-clarify-no-gstreamer.diff           \
+                    ${PPREFIX}patch-aboutdlg-compiler.diff                  \
+                    ${PPREFIX}add_enGB_translation.diff                     \
+                    ${PPREFIX}patch-more-decent-font-sizes.diff             \
+                    ${PPREFIX}patch-python.diff                             \
                     patch-libnyquist-symbol-visibility.diff \
                     patch-skip-gcc-version-test.diff
     if {${subport} eq "${name}"} {
@@ -150,12 +151,14 @@ platform darwin {
     patchfiles-append \
                     patch-use-MPlame.diff \
                     ${PPREFIX}patch-use-MPffmpeg.diff
-    # reported upstream, patch accepted as the proper fix:
-    patchfiles-append \
+    if {${subport} eq "${name}"} {
+        # reported upstream, patch accepted as the proper fix:
+        patchfiles-append \
                     patch-unordered_map-fixes.diff
+    }
     # for building against wxWidgets 3.0.3 and up:
     patchfiles-append \
-                    patch-wxw-303.diff
+                    ${PPREFIX}patch-wxw-303.diff
     # work around a missing implementation in wxCocoa's wxSound class
     patchfiles-append \
                     patch-implement-progdial=beep.diff
@@ -191,11 +194,11 @@ platform linux {
 #                     patch-unordered_map-fixes.diff
     # for building against wxWidgets 3.0.3:
     patchfiles-append \
-                    patch-wxw-303.diff
+                    ${PPREFIX}patch-wxw-303.diff
 #     set wxWidgets.wxconfig /usr/bin/wx-config
 }
 patchfiles-append   patch-no-libatomic.diff \
-                    patch-wxw-31x.diff
+                    ${PPREFIX}patch-wxw-31x.diff
 
 if {${subport} eq "${name}"} {
     patchfiles-append \
@@ -214,6 +217,10 @@ if {[variant_isset qt]} {
 #     use_autoreconf  [expr ![file exists ${worksrcpath}/config.status]]
 #     autoreconf.args -fvi --no-recursive
 # }
+# quelch a huge number of warnings
+configure.cxxflags-append \
+                    -Wno-inconsistent-missing-override \
+                    -Wno-overloaded-virtual
 
 if {${subport} eq "${name}"} {
     configure.args-append \
@@ -231,7 +238,7 @@ if {${subport} eq "${name}"} {
                     --with-libsoxr \
                     --with-libvamp=local \
                     --with-libvorbis \
-                    --with-lv2 \
+                    --with-lv2=local \
                     --with-portmixer \
                     --with-sbsms=local \
                     --with-soundtouch \
@@ -270,7 +277,7 @@ if {${subport} eq "${name}"} {
     platform darwin {
         # Since version 2.2.0 we need to use the embedded (modified) Portaudio version.
         configure.args-append \
-                    -Denable_portaudio=ON -Duse_system_portaudio=OFF \
+                    -Daudacity_use_portaudio=local
     }
 }
 configure.env-append \
@@ -351,19 +358,24 @@ post-patch {
     reinplace -W ${worksrcpath} "s|@LDFLAGS@|${configure.ldflags}|g" \
                                 lib-src/libvamp/Makefile.in
     platform darwin {
-        # audacity 2.1.2 contains C++ files that include system SDK headers and ObjC code on OS X;
+        # audacity contains C++ files that include system SDK headers and ObjC code on OS X;
         # they must thus be built as ObjC++
         set make_objcpp { \
             {CommandManager src/commands    {src/Makefile.in src/Makefile.am}} \
             {Effect         src/effects     {src/Makefile.in src/Makefile.am}} \
             {LV2Effect      src/effects/lv2 {src/Makefile.in src/Makefile.am}} \
+            {KeyboardCapture src            {src/Makefile.in src/Makefile.am}} \
         }
         foreach mm ${make_objcpp} {
             set f  [lindex ${mm} 0]
             set d  [lindex ${mm} 1]
             set mk [lindex ${mm} 2]
             foreach m ${mk} {
-                reinplace -W ${worksrcpath} "s|/${f}.cpp|/${f}.mm|g" ${m}
+                if {${d} eq "src"} {
+                    reinplace -W ${worksrcpath} "s|${f}.cpp|${f}.mm|g" ${m}
+                } else {
+                    reinplace -W ${worksrcpath} "s|/${f}.cpp|/${f}.mm|g" ${m}
+                }
             }
             # it's easiest to symlink f.mm to f.cpp; clang++ will do the rest.
             if {![file exists ${worksrcpath}/${d}/${f}.mm]} {
@@ -380,42 +392,67 @@ post-patch {
 
 platform darwin {
     set aud_app_path    ${applications_dir}/Audacity.app
-    destroot.keepdirs   ${destroot}${aud_app_path}/Contents/Resources/en.lproj
 
     post-destroot {
-        # create the app bundle infrastructure
-        xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/MacOS
-        xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/Resources
-        # the BundleExec:
-        file rename ${destroot}${prefix}/bin/audacity ${destroot}${aud_app_path}/Contents/MacOS/Audacity
-        # install the Info.plist provided by Audacity
-        xinstall -m 644 ${worksrcpath}/mac/Info.plist ${destroot}${aud_app_path}/Contents/
-        # adapt the provided Info.plist
-        reinplace "s|AUDACITY_EXECUTABLE|Audacity|g" ${destroot}${aud_app_path}/Contents/Info.plist
-        reinplace "s|AUDACITY_INFO_VERSION|${version} (MacPorts)|g" ${destroot}${aud_app_path}/Contents/Info.plist
-        # install the provided icons into the Resources directory
-        foreach r [glob -nocomplain ${worksrcpath}/mac/Resources/*.icns] {
-            xinstall -m 644 ${r} ${destroot}${aud_app_path}/Contents/Resources/
-        }
-        # allow the application to find certain things where it expects them on OS X (= inside the app bundle)
-        foreach r [glob -nocomplain ${destroot}${prefix}/share/audacity/*] {
-            ln -s ${prefix}/share/audacity/[file tail ${r}] ${destroot}${aud_app_path}/Contents/Resources
-        }
-        # install translation resources
-        foreach l [glob -nocomplain ${destroot}${prefix}/share/locale/*] {
-            set lang [file tail ${l}]
-            xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/Resources/${lang}.lproj
-            ln -s ${prefix}/share/locale/${lang}/LC_MESSAGES/audacity.mo ${destroot}${aud_app_path}/Contents/Resources/${lang}.lproj/
+        if {${subport} eq "${name}"} {
+            destroot.keepdirs   ${destroot}${aud_app_path}/Contents/Resources/en.lproj
+            # create the app bundle infrastructure
+            xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/MacOS
+            xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/Resources
+            # the BundleExec:
+            file rename ${destroot}${prefix}/bin/audacity ${destroot}${aud_app_path}/Contents/MacOS/Audacity
+            # install the Info.plist provided by Audacity
+            xinstall -m 644 ${worksrcpath}/mac/Info.plist ${destroot}${aud_app_path}/Contents/
+            # adapt the provided Info.plist
+            reinplace "s|AUDACITY_EXECUTABLE|Audacity|g" ${destroot}${aud_app_path}/Contents/Info.plist
+            reinplace "s|AUDACITY_INFO_VERSION|${version} (MacPorts)|g" ${destroot}${aud_app_path}/Contents/Info.plist
+            # install the provided icons into the Resources directory
+            foreach r [glob -nocomplain ${worksrcpath}/mac/Resources/*.icns] {
+                xinstall -m 644 ${r} ${destroot}${aud_app_path}/Contents/Resources/
+            }
+            # install translation resources
+            foreach l [glob -nocomplain ${destroot}${prefix}/share/locale/*] {
+                set lang [file tail ${l}]
+                xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/Resources/${lang}.lproj
+                ln -s ${prefix}/share/locale/${lang}/LC_MESSAGES/audacity.mo ${destroot}${aud_app_path}/Contents/Resources/${lang}.lproj/
+            }
+            # install a wrapper script in ${prefix}/bin
+            system "echo \"#!/bin/sh\nexec \\\"${aud_app_path}/Contents/MacOS/Audacity\\\" \\\"\\\$\@\\\"\" > ${destroot}${prefix}/bin/audacity"
+            system "chmod 755 ${destroot}${prefix}/bin/audacity"
+        } else {
+            file rename ${destroot}${prefix}/bin/Audacity.app ${destroot}${aud_app_path}
+            # replace the Resources symlink
+            file delete ${destroot}${aud_app_path}/Contents/Resources
+            xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/Resources
+            # move icon resources
+            foreach l [glob -nocomplain ${destroot}${prefix}/share/locale/*.icns] {
+                file rename ${l} ${destroot}${aud_app_path}/Contents/Resources/
+            }
+            # move translation resources
+            foreach l [glob -nocomplain ${destroot}${prefix}/share/locale/*.lproj] {
+                file rename ${l} ${destroot}${aud_app_path}/Contents/Resources
+            }
+            file rename ${destroot}${prefix}/share/locale/EQDefaultCurves.xml ${destroot}${prefix}/share/audacity/
+            xinstall -m 755 -d ${destroot}${prefix}/share/mime/packages/
+            xinstall -m 755 ${worksrcpath}/src/audacity.xml ${destroot}${prefix}/share/mime/packages/audacity.xml
+            # install a wrapper script in ${prefix}/bin
+            system "echo \"#!/bin/sh\nexec \\\"${aud_app_path}/Contents/MacOS/Wrapper\\\" \\\"\\\$\@\\\"\" > ${destroot}${prefix}/bin/audacity"
+            system "chmod 755 ${destroot}${prefix}/bin/audacity"
         }
         foreach l [glob -nocomplain ${wxWidgets.prefix}/share/locale/*] {
             set lang [file tail ${l}]
             xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/Resources/${lang}.lproj
             ln -s ${l}/LC_MESSAGES/wxstd.mo ${destroot}${aud_app_path}/Contents/Resources/${lang}.lproj/
         }
-        # install a wrapper script in ${prefix}/bin
-        system "echo \"#!/bin/sh\nexec \\\"${aud_app_path}/Contents/MacOS/Audacity\\\" \\\"\\\$\@\\\"\" > ${destroot}${prefix}/bin/audacity"
-        system "chmod 755 ${destroot}${prefix}/bin/audacity"
+        # allow the application to find certain things where it expects them on OS X (= inside the app bundle)
+        foreach r [glob -nocomplain ${destroot}${prefix}/share/audacity/*] {
+            ln -s ${prefix}/share/audacity/[file tail ${r}] ${destroot}${aud_app_path}/Contents/Resources
+        }
     }
+}
+
+post-destroot {
+    xinstall -m 755 ${filespath}/vocalremover.ny ${destroot}${prefix}/share/audacity/plug-ins/
 }
 
 notes "
@@ -425,3 +462,8 @@ notes "
 "
 
 # kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
+PortGroup           locale_select 1.0
+platform darwin {
+    langselect_lproj_dir-append \
+                    ${destroot}${aud_app_path}/Contents/Resources
+}
