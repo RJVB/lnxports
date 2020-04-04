@@ -3,6 +3,35 @@
 PortSystem          1.0
 
 PortGroup           github 1.0
+
+name                audacity
+conflicts           audacity-gtk
+
+# The manual subport is defined first since it doesn't require a lot of setting up
+subport "${name}-manual" {}
+if {${subport} eq "${name}-manual"} {
+    description     The manual for audacity
+    long_description ${description}
+    github.setup    audacity audacity-manual edac2a9165b10e655e945378209139b4c45986a5
+    version         2.3.3
+    checksums       rmd160  c927446959eff59fd123ff5c6f87750e6d503465 \
+                    sha256  7beab399feb0d93bd40af28be2bf5a0201bd99196624edbed25c6a302a1c5a97
+#                     size    13691059
+    depends_run     path:bin/audacity:audacity
+    use_configure   no
+    build           {}
+    destroot {
+        platform darwin {
+        }
+        platform linux {
+            xinstall -m 755 -d ${destroot}${prefix}/share/audacity/help
+            file copy ${worksrcpath}/manual ${destroot}${prefix}/share/audacity/help
+        }
+    }
+    return          0
+}
+
+# PortGroups for the main ports
 PortGroup           wxWidgets 1.0
 PortGroup           active_variants 1.1
 PortGroup           compress_workdir 1.0
@@ -13,10 +42,6 @@ platform darwin {
         PortGroup   cxx11 1.1
     }
 }
-
-name                audacity
-conflicts           audacity-gtk
-
 description         A Free, Cross-Platform Digital Audio Editor.
 long_description    Audacity is a free, easy-to-use, multi-track audio editor and recorder \
                     for Windows, Mac OS X, GNU/Linux and other operating systems. The interface is translated \
@@ -53,8 +78,8 @@ if {${subport} eq "${name}"} {
 #     # git describe --tags : Audacity-2.3.2-752-gb3539ed2b
 #     github.setup    audacity audacity 1c44a1e061022a75ad60e622ef529fe0736d755d
     # git describe --tags : Audacity-2.3.3-841-g310b5dea3
-    github.setup    audacity audacity e09b35f2c88425c9b79a11e3207c1c8b50853b01
-    version         2.3.3.994
+    github.setup    audacity audacity 49ab4cf2fb96c61e3d34c1d1f15c92a0be9136da
+    version         2.3.3.1020
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
@@ -69,6 +94,15 @@ if {${subport} eq "${name}"} {
     }
     build.post_args-append -k
     cmake.save_configure_cmd "log too"
+}
+
+proc add_devel_patchfile {fnames} {
+    global PPREFIX filespath
+    foreach fname ${fnames} {
+        if {[file exists ${filespath}/${fname}]} {
+            patchfiles-append ${fname}
+        }
+    }
 }
 
 categories          audio
@@ -157,7 +191,7 @@ platform darwin {
                     patch-unordered_map-fixes.diff
     }
     # for building against wxWidgets 3.0.3 and up:
-    patchfiles-append \
+    add_devel_patchfile \
                     ${PPREFIX}patch-wxw-303.diff
     # work around a missing implementation in wxCocoa's wxSound class
     patchfiles-append \
@@ -193,7 +227,7 @@ platform linux {
 #     patchfiles-append \
 #                     patch-unordered_map-fixes.diff
     # for building against wxWidgets 3.0.3:
-    patchfiles-append \
+    add_devel_patchfile \
                     ${PPREFIX}patch-wxw-303.diff
 #     set wxWidgets.wxconfig /usr/bin/wx-config
 }
