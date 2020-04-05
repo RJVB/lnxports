@@ -1,15 +1,3 @@
-diff --git a/locale/CMakeLists.txt b/locale/CMakeLists.txt
-index 7e89d6b3dbc4be31c6f1cd90e7270836e3f5f2b0..3f252d2eb0b7feae68d658a642ff961cabbc1a58 100755
---- a/locale/CMakeLists.txt
-+++ b/locale/CMakeLists.txt
-@@ -20,6 +20,7 @@ list( APPEND SOURCES
-    da.po
-    de.po
-    el.po
-+   en_GB.po
-    es.po
-    eu.po
-    eu_ES.po
 diff --git a/locale/LINGUAS b/locale/LINGUAS
 index cb63b55f53f4201b23dea97eb8eb40294266bca4..f8170c2cb2f2af793f17d67b5260aff0addca4b1 100644
 --- a/locale/LINGUAS
