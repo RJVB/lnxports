@@ -69,6 +69,15 @@ if {${kf5::includecounter} == 0} {
     }
 }
 
+if {${os.platform} eq "darwin" && ${os.major} <= 13} {
+    depends_fetch-append \
+                    bin:wget:wget
+    # avoid certificate issues on kde.org
+    fetch {
+        system "wget ${master_sites}/${distname}${extract.suffix} --no-check-certificate --progress=bar:force -O ${distpath}/${distname}${extract.suffix}"
+    }
+}
+
 ########################################################################
 # Projects including the 'kf5' port group can optionally set
 #
@@ -522,6 +531,9 @@ proc kf5.set_project {project} {
         }
         distname            ${project}-${kf5.version}.git
     } else {
+#         See
+#         https://kde.org/info/releases-19.12.1.php
+#         for new/different download locations for Applications 19.12.1 (and future) releases.
         master_sites        https://download.kde.org/${dbranch}/${f}
     }
 }
