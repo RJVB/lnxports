@@ -50,7 +50,6 @@ if {[file exists ${prefix}/include/os/os.h]} {
 }
 
 if {${os.platform} eq "darwin"} {
-    build.target        translations dmg
 
     if {[variant_isset universal]} {
         merger-post-destroot {
