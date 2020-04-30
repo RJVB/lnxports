@@ -1,0 +1,122 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           locale_select 1.0
+PortGroup           LTO 1.0
+
+name                bluez
+version             5.54
+maintainers         gmail.com:rjvbertin openmaintainer
+
+categories          sysutils
+description         Bluetooth protocol stack for Linux
+long_description    BlueZ provides support for the core Bluetooth layers and protocols. \
+                    It is flexible, efficient and uses a modular implementation.
+
+platforms           linux
+license             GPL-2
+
+homepage            http://www.bluez.org
+master_sites        http://www.kernel.org/pub/linux/bluetooth/
+use_xz              yes
+
+checksums           rmd160  617a0109752a067142c6df9f7525c0a4cb5869be \
+                    sha256  68cdab9e63e8832b130d5979dc8c96fdb087b31278f342874d992af3e56656dc
+#                     size    2003760
+
+depends_build       port:pkgconfig
+
+depends_lib         port:glib2 \
+                    port:readline \
+                    port:dbus \
+                    port:systemd \
+                    port:json-c
+
+patchfiles-append   patch-pathmax.diff
+
+variant system description {install into the system library, replacing the Ubuntu 14.04 bluez package} {}
+
+configure.args-append \
+                    --enable-deprecated \
+                    --enable-pie \
+                    --enable-threads \
+                    --enable-backtrace \
+                    --enable-library \
+                    --enable-nfc \
+                    --enable-sap \
+                    --enable-mesh \
+                    --enable-health \
+                    --disable-midi
+
+if {[variant_isset system]} {
+#     PortGroup       preserve_runtime_libraries 1.0
+    set prefix          /
+    configure.cppflags-append \
+                    -D_FORTIFY_SOURCE=2
+    configure.ldflags-append \
+                    -Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,--as-needed
+    # arguments given by the Ubuntu 14.04 packaging; many are obsolete
+    configure.args-append \
+                    --includedir="${prefix}usr/include" \
+                    --mandir="${prefix}usr/share/man" \
+                    --infodir="${prefix}usr/share/info" \
+                    --sysconfdir=/etc \
+                    --localstatedir=/var \
+                    --libexecdir="${prefix}/usr/sbin" \
+                    --srcdir=. \
+                    --disable-maintainer-mode \
+                    --disable-dependency-tracking \
+                    --disable-silent-rules\
+                    --libdir=${prefix}usr/lib/x86_64-linux-gnu \
+                    --enable-static \
+                    --disable-hal \
+                    --enable-gstreamer \
+                    --enable-alsa \
+                    --enable-usb \
+                    --enable-tools \
+                    --enable-bccmd \
+                    --enable-pcmcia \
+                    --enable-hid2hci \
+                    --enable-dfutool \
+                    --enable-hidd \
+                    --enable-pand \
+                    --enable-dund \
+                    --enable-cups \
+                    --enable-test \
+                    --enable-datafiles \
+                    --enable-debug \
+                    --enable-dbusoob \
+                    --enable-wiimote \
+                    --enable-gatt \
+                    --with-telephony=ofono \
+                    --with-systemdsystemunitdir=/lib/systemd/system \
+                    --with-systemduserunitdir=/lib/systemd/user \
+                    --with-dbusconfdir=/etc/ \
+                    --bindir=${prefix}/usr/bin
+    destroot.violate_mtree true
+    post-destroot {
+        if {[file exists ${destroot}${prefix}/share/zsh]} {
+            file rename ${destroot}${prefix}/share/zsh ${destroot}${prefix}/usr/share/zsh
+        }
+        ln -s bluetooth/bluetoothd ${destroot}${prefix}/usr/sbin/
+    }
+} else {
+    configure.args-append \
+                    --disable-dependency-tracking \
+                    --disable-silent-rules \
+                    --disable-systemd \
+                    --enable-logger
+
+    post-destroot {
+        if {[file exists ${destroot}/usr/share/dbus-1]} {
+            file rename ${destroot}/usr/share/dbus-1 ${destroot}${prefix}/share/
+        }
+    }
+}
+
+build.post_args-append -k
+
+
+livecheck.type      regex
+livecheck.url       ${homepage}
+livecheck.regex     "Bluez (\\d+(?:\\.\\d+)*)"

@@ -1,0 +1,40 @@
+--- src/shared/orig.btsnoop.c	2019-09-19 20:51:03.000000000 +0200
++++ src/shared/btsnoop.c	2020-04-30 11:00:58.670495428 +0200
+@@ -33,11 +33,16 @@
+ #include <string.h>
+ #include <stdio.h>
+ #include <limits.h>
++#include <linux/limits.h>
+ #include <arpa/inet.h>
+ #include <sys/stat.h>
+ 
+ #include "src/shared/btsnoop.h"
+ 
++#ifndef PATH_MAX
++#define PATH_MAX MAXPATHLEN
++#endif
++
+ struct btsnoop_hdr {
+ 	uint8_t		id[8];		/* Identification Pattern */
+ 	uint32_t	version;	/* Version Number = 1 */
+--- bluez-5.54/tools/origbtmon-logger.c	2019-09-19 20:51:03.000000000 +0200
++++ bluez-5.54/tools/btmon-logger.c	2020-04-30 11:42:32.412221121 +0200
+@@ -41,6 +41,8 @@
+ #include <errno.h>
+ 
+ #include <linux/capability.h>
++#include <limits.h>
++#include <linux/limits.h>
+ 
+ #include "lib/bluetooth.h"
+ #include "lib/hci.h"
+--- bluez-5.54/ell/orig.util.c	2019-10-24 08:57:04.000000000 +0200
++++ bluez-5.54/ell/util.c	2020-04-30 11:43:22.293255043 +0200
+@@ -30,6 +30,7 @@
+ #include <stdarg.h>
+ #include <stdlib.h>
+ #include <limits.h>
++#include <linux/limits.h>
+ 
+ #include "util.h"
+ #include "private.h"
