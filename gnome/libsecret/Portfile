@@ -5,9 +5,10 @@ platform darwin {
     PortGroup   gobject_introspection 1.0
 }
 PortGroup       locale_select 1.0
+PortGroup       LTO 1.0
 
 name            libsecret
-version         0.18.7
+version         0.20.2
 set branch      [join [lrange [split ${version} .] 0 1] .]
 maintainers     nomaintainer
 categories      gnome
@@ -24,9 +25,9 @@ homepage        https://wiki.gnome.org/Projects/Libsecret
 master_sites    gnome:sources/${name}/${branch}/
 use_xz          yes
 
-checksums       rmd160  33819a4ae72d108d9a7616455958d9cc85c98997 \
-                sha256  0d66fe1fc4561b3e046ee281d7c5a703a9baac88a8c4fb42ebc739d31dabd487
-#                 size    508392
+checksums       rmd160  47cec59cb1f669accd27f2a9ed55d73421fe6899 \
+                sha256  81e9143833785cdcf96c1da5d0357a8bcf0cd2b0119f15aa0cae775d1f19ffc3
+#                 size    526224
 
 depends_build   port:pkgconfig \
                 port:docbook-xsl-nons \
@@ -40,15 +41,18 @@ depends_lib     path:lib/pkgconfig/glib-2.0.pc:glib2 \
 
 if {${os.platform} ne "darwin"} {
     configure.env-append \
-                LIBS="-L${prefix}/lib -lintl"
+                "LIBS=-L${prefix}/lib -lintl"
     configure.args-append \
-                --enable-introspection=no
+                --enable-introspection=no \
+                --enable-vala=no \
+                --with-libintl-prefix=${prefix}
 } else {
     depends_lib-append \
                 port:vala
     gobject_introspection yes
 }
 
-configure.args  --disable-silent-rules
+configure.args-append \
+                --disable-silent-rules
 
 livecheck.type  gnome
