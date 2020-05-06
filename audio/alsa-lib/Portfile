@@ -1,6 +1,7 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
 
-PortSystem 1.0
+PortSystem          1.0
+PortGroup           LTO 1.0
 
 set basename        alsa
 name                ${basename}-lib
@@ -77,7 +78,7 @@ switch ${subport} {
                         patch-atools-makefile.diff \
                         patch-atools-clang-cxx-literal.diff
 
-        configure.env   CONFIGURE_ARGS=\"${configure.pre_args} --disable-dependency-tracking \"
+        configure.env   "CONFIGURE_ARGS=${configure.pre_args} --disable-dependency-tracking"
         configure.cmd   make
         configure.pre_args
         configure.args  -w configure
@@ -102,7 +103,7 @@ switch ${subport} {
                         port:gettext
         depends_run     port:${basename}-plugins
         configure.env-append \
-                        LIBS="-L${prefix}/lib -lintl"
+                        "LIBS=-L${prefix}/lib -lintl"
         configure.args-append \
                         --disable-dependency-tracking \
                         --with-udev-rules-dir=${prefix}/lib/udev \
