@@ -7,7 +7,7 @@ PortGroup conflicts_build 1.0
 name                python37
 
 # Remember to keep py37-tkinter and py37-gdbm's versions sync'd with this
-version             3.7.0
+version             3.7.0 ; revision 1
 
 set major           [lindex [split $version .] 0]
 set branch          [join [lrange [split ${version} .] 0 1] .]
@@ -116,8 +116,14 @@ platform darwin {
             \"/'LINKFORSHARED'/ {printf \\\"%s: '-L${framewdir}/lib/python${branch}/${confdir}\
             -lpython${branch}m -ldl -framework CoreFoundation',\\n\\\", \\\$1; getline; next} {print}\"\
             _sysconfigdata_m_linux_x86_64-linux-gnu.py > _sysconfigdata_m_linux_x86_64-linux-gnu.py.new"
+#         file rename -force ${buildlibdir}/_sysconfigdata_m_linux_x86_64-linux-gnu.py \
+#             ${buildlibdir}/_sysconfigdata_m_linux_x86_64-linux-gnu.py.orig
         file rename -force ${buildlibdir}/_sysconfigdata_m_linux_x86_64-linux-gnu.py.new \
             ${buildlibdir}/_sysconfigdata_m_linux_x86_64-linux-gnu.py
+
+        # how does this get in here?!
+        reinplace "s|-framework CoreFoundation||g" \
+           ${buildlibdir}/_sysconfigdata_m_linux_x86_64-linux-gnu.py
 
         # remove -arch flags from the config
         reinplace -E {s|-arch [a-z0-9_]+||g} \

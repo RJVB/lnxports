@@ -8,7 +8,7 @@ name                python36
 
 epoch               20170717
 # Remember to keep py36-tkinter and py36-gdbm's versions sync'd with this
-version             3.6.6
+version             3.6.6 ; revision 1
 
 set major           [lindex [split $version .] 0]
 set branch          [join [lrange [split ${version} .] 0 1] .]
@@ -120,6 +120,10 @@ platform darwin {
             _sysconfigdata_m_linux_x86_64-linux-gnu.py > _sysconfigdata_m_linux_x86_64-linux-gnu.py.new"
         file rename -force ${buildlibdir}/_sysconfigdata_m_linux_x86_64-linux-gnu.py.new \
             ${buildlibdir}/_sysconfigdata_m_linux_x86_64-linux-gnu.py
+
+        # how does this get in here?!
+        reinplace "s|-framework CoreFoundation||g" \
+           ${buildlibdir}/_sysconfigdata_m_linux_x86_64-linux-gnu.py
 
         # remove -arch flags from the config
         reinplace -E {s|-arch [a-z0-9_]+||g} \
