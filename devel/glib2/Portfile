@@ -61,9 +61,11 @@ if {[variant_isset gettext]} {
     patchfiles-append       libintl.patch
 } else {
 #     conflicts_build-append  gettext-dev
-    configure.env-append    LIBS="-L${prefix}/lib -lintl"
-    build.env-append        LIBS="-L${prefix}/lib -lintl"
+    configure.env-append    "LIBS=-L${prefix}/lib -lintl"
+    build.env-append        "LIBS=-L${prefix}/lib -lintl"
 }
+build.env-append            "CC=${configure.cc}"
+build.env-append            "CXX=${configure.cxx}"
 
 depends_lib                 port:libffi \
                             port:libiconv \
@@ -113,8 +115,8 @@ if {${os.platform} ne "darwin"} {
 configure.perl              /usr/bin/perl
 configure.python            /usr/bin/python
 configure.env-append        PERL_PATH=${configure.perl}
-build.env-append            "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
-destroot.env-append         "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
+# build.env-append            "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
+# destroot.env-append         "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
 if {[info exists configure.ar]} {
     build.env-append        SLIBTOOL_AR="${configure.ar}" \
                             SLIBTOOL_RANLIB="${configure.ranlib}"
@@ -185,9 +187,9 @@ post-activate {
     }
 }
 
-platform darwin {
-    configure.args-append   --disable-dtrace
-}
+# platform darwin {
+    configure.args-append   --enable-dtrace
+# }
 
 if {${os.platform} eq "darwin" && ${os.major} <= 10} {
     # Requires python 2.7 as of 2.53.4
@@ -201,11 +203,15 @@ variant quartz conflicts x11 {
 }
 
 variant x11 conflicts quartz {
-    configure.args-append   --with-appinfo-impl=generic
+    if {${os.platform} eq "darwin"} {
+        configure.args-append   --with-appinfo-impl=generic
+    } else {
+        configure.args-append   --with-appinfo-impl=native
+    }
 }
 
 # if {![variant_isset quartz]} {
-#     default_variants +x11
+    default_variants +x11
 # }
 # if {![variant_isset x11]} {
 #     default_variants +quartz
