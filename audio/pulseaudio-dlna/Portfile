@@ -1,0 +1,77 @@
+PortSystem      1.0
+PortGroup       cmake 1.1
+PortGroup       github 1.0
+PortGroup        conflicts_build 1.0
+
+name            pulseaudio-dlna
+subport         "${name}-devel" {}
+
+if {${subport} eq "${name}"} {
+    github.setup    masmu pulseaudio-dlna 0.5.2
+    checksums       rmd160  d8dc46564dfe54fb727a917bfe89d3578a890da0 \
+                    sha256  668c8805f44e05d1dddeb5951ae7cfb4ae88538bf44f687d451a8796a8041f9c
+#                     size    701483
+} else {
+    github.setup    masmu pulseaudio-dlna b0db8136224f5a293329a60187365168304c3668
+    # 0.5.2-152-gb0db813
+    version         0.5.2.152
+    distname        ${name}-git
+    fetch.type      git
+}
+
+categories      sysutils
+platforms       macosx linux
+license         {GPL-2 OpenSSLException}
+maintainers     gmail.com:rjvbertin openmaintainer
+description     Software KVM switch
+long_description Barrier is software that mimics the functionality of a KVM switch, which historically \
+                would allow you to use a single keyboard and mouse to control multiple computers by \
+                turning a dial on a box to switch the machine you're controlling at any given moment. \
+                Barrier does this in software, allowing you to tell it which machine to control by moving \
+                your mouse to the edge of the screen, or by using a keypress to switch focus to a different system.
+
+patch.pre_args  -Np1
+
+if {${subport} eq "${name}"} {
+    depends_build-append \
+                port:python27
+    depends_run-append \
+                port:python27
+} else {
+    depends_build-append \
+                port:python36 \
+                port:py36-pip
+    depends_run-append \
+                port:python36 \
+                port:py36-docopt \
+                port:py36-psutil \
+                port:py36-setproctitle \
+                port:py36-gobject3
+    # we pull in dependencies, so cannot be active while rebuilding.
+    conflicts_build-append \
+                ${subport}
+}
+depends_run-append \
+                port:vorbis-tools \
+                port:lame \
+                port:flac \
+                port:faac \
+                port:opus-tools
+                
+use_configure   no
+
+build           {}
+
+destroot {
+    if {${subport} eq "${name}-devel"} {
+        system -W ${worksrcpath} "make -w V=1 install python=${prefix}/bin/python3.6 DESTDIR=${destroot} PREFIX=${prefix}"
+        # use pip to install dependencies not existing as ports (or I cannot get to build) as "contrib" resources
+        # but in the standard location.
+        system -W ${worksrcpath} "${prefix}/bin/pip-3.6 install --root ${destroot} \
+            futures netifaces notify2 protobuf pyroute2 zeroconf pychromecast"
+        # no idea where this comes from, it's not the license for this port:
+        file delete ${destroot}${prefix}/LICENSE
+    } else {
+        system -W ${worksrcpath} "make -w V=1 install python=${prefix}/bin/python2.7 DESTDIR=${destroot} PREFIX=${prefix} DEB_HOST_ARCH=1"
+    }
+}
