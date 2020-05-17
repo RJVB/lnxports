@@ -3,10 +3,9 @@
 PortSystem      1.0
 
 name            dbus-python
-version         1.2.8
-#revision        0
+version         1.2.16
 
-set python_versions {27 34 35 36 37}
+set python_versions {27 35 36 37 38}
 
 # this default version should stay synchronized with python_get_default_version
 #    in the python PortGroup
@@ -22,6 +21,8 @@ long_description \
 homepage        https://www.freedesktop.org/wiki/Software/dbus/
 
 if {${name} eq ${subport}} {
+    revision    1
+
     # set up dbus-python as a stub port that depends on the default dbus-pythonXY
     distfiles
     patchfiles
@@ -45,13 +46,9 @@ foreach python_version ${python_versions} {
 
         master_sites    https://dbus.freedesktop.org/releases/dbus-python/
 
-        checksums       rmd160  9d862706609cdac377ee0f42b500e2cd277bfe92 \
-                        sha256  abf12bbb765e300bf8e2a1b2f32f85949eab06998dbda127952c31cb63957b6f \
-                        size    787426
-
-        livecheck.type  regex
-        livecheck.url   ${master_sites}?C=M&O=D
-        livecheck.regex ${name}-(\\d+(?:\\.\\d+)*)
+        checksums           rmd160  ea5fa85fab091e77e45cd93d5a978d9d9bb85a04 \
+                            sha256  11238f1d86c995d8aed2e22f04a1e3779f0d70e587caffeab4857f3c662ed5a4 \
+                            size    576701
 
         distname        ${name}-${version}
 
@@ -66,6 +63,7 @@ foreach python_version ${python_versions} {
             port:python${python_version}
 
         set python_prefix ${frameworks_dir}/Python.framework/Versions/${python_branch}
+        set python_pkgd   ${python_prefix}/lib/python${python_branch}/site-packages
 
         configure.pre_args-replace --prefix=${prefix} --prefix=${python_prefix}
 
@@ -110,7 +108,7 @@ foreach python_version ${python_versions} {
         }
 
         # pyXY-gobject, which is required to test, is only supported on certain versions of python
-        if { [lsearch -exact {27 34 35 36} ${python_version}] != -1 } {
+        if { [lsearch -exact {27 34 35 36 37 38} ${python_version}] != -1 } {
             variant test {}
 
             test.run yes
@@ -138,24 +136,23 @@ foreach python_version ${python_versions} {
                     ${worksrcpath}/Makefile.in
             }
         }
+
+        post-destroot {
+            # register the package as installed for dependents using pkg_resources
+            # this is a minimal dist-info directory.
+            set dinfodir ${python_pkgd}/dbus_python-${version}.dist-info
+            if {![file exists ${destroot}${dinfodir}/METADATA]} {
+                xinstall -m 755 -d ${destroot}${dinfodir}
+                xinstall -m 644 ${worksrcpath}/PKG-INFO ${destroot}${dinfodir}/METADATA
+            }
+        }
     }
 }
 
-# Obsolete subports for Python versions 2.4, 2.5, 2.6, 3.1, 3.2, 3.3  created on 10/26/2014.
-# See https://lists.macosforge.org/pipermail/macports-dev/2014-September/thread.html (Retiring Python 2.4 and 2.5)
-foreach python_version { 24 25 26 31 32 33 } {
-    set python_branch [string range ${python_version} 0 end-1].[string index ${python_version} end]
-
-    subport ${name}${python_version} {
-        if { [vercmp ${python_branch} 3.0] < 0 } {
-            replaced_by  ${name}27
-        } else {
-            replaced_by ${name}34
-        }
-        PortGroup    obsolete 1.0
-        long_description \
-            ${description}
-    }
+if {${name} eq ${subport}} {
+    livecheck.url   https://dbus.freedesktop.org/releases/dbus-python/
+} else {
+    livecheck.type  none
 }
 
 livecheck.url https://dbus.freedesktop.org/releases/dbus-python/

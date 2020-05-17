@@ -1,0 +1,67 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           python 1.0
+
+name                py-gobject
+version             3.36.1
+platforms           darwin linux
+supported_archs     noarch
+license             LGPL-2.1+
+maintainers         nomaintainer
+
+description         Python bindings for GObject.
+
+long_description    PyGObject provides a convenient wrapper for the GObject+ library \
+                    for use in Python programs, and takes care of many of the boring details \
+                    such as managing memory and type casting. \
+                    When combined with PyGTK, PyORBit and gnome-python, \
+                    it can be used to write full featured Gnome applications.
+
+homepage            https://pypi.org/project/PyGObject/
+
+master_sites        https://files.pythonhosted.org/packages/93/41/bf9ab8929f51dac2979ae81bb094728bacee3ceb049def72d3fc1bcb4241/
+distname            PyGObject-${version}
+
+checksums           rmd160  2d020d2475e31ac68912ee23566bb69c86df651d \
+                    sha256  012a589aec687bfa809a1ff9f5cd775dc7f6fcec1a6bc7fe88e1002a68f8ba34
+#                     size    716016
+
+livecheck.url       ${homepage}
+livecheck.type      regex
+livecheck.regex     /project/PyGObject/(\\d+(\\.\\d+)+)/
+
+python.versions        36 37 38
+python.default_version 37
+
+if {${name} ne ${subport}} {
+
+    depends_build-append \
+                    port:py${python.version}-pip \
+                    port:py${python.version}-setuptools \
+                    port:pkgconfig
+
+    depends_lib-append \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:libffi \
+                    port:py${python.version}-cairo \
+                    port:gobject-introspection
+
+    build {
+    }
+
+#     destroot.cmd        pip-${python.branch}
+#     destroot.args       \
+#         --ignore-installed \
+#         --no-cache-dir \
+#         --no-dependencies \
+#         --root ${destroot} \
+#         ${distpath}/${distfiles}
+#     destroot.post_args
+    destroot {
+        system -W ${worksrcpath} "pip-${python.branch} install  \
+            --ignore-installed --root ${destroot} ${distpath}/${distfiles}"
+    }
+
+    livecheck.type  none
+}
