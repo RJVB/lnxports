@@ -36,7 +36,8 @@ checksums           rmd160  915f2ccceefab24893e02e0e26c57b0146909218 \
 
 minimum_xcodeversions {9 3.1}
 
-depends_build       port:pkgconfig
+depends_build       port:pkgconfig \
+                    port:gettext-dev
 
 depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
                     port:gdk-pixbuf2 \
@@ -105,6 +106,9 @@ configure.cflags-append \
 # cloudprint backend requires rest, json-glib
 # but this causes a circular dependency on libsoup
 # explicitly disable cloudprint for now
+
+configure.ldflags-append \
+                    -lintl
 
 configure.args      --enable-static \
                     --disable-glibtest \
@@ -240,38 +244,43 @@ if {[variant_isset universal]} {
     configure.cc "${configure.cc} ${configure.cc_archflags}"
 }
 
-if {[is_mainport]} {
-    variant quartz conflicts x11 {
-        require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
-        require_active_variants path:lib/pkgconfig/pango.pc:pango quartz
-        require_active_variants port:gdk-pixbuf2 "" x11
+variant quartz conflicts x11 wayland {
+    require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
+    require_active_variants path:lib/pkgconfig/pango.pc:pango quartz
+    require_active_variants port:gdk-pixbuf2 "" x11
 
-        configure.args-append   --enable-quartz-backend
-    }
+    configure.args-append   --enable-quartz-backend
+}
 
-    variant x11 conflicts quartz {
-#         require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
-#         require_active_variants path:lib/pkgconfig/pango.pc:pango x11
-#         require_active_variants port:gdk-pixbuf2 x11
+variant x11 conflicts quartz {
+#     require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
+#     require_active_variants path:lib/pkgconfig/pango.pc:pango x11
+#     require_active_variants port:gdk-pixbuf2 x11
 # 
-#         depends_lib-append      port:xorg-libXi \
-#                                 port:xorg-libXrandr \
-#                                 port:xorg-libXcursor \
-#                                 port:xorg-libXinerama \
-#                                 port:xorg-libXdamage \
-#                                 port:xorg-libXcomposite \
-#                                 port:xorg-libXfixes \
-#                                 port:at-spi2-atk
+#     depends_lib-append      port:xorg-libXi \
+#                             port:xorg-libXrandr \
+#                             port:xorg-libXcursor \
+#                             port:xorg-libXinerama \
+#                             port:xorg-libXdamage \
+#                             port:xorg-libXcomposite \
+#                             port:xorg-libXfixes \
+#                             port:at-spi2-atk
 
-        configure.args-append   --enable-xinerama \
-                                --x-include=${prefix}/include \
-                                --x-lib=${prefix}/lib \
-                                --enable-x11-backend
-    }
+    configure.args-append   --enable-xinerama \
+                            --x-include=${prefix}/include \
+                            --x-lib=${prefix}/lib \
+                            --enable-x11-backend
+}
 
-    if {![variant_isset quartz]} {
-        default_variants +x11
-    }
+variant wayland conflicts quartz description {build Wayland support} {}
+if {[variant_isset wayland]} {
+    depends_lib-append      port:wayland \
+                            port:wayland-protocols
+    configure.args-append   --enable-wayland-backend
+}
+
+if {![variant_isset quartz]} {
+    default_variants +x11
 }
 
 if {${subport} eq "${name}"} {
