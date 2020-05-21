@@ -1,0 +1,222 @@
+--- orig.configure.ac	2017-11-01 17:43:54.000000000 +0100
++++ configure.ac	2020-05-20 16:05:13.319555408 +0200
+@@ -120,33 +120,18 @@
+ PKG_CHECK_MODULES(LIBLANGUAGE, $COMMON_MODULES gnome-desktop-3.0 fontconfig)
+ PKG_CHECK_MODULES(LIBSHORTCUTS, $COMMON_MODULES x11)
+ PKG_CHECK_MODULES(SHELL, $COMMON_MODULES x11 polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION)
+-PKG_CHECK_MODULES(BACKGROUND_PANEL, $COMMON_MODULES cairo-gobject libxml-2.0 gnome-desktop-3.0
+-                  gdk-pixbuf-2.0 >= $GDKPIXBUF_REQUIRED_VERSION
+-                  goa-1.0 >= $GOA_REQUIRED_VERSION
+-                  grilo-0.3 >= $GRILO_REQUIRED_VERSION)
+ PKG_CHECK_MODULES(DATETIME_PANEL, $COMMON_MODULES
+                   gnome-desktop-3.0 >= $GNOME_DESKTOP_REQUIRED_VERSION
+                   polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION
+                   gdk-pixbuf-2.0 >= $GDKPIXBUF_REQUIRED_VERSION)
+-PKG_CHECK_MODULES(DISPLAY_PANEL, $COMMON_MODULES gnome-desktop-3.0 >= 3.1.0
+-                  colord >= $COLORD_REQUIRED_VERSION
+-                  upower-glib >= 0.99.0)
+ PKG_CHECK_MODULES(INFO_PANEL, $COMMON_MODULES libgtop-2.0
+ 		  polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION)
+ PKG_CHECK_MODULES(KEYBOARD_PANEL, $COMMON_MODULES
+                   gnome-desktop-3.0 >= $GNOME_DESKTOP_REQUIRED_VERSION
+                   x11)
+-PKG_CHECK_MODULES(MOUSE_PANEL, $COMMON_MODULES xi >= 1.2
+-                  gnome-settings-daemon >= $GSD_REQUIRED_VERSION x11)
+ PKG_CHECK_MODULES(NETWORK_PANEL, $COMMON_MODULES gmodule-2.0
+                   polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION)
+ PKG_CHECK_MODULES(NOTIFICATIONS_PANEL, $COMMON_MODULES)
+-PKG_CHECK_MODULES(ONLINE_ACCOUNTS_PANEL, $COMMON_MODULES goa-1.0 goa-backend-1.0 >= $GOA_REQUIRED_VERSION)
+-PKG_CHECK_MODULES(COLOR_PANEL, $COMMON_MODULES
+-                  colord >= $COLORD_REQUIRED_VERSION
+-                  colord-gtk >= $COLORD_GTK_REQUIRED_VERSION
+-                  libsoup-2.4
+-                  gnome-desktop-3.0 >= $GNOME_DESKTOP_REQUIRED_VERSION)
+ PKG_CHECK_MODULES(PRINTERS_PANEL, $COMMON_MODULES
+                   polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION
+                   smbclient)
+@@ -163,12 +148,6 @@
+                   libpulse >= $PA_REQUIRED_VERSION
+                   libpulse-mainloop-glib >= $PA_REQUIRED_VERSION)
+ PKG_CHECK_MODULES(UNIVERSAL_ACCESS_PANEL, $COMMON_MODULES)
+-PKG_CHECK_MODULES(USER_ACCOUNTS_PANEL, $COMMON_MODULES
+-                  polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION
+-                  gnome-desktop-3.0
+-                  gdk-pixbuf-2.0 >= $GDKPIXBUF_REQUIRED_VERSION
+-                  pwquality >= $PWQUALITY_REQUIRED_VERSION
+-                  accountsservice >= $ACCOUNTSSERVICE_REQUIRED_VERSION)
+ PKG_CHECK_MODULES(SHARING_PANEL, $COMMON_MODULES)
+ PKG_CHECK_MODULES(REMOTE_LOGIN_HELPER, glib-2.0 >= $GLIB_REQUIRED_VERSION gio-2.0)
+ 
+@@ -229,11 +208,6 @@
+                   libnma >= $NETWORK_MANAGER_APPLET_REQUIRED_VERSION
+                   mm-glib >= $MODEM_MANAGER_REQUIRED_VERSION,
+                   [have_networkmanager=yes], have_networkmanager=no)
+-if test "x$have_networkmanager" = xno ; then
+-        linux_error_or_warn "*** Network panel will not be built (NetworkManager or ModemManager not found) ***"
+-else
+-	AC_DEFINE(BUILD_NETWORK, 1, [Define to 1 to build the Network panel])
+-fi
+ AM_CONDITIONAL(BUILD_NETWORK, [test x$have_networkmanager = xyes])
+ if test x${have_networkmanager} = xyes; then
+   AC_DEFINE(HAVE_NETWORK_MANAGER, 1, [Define to 1 if NetworkManager is available])
+@@ -243,24 +217,10 @@
+   AC_SUBST(NM_VPN_MODULE_DIR)
+ fi
+ 
+-# Check for power panel
+-if test x${have_networkmanager} = xyes; then
+-  PKG_CHECK_MODULES(POWER_PANEL, $COMMON_MODULES upower-glib >= 0.99.0
+-                    libnm >= $NETWORK_MANAGER_REQUIRED_VERSION
+-                    gnome-settings-daemon >= $GSD_REQUIRED_VERSION)
+-else
+-  PKG_CHECK_MODULES(POWER_PANEL, $COMMON_MODULES upower-glib >= 0.99.0
+-                    gnome-settings-daemon >= $GSD_REQUIRED_VERSION)
+-fi
+ 
+ # Check for gnome-bluetooth
+ PKG_CHECK_MODULES(BLUETOOTH, $COMMON_MODULES gnome-bluetooth-1.0 >= 3.18.2,
+ 		  [have_bluetooth=yes], have_bluetooth=no)
+-if test "x$have_bluetooth" = xyes ; then
+-	AC_DEFINE(BUILD_BLUETOOTH, 1, [Define to 1 to build the Bluetooth panel])
+-else
+-	linux_usb_error_or_warn "*** Bluetooth panel will not be built"
+-fi
+ AM_CONDITIONAL(BUILD_BLUETOOTH, [test x$have_bluetooth = xyes])
+ if test x${have_bluetooth} = xyes; then
+   AC_DEFINE(HAVE_BLUETOOTH, 1, [Define to 1 if bluetooth support is available])
+@@ -327,12 +287,6 @@
+                   clutter-1.0 >= $CLUTTER_REQUIRED_VERSION,
+                   [have_wacom=yes], [have_wacom=no])
+ 
+-if test "x$have_wacom" = xyes ; then
+-	AC_DEFINE(BUILD_WACOM, 1, [Define to 1 to build the Wacom panel])
+-	AC_DEFINE(HAVE_WACOM, 1, [Define to 1 is Wacom is supportted])
+-else
+-	linux_usb_error_or_warn "*** Wacom panel will not be built"
+-fi
+ AM_CONDITIONAL(BUILD_WACOM, [test x${have_wacom} = xyes])
+ 
+ # Kerberos kerberos support
+@@ -453,8 +407,6 @@
+ Makefile
+ panels/Makefile
+ panels/common/Makefile
+-panels/background/Makefile
+-panels/background/gnome-background-panel.desktop.in
+ panels/bluetooth/Makefile
+ panels/bluetooth/gnome-bluetooth-panel.desktop.in
+ panels/datetime/Makefile
+@@ -469,15 +421,6 @@
+ panels/region/gnome-region-panel.desktop.in
+ panels/mouse/Makefile
+ panels/mouse/gnome-mouse-panel.desktop.in
+-panels/online-accounts/Makefile
+-panels/online-accounts/gnome-online-accounts-panel.desktop.in
+-panels/online-accounts/icons/Makefile
+-panels/online-accounts/icons/16x16/Makefile
+-panels/online-accounts/icons/22x22/Makefile
+-panels/online-accounts/icons/24x24/Makefile
+-panels/online-accounts/icons/32x32/Makefile
+-panels/online-accounts/icons/48x48/Makefile
+-panels/online-accounts/icons/256x256/Makefile
+ panels/search/Makefile
+ panels/search/gnome-search-panel.desktop.in
+ panels/sharing/Makefile
+--- shell/orig.Makefile.am	2017-08-09 19:32:43.000000000 +0200
++++ shell/Makefile.am	2020-05-20 09:54:54.052509048 +0200
+@@ -79,23 +79,16 @@
+ 	$(top_builddir)/libgd/libgd.la					\
+ 	$(top_builddir)/panels/common/liblanguage.la			\
+ 	$(top_builddir)/panels/common/libdevice.la			\
+-	$(top_builddir)/panels/background/libbackground.la		\
+-	$(top_builddir)/panels/color/libcolor.la			\
+ 	$(top_builddir)/panels/datetime/libdate_time.la			\
+-	$(top_builddir)/panels/display/libdisplay.la			\
+ 	$(top_builddir)/panels/info/libinfo.la				\
+ 	$(top_builddir)/panels/keyboard/libkeyboard.la			\
+-	$(top_builddir)/panels/mouse/libmouse-properties.la		\
+ 	$(top_builddir)/panels/notifications/libnotifications.la	\
+-	$(top_builddir)/panels/online-accounts/libonline-accounts.la	\
+-	$(top_builddir)/panels/power/libpower.la			\
+ 	$(top_builddir)/panels/privacy/libprivacy.la			\
+ 	$(top_builddir)/panels/region/libregion.la			\
+ 	$(top_builddir)/panels/search/libsearch.la			\
+ 	$(top_builddir)/panels/sharing/libsharing.la			\
+ 	$(top_builddir)/panels/sound/libsound.la			\
+ 	$(top_builddir)/panels/universal-access/libuniversal-access.la	\
+-	$(top_builddir)/panels/user-accounts/libuser-accounts.la	\
+ 	$(top_builddir)/panels/printers/libprinters.la
+ 
+ if BUILD_WACOM
+--- panels/orig.Makefile.am	2017-05-10 10:10:21.000000000 +0200
++++ panels/Makefile.am	2020-05-20 09:54:43.192281198 +0200
+@@ -1,18 +1,11 @@
+ SUBDIRS= \
+ 	common \
+-	background \
+-	power \
+-	color \
+-	display \
+-	mouse \
+ 	notifications \
+-	online-accounts \
+ 	region \
+ 	info \
+ 	sound \
+ 	keyboard \
+ 	universal-access \
+-	user-accounts \
+ 	datetime \
+ 	search \
+ 	privacy \
+--- shell/orig.cc-panel-loader.c	2017-09-12 16:28:54.000000000 +0200
++++ shell/cc-panel-loader.c	2020-05-20 09:55:21.353081821 +0200
+@@ -75,26 +75,38 @@
+   GType (*get_type)(void);
+ #endif
+ } all_panels[] = {
++#ifdef BUILD_BACKGROUND
+   PANEL_TYPE("background",       cc_background_panel_get_type   ),
++#endif
+ #ifdef BUILD_BLUETOOTH
+   PANEL_TYPE("bluetooth",        cc_bluetooth_panel_get_type    ),
+ #endif
++#ifdef BUILD_COLOR
+   PANEL_TYPE("color",            cc_color_panel_get_type        ),
++#endif
+   PANEL_TYPE("datetime",         cc_date_time_panel_get_type    ),
++#ifdef BUILD_DISPLAY
+   PANEL_TYPE("display",          cc_display_panel_get_type      ),
++#endif
+   PANEL_TYPE("info",             cc_info_panel_get_type         ),
+   PANEL_TYPE("info-overview",    cc_info_overview_panel_get_type),
+   PANEL_TYPE("default-apps",     cc_info_default_apps_panel_get_type),
+   PANEL_TYPE("removable-media",  cc_info_removable_media_panel_get_type),
+   PANEL_TYPE("keyboard",         cc_keyboard_panel_get_type     ),
++#ifdef BUILD_MOUSE
+   PANEL_TYPE("mouse",            cc_mouse_panel_get_type        ),
++#endif
+ #ifdef BUILD_NETWORK
+   PANEL_TYPE("network",          cc_network_panel_get_type      ),
+   PANEL_TYPE("wifi",             cc_wifi_panel_get_type         ),
+ #endif
+   PANEL_TYPE("notifications",    cc_notifications_panel_get_type),
++#ifdef BUILD_ONLINEACCOUNTS
+   PANEL_TYPE("online-accounts",  cc_goa_panel_get_type          ),
++#endif
++#ifdef BUILD_POWER
+   PANEL_TYPE("power",            cc_power_panel_get_type        ),
++#endif
+   PANEL_TYPE("printers",         cc_printers_panel_get_type     ),
+   PANEL_TYPE("privacy",          cc_privacy_panel_get_type      ),
+   PANEL_TYPE("region",           cc_region_panel_get_type       ),
+@@ -102,7 +114,9 @@
+   PANEL_TYPE("sharing",          cc_sharing_panel_get_type      ),
+   PANEL_TYPE("sound",            cc_sound_panel_get_type        ),
+   PANEL_TYPE("universal-access", cc_ua_panel_get_type           ),
++#ifdef BUILD_USERACCOUNTS
+   PANEL_TYPE("user-accounts",    cc_user_panel_get_type         ),
++#endif
+ #ifdef BUILD_WACOM
+   PANEL_TYPE("wacom",            cc_wacom_panel_get_type        ),
+ #endif
