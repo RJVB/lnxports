@@ -9,4 +9,4 @@ for J in @PREFIX@/share/gir-1.0 /usr/share/gir-1.0 ;do
     VAPIDIRS="${VAPIDIRS} --girdir=${J}"
 done
 
-exec @PREFIX@/bin/vala-@VERSION@ "$@" ${VAPIDIRS} ${GIRDIRS}
+exec "@PREFIX@/bin/`basename $0`-@VERSION@" "$@" ${VAPIDIRS} ${GIRDIRS}

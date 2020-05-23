@@ -40,12 +40,14 @@ configure.args      --disable-silent-rules \
                     --disable-dependency-tracking
 
 post-destroot {
-    file delete ${destroot}${prefix}/bin/valac
-    # put a wrapper around valac so it also searches for installed stuff
-    # in the system locations.
-    xinstall -m 755 ${filespath}/valac.sh ${destroot}${prefix}/bin/valac
-    reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/valac
-    reinplace "s|@VERSION@|0.48|g" ${destroot}${prefix}/bin/valac
+    foreach app {vala valac valadoc} {
+        file delete ${destroot}${prefix}/bin/${app}
+        # put a wrapper around ${app} so it also searches for installed stuff
+        # in the system locations.
+        xinstall -m 755 ${filespath}/valac.sh ${destroot}${prefix}/bin/${app}
+        reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/${app}
+        reinplace "s|@VERSION@|0.48|g" ${destroot}${prefix}/bin/${app}
+    }
 }
 
 livecheck.type      gnome
