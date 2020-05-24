@@ -1,15 +1,18 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem      1.0
-PortGroup       muniversal 1.0
-PortGroup       active_variants 1.1
-PortGroup       gobject_introspection 1.0
-PortGroup       locale_select 1.0
 
 name            gconf
 set my_name     GConf
 epoch           1
-version         3.2.6
+if {![catch {set result [exec /usr/bin/pkg-config --modversion gconf-2.0]}]} {
+    ui_debug        "host has gconf version ${result}"
+    version         ${result}
+} else {
+    ui_warn         "host libgconf[2] devel package isn't installed; assuming version 3.2.6"
+    version         3.2.6
+}
+revision        1
 set branch      [join [lrange [split ${version} .] 0 1] .]
 maintainers     nomaintainer
 categories      gnome
@@ -21,11 +24,47 @@ long_description \
                 GConf is a configuration database system, \
                 functionally similar to the Windows registry \
                 but lots better. :-) It's written for \
-                the GNOME desktop but does not require GNOME.
+                the GNOME desktop but does not require GNOME. \
+                This version proxies the host's gconf install because having multiple \
+                parallel versions active is A Bad Idea.
 
 homepage        https://www.gnome.org/projects/gconf/
 master_sites    gnome:sources/${my_name}/${branch}/
 distname        ${my_name}-${version}
+
+distfiles
+installs_libs   no
+supported_archs noarch
+use_configure   no
+build           {}
+
+depends_lib     port:dbus-glib
+
+destroot.keepdirs \
+                ${destroot}${prefix}/etc/gconf/schemas \
+                ${destroot}${prefix}/share/GConf
+
+destroot {
+    if {[file exists /usr/lib/x86_64-linux-gnu/pkgconfig/gconf-2.0.pc]} {
+        ln -s /usr/lib/x86_64-linux-gnu/pkgconfig/gconf-2.0.pc ${destroot}${prefix}/lib/pkgconfig/
+        ln -s /usr/lib/x86_64-linux-gnu/libgconf-2.so ${destroot}${prefix}/lib
+    }
+    xinstall -m 755 -d ${destroot}${prefix}/share/aclocal
+    ln -s /usr/share/aclocal/gconf-2.m4 ${destroot}${prefix}/share/aclocal
+    xinstall -m 755 -d ${destroot}${prefix}/share/gir-1.0
+    ln -s /usr/share/gir-1.0/GConf-2.0.gir ${destroot}${prefix}/share/gir-1.0
+    ln -s /usr/share/GConf ${destroot}${prefix}/share
+    xinstall -m 755 -d ${destroot}${prefix}/etc/gconf
+    ln -s /usr/share/gconf/schemas ${destroot}${prefix}/etc/gconf
+}
+
+return
+# ================================================================================================== #
+
+PortGroup       muniversal 1.0
+PortGroup       active_variants 1.1
+PortGroup       gobject_introspection 1.0
+PortGroup       locale_select 1.0
 
 use_xz          yes
 
@@ -59,7 +98,7 @@ platform linux {
                 ACLOCAL_PATH=${prefix}/share/aclocal:/usr/share/aclocal \
                 "LIBS=-L${prefix}/lib -lintl"
     configure.args-append \
-                --disable-nls \
+                --disable-orbit \
                 --enable-gsettings-backend \
                 --disable-documentation
 }
@@ -76,6 +115,27 @@ if {![file exists ${worksrcpath}/config.log]} {
 destroot.keepdirs \
     ${destroot}${prefix}/etc/gconf/gconf.xml.mandatory \
     ${destroot}${prefix}/etc/gconf/gconf.xml.defaults
+
+post-destroot {
+    if {[file type "/etc/gconf"] eq "directory"} {
+        # make sure we play nice/ball with the system variant of this software!
+        file delete ${destroot}${prefix}/etc/gconf
+        ln -s /etc/gconf ${destroot}${prefix}/etc/gconf
+    }
+    if {[file type "/share/GConf"] eq "directory"} {
+        # make sure we play nice/ball with the system variant of this software!
+        file delete ${destroot}${prefix}/share/GConf
+        ln -s /share/GConf ${destroot}${prefix}/share/GConf
+    }
+    foreach daemon {/usr/libexec/gconf/gconfd-2 /usr/lib/x86_64-linux-gnu/gconf/gconfd-2} {
+        if {[file exists ${daemon}]} {
+            # the easy way to ensure that we're not replacing the system daemon - gconf
+            # has been at version 3.2.6  since forever so this should be safe:
+            file delete ${destroot}${prefix}/libexec/gconfd-2
+            ln -s ${daemon} ${destroot}${prefix}/libexec/gconfd-2
+        }
+    }
+}
 
 variant openldap description {Enable support for openldap} {
                depends_lib-append port:openldap

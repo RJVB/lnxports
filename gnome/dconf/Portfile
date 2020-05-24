@@ -3,7 +3,14 @@
 PortSystem          1.0
 
 name                dconf
-version             0.26.1
+if {![catch {set result [exec /usr/bin/pkg-config --modversion dconf]}]} {
+    ui_debug        "host has dconf version ${result}"
+    version         ${result}
+} else {
+    ui_warn         "host dconf devel package isn't installed"
+    version         0.0.0
+}
+epoch               1
 set branch          [join [lrange [split ${version} .] 0 1] .]
 maintainers         {devans @dbevans} openmaintainer
 categories          gnome
@@ -14,10 +21,33 @@ description         dconf is a simple key/value storage system that is heavily o
 
 long_description    ${description} \
                     This makes it an ideal system for storing user preferences \
-                    (which are read 1000s of times for each time the user changes one).
+                    (which are read 1000s of times for each time the user changes one). \
+                    This version proxies the host's dconf install because having multiple \
+                    parallel versions active is A Bad Idea.
 
 homepage            https://wiki.gnome.org/Projects/dconf
 master_sites        gnome:sources/${name}/${branch}/
+
+distfiles
+installs_libs   no
+supported_archs noarch
+use_configure   no
+build           {}
+
+depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2
+
+destroot {
+    ln -s /usr/bin/dconf ${destroot}${prefix}/bin/dconf
+
+    if {[file exists /usr/lib/x86_64-linux-gnu/gio/modules/libdconfsettings.so]} {
+        xinstall -m 755 -d ${destroot}${prefix}/lib/gio/modules
+        ln -s /usr/lib/x86_64-linux-gnu/gio/modules/libdconfsettings.so ${destroot}${prefix}/lib/gio/modules
+        ln -s /usr/lib/x86_64-linux-gnu/libdconf.so.1 ${destroot}${prefix}/lib/libdconf.so.1
+    }
+}
+
+return
+# ================================================================================================== #
 
 use_xz              yes
 

@@ -2,6 +2,7 @@
 
 PortSystem          1.0
 PortGroup           meson 1.0
+PortGroup           locale_select 1.0
 
 name                gsettings-desktop-schemas
 version             3.36.1

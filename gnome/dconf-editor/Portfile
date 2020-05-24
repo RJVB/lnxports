@@ -4,7 +4,7 @@ PortSystem          1.0
 PortGroup           locale_select 1.0
 
 name                dconf-editor
-version             3.26.2
+version             3.26.2 ; revision 1
 set branch          [join [lrange [split ${version} .] 0 1] .]
 maintainers         {devans @dbevans} openmaintainer
 categories          gnome
@@ -14,7 +14,9 @@ description         The  dconf-editor  program  provides a graphical interface \
                     for editing settings that are stored in the dconf database.
 
 long_description    ${description} \
-                    Previously part of dconf, it is now a stand-alone module.
+                    Previously part of dconf, it is now a stand-alone module. \
+                    NB: this version probably won't work correctly if an older \
+                    version is installed on the host (= included with dconf).
                     
 homepage            https://wiki.gnome.org/Projects/dconf
 master_sites        gnome:sources/${name}/${branch}/
@@ -36,6 +38,9 @@ depends_lib         path:/dev/null:desktop-file-utils \
                     port:libxml2
 
 depends_run         path:/dev/null:adwaita-icon-theme
+
+# allow older dconf versions; we build against at least as old as 0.20.0 (the version in Ubuntu Trusty)
+patchfiles-append   patch-dconf_min_version.diff
 
 configure.env-append \
                     "LIBS=-L${prefix}/lib -lintl"
