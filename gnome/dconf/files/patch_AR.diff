@@ -1,0 +1,80 @@
+--- ./configure.ac.orig	2017-10-03 15:54:23.000000000 +0200
++++ ./configure.ac	2020-05-25 14:56:01.454996917 +0200
+@@ -21,6 +21,7 @@
+ AC_CHECK_LIB(c, dlsym, LIBDL="", [AC_CHECK_LIB(dl, dlsym, LIBDL="-ldl")])
+ AC_SUBST(LIBDL)
+ AM_PROG_VALAC([0.18.0])
++AM_PROG_AR
+ AC_PROG_RANLIB
+ AC_ARG_ENABLE(man,
+               [AS_HELP_STRING([--enable-man],
+--- ./tests/Makefile.am.orig	2016-10-22 05:58:33.000000000 +0200
++++ ./tests/Makefile.am	2020-05-25 14:40:08.264555810 +0200
+@@ -1,5 +1,7 @@
+ include $(top_srcdir)/Makefile.gtester
+ 
++AR = @AR@
++
+ noinst_LIBRARIES = libdconf-mock.a
+ noinst_PROGRAMS = $(TEST_PROGS)
+ noinst_HEADERS = dconf-mock.h
+--- ./common/Makefile.am.orig	2016-10-22 05:58:47.000000000 +0200
++++ ./common/Makefile.am	2020-05-25 14:40:21.414838557 +0200
+@@ -1,5 +1,7 @@
+ include $(top_srcdir)/Makefile.gtester
+ 
++AR = @AR@
++
+ dconfcommonincludedir = $(dconfincludedir)/common
+ dconfcommoninclude_HEADERS = \
+ 	dconf-changeset.h	\
+--- ./engine/Makefile.am.orig	2020-05-25 14:37:51.631616721 +0200
++++ ./engine/Makefile.am	2020-05-25 14:44:14.929855742 +0200
+@@ -1,5 +1,7 @@
+ include $(top_srcdir)/Makefile.gtester
+ 
++AR = @AR@
++
+ noinst_LIBRARIES = libdconf-engine.a libdconf-engine-shared.a
+ 
+ libdconf_engine_a_CFLAGS = $(glib_CFLAGS) -DG_LOG_DOMAIN=\"dconf\"
+--- ./gvdb/Makefile.am.orig	2016-10-22 05:58:44.000000000 +0200
++++ ./gvdb/Makefile.am	2020-05-25 14:40:39.205221033 +0200
+@@ -1,5 +1,7 @@
+ include $(top_srcdir)/Makefile.gtester
+ 
++AR = @AR@
++
+ noinst_LIBRARIES = libgvdb.a libgvdb-shared.a
+ 
+ libgvdb_a_CFLAGS = $(glib_CFLAGS) -DG_LOG_DOMAIN=\"gvdb\ \(via\ dconf\)\"
+--- ./gdbus/Makefile.am.orig	2016-10-22 05:58:50.000000000 +0200
++++ ./gdbus/Makefile.am	2020-05-25 14:40:42.805298426 +0200
+@@ -1,5 +1,7 @@
+ include $(top_srcdir)/Makefile.gtester
+ 
++AR = @AR@
++
+ noinst_LIBRARIES = \
+ 	libdconf-gdbus-thread.a			\
+ 	libdconf-gdbus-thread-shared.a		\
+--- ./shm/Makefile.am.orig	2016-10-22 05:58:35.000000000 +0200
++++ ./shm/Makefile.am	2020-05-25 14:40:45.675360125 +0200
+@@ -1,5 +1,7 @@
+ include $(top_srcdir)/Makefile.gtester
+ 
++AR = @AR@
++
+ noinst_LIBRARIES = libdconf-shm.a libdconf-shm-shared.a
+ 
+ libdconf_shm_a_CFLAGS = $(glib_CFLAGS) -DG_LOG_DOMAIN=\"dconf\"
+--- ./client/Makefile.am.orig	2016-10-22 05:58:48.000000000 +0200
++++ ./client/Makefile.am	2020-05-25 14:40:52.635509745 +0200
+@@ -1,5 +1,7 @@
+ include $(top_srcdir)/Makefile.gtester
+ 
++AR = @AR@
++
+ shlibdir=$(libdir)
+ shlib_PROGRAMS = libdconf.so.1.0.0
+ nodist_noinst_DATA = libdconf.so.1 libdconf.so

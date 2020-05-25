@@ -1,0 +1,84 @@
+GNOME #670493
+
+This patch was rejected upstream (pending alternative solution).
+Maybe we should drop it?
+
+At least gdm in Debian currently still requires this, but it's been reworked
+upstream. See:
+  https://bugzilla.gnome.org/show_bug.cgi?id=722241
+once we have this in Debian, check that DCONF_DIR is no longer used in the
+archive and then consider dropping this patch if it's not.
+
+--- bin/dconf-update.vala
++++ bin/dconf-update.vala
+@@ -248,7 +248,16 @@
+ }
+ 
+ void dconf_update (string[] args) throws GLib.Error {
+-	update_all ("/etc/dconf/db");
++	if (args[2] != null) {
++		update_all (args[2]);
++	} else {
++		var dirname = GLib.Environment.get_variable ("DCONF_DIR"
++);
++		if (dirname == null) {
++			dirname = "/etc/dconf";
++		}
++		update_all (Path.build_filename (dirname, "db"));
++	}
+ }
+ 
+ // vim:noet ts=4 sw=4
+--- bin/dconf.vala
++++ bin/dconf.vala
+@@ -59,7 +59,7 @@
+ 
+ 		case "update":
+ 			description = "Update the system dconf databases";
+-			synopsis = "";
++			synopsis = " [DIR] ";
+ 			break;
+ 
+ 		case "watch":
+@@ -123,7 +123,9 @@
+ 				str.append ("  KEY         A key path (starting, but not ending with '/')\n");
+ 			}
+ 
+-			if (" PATH " in synopsis || " DIR " in synopsis) {
++			if (" [DIR] " in synopsis ) {
++				str.append ("  DIR         Directory containing the databases to update\n");
++			} else if (" PATH " in synopsis || " DIR " in synopsis) {
+ 				str.append ("  DIR         A directory path (starting and ending with '/')\n");
+ 			}
+ 
+--- engine/dconf-engine-source-system.c
++++ engine/dconf-engine-source-system.c
+@@ -47,7 +47,10 @@
+   GvdbTable *table;
+   gchar *filename;
+ 
+-  filename = g_build_filename ("/etc/dconf/db", source->name, NULL);
++  const gchar *dconf_dir = g_getenv ("DCONF_DIR");
++  if (dconf_dir == NULL)
++    dconf_dir = "/etc/dconf";
++  filename = g_build_filename (dconf_dir, "db", source->name, NULL);
+   table = gvdb_table_new (filename, FALSE, &error);
+ 
+   if (table == NULL)
+--- engine/dconf-engine-profile.c
++++ engine/dconf-engine-profile.c
+@@ -202,8 +202,13 @@
+   do
+     {
+       gchar *filename;
++      const gchar *dconf_dir;
+ 
+-      filename = g_build_filename (prefix, "dconf/profile", profile, NULL);
++      dconf_dir = g_getenv ("DCONF_DIR");
++      if (dconf_dir == NULL)
++        filename = g_build_filename (prefix, "dconf/profile", profile, NULL);
++      else
++        filename = g_build_filename (dconf_dir, "profile", profile, NULL);
+       fp = fopen (filename, "r");
+ 
+       /* If it wasn't ENOENT then we don't want to continue on to check

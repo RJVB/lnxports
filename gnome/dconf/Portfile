@@ -1,16 +1,11 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup           locale_select 1.0
+PortGroup           LTO 1.0
 
 name                dconf
-if {![catch {set result [exec /usr/bin/pkg-config --modversion dconf]}]} {
-    ui_debug        "host has dconf version ${result}"
-    version         ${result}
-} else {
-    ui_warn         "host dconf devel package isn't installed"
-    version         0.0.0
-}
-epoch               1
+version             0.26.1 ; revision 1
 set branch          [join [lrange [split ${version} .] 0 1] .]
 maintainers         {devans @dbevans} openmaintainer
 categories          gnome
@@ -21,32 +16,47 @@ description         dconf is a simple key/value storage system that is heavily o
 
 long_description    ${description} \
                     This makes it an ideal system for storing user preferences \
-                    (which are read 1000s of times for each time the user changes one). \
-                    This version proxies the host's dconf install because having multiple \
-                    parallel versions active is A Bad Idea.
+                    (which are read 1000s of times for each time the user changes one).
 
 homepage            https://wiki.gnome.org/Projects/dconf
 master_sites        gnome:sources/${name}/${branch}/
 
-distfiles
-installs_libs   no
-supported_archs noarch
-use_configure   no
-build           {}
-
-depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2
-
-destroot {
-    ln -s /usr/bin/dconf ${destroot}${prefix}/bin/dconf
-
-    if {[file exists /usr/lib/x86_64-linux-gnu/gio/modules/libdconfsettings.so]} {
-        xinstall -m 755 -d ${destroot}${prefix}/lib/gio/modules
-        ln -s /usr/lib/x86_64-linux-gnu/gio/modules/libdconfsettings.so ${destroot}${prefix}/lib/gio/modules
-        ln -s /usr/lib/x86_64-linux-gnu/libdconf.so.1 ${destroot}${prefix}/lib/libdconf.so.1
+variant proxy description {proxy the host install} {}
+if {[variant_isset proxy]} {
+    # This was designed for a situation I created in which all dconf settings had become
+    # non-writable. Turned out this was due to a stray, empty ${prefix}/share/dconf directory.
+    long_description-append \
+                    This version proxies the host's dconf install because having multiple \
+                    parallel versions active is A Bad Idea.
+    if {![catch {set result [exec /usr/bin/pkg-config --modversion dconf]}]} {
+        ui_debug    "host has dconf version ${result}"
+        version     ${result}
+    } else {
+        ui_warn     "host dconf devel package isn't installed"
+        version     0.0.0
     }
-}
+    epoch           1
+    revision        0
+    distfiles
+    installs_libs   no
+    supported_archs noarch
+    use_configure   no
+    build           {}
 
-return
+    depends_lib     path:lib/pkgconfig/glib-2.0.pc:glib2
+
+    destroot {
+        ln -s /usr/bin/dconf ${destroot}${prefix}/bin/dconf
+
+        if {[file exists /usr/lib/x86_64-linux-gnu/gio/modules/libdconfsettings.so]} {
+            xinstall -m 755 -d ${destroot}${prefix}/lib/gio/modules
+            ln -s /usr/lib/x86_64-linux-gnu/gio/modules/libdconfsettings.so ${destroot}${prefix}/lib/gio/modules
+            ln -s /usr/lib/x86_64-linux-gnu/libdconf.so.1 ${destroot}${prefix}/lib/libdconf.so.1
+        }
+    }
+
+    return
+}
 # ================================================================================================== #
 
 use_xz              yes
@@ -56,18 +66,24 @@ checksums           rmd160  4f756c2d1eeb32c6c7d068a08e8ff0f5340e1553 \
 
 depends_build       port:pkgconfig \
                     port:docbook-xsl-nons \
-                    port:libxslt
+                    port:libxslt \
+                    port:grep
 
 depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2
 
 platform darwin {
     patchfiles      patch-fix-lib-names-Makefile.am.diff
 }
+platform linux {
+    patchfiles-append \
+                    01_env_path.patch \
+                    patch_AR.diff
+}
 
 pre-configure {
     if {![file exists ${worksrcpath}/config.log]} {
-        use_autoreconf      yes
-        autoreconf.args     -fvi
+        use_autoreconf  yes
+        autoreconf.args -fvi
     }
 }
 
