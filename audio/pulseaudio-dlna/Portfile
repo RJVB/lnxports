@@ -21,14 +21,14 @@ if {${subport} eq "${name}"} {
 
 categories      sysutils
 platforms       macosx linux
-license         {GPL-2 OpenSSLException}
+license         GPL-3
 maintainers     gmail.com:rjvbertin openmaintainer
-description     Software KVM switch
-long_description Barrier is software that mimics the functionality of a KVM switch, which historically \
-                would allow you to use a single keyboard and mouse to control multiple computers by \
-                turning a dial on a box to switch the machine you're controlling at any given moment. \
-                Barrier does this in software, allowing you to tell it which machine to control by moving \
-                your mouse to the edge of the screen, or by using a keypress to switch focus to a different system.
+description     DLNA streaming server for PulseAudio
+long_description A lightweight streaming server which brings DLNA / UPNP \
+                and Chromecast support to PulseAudio and Linux. \
+                It can stream your current PulseAudio playback to different UPNP devices \
+                (UPNP Media Renderers) or Chromecasts in your network. \
+                UPNP renderers in your network will show up as pulseaudio sinks.
 
 patch.pre_args  -Np1
 
