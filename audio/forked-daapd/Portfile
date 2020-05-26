@@ -1,0 +1,109 @@
+PortSystem      1.0
+PortGroup       github 1.0
+PortGroup       locale_select 1.0
+PortGroup       LTO 1.0
+PortGroup       conflicts_build 1.0
+
+name            forked-daapd
+subport         "${name}-devel" {}
+
+if {${subport} eq "${name}"} {
+    github.setup    ejurgensen forked-daapd 27.1
+    checksums       rmd160  5d331256f1534d616376488b9875ca152b44a068 \
+                    sha256  7cce8089ddb4ce4664bcafb33ef6f47df8db7223f552de788d7da30b97375fb0
+#                     size    4211141
+} else {
+    fetch.type      git
+    github.setup    ejurgensen forked-daapd 108744e02bce55200c0f9323ac168162008f0990
+    # 27.1-251-g108744e
+    version         27.1.251
+    distname        ${name}-git
+    fetch.type      git
+}
+
+categories      audio
+platforms       macosx linux
+license         GPL-2
+maintainers     gmail.com:rjvbertin openmaintainer
+description     Software KVM switch
+long_description Barrier is software that mimics the functionality of a KVM switch, which historically \
+                would allow you to use a single keyboard and mouse to control multiple computers by \
+                turning a dial on a box to switch the machine you're controlling at any given moment. \
+                Barrier does this in software, allowing you to tell it which machine to control by moving \
+                your mouse to the edge of the screen, or by using a keypress to switch focus to a different system.
+
+depends_build-append \
+                port:pkgconfig \
+                port:antlr3
+
+if {${subport} eq "${name}"} {
+} else {
+}
+
+depends_lib-append \
+                path:lib/pkgconfig/libssl.pc:openssl \
+                port:gnutls \
+                port:protobuf-c \
+                port:curl \
+                port:libplist \
+                port:ffmpeg \
+                port:pulseaudio \
+                port:libsodium \
+                port:libwebsockets \
+                port:zlib \
+                port:libconfuse \
+                port:libevent \
+                port:sqlite3 \
+                port:libunistring
+# TODO : create port:minixml (http://www.minixml.org/)
+
+# depends_run-append \
+#                 port:antlr3
+# 
+depends_skip_archcheck-append \
+                antlr3
+
+post-extract {
+    # force an auto-reconfig on first build attempt
+    file delete -force ${worksrcpath}/configure
+}
+
+patch.pre_args  -Np1
+patchfiles-append \
+                patch-4-linux-clang.diff
+
+use_autoreconf  yes
+autoreconf.args -fvi
+
+pre-configure {
+    if {[file exists ${worksrcpath}/configure]} {
+        # no need to waste time again
+        use_autoreconf no
+    }
+}
+
+if {${os.platform} eq "darwin" && ${os.major} >= 9} {
+    set daapd_user  _daapd
+    set daapd_group _daapd
+} else {
+    set daapd_user  daapd
+    set daapd_group daapd
+}
+add_users ${daapd_user} group=${daapd_group} realname=Daapd\ Service
+
+configure.args-append \
+                --disable-dependency-tracking \
+                --disable-silent-rules
+
+destroot.keepdirs-append \
+                ${destroot}${prefix}/var/cache/forked-daapd/
+
+post-destroot {
+    file rename ${destroot}${prefix}/etc/forked-daapd.conf ${destroot}${prefix}/etc/forked-daapd.conf.sample
+}
+
+post-activate {
+    if {![file exists ${prefix}/etc/forked-daapd.conf]} {
+        xinstall -m 644 ${prefix}/etc/forked-daapd.conf.sample ${prefix}/etc/forked-daapd.conf
+    }
+}

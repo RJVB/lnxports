@@ -1,0 +1,161 @@
+diff --git a/src/artwork.c b/src/artwork.c
+index cd0fe7f..6a311a5 100644
+--- a/src/artwork.c
++++ b/src/artwork.c
+@@ -31,6 +31,9 @@
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <limits.h>
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ #include <pthread.h>
+ 
+ #include "db.h"
+diff --git a/src/db_upgrade.c b/src/db_upgrade.c
+index a1f477a..4bb02ec 100644
+--- a/src/db_upgrade.c
++++ b/src/db_upgrade.c
+@@ -20,6 +20,9 @@
+ #include <errno.h>
+ #include <inttypes.h>
+ #include <limits.h>
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ #include <sys/mman.h>
+ #include <sqlite3.h>
+ #include <stddef.h>
+diff --git a/src/httpd.c b/src/httpd.c
+index ffb03d8..77c31a9 100644
+--- a/src/httpd.c
++++ b/src/httpd.c
+@@ -26,6 +26,9 @@
+ #include <string.h>
+ #include <fcntl.h>
+ #include <limits.h>
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ #include <errno.h>
+ #include <pthread.h>
+ #ifdef HAVE_PTHREAD_NP_H
+diff --git a/src/httpd_jsonapi.c b/src/httpd_jsonapi.c
+index 993aeda..3420981 100644
+--- a/src/httpd_jsonapi.c
++++ b/src/httpd_jsonapi.c
+@@ -34,6 +34,9 @@
+ #include <fcntl.h>
+ #include <errno.h>
+ #include <limits.h>
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ #include <regex.h>
+ #include <stdbool.h>
+ #include <stdio.h>
+diff --git a/src/inputs/pipe.c b/src/inputs/pipe.c
+index cb1d86b..20c6272 100644
+--- a/src/inputs/pipe.c
++++ b/src/inputs/pipe.c
+@@ -43,6 +43,9 @@
+ #include <string.h>
+ #include <errno.h>
+ #include <limits.h>
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ #include <pthread.h>
+ #ifdef HAVE_PTHREAD_NP_H
+ # include <pthread_np.h>
+diff --git a/src/library/filescanner.c b/src/library/filescanner.c
+index 4e5a361..3e65f6a 100644
+--- a/src/library/filescanner.c
++++ b/src/library/filescanner.c
+@@ -41,6 +41,9 @@
+ #ifdef HAVE_PTHREAD_NP_H
+ # include <pthread_np.h>
+ #endif
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ 
+ #include <unistr.h>
+ #include <unictype.h>
+diff --git a/src/library/filescanner_itunes.c b/src/library/filescanner_itunes.c
+index 385eaae..b64d54e 100644
+--- a/src/library/filescanner_itunes.c
++++ b/src/library/filescanner_itunes.c
+@@ -30,6 +30,9 @@
+ #include <fcntl.h>
+ #include <errno.h>
+ #include <limits.h>
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ 
+ #include <sys/mman.h>
+ 
+diff --git a/src/library/filescanner_playlist.c b/src/library/filescanner_playlist.c
+index 8eab96c..443e13f 100644
+--- a/src/library/filescanner_playlist.c
++++ b/src/library/filescanner_playlist.c
+@@ -27,6 +27,9 @@
+ #include <string.h>
+ #include <ctype.h>
+ #include <limits.h>
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ #include <sys/param.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
+diff --git a/src/mdns_avahi.c b/src/mdns_avahi.c
+index 11a0e12..a6eee72 100644
+--- a/src/mdns_avahi.c
++++ b/src/mdns_avahi.c
+@@ -48,6 +48,16 @@
+ // Hack for FreeBSD, don't want to bother with sysconf()
+ #ifndef HOST_NAME_MAX
+ # include <limits.h>
++# ifdef __linux__
++  // for clang:
++#  ifdef  __USE_POSIX
++  /* POSIX adds things to <limits.h>.  */
++#   include <bits/posix1_lim.h>
++#  endif
++#  ifdef  __USE_POSIX2
++#   include <bits/posix2_lim.h>
++#  endif
++# endif
+ # define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+ #endif
+ 
+diff --git a/src/mpd.c b/src/mpd.c
+index 5a411d6..6a7befb 100644
+--- a/src/mpd.c
++++ b/src/mpd.c
+@@ -27,6 +27,9 @@
+ #include <string.h>
+ #include <fcntl.h>
+ #include <limits.h>
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ #include <errno.h>
+ #include <pthread.h>
+ #ifdef HAVE_PTHREAD_NP_H
+diff --git a/src/spotify_webapi.c b/src/spotify_webapi.c
+index 3ebe481..b9e31e2 100644
+--- a/src/spotify_webapi.c
++++ b/src/spotify_webapi.c
+@@ -25,6 +25,9 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <time.h>
++#ifdef __linux__
++#include <linux/limits.h>
++#endif
+ 
+ #include "artwork.h"
+ #include "cache.h"
