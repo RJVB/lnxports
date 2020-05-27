@@ -1,16 +1,17 @@
 diff --git a/src/artwork.c b/src/artwork.c
+index cd0fe7f..6a311a5 100644
 --- a/src/artwork.c
 +++ b/src/artwork.c
-@@ -30,6 +30,9 @@
+@@ -31,6 +31,9 @@
  #include <sys/stat.h>
  #include <fcntl.h>
  #include <limits.h>
 +#ifdef __linux__
 +#include <linux/limits.h>
 +#endif
+ #include <pthread.h>
  
  #include "db.h"
- #include "misc.h"
 diff --git a/src/db_upgrade.c b/src/db_upgrade.c
 index a1f477a..4bb02ec 100644
 --- a/src/db_upgrade.c
