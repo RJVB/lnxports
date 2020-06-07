@@ -2,6 +2,7 @@
 
 PortSystem          1.0
 PortGroup           active_variants 1.1
+PortGroup           LTO 1.0
 
 # cairomm  > 1.10.0 requires C++11 or better
 platform darwin {
@@ -28,9 +29,8 @@ checksums           rmd160  112e58d903f168232b6a2673802b83ce687eb46c \
 depends_build       port:pkgconfig \
                     port:mm-common
 
-# depends_lib         path:lib/pkgconfig/cairo.pc:cairo \
-#                     port:libsigcxx2
-depends_lib         port:libsigcxx2
+depends_lib         path:lib/pkgconfig/cairo.pc:cairo \
+                    port:libsigcxx2
 
 ####################
 PortGroup           devport 1.0
