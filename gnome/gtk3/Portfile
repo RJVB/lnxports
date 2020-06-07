@@ -10,7 +10,7 @@ PortGroup           locale_select 1.0
 name                gtk3
 set real_name       gtk+
 epoch               1
-version             3.22.30 ; revision 1
+version             3.24.20
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          gnome x11
 license             LGPL-2.1+
@@ -30,9 +30,9 @@ use_xz              yes
 
 master_sites        gnome:sources/gtk+/${branch}/
 
-checksums           rmd160  915f2ccceefab24893e02e0e26c57b0146909218 \
-                    sha256  a1a4a5c12703d4e1ccda28333b87ff462741dc365131fbc94c218ae81d9a6567 \
-                    size    18946084
+checksums           rmd160  84bfcee1909cf0dc3c8be3fc011d4f8e0d006cdc \
+                    sha256  2dac69f716e8d04ba7a95091589e2baaec95dcace932cb15839163db479b1df3 \
+                    size    22726768
 
 minimum_xcodeversions {9 3.1}
 
