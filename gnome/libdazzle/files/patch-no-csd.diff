@@ -1,0 +1,13 @@
+diff --git src/shortcuts/dzl-shortcut-theme-editor.c src/shortcuts/dzl-shortcut-theme-editor.c
+index 94abbd9..82faf57 100644
+--- src/shortcuts/dzl-shortcut-theme-editor.c
++++ src/shortcuts/dzl-shortcut-theme-editor.c
+@@ -199,7 +199,7 @@ dzl_shortcut_theme_editor_row_activated (DzlShortcutThemeEditor *self,
+                              "shortcut-title", title,
+                              "title", _("Set Shortcut"),
+                              "transient-for", toplevel,
+-                             "use-header-bar", TRUE,
++                             "use-header-bar", FALSE,
+                              NULL);
+ 
+       g_signal_connect_object (dialog,

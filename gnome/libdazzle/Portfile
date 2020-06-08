@@ -1,0 +1,60 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           meson 1.0
+PortGroup           compiler_blacklist_versions 1.0
+
+name                libdazzle
+version             3.36.0
+license             GPL-3+
+set branch          [join [lrange [split ${version} .] 0 1] .]
+description         ${name} is a companion library to GObject and Gtk+.
+long_description    ${description}  It includes a collection of dazzling Gtk widgets, \
+                    data structures, search engines, a shortcut engine, panels, \
+                    desktop integration, and those missing pieces from common libraries \
+                    that help you write cleaner and safer code
+
+maintainers         nomaintainer
+categories          gnome
+platforms           darwin
+homepage            https://gitlab.gnome.org/GNOME/${name}
+master_sites        gnome:sources/${name}/${branch}/
+
+use_xz              yes
+
+checksums           rmd160  212d790063b884134709c6d08d52d856e701c5e5 \
+                    sha256  82b31bbf550fc62970c78bf7f9d55e5fae5b8ea13b24fe2d13c8c6039409d958
+#                     size    446400
+
+depends_build-append \
+                    port:pkgconfig \
+                    port:vala \
+                    port:gobject-introspection
+
+depends_lib-append  port:gtk3
+
+# error: invalid value 'gnu11' in '-std=gnu11'
+compiler.blacklist-append  *gcc-3.* *gcc-4.* {clang < 212}
+
+# gobject-introspection uses g-ir-scanner, which uses $CC from env
+if {[variant_isset universal]} {
+    foreach arch ${configure.universal_archs} {
+        lappend merger_build_env(${arch})  "CC=${configure.cc} -arch ${arch}"
+        lappend merger_destroot_env(${arch})  "CC=${configure.cc} -arch ${arch}"
+    }
+} else {
+    build.env-append       "CC=${configure.cc} ${configure.cc_archflags}"
+    destroot.env-append    "CC=${configure.cc} ${configure.cc_archflags}"
+}
+
+variant nocsd description {disable the GNOME client-side-decoration feature} {
+    patchfiles-append       patch-no-csd.diff
+}
+default_variants            +nocsd
+
+platform linux {
+    configure.ldflags-append \
+                    -lintl
+}
+
+livecheck.type      gnome
