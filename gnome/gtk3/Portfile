@@ -127,6 +127,7 @@ test.target         check
 
 if {[is_mainport]} {
     post-destroot {
+        file delete -force ${destroot}${prefix}/share/gtk-doc/html
         set docdir ${prefix}/share/doc/${name}
         xinstall -d ${destroot}${docdir}
         xinstall -m 644 -W ${worksrcpath} AUTHORS COPYING HACKING NEWS README \
