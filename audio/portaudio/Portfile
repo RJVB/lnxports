@@ -1,9 +1,16 @@
 # -*- Mode: Tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+# PortGroup           cmake 1.1
+PortGroup           LTO 1.0
 
 name                portaudio
-version             190600_20161030
+set major           19
+set minor           6
+set reldate         20161030
+set distversion     ${major}[format %04d [expr {$minor * 100}]]_${reldate}
+version             ${major}.${minor}.${reldate}
+epoch               1
 categories          audio devel
 platforms           darwin macosx
 maintainers         nomaintainer
@@ -22,12 +29,12 @@ long_description    PortAudio is a free, cross platform, open-source, audio I/O 
 homepage            http://www.portaudio.com/
 master_sites        ${homepage}archives
 
-distname            pa_stable_v[strsed ${version} {g/\./_/}]
+distname            pa_stable_v${distversion}
 extract.suffix      .tgz
 
 checksums           rmd160  e6e5cd3f3cb7469aa17549c189e445d573567e13 \
-                    sha256  f5a21d7dcd6ee84397446fa1fa1a0675bb2e8a4a6dceb4305a8404698d8d1513 \
-                    size    1450572
+                    sha256  f5a21d7dcd6ee84397446fa1fa1a0675bb2e8a4a6dceb4305a8404698d8d1513
+#                     size    1450572
 
 worksrcdir          ${name}
 
@@ -43,15 +50,27 @@ configure.args      --disable-mac-universal \
                     --without-oss \
                     --without-asihpi \
                     --without-winapi
+# cmake.save_configure_cmd "log too"
+# configure.args-append \
+#                     -DPA_USE_ALSA=OFF \
+#                     -DPA_USE_JACK=OFF \
+#                     -DPA_USE_COREAUDIO=ON \
+#                     -DPA_USE_DS=OFF
 
 variant jack description {enable JACK support} {
     configure.args-replace --disable-jack \
                     --enable-jack
+#     configure.args-replace \
+#                     -DPA_USE_JACK=OFF \
+#                     -DPA_USE_JACK=ON
     depends_lib-append \
                     port:jack
 }
 
 variant tools description "install the example and test utilities to ${prefix}/libexec/portaudio" {
+#     configure.args-append \
+#                     -DPA_BUILD_TESTS=ON \
+#                     -DPA_BUILD_EXAMPLES=ON
     post-build {
         # be certain the targets were build
         system -W ${build.dir} "make tests"
@@ -78,14 +97,31 @@ platform darwin {
     }
 }
 platform linux {
+    configure.args-delete \
+                    --without-asihpi
     configure.args-replace \
                     --without-alsa \
                     --with-alsa
+#     configure.args-replace \
+#                     -DPA_USE_ALSA=OFF \
+#                     -DPA_USE_ALSA=ON
 }
+
+# post-configure {
+#     xinstall -m 755 -d ${build.dir}/bindings/cpp
+#     system -W ${build.dir}/bindings/cpp "env ${configure.env} CC=${configure.cc} CXX=${configure.cxx} \
+#         \"CPPFLAGS=${configure.cppflags}\" \"CFLAGS=${configure.cflags}\" \"CXXFLAGS=${configure.cxxflags}\" \
+#         \"LDFLAGS=${configure.ldflags}\" ${worksrcpath}/bindings/cpp/configure --prefix=${prefix} --disable-silent-rules --disable-dependency-tracking --enable-fast-install"
+# }
+# 
+# post-build {
+#     system -W ${build.dir}/bindings/cpp "make -kw"
+# }
 
 # use_parallel_build  no
 
 post-destroot {
+#     system -W ${build.dir}/bindings/cpp "make -kw install ${DESTDIR}=${destroot}"
     xinstall -d ${destroot}${prefix}/share/doc/${name}
     xinstall -m 644 -W ${worksrcpath} \
         README.txt \
@@ -98,5 +134,5 @@ post-destroot {
 
 livecheck.type      regex
 livecheck.url       [lindex ${master_sites} 0]
-livecheck.version   [strsed ${version} {g/\./_/}]
+livecheck.version   ${distversion}
 livecheck.regex     pa_stable_v(\[0-9._\]+)\\.
