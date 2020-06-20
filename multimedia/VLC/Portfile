@@ -3,7 +3,6 @@
 PortSystem          1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           active_variants 1.1
-PortGroup           conflicts_build 1.0
 
 PortGroup           locale_select 1.0
 PortGroup           LTO 1.0
@@ -20,7 +19,7 @@ long_description    VLC media player is a highly portable multimedia player for 
                     It can also be used as a server to stream in unicast or multicast \
                     in IPv4 or IPv6 on a high-bandwidth network.
 
-homepage            http://www.videolan.org
+homepage            https://www.videolan.org
 
 subport lib${name} {
     maintainers     gmail.com:rjvbertin openmaintainer
@@ -29,40 +28,34 @@ subport lib${name} {
                     libVLC is the core engine and the interface to the multimedia \
                     framework on which VLC media player is based.  It allows developers \
                     to create a wide range of multimedia applications using the VLC features.
-    conflicts       ${name} VLC2 libVLC2
+    conflicts       ${name}
     homepage        http://www.videolan.org/vlc/libvlc.html
 }
 
 if {${subport} eq ${name}} {
-    conflicts       lib${name} VLC2 libVLC2
+    conflicts       lib${name}
 }
 
 ### not to be committed in the mainstream port ###
-subport VLC-test {}
-subport libVLC-test {}
-if {${subport} eq "VLC-test" || ${subport} eq "libVLC-test"} {
-    replaced_by     VLC
-    PortGroup       obsolete 1.0
-}
 ##################################################
 
 # VLC-2.1 and later are x86_64-only: https://trac.videolan.org/vlc/ticket/8161
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.8 ; revision 1
+version             3.0.11
 license             GPL-2
 
 platforms           darwin
 
-master_sites        http://download.videolan.org/pub/videolan/vlc/${version}/
+master_sites        https://download.videolan.org/pub/videolan/vlc/${version}/
 dist_subdir         VLC
 distname            vlc-${version}
 use_xz              yes
 
-checksums           rmd160  ccb9cf848ba3aa3d57e1dc6a4ccec9f59002883c \
-                    sha256  e0149ef4a20a19b9ecd87309c2d27787ee3f47dfd47c6639644bc1f6fd95bdf6ib
-#                     size    26041520
+checksums           rmd160  a9c6a8796d0d86a71b738d4d41c377cd03d0e4ce \
+                    sha256  3e94a1acf33445e9da15d528aa48657aa26b912eaa2656b403d43860a8834919
+#                     size    26041744
 
 platform darwin {
     # Enable HFS compression of the workdir if the compress_workdir PortGroup is installed
@@ -72,6 +65,17 @@ platform darwin {
 }
 
 depends_build       port:pkgconfig
+
+set vlcprefix       ${prefix}/libexec/vlc3
+configure.pre_args-replace \
+                    --prefix=${prefix} \
+                    --prefix=${vlcprefix}
+configure.args-append \
+                    --bindir=${prefix}/bin
+### not to be committed in the mainstream port ###
+langselect_dirs_dir-append \
+                    ${destroot}${vlcprefix}/share/locale
+##################################################
 
 platform darwin {
 depends_lib-append  path:lib/libavcodec.diff:ffmpeg \
@@ -93,7 +97,6 @@ depends_lib-append  path:lib/libavcodec.diff:ffmpeg \
                     port:libass \
                     port:libbluray \
                     port:libcddb \
-                    port:libcdio \
                     port:libdc1394 \
                     port:libdca \
                     port:libdvbpsi \
@@ -139,12 +142,13 @@ depends_lib-append  path:lib/libavcodec.diff:ffmpeg \
                     port:taglib \
                     port:tiff \
                     port:twolame \
-                    port:vcdimager \
                     port:x264 \
                     port:x265
 depends_run-append  port:libaacs \
                     port:libbdplus
 
+    # VLC calls ibtools which isn't part of the commandline tools
+    use_xcode yes
     if {${os.major} < 13} {
         pre-fetch {
             ui_error "${name} ${version} requires Mac OS X 10.9 or greater."
@@ -167,6 +171,11 @@ depends_run-append  port:libaacs \
             xinstall -m 755 -d ${worksrcpath}/include/os
             xinstall -m 755 ${filespath}/lock.h ${worksrcpath}/include/os/lock.h
         }
+        # make the code build on 10.11 and earlier
+        ## TODO: remove the entire 10.14+ block on 10.13 and earlier instead of trying to get it to build
+        ##       and not use it.
+        patchfiles-append \
+                    patch-build-on-pre-1012.diff
     }
 }
 
@@ -207,7 +216,7 @@ depends_lib-append  port:libdvdread \
                     port:libmodplug \
                     port:libebml
 configure.ldflags-append \
-                    -Wl,-rpath=${prefix}/lib
+                    -Wl,-rpath=${vlcprefix}/lib
 configure.args-append \
                     --enable-rpath \
                     --enable-dependency-tracking \
@@ -219,7 +228,7 @@ variant vdpau description {enable VDPAU support} {
 }
 pre-configure {
     if {[file exists /usr/lib/libvlccore.so] || [file exists /usr/lib/libvlc.so]} {
-        ui_error "Uninstall the libvlc-dev and/or libvlccore-dev packages or their equivalent"
+        ui_error "Uninstall the host libvlc-dev and/or libvlccore-dev packages or their equivalent"
         return -code error "Conflicting libraries /usr/lib/libvlc.so and/or /usr/lib/libvlccore.so are present"
     }
 }
@@ -243,33 +252,26 @@ depends_lib-append  port:lua
 compiler.blacklist-append \
                     gcc-4.2 llvm-gcc-4.2 macports-clang-3.8 {clang < 300}
 
-#     patchfiles          buildfix-package.mak.patch \
-#                         PR-34741-no__clang_version__.patch \
-#                         static_assert.patch \
-#                         no-sparkle.patch \
-#                         patch-vlc-no-O4.diff \
-# make 10.12 and later ignore all QTKit code in modules/gui/macosx/open.m
-#     patchfiles-append           patch-really-no-qtkit.diff
-
 patchfiles-append   configure.ac-no-arch.patch \
                     patch-soundfont-path.diff
 
-post-patch {
-    if {[string match *clang* ${configure.cxx}] && ${configure.cxx_stdlib} == "libc++"} {
-        reinplace "s:-lstdc\+\+:-lc++:" \
-            ${worksrcpath}/modules/access/Makefile.am
+if {![info exists replaced_by]} {
+    post-patch {
+        if {[string match *clang* ${configure.cxx}] && ${configure.cxx_stdlib} == "libc++"} {
+            reinplace "s:-lstdc\+\+:-lc++:" \
+                ${worksrcpath}/modules/access/Makefile.am
+        }
+
+        reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/modules/codec/fluidsynth.c
     }
-
-    reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/modules/codec/fluidsynth.c
-
 }
 
-configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
+configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}@${version}.configure.log'"
 pre-configure {
     set cmd [join "${configure.cmd} ${configure.pre_args} ${configure.args}"]
     configure.pre_args-prepend "-cf '${configure.cmd} "
     configure.cmd "/bin/csh"
-    ui_debug "configure command set to `${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}`"
+    ui_debug "configure command set to `cmd=${configure.cmd} pre_args=${configure.pre_args} args=${configure.args} post_args=${configure.post_args}`"
     system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.log"
 }
 
@@ -279,8 +281,8 @@ autoreconf.cmd      ./bootstrap
 autoreconf.pre_args
 autoreconf.args
 depends_build-append port:libtool port:autoconf port:automake
-
 configure.env-append \
+                    "CPP=${configure.cc} -E" \
                     "CXXCPP=${configure.cxx} -E" \
                     "MATROSKA_CFLAGS=${prefix}/include/ebml" \
                     "MATROSKA_LIBS=-lmatroska -lebml"
@@ -289,13 +291,15 @@ build.args-append   DESTDIR=${worksrcpath}/dest_ignore V=1 -k
 # gl.c:121:3: error: Platform not recognized.
 configure.cppflags-append -D__unix__=1 -Wno-unknown-pragmas
 
-# live555 is installed to a weird location
-configure.cppflags-append -I${prefix}/lib/live/liveMedia/include
+platform darwin {
+    # live555 is installed to a weird location
+    configure.cppflags-append -I${prefix}/lib/live/liveMedia/include
+}
 
 build.target        all
 destroot.target     install
 
-livecheck.url       http://download.videolan.org/pub/videolan/vlc/
+livecheck.url       https://download.videolan.org/pub/videolan/vlc/
 livecheck.regex     <a href=\"(\\d\[\\d|\.|\\w\]+).*/\">
 
 # Other
@@ -308,7 +312,7 @@ configure.args-append \
 # Input Plugins
 configure.args-append \
                     --enable-dvdnav --enable-dvdread --disable-smbclient \
-                    --disable-macosx-qtkit --disable-realrtsp \
+                    --disable-realrtsp \
                     --disable-freerdp --disable-opencv --enable-sftp
 
 # Mux/Demux Plugins
@@ -332,7 +336,7 @@ configure.args-append \
                     --without-x --disable-xcb --disable-xvideo \
                     --x-includes=${destroot} --x-libraries=${destroot} \
                     --enable-freetype --enable-fontconfig --enable-fribidi \
-                    --disable-svg --disable-svgdec --disable-wayland
+                    --disable-svg --disable-svgdec --disable-wayland --enable-gles2
 
 # Audio Plugins
 configure.args-append \
@@ -343,6 +347,7 @@ configure.args-append \
 
 # Interface Plugins
 configure.args-append \
+                    --disable-vlc \
                     --disable-macosx \
                     --disable-qt \
                     --enable-ncurses \
@@ -369,13 +374,6 @@ variant dbus description {Enable DBus support} {
     configure.args-replace  --disable-dbus --enable-dbus
 }
 default_variants-append     +dbus
-
-if {${os.major} <= 15} {
-    # QTKit was disabled in 10.12 "Sierra"
-    variant qtkit description {Enable qtcapture and qtaudio} {
-        configure.args-replace  --disable-macosx-qtkit --enable-macosx-qtkit
-    }
-}
 
 variant svg description {Enable SVG rendering and decoding support} {
 #         depends_lib-append      port:librsvg
@@ -428,6 +426,7 @@ if {${subport} ne "lib${name}"} {
         patchfiles-append       patch-vlc-qt-configureac.diff \
                                 patch-vlc-qt-x11.diff
 
+        configure.args-replace  --disable-vlc --enable-vlc
         configure.args-replace  --disable-qt --enable-qt
 
         PortGroup               qt5 1.0
@@ -508,7 +507,7 @@ platform darwin {
     }
 
     post-destroot {
-        file delete {*}[glob ${destroot}${prefix}/lib/vlc/plugins/*/*.la]
+        file delete {*}[glob ${destroot}${vlcprefix}/lib/vlc/plugins/*/*.la]
 
         if {[variant_isset quartz]} {
             if {${subport} ne "lib${name}"} {
@@ -527,17 +526,17 @@ platform darwin {
 
                 # http://trac.macports.org/ticket/35131
                 xinstall -m 755 -d ${destroot}${applications_dir}/VLC.app/Contents/MacOS/lib
-                foreach l [glob -nocomplain ${destroot}${prefix}/lib/*] {
-                    ln -s ${prefix}/lib/[file tail ${l}] ${destroot}${applications_dir}/VLC.app/Contents/MacOS/lib
+                foreach l [glob -nocomplain ${destroot}${vlcprefix}/lib/*] {
+                    ln -s ${vlcprefix}/lib/[file tail ${l}] ${destroot}${applications_dir}/VLC.app/Contents/MacOS/lib
                 }
-                ln -s ${prefix}/lib/vlc/plugins ${destroot}${applications_dir}/VLC.app/Contents/MacOS/plugins
-                ln -s ${prefix}/lib/vlc/lua ${destroot}${applications_dir}/VLC.app/Contents/MacOS/share/lua
-                foreach d [glob -nocomplain ${destroot}${prefix}/share/locale/*] {
+                ln -s ${vlcprefix}/lib/vlc/plugins ${destroot}${applications_dir}/VLC.app/Contents/MacOS/plugins
+                ln -s ${vlcprefix}/lib/vlc/lua ${destroot}${applications_dir}/VLC.app/Contents/MacOS/share/lua
+                foreach d [glob -nocomplain ${destroot}${vlcprefix}/share/locale/*] {
                     set locale [file tail ${d}]
                     set ldir ${destroot}${applications_dir}/VLC.app/Contents/MacOS/share/locale/${locale}/LC_MESSAGES
                     xinstall -m 755 -d ${ldir}
                     foreach m [glob -nocomplain ${d}/LC_MESSAGES/*] {
-                        ln -s ${prefix}/share/locale/${locale}/LC_MESSAGES/[file tail ${m}] ${ldir}/
+                        ln -s ${vlcprefix}/share/locale/${locale}/LC_MESSAGES/[file tail ${m}] ${ldir}/
                     }
                 }
 
@@ -548,13 +547,16 @@ platform darwin {
                 system "chmod 755 ${destroot}${prefix}/bin/vlc"
             } else {
                 delete ${destroot}${prefix}/bin
-                delete ${destroot}${prefix}/share/applications
-                delete ${destroot}${prefix}/share/man
+                delete ${destroot}${vlcprefix}/share/applications
+                delete ${destroot}${vlcprefix}/share/man
             }
         }
+        reinplace "s|prefix=${prefix}|prefix=${vlcprefix}|g" \
+                ${destroot}${vlcprefix}/lib/pkgconfig/libvlc.pc \
+                ${destroot}${vlcprefix}/lib/pkgconfig/vlc-plugin.pc
     }
     post-activate {
-        system "${prefix}/lib/vlc/vlc-cache-gen ${prefix}/lib/vlc"
+        system "${vlcprefix}/lib/vlc/vlc-cache-gen ${vlcprefix}/lib/vlc"
     }
 }
 platform linux {
@@ -563,6 +565,7 @@ platform linux {
         file mkdir "${worksrcpath}/contrib/lib"
     }
     post-destroot {
+        file delete {*}[glob ${destroot}${vlcprefix}/lib/vlc/plugins/*/*.la]
         xinstall -m 755 -d ${destroot}${prefix}/share/kde4/apps/solid
         file rename ${destroot}/usr/share/kde4/apps/solid/actions ${destroot}${prefix}/share/kde4/apps/solid/
         foreach d [glob -nocomplain ${destroot}${prefix}/share/kde4/apps/solid/*.desktop] {
@@ -570,6 +573,11 @@ platform linux {
         }
     }
 }
+
+# VLC does relinking during installation, so doing that in parallel should speed up things
+destroot.post_args-append \
+                -kj${build.jobs}
+
 notes-append "MIDI support requires installing one or more SoundFont files,\
     in ${prefix}/share/sounds/sf2, for instance from port:generaluser-soundfont."
 
