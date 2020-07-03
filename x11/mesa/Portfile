@@ -15,6 +15,10 @@ name                mesa
 epoch               1
 # version             17.1.6 ; revision 1
 version             18.3.3
+platform linux {
+    # for wayland
+    revision        1
+}
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -90,10 +94,11 @@ if {[string match *meson* ${configure.cmd}]} {
                     -Dgallium-drivers=
     }
     platform linux {
-        # platform wayland requires wayland-egl-backend which we don't offer yet
+        depends_lib-append \
+                    port:wayland
         configure.args-append \
                     -Dvulkan-drivers=intel \
-                    -Dplatforms=x11,drm,surfaceless \
+                    -Dplatforms=x11,drm,wayland,surfaceless \
                     -Dgallium-drivers=r300,r600,nouveau,swrast,tegra,svga,virgl,swr \
                     -Dbuild-tests=true
         post-destroot {
