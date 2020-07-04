@@ -43,7 +43,7 @@ if {${subport} eq ${name}} {
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.11
+version             3.0.11 ; revision 1
 license             GPL-2
 
 platforms           darwin
@@ -420,6 +420,14 @@ variant x11 {
     configure.args-append   --with-x --enable-xvideo --enable-xcb
 }
 default_variants-append     +x11
+
+variant wayland description {enable experimental Wayland support} {
+    depends_lib-append \
+            port:wayland
+    configure.args-replace \
+            --disable-wayland \
+            --enable-wayland
+}
 
 if {${subport} ne "lib${name}"} {
     variant qt5 conflicts qt4 description {Build using Qt5 UI. Experimental and probably dysfunctional} {
