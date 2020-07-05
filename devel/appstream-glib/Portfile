@@ -5,11 +5,12 @@ PortGroup           compiler_blacklist_versions 1.0
 PortGroup           meson 1.0
 PortGroup           github 1.0
 PortGroup           muniversal 1.0
+PortGroup           locale_select 1.0
 
-github.setup        hughsie appstream-glib c77a7968137a4385024bf60880f786359f99188a
+github.setup        hughsie appstream-glib 2b4f436718446d7692787c3deb3cf1a2a4880a69
 fetch.type          git
-# appstream_glib_0_7_14-46-gc77a796
-version             0.7.14.46
+# appstream_glib_0_7_17-18-g2b4f436
+version             0.7.17.18
 license             LGPL-2+
 categories          devel
 maintainers         {devans @dbevans} openmaintainer
@@ -42,10 +43,10 @@ depends_lib-append \
                     port:gtk3 \
                     port:gdk-pixbuf2 \
                     port:freetype \
-                    port:json-glib
+                    port:json-glib \
+                    port:libsoup
 platform darwin {
     depends_lib-append \
-                    port:libsoup \
                     port:gobject-introspection \
                     port:fontconfig
 }
@@ -62,21 +63,25 @@ post-patch {
 # attempt to fix build on 10.6 by blacklisting troublesome compilers
 compiler.blacklist-append  *gcc-3.* *gcc-4.* {clang < 300}
 
-configure.ldflags-append -lintl
+configure.ldflags-append -lintl \
+                    -Wl,-rpath,${prefix}/lib/x86_64-linux-gnu
 
 # gobject-introspection uses g-ir-scanner, which uses $CC from env
-if {[variant_isset universal]} {
-    foreach arch ${configure.universal_archs} {
-        lappend merger_build_env(${arch})  CC='${configure.cc} -arch ${arch}'
-        lappend merger_destroot_env(${arch})  CC='${configure.cc} -arch ${arch}'
-    }
-} else {
-    build.env-append       CC="${configure.cc} ${configure.cc_archflags}"
-    destroot.env-append    CC="${configure.cc} ${configure.cc_archflags}"
-}
+# if {[variant_isset universal]} {
+#     foreach arch ${configure.universal_archs} {
+#         lappend merger_build_env(${arch})  CC='${configure.cc} -arch ${arch}'
+#         lappend merger_destroot_env(${arch})  CC='${configure.cc} -arch ${arch}'
+#     }
+# } else {
+    build.env-append    "CC=${configure.cc}" \
+                        "LDFLAGS=${configure.ldflags}"
+                        
+    destroot.env-append "CC=${configure.cc}" \
+                        "LDFLAGS=${configure.ldflags}"
+# }
 
 configure.args      -Drpm=false \
                     -Dbuilder=true \
-                    -Dintrospection=false
+                    -Dintrospection=true
 
 meson.save_configure_cmd "log too"
