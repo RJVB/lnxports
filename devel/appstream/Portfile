@@ -1,0 +1,62 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           compiler_blacklist_versions 1.0
+PortGroup           meson 1.0
+PortGroup           qt5 1.0
+PortGroup           locale_select 1.0
+
+name                AppStream
+version             0.12.11
+license             LGPL-2+
+categories          devel
+maintainers         gmail.com:rjvbertin openmaintainer
+platforms           linux
+homepage            https://www.freedesktop.org/wiki/Distributions/AppStream/
+
+description         A library to work with AppStream metadata
+
+long_description    AppStream is a cross-distro effort for providing metadata for software \
+                    in the (Linux) ecosystem. It provides a convenient way to get information \
+                    about non-installed software, and is one of the building blocks for software \
+                    centres. It consists of specifications for things like upstream metainfo files, \
+                    a unified software metadata pool for distributors, screenshot services and \
+                    various other useful bits needed to create user-friendly software-centres or \
+                    other tools requiring rich metadata for software and other content.
+master_sites        https://www.freedesktop.org/software/appstream/releases/
+use_xz              yes
+
+checksums           rmd160  bcbb746c36bd42891524142728caed548a17a0ea \
+                    sha256  194d871ae057c6bf2b5a95e98d77da2b0107996f593b2ac0b0b88fa8ba452f11
+#                     size    2120548
+
+depends_build-append  \
+                    port:pkgconfig \
+                    port:gperf
+
+depends_lib-append \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:gobject-introspection \
+                    port:libxml2 \
+                    port:libyaml \
+                    port:libstemmer \
+                    port:lmdb
+
+# attempt to fix build on 10.6 by blacklisting troublesome compilers
+compiler.blacklist-append  *gcc-3.* *gcc-4.* {clang < 300}
+
+configure.ldflags-append -lintl \
+                    -Wl,-rpath,${prefix}/lib/x86_64-linux-gnu
+
+# gobject-introspection uses g-ir-scanner, which uses $CC from env
+build.env-append    "CC=${configure.cc}"
+destroot.env-append "CC=${configure.cc}"
+
+configure.args      -Dqt=true \
+                    -Dvapi=true \
+                    -Dapidocs=false \
+                    -Dapt-support=true
+
+meson.save_configure_cmd "log too"
+
+destroot.violate_mtree yes
