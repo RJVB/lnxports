@@ -52,8 +52,7 @@ platform darwin {
 }
 
 platform darwin {
-    patchfiles      use-system-uuid.patch \
-                    dont-use-version-script.patch
+    patchfiles      use-system-uuid.patch
 }
 
 post-patch {
