@@ -1,0 +1,95 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem              1.0
+
+name                    argyll
+version                 2.1.2
+categories              graphics
+platforms               darwin
+maintainers             {lbschenkel @lbschenkel} openmaintainer
+license                 AGPL-3
+
+description             Argyll Color Management System
+long_description        ArgyllCMS is an ICC compatible color management \
+system. It supports accurate ICC profile creation for scanners, cameras \
+and film recorders, and calibration and profiling of displays and RGB \& \
+CMYK printers. Argyll includes a general purpose ICC V2 profile format \
+access library, icclib, and a general purpose CGATS file format I/O library.
+
+homepage                http://www.argyllcms.com/
+master_sites            ${homepage}
+use_zip                 yes
+distname                Argyll_V${version}_src
+
+checksums               rmd160  101fb5f2dd3965cdeb4ac4a61bfe67239c94615b \
+                        sha256  be378ca836b17b8684db05e9feaab138d711835ef00a04a76ac0ceacd386a3e3 \
+                        size    13837056
+
+worksrcdir              Argyll_V${version}
+
+platform darwin {
+    depends_build       port:jam
+}
+
+depends_lib-append      port:jpeg
+depends_lib-append      port:libpng
+depends_lib-append      path:lib/pkgconfig/libusb-1.0.pc:libusb
+depends_lib-append      port:tiff
+depends_lib-append      port:zlib
+
+post-extract {
+    # To make sure that in case of problems the build will fail instead
+    # of silently falling back to the built-in versions:
+    delete ${worksrcpath}/jpeg
+    delete ${worksrcpath}/png
+    delete ${worksrcpath}/tiff
+    delete ${worksrcpath}/usb
+    delete ${worksrcpath}/zlib
+}
+
+use_configure           no
+build.env-append        HAVE_JPEG=true
+build.env-append        HAVE_PNG=true
+build.env-append        HAVE_TIFF=true
+build.env-append        HAVE_Z=true HAVE_ZLIB=true
+build.env-append        CC=${configure.cc}
+build.env-append        PREF_CCFLAGS=${configure.cflags}
+build.env-append        "PREF_LINKFLAGS=${configure.ldflags} \
+                                        -ljpeg ${prefix}/lib/libpng.so -ltiff -lusb-1.0 -lz -lssl"
+destroot.env            {*}${build.env}
+destroot.destdir        DESTDIR=${worksrcpath}
+
+post-destroot {
+    # Install documentation.
+    xinstall -m 755 -d ${destroot}${prefix}/share/doc/${name}
+    xinstall -m 644 -W ${worksrcpath} \
+        notes.txt Readme.txt ttbd.txt \
+        ${destroot}${prefix}/share/doc/${name}
+    system "cp -r ${worksrcpath}/doc/* \
+        ${destroot}${prefix}/share/doc/${name} && \
+        chmod 0644 ${destroot}${prefix}/share/doc/${name}/*"
+    # Install binaries
+    delete ${worksrcpath}/bin/License.txt
+    xinstall -m 755 {*}[glob ${worksrcpath}/bin/*] \
+        ${destroot}${prefix}/bin
+    # Install references
+    xinstall -m 755 -d ${destroot}${prefix}/share/${name}/ref
+    xinstall -m 644 {*}[glob ${worksrcpath}/ref/*] \
+        ${destroot}${prefix}/share/${name}/ref
+    platform darwin {
+        # xinstall does not remove 'quarantine' attribute;
+        # do that manually.
+        fs-traverse fixfile ${destroot} {
+            if {[exec xattr -l ${fixfile}] != ""} {
+                system "xattr -d com.apple.quarantine ${fixfile}"
+            }
+        }
+    }
+}
+
+# conflicts with num-utils on ${prefix}/bin/average
+conflicts-append    num-utils
+
+livecheck.type      regex
+livecheck.url       ${homepage}downloadsrc.html
+livecheck.regex     Argyll_V(\[0-9.]+)_src${extract.suffix}
