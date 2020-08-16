@@ -17,7 +17,7 @@ epoch               1
 version             18.3.3
 platform linux {
     # for wayland
-    revision        1
+    revision        2
 }
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
@@ -112,10 +112,19 @@ if {[string match *meson* ${configure.cmd}]} {
     platform linux {
         depends_lib-append \
                     port:wayland
+        post-patch {
+            # should be a patch of course
+            reinplace "s|SYS_memfd_create|__NR_memfd_create|g" ${worksrcpath}/src/intel/tools/aub_mem.c
+        }
         configure.args-append \
                     -Dvulkan-drivers=intel \
                     -Dplatforms=x11,drm,wayland,surfaceless \
                     -Dgallium-drivers=r300,r600,nouveau,swrast,tegra,svga,virgl,swr \
+                    -Dgallium-extra-hud=true \
+                    -Dgallium-va=true \
+                    -Dgallium-opencl=standalone \
+                    -Dtools=all \
+                    -Dglx-direct=true \
                     -Dbuild-tests=true
         post-destroot {
             # meson rebuilds to-be-installed libraries without rpath information, so replace those with
