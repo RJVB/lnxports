@@ -1,0 +1,30 @@
+PortSystem          1.0
+PortGroup           python 1.0
+
+name                py-opengl-accelerate
+version             3.1.5
+categories-append   graphics
+platforms           darwin
+license             BSD
+maintainers         {jmr @jmroot} openmaintainer
+description         Acceleration code for PyOpenGL
+long_description \
+   This set of C (Cython) extensions provides acceleration of common \
+   operations for slow points in PyOpenGL 3.x.
+
+homepage            http://pyopengl.sourceforge.net/
+python.rootname     PyOpenGL-accelerate
+
+checksums           md5 b710eaf81da4051c623a33c0ec5bb713 \
+                    rmd160 125440ae018e9666121664c2328d8d0a3dab6a98 \
+                    sha256 12e5518b0216a478527c7ce5ddce623c3d0517adeb87226da767772e8b7f2f06
+
+python.versions     27 35 36 37 38
+
+platform darwin {
+    if {$subport ne $name} {
+        depends_lib     port:py${python.version}-numpy
+    }
+}
+
+livecheck.type  none
