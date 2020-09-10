@@ -1,10 +1,10 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem      1.0
+PortGroup       LTO 1.0
 
 name            xorg-libxcb
-version         1.13
-revision        1
+version         1.14
 categories      x11 devel
 license         X11
 maintainers     {jeremyhu @jeremyhu} openmaintainer
@@ -16,11 +16,11 @@ master_sites     ${homepage}dist/
 
 distname        libxcb-${version}
 
-checksums       rmd160  bd333e03159499b9a01ac278296d733d1cb5d611 \
-                sha256  188c8752193c50ff2dbe89db4554c63df2e26a2e47b0fa415a70918b5b851daa \
-                size    510453
+checksums       rmd160  13ca4d944e3b1e202bbc501fef0035a7db44201b \
+                sha256  a55ed6db98d43469801262d81dc2572ed124edc3db31059d4e9916eb9f844c34
+#                 size    439404
 
-use_bzip2       yes
+use_xz          yes
 use_parallel_build yes
 
 depends_build   port:pkgconfig
@@ -35,7 +35,8 @@ platform linux {
     depends_lib port:xorg-xcb-proto
 }
 
-configure.args  --disable-build-docs
+configure.args  --disable-devel-docs \
+                --disable-silent-rules
 
 variant docs description "Install extra documentation" {
     depends_build-append \
@@ -46,37 +47,50 @@ variant docs description "Install extra documentation" {
         doxygen
 
     configure.args-delete \
-        --disable-build-docs
+        --disable-devel-docs
 
     configure.args-append \
-        --enable-build-docs
+        --enable-devel-docs
 
     configure.env-append \
-        DOXYGEN="${prefix}/bin/doxygen"
+        DOXYGEN=${prefix}/bin/doxygen
 }
 
-variant python27 conflicts python34 python35 python36 description {Use python 2.7} {
+# No need to use require_active_variants here. Technically, `xorg-libxcb +python37` builds fine
+# with `xorg-xcb-proto +python36` as the xcbgen module in xorg-xcb-proto is not located using
+# usual Python import mechanism. Instead, the path for xcbgen is recorded in
+# `$prefix/lib/pkgconfig/xcb-proto.pc` as the pythondir variable when building xorg-xcb-proto
+# and the build system of libxcb loads xcbgen using that pkg-config variable [1].
+#
+# [1] https://gitlab.freedesktop.org/xorg/lib/libxcb/blob/1.13.1/configure.ac#L85
+
+variant python27 conflicts python35 python36 python37 python38 description {Use python 2.7} {
     depends_run-append      port:python27
     configure.python        ${prefix}/bin/python2.7
 }
 
-variant python34 conflicts python27 python35 python36 description {Use python 3.4} {
-    depends_run-append      port:python34
-    configure.python        ${prefix}/bin/python3.4
-}
-
-variant python35 conflicts python27 python34 python36 description {Use python 3.5} {
-    depends_run-append      port:python35
+variant python35 conflicts python27 python36 python37 python38 description {Use python 3.5} {
+    depends_build-append    port:python35
     configure.python        ${prefix}/bin/python3.5
 }
 
-variant python36 conflicts python27 python34 python35 description {Use python 3.6} {
-    depends_run-append      port:python36
+variant python36 conflicts python27 python35 python37 python38 description {Use python 3.6} {
+    depends_build-append    port:python36
     configure.python        ${prefix}/bin/python3.6
 }
 
-# if {![variant_isset python34] && ![variant_isset python35] && ![variant_isset python36]} {
-#     default_variants +python27
+variant python37 conflicts python27 python35 python36 python38 description {Use python 3.7} {
+    depends_build-append    port:python37
+    configure.python        ${prefix}/bin/python3.7
+}
+
+variant python38 conflicts python27 python35 python36 python37 description {Use python 3.8} {
+    depends_build-append    port:python38
+    configure.python        ${prefix}/bin/python3.8
+}
+
+# if {![variant_isset python27] && ![variant_isset python35] && ![variant_isset python36] && ![variant_isset python37] && ![variant_isset python38]} {
+#     default_variants +python38
 # }
 
 livecheck.type  regex
