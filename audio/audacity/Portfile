@@ -83,11 +83,10 @@ if {${subport} eq "${name}"} {
 } else {
     PortGroup       cmake 1.1
     conflicts       "${name}"
-#     # git describe --tags : Audacity-2.3.2-752-gb3539ed2b
-#     github.setup    audacity audacity 1c44a1e061022a75ad60e622ef529fe0736d755d
-    # git describe --tags : Audacity-2.3.3-841-g310b5dea3
-    github.setup    audacity audacity 4b1d5c376de2f23873023da50bf6f8b66dc7eada
-    version         2.3.3.1135
+    # git describe --tags : Audacity-2.4.2-543-g9e53df0c4
+    # NB: check c67842f525095f100aa662ff59be421545d8bfc4!
+    github.setup    audacity audacity 9e53df0c47495f520f94472d61762da24c9651eb
+    version         2.4.2.543
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate.
     fetch.type      git
@@ -100,16 +99,21 @@ if {${subport} eq "${name}"} {
 
     pre-build {
         # register the exact source version in the build:
-        system -W ${worksrcpath}/mac "scripts/get_gitident.sh"
+        if {[file exists ${worksrcpath}/mac/scripts/get_gitident.sh]} {
+            system -W ${worksrcpath}/mac "scripts/get_gitident.sh"
+            system "echo '#define GIT_DESC \"${version}\"' >> ${worksrcpath}/src/RevisionIdent.h"
+        } else {
+            system "echo '#define GIT_DESC \"${version}\"' >> ${worksrcpath}/src/GitDesc.h"
+        }
     }
     build.post_args-append -k
     cmake.generator Ninja
     cmake.save_configure_cmd "log too"
 }
 
-proc add_devel_patchfile {fnames} {
+proc add_patchfile_ifexists {args} {
     global PPREFIX filespath
-    foreach fname ${fnames} {
+    foreach fname ${args} {
         if {[file exists ${filespath}/${fname}]} {
             patchfiles-append ${fname}
         }
@@ -157,13 +161,21 @@ if {${subport} eq "${name}"} {
 }
 
 depends_build-append \
-                    port:pkgconfig \
+                    port:pkgconfig
+if {${subport} eq "${name}"} {
+    depends_build-append \
                     port:python27
+    set python_bin ${prefix}/bin/python2.7
+} else {
+    depends_build-append \
+                    port:python37
+    set python_bin ${prefix}/bin/python3.7
+#     depends_lib-append \
+#                     port:sqlite3
+}
 # depends_lib-append  port:freetype \
 #                     port:harfbuzz \
 #                     port:libid3tag \
-#                     port:libmad \
-#                     port:soundtouch \
 #                     port:soxr \
 #                     port:twolame
 depends_lib-append  port:expat \
@@ -172,7 +184,9 @@ depends_lib-append  port:expat \
                     port:lame \
                     port:libogg \
                     port:libsndfile \
-                    port:libvorbis
+                    port:libvorbis \
+                    port:libmad \
+                    port:soundtouch
 # audacity could use port:lv2 and port:lilv but would also require a port:suil for that to be possible.
 
 patch.pre_args      -Np1
@@ -185,10 +199,13 @@ platform darwin {
     depends_build-append \
                     port:nasm
 
+    if {${subport} eq "${name}"} {
+        patchfiles-append \
+                    fix-minsrc-autoreconf.patch \
+                    libvamp-Makefile-for-osx.diff \
+                    src-Makefile-for-osx.diff
+    }
     patchfiles-append \
-                    fix-minsrc-autoreconf.patch                             \
-                    libvamp-Makefile-for-osx.diff                           \
-                    src-Makefile-for-osx.diff                               \
                     portaudio-no-universal-build.diff                       \
                     ${PPREFIX}buildinfo-clarify-no-gstreamer.diff           \
                     ${PPREFIX}patch-aboutdlg-compiler.diff                  \
@@ -199,20 +216,21 @@ platform darwin {
                     patch-skip-gcc-version-test.diff
     if {${subport} eq "${name}"} {
         patchfiles-append \
-                    patch-fix-audiounits.diff
+                    patch-fix-audiounits.diff \
+                    patch-WindowMenus-objcxx.diff
     }
     # use lame from MacPorts (partial revert of ae431bc5)
     # load ffmpeg libs from MacPorts (reverts of 1d40f33e)
     patchfiles-append \
-                    patch-use-MPlame.diff \
+                    ${PPREFIX}patch-use-MPlame.diff \
                     ${PPREFIX}patch-use-MPffmpeg.diff
-    if {${subport} eq "${name}"} {
-        # reported upstream, patch accepted as the proper fix:
-        patchfiles-append \
-                    patch-unordered_map-fixes.diff
-    }
+#     if {${subport} eq "${name}"} {
+#         # reported upstream, patch accepted as the proper fix:
+#         patchfiles-append \
+#                     patch-unordered_map-fixes.diff
+#     }
     # for building against wxWidgets 3.0.3 and up:
-    add_devel_patchfile \
+    add_patchfile_ifexists \
                     ${PPREFIX}patch-wxw-303.diff
     # work around a missing implementation in wxCocoa's wxSound class
     patchfiles-append \
@@ -224,9 +242,12 @@ platform linux {
 #     # this is likely to be true as long as we use the host's wxWidgets:
 #     conflicts_build-append \
 #                     tiff-dev
+    if {${subport} eq "${name}"} {
+        patchfiles-append \
+                    fix-minsrc-autoreconf.patch \
+                    libvamp-Makefile-for-linux.diff
+    }
     patchfiles-append \
-                    fix-minsrc-autoreconf.patch                             \
-                    libvamp-Makefile-for-linux.diff                         \
                     ${PPREFIX}buildinfo-clarify-no-gstreamer.diff                     \
                     ${PPREFIX}patch-aboutdlg-compiler.diff                            \
                     add_enGB_translation.diff                               \
@@ -242,22 +263,26 @@ platform linux {
     # use lame from MacPorts (partial revert of ae431bc5)
     # load ffmpeg libs from MacPorts (reverts of 1d40f33e)
     patchfiles-append \
-                    patch-use-MPlame.diff \
+                    ${PPREFIX}patch-use-MPlame.diff \
                     ${PPREFIX}patch-use-MPffmpeg.diff
-    # strange C++ errors, why would upstream builds not be affected?
-#     patchfiles-append \
-#                     patch-unordered_map-fixes.diff
     # for building against wxWidgets 3.0.3:
-    add_devel_patchfile \
+    add_patchfile_ifexists \
                     ${PPREFIX}patch-wxw-303.diff
 #     set wxWidgets.wxconfig /usr/bin/wx-config
 }
-patchfiles-append   patch-no-libatomic.diff \
-                    ${PPREFIX}patch-wxw-31x.diff
+if {${subport} eq "${name}"} {
+    patchfiles-append \
+                    patch-no-libatomic.diff
+}
+add_patchfile_ifexists \
+                    ${PPREFIX}patch-wxw-31x.diff \
+                    ${PPREFIX}patch-enable-compact-menu.diff
 
 if {${subport} eq "${name}-devel"} {
     patchfiles-append \
                     patch-cmakefiles.diff
+    add_patchfile_ifexists \
+                    ${PPREFIX}patch-temp-fixes.diff
 }
 
 if {[variant_isset qt]} {
@@ -324,6 +349,9 @@ if {${subport} eq "${name}"} {
                     -D${_OPT}use_soundtouch=system \
                     -D${_OPT}use_twolame=system \
                     -D${_OPT}use_midi=system
+    # using port:sqlite3 leads to unstable behaviour?!
+    configure.args-append \
+                    -D${_OPT}use_sqlite=local
     configure.env-append \
                     WX_CONFIG=${wxWidgets.wxconfig}
     platform darwin {
@@ -332,12 +360,17 @@ if {${subport} eq "${name}"} {
                     -Daudacity_use_portaudio=local
     }
 }
-configure.env-append \
+platform darwin {
+    configure.env-append \
                     PORTMIDI_CFLAGS=-I${prefix}/include \
                     PORTMIDI_LIBS=${prefix}/lib/libportmidi.dylib
+}
 depends_lib-append \
                     port:portmidi
 platform linux {
+    configure.env-append \
+                    PORTMIDI_CFLAGS=-I${prefix}/include \
+                    PORTMIDI_LIBS=${prefix}/lib/libportmidi.so
 #     if {[string match *clang* ${configure.cxx}]} {
 #         variant libcxx description {highly experimental and probably broken option to build against libc++. \
 #                 Requires using clang and an independently provided libc++ installation.} {
@@ -389,7 +422,6 @@ if {${build.cmd} ne "ninja"} {
 # with everything defined/declared as intended we can now
 # handle the post-patch step with its reinplace statements.
 post-patch {
-    set python_bin ${prefix}/bin/python2.7
     if {${subport} eq "${name}"} {
         reinplace -W ${worksrcpath} "s|@@PYTHON@@|${python_bin}|g" \
                                     lib-src/lv2/build
@@ -409,8 +441,10 @@ post-patch {
     reinplace -W ${worksrcpath} "s| -Werror||g" \
                                 lib-src/portaudio-v19/configure.in \
                                 lib-src/portaudio-v19/configure
-    reinplace -W ${worksrcpath} "s|@LDFLAGS@|${configure.ldflags}|g" \
+    if {${subport} eq "${name}"} {
+        reinplace -W ${worksrcpath} "s|@LDFLAGS@|${configure.ldflags}|g" \
                                 lib-src/libvamp/Makefile.in
+    }
     platform darwin {
         # audacity contains C++ files that include system SDK headers and ObjC code on OS X;
         # they must thus be built as ObjC++
@@ -425,10 +459,12 @@ post-patch {
             set d  [lindex ${mm} 1]
             set mk [lindex ${mm} 2]
             foreach m ${mk} {
-                if {${d} eq "src"} {
-                    reinplace -W ${worksrcpath} "s|${f}.cpp|${f}.mm|g" ${m}
-                } else {
-                    reinplace -W ${worksrcpath} "s|/${f}.cpp|/${f}.mm|g" ${m}
+                if {${subport} eq "${name}"} {
+                    if {${d} eq "src"} {
+                        reinplace -W ${worksrcpath} "s|${f}.cpp|${f}.mm|g" ${m}
+                    } else {
+                        reinplace -W ${worksrcpath} "s|/${f}.cpp|/${f}.mm|g" ${m}
+                    }
                 }
             }
             # it's easiest to symlink f.mm to f.cpp; clang++ will do the rest.
@@ -436,8 +472,10 @@ post-patch {
                 ln -s ${f}.cpp ${worksrcpath}/${d}/${f}.mm
             }
         }
-        reinplace -W ${worksrcpath} "s|/VSTControlGTK.cpp|/VSTControlOSX.mm|g" \
+        if {${subport} eq "${name}"} {
+            reinplace -W ${worksrcpath} "s|/VSTControlGTK.cpp|/VSTControlOSX.mm|g" \
                 src/Makefile.in src/Makefile.am
+        }
         if {[file exists ${worksrcpath}/src/menus/WindowMenus.cpp] && ![file exists ${worksrcpath}/src/menus/WindowMenus.mm]} {
             ln -s WindowMenus.cpp ${worksrcpath}/src/menus/WindowMenus.mm
         }
@@ -473,19 +511,10 @@ platform darwin {
             system "echo \"#!/bin/sh\nexec \\\"${aud_app_path}/Contents/MacOS/Audacity\\\" \\\"\\\$\@\\\"\" > ${destroot}${prefix}/bin/audacity"
             system "chmod 755 ${destroot}${prefix}/bin/audacity"
         } else {
-            file rename ${destroot}${prefix}/bin/Audacity.app ${destroot}${aud_app_path}
-            # replace the Resources symlink
-            file delete ${destroot}${aud_app_path}/Contents/Resources
-            xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/Resources
-            # move icon resources
-            foreach l [glob -nocomplain ${destroot}${prefix}/share/locale/*.icns] {
-                file rename ${l} ${destroot}${aud_app_path}/Contents/Resources/
-            }
-            # move translation resources
-            foreach l [glob -nocomplain ${destroot}${prefix}/share/locale/*.lproj] {
-                file rename ${l} ${destroot}${aud_app_path}/Contents/Resources
-            }
-            file rename ${destroot}${prefix}/share/locale/EQDefaultCurves.xml ${destroot}${prefix}/share/audacity/
+            file rename ${destroot}${prefix}/Audacity.app ${destroot}${aud_app_path}
+            xinstall -m 755 -d ${destroot}${prefix}/share/audacity
+            ln -s ${aud_app_path}/Contents/Resources/EQDefaultCurves.xml ${destroot}${prefix}/share/audacity/
+            ln -s ${aud_app_path}/Contents/plug-ins ${destroot}${prefix}/share/audacity/
             xinstall -m 755 -d ${destroot}${prefix}/share/mime/packages/
             xinstall -m 755 ${worksrcpath}/src/audacity.xml ${destroot}${prefix}/share/mime/packages/audacity.xml
             # install a wrapper script in ${prefix}/bin
@@ -499,13 +528,20 @@ platform darwin {
         }
         # allow the application to find certain things where it expects them on OS X (= inside the app bundle)
         foreach r [glob -nocomplain ${destroot}${prefix}/share/audacity/*] {
-            ln -s ${prefix}/share/audacity/[file tail ${r}] ${destroot}${aud_app_path}/Contents/Resources
+            set f [file tail ${r}]
+            if {![file exists ${destroot}${aud_app_path}/Contents/Resources/${f}]} {
+                ln -s ${prefix}/share/audacity/${f} ${destroot}${aud_app_path}/Contents/Resources
+            }
         }
     }
 }
 
 post-destroot {
-    xinstall -m 755 ${filespath}/vocalremover.ny ${destroot}${prefix}/share/audacity/plug-ins/
+    if {${subport} eq "${name}" || ${os.platform} ne "darwin"} {
+        xinstall -m 755 ${filespath}/vocalremover.ny ${destroot}${prefix}/share/audacity/plug-ins/
+    } else {
+        xinstall -m 755 ${filespath}/vocalremover.ny ${destroot}${aud_app_path}/Contents/plug-ins/
+    }
 }
 
 notes "
