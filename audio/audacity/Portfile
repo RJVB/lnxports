@@ -97,6 +97,8 @@ if {${subport} eq "${name}"} {
 
     compiler.cxx_standard 2014
 
+    variant wx32 description {build against wxWidgets-3.2} {}
+
     pre-build {
         # register the exact source version in the build:
         if {[file exists ${worksrcpath}/mac/scripts/get_gitident.sh]} {
@@ -135,7 +137,25 @@ variant qt description {build against wxQt-3.2 (experimental!!)} {}
 if {[variant_isset qt]} {
     wxWidgets.use   wxQt-3.2
 } else {
-    wxWidgets.use   wxWidgets-3.1
+    if {[variant_exists wx32] && [variant_isset wx32]} {
+        wxWidgets.use wxWidgets-3.2
+    } else {
+        wxWidgets.use wxWidgets-3.1
+    }
+}
+
+if {${subport} eq "${name}"} {
+    # use 2 require expressions instead of a combined so the user gets
+    # feedback which actually installed variant(s) is/are unwanted
+    # instead of the whole list.
+    require_active_variants ${wxWidgets.port} "" stdlib
+    require_active_variants ${wxWidgets.port} "" cxx14
+} else {
+    if {[variant_isset wx32]} {
+        require_active_variants ${wxWidgets.port} "" stdlib
+    } else {
+        require_active_variants ${wxWidgets.port} cxx14 stdlib
+    }
 }
 
 depends_lib-append  port:${wxWidgets.port}
@@ -149,16 +169,6 @@ depends_lib-append  port:${wxWidgets.port}
 #         }
 #     }
 # }
-
-if {${subport} eq "${name}"} {
-    # use 2 require expressions instead of a combined so the user gets
-    # feedback which actually installed variant(s) is/are unwanted
-    # instead of the whole list.
-    require_active_variants ${wxWidgets.port} "" stdlib
-    require_active_variants ${wxWidgets.port} "" cxx14
-} else {
-    require_active_variants ${wxWidgets.port} cxx14 stdlib
-}
 
 depends_build-append \
                     port:pkgconfig
@@ -321,7 +331,7 @@ if {${subport} eq "${name}"} {
                     --with-soundtouch \
                     --with-twolame \
                     --with-widgetextra=local \
-                    --with-portmidi=system \
+                    --with-portmidi=local \
                     WX_CONFIG=${wxWidgets.wxconfig}
     platform darwin {
         # Since version 2.2.0 we need to use the embedded (modified) Portaudio version.
@@ -348,7 +358,7 @@ if {${subport} eq "${name}"} {
                     -D${_OPT}use_sbsms=local \
                     -D${_OPT}use_soundtouch=system \
                     -D${_OPT}use_twolame=system \
-                    -D${_OPT}use_midi=system
+                    -D${_OPT}use_midi=local
     # using port:sqlite3 leads to unstable behaviour?!
     configure.args-append \
                     -D${_OPT}use_sqlite=local
@@ -360,17 +370,7 @@ if {${subport} eq "${name}"} {
                     -Daudacity_use_portaudio=local
     }
 }
-platform darwin {
-    configure.env-append \
-                    PORTMIDI_CFLAGS=-I${prefix}/include \
-                    PORTMIDI_LIBS=${prefix}/lib/libportmidi.dylib
-}
-depends_lib-append \
-                    port:portmidi
 platform linux {
-    configure.env-append \
-                    PORTMIDI_CFLAGS=-I${prefix}/include \
-                    PORTMIDI_LIBS=${prefix}/lib/libportmidi.so
 #     if {[string match *clang* ${configure.cxx}]} {
 #         variant libcxx description {highly experimental and probably broken option to build against libc++. \
 #                 Requires using clang and an independently provided libc++ installation.} {
@@ -384,11 +384,8 @@ platform linux {
 #         }
 #     }
 
-#     configure.args-append \
-#                     --with-midi \
-#                     LIBS=-ltiff
     configure.args-append \
-                    --with-midi \
+                    --with-midi=local \
                     --with-portaudio=local
     configure.cppflags-append \
                     -I${prefix}/include -DUSE_AQUA_THEME
@@ -399,9 +396,6 @@ platform linux {
 #     # which lacks the version symbols required by the host's wxWidgets libraries.
 #     configure.ldflags-append \
 #                     /usr/lib/x86_64-linux-gnu/libtiff.a
-    configure.env-replace \
-                    PORTMIDI_LIBS=${prefix}/lib/libportmidi.dylib \
-                    PORTMIDI_LIBS=${prefix}/lib/libportmidi.so
 }
 
 # make sure the C++ stdlib argument is added to the LDFLAGS too
