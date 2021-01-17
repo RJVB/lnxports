@@ -45,11 +45,11 @@ subport ${name}-qt5 {
 
     if {[variant_isset master]} {
         fetch.type      git
-        git.url         git://anongit.kde.org/phonon
-        git.branch      76b3f63f8e1742d4a181aacfb847ac0cee9731d0
-        # v4.11.0-10-g76b3f63f
+        git.url         https://invent.kde.org/kde/phonon
+        git.branch      528c604baaaea1c5617eb4301fa53679c52becc9
+        # v4.11.0-16-g528c604b
         set base_version ${version}
-        version         4.11.0.10
+        version         4.11.0.16
         post-configure {
             if {[vercmp ${version} ${base_version}] == 0} {
                 ui_warn "The +master variant provides the same version as the standard variant, currently"
@@ -58,16 +58,12 @@ subport ${name}-qt5 {
         worksrcdir      ${name}-git
         distname        ${name}-git
     }
-    patchfiles-append   patch-support-older-qt5.diff
+    patchfiles-append   qt5/patch-support-older-qt5.diff
 
     qt5.depends_component \
                         qttools
 
     depends_build-append    path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
-
-    if {[info procs "cmake.save_configure_cmd"] ne ""} {
-        cmake.save_configure_cmd "log too"
-    }
 
     configure.args-append   -DAPPLE_SUPPRESS_X11_WARNING=ON
 
@@ -83,28 +79,6 @@ subport ${name}-qt5 {
             copy ${workpath}/build/demos/simplecapture/simplecapture ${demos_dest_dir}
         }
 
-        platform darwin {
-            # fix library and plugin self-names
-            system "install_name_tool -id ${prefix}/lib/${LPH}.4.dylib ${destroot}${prefix}/lib/${LPH}.dylib"
-            system "install_name_tool -id ${prefix}/lib/${LPH}experimental.4.dylib ${destroot}${prefix}/lib/${LPH}experimental.dylib"
-
-            # fix use of libphonon4qt5
-            system "install_name_tool -change lib/${LPH}.4.dylib ${prefix}/lib/${LPH}.4.dylib \
-                ${destroot}${prefix}/lib/${LPH}experimental.dylib"
-            system "install_name_tool -change lib/${LPH}.4.dylib ${prefix}/lib/${LPH}.4.dylib \
-                ${destroot}${qt_plugins_dir}/designer/phononwidgets.dylib"
-            system "install_name_tool -id phononwidgets.dylib ${destroot}${qt_plugins_dir}/designer/phononwidgets.dylib"
-            if {[variant_isset demos]} {
-                system "install_name_tool -change lib/${LPH}.4.dylib ${prefix}/lib/${LPH}.4.dylib \
-                    ${demos_dest_dir}/simpleplayer.app/Contents/MacOS/simpleplayer"
-                system "install_name_tool -change lib/${LPH}.4.dylib ${prefix}/lib/${LPH}.4.dylib \
-                    ${demos_dest_dir}/metadatareader.app/Contents/MacOS/metadatareader"
-                system "install_name_tool -change lib/${LPH}.4.dylib ${prefix}/lib/${LPH}.4.dylib \
-                    ${demos_dest_dir}/phota.app/Contents/MacOS/phota"
-                system "install_name_tool -change lib/${LPH}.4.dylib ${prefix}/lib/${LPH}.4.dylib \
-                    ${demos_dest_dir}/simplecapture.app/Contents/MacOS/simplecapture"
-            }
-        }
     }
 }
 
@@ -152,10 +126,9 @@ if {${subport} ne "${name}-qt5"} {
     }
     default_variants    +compversion440
 
-    # nb: there is no WITH_QZeitgeist option, keeping it out of nostalgia
     configure.args-append   \
         -DPHONON_INSTALL_QT_EXTENSIONS_INTO_SYSTEM_QT=true \
-        -DWITH_QZeitgeist=OFF
+        -DCMAKE_DISABLE_FIND_PACKAGE_QZeitgeist=ON
 
     set LPH libphonon
     post-destroot {
@@ -204,7 +177,10 @@ if {${subport} ne "${name}-qt5"} {
     }
 }
 
-cmake.out_of_source         yes
+if {[info procs "cmake.save_configure_cmd"] ne ""} {
+   cmake.save_configure_cmd "log too"
+}
+
 build.post_args-append      -k
 
 post-patch {
