@@ -1,6 +1,8 @@
---- release/makemacapp.in.orig	2015-07-11 08:00:36.000000000 -0500
-+++ release/makemacapp.in	2015-07-13 20:02:54.000000000 -0500
-@@ -39,8 +39,7 @@
+diff --git a/release/makemacapp.in b/release/makemacapp.in
+index 2bfd869e..44e7797b 100644
+--- a/release/makemacapp.in
++++ b/release/makemacapp.in
+@@ -42,8 +42,7 @@ if [ -f $PACKAGE_NAME.dmg ]; then
  fi
  
  umask 022
@@ -10,12 +12,12 @@
  mkdir -p "$APPROOT/Contents/MacOS"
  mkdir -p "$APPROOT/Contents/Resources"
  
-@@ -64,6 +63,8 @@
+@@ -67,6 +66,8 @@ fi
  install -m 644 $SRCDIR/release/tigervnc.icns "$APPROOT/Contents/Resources/"
  install -m 644 release/Info.plist "$APPROOT/Contents/"
  
 +exit
 +
  install -m 644 $SRCDIR/LICENCE.TXT $TMPDIR/dmg/
- install -m 644 $SRCDIR/README.txt $TMPDIR/dmg/
+ install -m 644 $SRCDIR/README.rst $TMPDIR/dmg/
  

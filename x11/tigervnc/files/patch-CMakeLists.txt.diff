@@ -1,15 +1,8 @@
---- CMakeLists.txt.orig	2015-07-11 08:00:36.000000000 -0500
-+++ CMakeLists.txt	2015-07-13 19:26:12.000000000 -0500
-@@ -28,7 +28,7 @@
- set(DATA_DIR "${CMAKE_INSTALL_PREFIX}/share")
- set(MAN_DIR "${DATA_DIR}/man")
- set(LOCALE_DIR "${DATA_DIR}/locale")
--set(DOC_DIR "${CMAKE_INSTALL_PREFIX}/share/doc/${CMAKE_PROJECT_NAME}-${VERSION}")
-+set(DOC_DIR "${CMAKE_INSTALL_PREFIX}/share/doc/${CMAKE_PROJECT_NAME}")
- 
- if(WIN32)
- set(BIN_DIR "${CMAKE_INSTALL_PREFIX}")
-@@ -126,7 +126,7 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7bf99441..a92a7b29 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -130,7 +130,7 @@ if(WIN32)
  endif()
  
  # X11 stuff. It's in a if() so that we can say REQUIRED
@@ -18,7 +11,7 @@
    find_package(X11 REQUIRED)
  endif()
  
-@@ -284,9 +285,9 @@
+@@ -289,9 +289,9 @@ if(WIN32)
    add_subdirectory(win)
  else()
    # No interest in building x related parts on Apple

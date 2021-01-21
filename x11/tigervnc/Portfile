@@ -9,7 +9,8 @@ platform darwin {
 }
 PortGroup               LTO 1.0
 
-github.setup            TigerVNC tigervnc 1.7.1 v
+github.setup            TigerVNC tigervnc 1.11.0 v
+fetch.type              git
 conflicts               vnc tightvnc
 categories              x11 vnc
 maintainers             ryandesign openmaintainer
@@ -26,8 +27,13 @@ long_description        TigerVNC is an advanced VNC implementation. \
 
 homepage                http://www.tigervnc.com/
 
-checksums               rmd160  837aac1c72218cc7717cb9f0cfebdab8c5360ec5 \
-                        sha256  fc9c7617c1500b815708912e78455c13d0c68e10a377cf6c83a05ca2cd951245
+# checksums               rmd160  970e3633b70589e57c13683f35aedc5d8f3ec01e \
+#                         sha256  59a9656a080d1c5ca60d4143ad4263bd8b5122f87cdfbd3349bc37a48d6f4cc4
+# #                         size    1347027
+
+worksrcdir              ${name}-git
+distname                ${name}-git
+patch.pre_args          -Np1
 
 depends_lib             port:gettext \
                         port:gnutls \
@@ -36,12 +42,16 @@ depends_lib             port:gettext \
                         port:zlib
 patchfiles              patch-CMakeLists.txt.diff
 
+cmake.save_configure_cmd "log too"
+
 if {${os.platform} eq "darwin"} {
     depends_lib-append  path:lib/libfltk.dylib:fltk
     patchfiles-append   patch-release-makemacapp.in.diff
 } else {
     depends_lib-append  path:lib/libfltk.so:fltk
-    patchfiles-append   patch-CMakeLists-linux.diff
+    depends_build-append \
+                        port:ImageMagick
+#     patchfiles-append   patch-CMakeLists-linux.diff
 }
 
 # ivtools' OS/os.h shadows tigervnc's os/os.h on case-insensitive filesystems.
@@ -69,4 +79,10 @@ if {${os.platform} eq "darwin"} {
 } else {
     configure.args-append \
                         -DUSE_GETTEXT_FROM_LIBINTL=ON
+    post-destroot {
+        destroot.violate_mtree yes
+        xinstall -m 755 -d ${destroot}/etc/pam.d
+        file rename ${destroot}/etc/${prefix}/pam.d/tigervnc ${destroot}/etc/pam.d/tigervnc
+        file rename ${destroot}/etc${prefix}/tigervnc ${destroot}${prefix}/etc
+    }
 }

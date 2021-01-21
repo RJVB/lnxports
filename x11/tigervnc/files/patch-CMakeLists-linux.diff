@@ -1,26 +1,8 @@
---- vncviewer/orig.CMakeLists.txt	2017-01-18 13:39:28.000000000 +0100
-+++ vncviewer/CMakeLists.txt	2020-03-23 14:33:11.433808796 +0100
-@@ -50,6 +50,8 @@
- 
- if(APPLE)
-   target_link_libraries(vncviewer "-framework Cocoa" "-framework Carbon")
-+elseif(UNIX)
-+  target_link_libraries(vncviewer "-ldl")
- endif()
- 
- install(TARGETS vncviewer DESTINATION ${BIN_DIR})
---- orig.CMakeLists.txt	2020-03-23 11:08:25.262624136 +0100
-+++ CMakeLists.txt	2020-03-23 17:13:29.146830809 +0100
-@@ -126,7 +126,7 @@
- endif()
- 
- # X11 stuff. It's in a if() so that we can say REQUIRED
--if(UNIX AND NOT APPLE)
-+if(UNIX)
-   find_package(X11 REQUIRED)
- endif()
- 
-@@ -135,6 +135,7 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 7bf994412f9be778562d8d6e2e87710b614a9dab..223cebc5b96d78d62121253c3d52f6e4f53a748c 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -142,6 +142,7 @@ find_package(Pixman REQUIRED)
  
  # Check for gettext
  option(ENABLE_NLS "Enable translation of program messages" ON)
@@ -28,7 +10,7 @@
  if(ENABLE_NLS)
    # Tools
    find_package(Gettext)
-@@ -151,7 +152,7 @@
+@@ -158,7 +159,7 @@ if(ENABLE_NLS)
        set(CMAKE_REQUIRED_LIBRARIES ${ICONV_LIBRARIES})
        set(CMAKE_REQUIRED_FLAGS -fno-builtin-dgettext)
        check_function_exists(dgettext LIBC_HAS_DGETTEXT)
@@ -37,15 +19,90 @@
          set(GETTEXT_FOUND TRUE)
        else()
          find_library(LIBINTL_LIBRARY NAMES intl libintl)
-@@ -284,9 +285,9 @@
-   add_subdirectory(win)
- else()
-   # No interest in building x related parts on Apple
--  if(NOT APPLE)
-+#   if(NOT APPLE)
-     add_subdirectory(unix)
--  endif()
-+#   endif()
- endif()
+diff --git a/media/CMakeLists.txt b/media/CMakeLists.txt
+index 088c72f51fe284572b736ef288e23f47688aa9e7..0f190a090ecc941d3fb9c73a8ce5544eb6f4b9a5 100644
+--- a/media/CMakeLists.txt
++++ b/media/CMakeLists.txt
+@@ -19,43 +19,43 @@ if(CONVERT_EXECUTABLE)
+     install(FILES icons/tigervnc.svg
+       DESTINATION ${CMAKE_INSTALL_FULL_DATADIR}/icons/hicolor/scalable/apps)
+   endif()
+-endif()
  
- if(ENABLE_NLS)
+-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_16.png
+-  COMMAND ${CONVERT_EXECUTABLE} -background transparent
+-    ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_16.svg
+-    ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_16.png
+-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_16.svg
+-  COMMENT "Generating icons/tigervnc_16.png")
+-
+-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_22.png
+-  COMMAND ${CONVERT_EXECUTABLE} -density 72
+-    -size 22x22 xc:none -gravity center -background transparent
+-    ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_20.svg -composite
+-    ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_22.png
+-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_20.svg
+-  COMMENT "Generating icons/tigervnc_22.png")
+-
+-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_24.png
+-  COMMAND ${CONVERT_EXECUTABLE} -density 72
+-    -size 24x24 xc:none -gravity center -background transparent
+-    ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_20.svg -composite
+-    ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_24.png
+-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_20.svg
+-  COMMENT "Generating icons/tigervnc_24.png")
+-
+-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_32.png
+-  COMMAND ${CONVERT_EXECUTABLE} -density 72
+-    -size 32x32 xc:none -gravity center -background transparent
+-    ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_28.svg -composite
+-    ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_32.png
+-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_28.svg
+-  COMMENT "Generating icons/tigervnc_32.png")
+-
+-add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_48.png
+-  COMMAND ${CONVERT_EXECUTABLE} -density 72
+-    -size 48x48 xc:none -gravity center -background transparent
+-    ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_42.svg -composite
+-    ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_48.png
+-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_42.svg
+-  COMMENT "Generating icons/tigervnc_48.png")
++    add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_16.png
++      COMMAND ${CONVERT_EXECUTABLE} -background transparent
++        ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_16.svg
++        ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_16.png
++      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_16.svg
++      COMMENT "Generating icons/tigervnc_16.png")
++
++    add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_22.png
++      COMMAND ${CONVERT_EXECUTABLE} -density 72
++        -size 22x22 xc:none -gravity center -background transparent
++        ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_20.svg -composite
++        ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_22.png
++      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_20.svg
++      COMMENT "Generating icons/tigervnc_22.png")
++
++    add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_24.png
++      COMMAND ${CONVERT_EXECUTABLE} -density 72
++        -size 24x24 xc:none -gravity center -background transparent
++        ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_20.svg -composite
++        ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_24.png
++      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_20.svg
++      COMMENT "Generating icons/tigervnc_24.png")
++
++    add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_32.png
++      COMMAND ${CONVERT_EXECUTABLE} -density 72
++        -size 32x32 xc:none -gravity center -background transparent
++        ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_28.svg -composite
++        ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_32.png
++      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_28.svg
++      COMMENT "Generating icons/tigervnc_32.png")
++
++    add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_48.png
++      COMMAND ${CONVERT_EXECUTABLE} -density 72
++        -size 48x48 xc:none -gravity center -background transparent
++        ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_42.svg -composite
++        ${CMAKE_CURRENT_SOURCE_DIR}/icons/tigervnc_48.png
++      DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tigervnc_42.svg
++      COMMENT "Generating icons/tigervnc_48.png")
++endif()
