@@ -1,25 +1,17 @@
-diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 7bf99441..a92a7b29 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -130,7 +130,7 @@ if(WIN32)
- endif()
+diff --git a/release/CMakeLists.txt b/release/CMakeLists.txt
+index 9bf0816e..09089430 100644
+--- a/release/CMakeLists.txt
++++ b/release/CMakeLists.txt
+@@ -49,9 +49,9 @@ add_custom_target(dmg sh makemacapp
+   DEPENDS vncviewer
+   SOURCES makemacapp)
  
- # X11 stuff. It's in a if() so that we can say REQUIRED
--if(UNIX AND NOT APPLE)
-+if(UNIX)
-   find_package(X11 REQUIRED)
- endif()
+-add_custom_target(udmg sh makemacapp universal
+-  DEPENDS vncviewer
+-  SOURCES makemacapp)
++#add_custom_target(udmg sh makemacapp universal
++#  DEPENDS vncviewer
++#  SOURCES makemacapp)
  
-@@ -289,9 +289,9 @@ if(WIN32)
-   add_subdirectory(win)
- else()
-   # No interest in building x related parts on Apple
--  if(NOT APPLE)
-+#   if(NOT APPLE)
-     add_subdirectory(unix)
--  endif()
-+#   endif()
- endif()
+ endif() # APPLE
  
- if(ENABLE_NLS)

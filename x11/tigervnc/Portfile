@@ -40,13 +40,13 @@ depends_lib             port:gettext \
                         port:jpeg \
                         port:libiconv \
                         port:zlib
-patchfiles              patch-CMakeLists.txt.diff
 
 cmake.save_configure_cmd "log too"
 
 if {${os.platform} eq "darwin"} {
     depends_lib-append  path:lib/libfltk.dylib:fltk
-    patchfiles-append   patch-release-makemacapp.in.diff
+    patchfiles-append   patch-CMakeLists.txt.diff \
+                        patch-release-makemacapp.in.diff
 } else {
     depends_lib-append  path:lib/libfltk.so:fltk
     depends_build-append \
@@ -60,6 +60,12 @@ if {[file exists ${prefix}/include/os/os.h]} {
 }
 
 if {${os.platform} eq "darwin"} {
+
+    # make certain the app bundle is created
+    build.pre_args-append \
+                        dmg
+    configure.args-append \
+                        -DINSTALL_SYSTEMD_UNITS=OFF
 
     if {[variant_isset universal]} {
         merger-post-destroot {
