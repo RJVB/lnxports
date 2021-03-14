@@ -4,8 +4,13 @@ PortSystem          1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           active_variants 1.1
 
-PortGroup           locale_select 1.0
+variant qt5 conflicts qt4 description {Build using Qt5 UI.} {}
+
+if {[variant_isset qt5]} {
+    PortGroup       qt5 1.0
+}
 PortGroup           LTO 1.0
+PortGroup           locale_select 1.0
 
 name                VLC
 
@@ -43,7 +48,7 @@ if {${subport} eq ${name}} {
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.11 ; revision 1
+version             3.0.12
 license             GPL-2
 
 platforms           darwin
@@ -53,9 +58,9 @@ dist_subdir         VLC
 distname            vlc-${version}
 use_xz              yes
 
-checksums           rmd160  a9c6a8796d0d86a71b738d4d41c377cd03d0e4ce \
-                    sha256  3e94a1acf33445e9da15d528aa48657aa26b912eaa2656b403d43860a8834919
-#                     size    26041744
+checksums           rmd160  5975ce21a183893ae2541ac38d5131329e539fbd \
+                    sha256  eff458f38a92126094f44f2263c2bf2c7cdef271b48192d0fe7b1726388cf879
+#                     size    25997468
 
 platform darwin {
     # Enable HFS compression of the workdir if the compress_workdir PortGroup is installed
@@ -64,7 +69,9 @@ platform darwin {
     }
 }
 
-depends_build       port:pkgconfig
+depends_build       port:pkgconfig \
+                    port:protobuf-cpp \
+                    port:protobuf-cpp-dev
 
 set vlcprefix       ${prefix}/libexec/vlc3
 configure.pre_args-replace \
@@ -430,18 +437,16 @@ variant wayland description {enable experimental Wayland support} {
 }
 
 if {${subport} ne "lib${name}"} {
-    variant qt5 conflicts qt4 description {Build using Qt5 UI. Experimental and probably dysfunctional} {
+    if {[variant_isset qt5]} {
         patchfiles-append       patch-vlc-qt-configureac.diff \
                                 patch-vlc-qt-x11.diff
 
         configure.args-replace  --disable-vlc --enable-vlc
         configure.args-replace  --disable-qt --enable-qt
-
-        PortGroup               qt5 1.0
     }
 }
 
-variant quartz {
+variant quartz description {just a placeholder on Linux} {
 #     depends_lib-delete      port:libsamplerate
 #     depends_lib-append      port:BGHUDAppKit
 #
@@ -578,6 +583,13 @@ platform linux {
         file rename ${destroot}/usr/share/kde4/apps/solid/actions ${destroot}${prefix}/share/kde4/apps/solid/
         foreach d [glob -nocomplain ${destroot}${prefix}/share/kde4/apps/solid/*.desktop] {
             reinplace "s|Exec=vlc|Exec=${prefix}/bin/vlc|g" ${d}
+        }
+        if {[variant_exists qt5stock_kde] && [variant_isset qt5stock_kde]} {
+            xinstall -m 755 -d ${destroot}${vlcprefix}/bin
+            file rename ${destroot}${prefix}/bin/vlc ${destroot}${vlcprefix}/bin
+            file rename ${destroot}${prefix}/bin/vlc-wrapper ${destroot}${vlcprefix}/bin
+            qt5.add_app_wrapper vlc ${vlcprefix}/bin/vlc
+            qt5.add_app_wrapper vlc-wrapper ${vlcprefix}/bin/vlc-wrapper
         }
     }
 }
