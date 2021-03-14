@@ -58,6 +58,10 @@ post-destroot {
 
 if {${subport} eq "${name}-dev"} {
     conflicts   protobuf3-cpp-dev
+    # the protoc command needs the shared library which means we have
+    # a runtime dep. on the main port. Record the fact - annoyingly
+    # it serves little purpose.
+    depends_run port:${name}
     # we don't care about anything that follows,
     # return here to avoid having to add more subport checks.
     return
