@@ -3,6 +3,9 @@
 PortSystem          1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           LTO 1.0
+platform linux {
+    PortGroup       meson 1.0
+}
 
 platform darwin {
     # May need clock_gettime()
@@ -66,9 +69,6 @@ platform darwin {
     patchfiles      0001-applegl-Provide-requirements-of-_SET_DrawBuffers.patch \
                     0002-Hack-to-address-build-failure-when-using-newer-macOS.patch
 }
-platform linux {
-    patchfiles      patch-linux-memfd_create.diff
-}
 
 patchfiles-append   patch-meson.diff \
 
@@ -92,12 +92,22 @@ if {[string match *meson* ${configure.cmd}]} {
         depends_lib-append \
                     port:wayland \
                     port:vulkan-loader
+        pre-configure {
+            # delete certain auto-generated files that may require changes when building against
+            # a different LLVM version.
+            file delete [glob -nocomplain ${worksrcpath}/src/gallium/drivers/swr/rasterizer/jitter/gen_*]
+        }
         post-patch {
             # should be a patch of course
-            reinplace "s|SYS_memfd_create|__NR_memfd_create|g" ${worksrcpath}/src/intel/tools/aub_mem.c
+            reinplace "s|SYS_memfd_create|__NR_memfd_create|g" \
+                ${worksrcpath}/src/intel/tools/aub_mem.c \
+                ${worksrcpath}/src/intel/vulkan/anv_gem_stubs.c \
+                ${worksrcpath}/src/intel/vulkan/anv_allocator.c
         }
         configure.args-append \
-                    -Dvulkan-drivers=yes \
+                    -Ddri3=true \
+                    -Degl=true \
+                    -Dvulkan-drivers=intel,amd \
                     -Dplatforms=x11,drm,wayland,surfaceless \
                     -Dgallium-drivers=r300,r600,nouveau,swrast,tegra,svga,virgl,swr \
                     -Dgallium-extra-hud=true \
@@ -106,19 +116,19 @@ if {[string match *meson* ${configure.cmd}]} {
                     -Dtools=all \
                     -Dglx-direct=true \
                     -Dbuild-tests=true
-        post-destroot {
-            # meson rebuilds to-be-installed libraries without rpath information, so replace those with
-            # the ones from the build dir that do have the info.
-            xinstall -m 755 ${build.dir}/src/glx/libGL.so.1.2.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-            xinstall -m 755 ${build.dir}/src/mapi/shared-glapi/libglapi.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-            xinstall -m 755 ${build.dir}/src/mapi/es1api/libGLESv1_CM.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-            xinstall -m 755 ${build.dir}/src/mapi/es2api/libGLESv2.so.2.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-            xinstall -m 755 ${build.dir}/src/gallium/drivers/swr/libswrAVX2.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-            xinstall -m 755 ${build.dir}/src/gallium/drivers/swr/libswrAVX.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-            xinstall -m 755 ${build.dir}/src/gallium/targets/xa/libxatracker.so.2.4.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-            xinstall -m 755 ${build.dir}/src/egl/libEGL.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-            xinstall -m 755 ${build.dir}/src/gbm/libgbm.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-        }
+#         post-destroot {
+#             # meson rebuilds to-be-installed libraries without rpath information, so replace those with
+#             # the ones from the build dir that do have the info.
+#             xinstall -m 755 ${build.dir}/src/glx/libGL.so.1.2.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+#             xinstall -m 755 ${build.dir}/src/mapi/shared-glapi/libglapi.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+#             xinstall -m 755 ${build.dir}/src/mapi/es1api/libGLESv1_CM.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+#             xinstall -m 755 ${build.dir}/src/mapi/es2api/libGLESv2.so.2.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+#             xinstall -m 755 ${build.dir}/src/gallium/drivers/swr/libswrAVX2.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+#             xinstall -m 755 ${build.dir}/src/gallium/drivers/swr/libswrAVX.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+#             xinstall -m 755 ${build.dir}/src/gallium/targets/xa/libxatracker.so.2.4.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+#             xinstall -m 755 ${build.dir}/src/egl/libEGL.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+#             xinstall -m 755 ${build.dir}/src/gbm/libgbm.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+#         }
     }
 } else {
     post-patch {
@@ -292,7 +302,7 @@ platform darwin {
     variant llvm64bit description {The +llvm variants are effective for the 64bit components of universal builds only} {}
 }
 
-    set lldversions {3.8 3.9 4.0 5.0 6.0 8.0 9.0}
+    set lldversions {7.0 8.0 9.0}
     set llvariant ""
     foreach ldv ${lldversions} {
         set llv [join [lrange [split ${ldv} .] 0 1] ""]
