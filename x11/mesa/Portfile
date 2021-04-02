@@ -2,23 +2,17 @@
 
 PortSystem          1.0
 PortGroup           compiler_blacklist_versions 1.0
-# PortGroup           muniversal 1.0
-PortGroup           meson 1.0
+PortGroup           LTO 1.0
 
 platform darwin {
-    if {${os.major} < 13} {
-        PortGroup   cxx11 1.1
-    }
+    # May need clock_gettime()
+    PortGroup       legacysupport 1.0
+    legacysupport.newest_darwin_requires_legacy 15
 }
 
 name                mesa
 epoch               1
-# version             17.1.6 ; revision 1
-version             18.3.3
-platform linux {
-    # for wayland
-    revision        2
-}
+version             19.0.8 ; revision 1
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -27,13 +21,13 @@ description         Mesa 3D Graphics Library
 long_description    Mesa is an open-source implementation of the OpenGL specification, a system for rendering interactive 3D graphics.
 
 homepage            https://www.mesa3d.org
+master_sites        https://archive.mesa3d.org
 platforms           macosx darwin
 use_xz              yes
-master_sites        https://mesa.freedesktop.org/archive
 
-checksums           rmd160  3db679c94bb3c168f6607f16ae4ae288b2b4f767 \
-                    sha256  2ab6886a6966c532ccbcc3b240925e681464b658244f0cbed752615af3936299
-#                     size    11874468
+checksums           rmd160  c658d9e93d19bf2de694001c8c9886b8bb89ee2e \
+                    sha256  d017eb53a810c32dabeedf6ca2238ae1e897ce9090e470e9ce1d6c9e3f1b0862
+#                     size    11967592
 
 platform linux {
     depends_fetch-append \
@@ -51,7 +45,8 @@ platform darwin {
                     port:bison \
                     port:gindent
 
-    depends_lib     port:xorg-xorgproto \
+    depends_lib     port:expat \
+                    port:xorg-xorgproto \
                     port:xorg-libxcb \
                     port:xorg-libX11 \
                     port:xorg-libXext \
@@ -68,40 +63,24 @@ platform linux {
 
 patch.pre_args      -p1
 platform darwin {
-    patchfiles      0003-applegl-Provide-requirements-of-_SET_DrawBuffers.patch
+    patchfiles      0001-applegl-Provide-requirements-of-_SET_DrawBuffers.patch \
+                    0002-Hack-to-address-build-failure-when-using-newer-macOS.patch
 }
 platform linux {
     patchfiles      patch-linux-memfd_create.diff
 }
 
-if {[string match *gcc* ${configure.compiler}]} {
-    # Older gcc fail to do -Werror=missing-prototypes correctly
-    # https://trac.macports.org/ticket/46827
-    patchfiles-append no-missing-prototypes-error.patch
-}
-
-variant cputuned conflicts cpucompat description {Build using -O3 -march=native for optimal tuning to your CPU} {}
-if {[variant_isset cputuned]} {
-    set optflags "-O3 -march=native"
-}
-variant cpucompat conflicts cputuned description {Build using -O3 and some commonly supported SIMD settings for optimal cross-CPU tuning} {}
-if {[variant_isset cpucompat]} {
-    set optflags "-O3 -march=westmere -msse4.1 -msse4.2 -msse3 -mssse3 -msse2 -msse -mmmx -mpclmul"
-}
-if {[variant_isset cputuned] || [variant_isset cpucompat]} {
-    configure.cflags-append     {*}${optflags}
-    configure.cxxflags-append   {*}${optflags}
-    configure.objcflags-append  {*}${optflags}
-    configure.objcxxflags-append  {*}${optflags}
-    configure.ldflags-append    {*}${optflags}
-}
+patchfiles-append   patch-meson.diff \
 
 if {[string match *meson* ${configure.cmd}]} {
     platform darwin {
         patchfiles-append \
-                    patch-meson.diff
+                    patch-meson.diff \
+                    patch-autoconf-c11.diff
+        depends_build   port:cctools
 
         configure.args-append \
+                    -Dplatforms=x11 \
                     -Ddri3=false \
                     -Degl=false \
                     -Dgbm=false \
@@ -111,13 +90,14 @@ if {[string match *meson* ${configure.cmd}]} {
     }
     platform linux {
         depends_lib-append \
-                    port:wayland
+                    port:wayland \
+                    port:vulkan-loader
         post-patch {
             # should be a patch of course
             reinplace "s|SYS_memfd_create|__NR_memfd_create|g" ${worksrcpath}/src/intel/tools/aub_mem.c
         }
         configure.args-append \
-                    -Dvulkan-drivers=intel \
+                    -Dvulkan-drivers=yes \
                     -Dplatforms=x11,drm,wayland,surfaceless \
                     -Dgallium-drivers=r300,r600,nouveau,swrast,tegra,svga,virgl,swr \
                     -Dgallium-extra-hud=true \
@@ -141,11 +121,11 @@ if {[string match *meson* ${configure.cmd}]} {
         }
     }
 } else {
-    if {![file exists ${worksrcpath}/configure]} {
-        use_autoreconf  yes
+    post-patch {
+        system -W ${worksrcpath} "autoreconf -fvi"
     }
-    autoreconf.args -fvi
-    configure.args  --disable-dependency-tracking \
+    configure.args  --enable-autotools \
+                    --disable-dependency-tracking \
                     --disable-silent-rules
     platform darwin {
         configure.args-append \
@@ -163,15 +143,17 @@ platform darwin {
     configure.env-append \
                     INDENT=${prefix}/bin/gindent
 }
+# mesa builds with -std=c99 but uses timespec_get() which was added in c11, so this works around that bug
 configure.env-append \
+                    export ac_cv_func_timespec_get=no \
                     STRIP=echo
 
-if {[string match macports-clang* ${configure.compiler}]} {
-    configure.env-append \
-                    AR="[string map {"clang" "llvm-ar"} ${configure.cc}]" \
-                    NM="[string map {"clang" "llvm-nm"} ${configure.cc}]" \
-                    RANLIB="[string map {"clang" "llvm-ranlib"} ${configure.cc}]"
-}
+# if {[string match macports-clang* ${configure.compiler}]} {
+#     configure.env-append \
+#                     AR="[string map {"clang" "llvm-ar"} ${configure.cc}]" \
+#                     NM="[string map {"clang" "llvm-nm"} ${configure.cc}]" \
+#                     RANLIB="[string map {"clang" "llvm-ranlib"} ${configure.cc}]"
+# }
 
 # This project is affected by a bug in Apple's gcc driver driver that I fixed in the apple-gcc42 port.
 # Use that or clang.
@@ -183,10 +165,28 @@ compiler.blacklist gcc-3.3 gcc-4.0 gcc-4.2 llvm-gcc-4.2 {clang < 800}
 
 platform darwin {
     if {${os.major} < 11} {
+
+        # versions > 17 do not presently compile on systems prior to 10.7
+        version             17.1.6 ;    revision 2
+        checksums           rmd160  43a9b758462316ad344ccdccf72d6d0ce295620e \
+                            sha256  0686deadde1f126b20aa67e47e8c50502043eee4ecdf60d5009ffda3cebfee50
+#                             size    9868932
+
+        # this option does nothing in mesa 17.x and generates warnings
+        configure.args-delete --enable-autotools
+
+        # overwrite previous patchfiles, and then add as needed below
+        patchfiles \
+            mesa17-0001-glxcmds-Fix-a-typo-in-the-__APPLE__-codepath.patch \
+            mesa17-0002-glext.h-Add-missing-include-of-stddef.h-for-ptrdiff_.patch \
+            mesa17-0003-applegl-Provide-requirements-of-_SET_DrawBuffers.patch \
+            mesa17-0004-mesa-Deal-with-size-differences-between-GLuint-and-G.patch
+
         # https://bugs.freedesktop.org/show_bug.cgi?id=89088
         configure.env-append INDENT=cat
 
-        patchfiles-append static-strndup.patch
+        # not needed if legacysupport is used
+        # patchfiles-append static-strndup.patch
     }
 
     if {${os.major} < 10} {
@@ -228,6 +228,12 @@ platform darwin {
             return -code error "missing libXplugin.dylib"
         }
     }
+}
+
+if {[string match *gcc* ${configure.compiler}]} {
+    # Older gcc fail to do -Werror=missing-prototypes correctly
+    # https://trac.macports.org/ticket/46827
+    patchfiles-append no-missing-prototypes-error.patch
 }
 
 configure.cppflags-delete -I${prefix}/include
@@ -278,13 +284,15 @@ platform darwin {
                                 --with-gallium-drivers=swrast
         }
         patchfiles-append       patch-support-egl_dri2.diff
-        post-patch {
-            reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/egl/drivers/dri2/egl_dri2.c
-        }
+    #     post-patch {
+    #         reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/egl/drivers/dri2/egl_dri2.c
+    #     }
     }
+
+    variant llvm64bit description {The +llvm variants are effective for the 64bit components of universal builds only} {}
 }
 
-    set lldversions {6.0}
+    set lldversions {3.8 3.9 4.0 5.0 6.0 8.0 9.0}
     set llvariant ""
     foreach ldv ${lldversions} {
         set llv [join [lrange [split ${ldv} .] 0 1] ""]
@@ -296,30 +304,55 @@ platform darwin {
             }
         }
         variant llvm${llv} conflicts ${conflist} description "Use LLVM/Clang ${ldv} for the \"accelerated\" Gallium swrast driver" {}
-        if {[variant_isset llvm${llv}]} {
+        if {[variant_exists llvm${llv}] && [variant_isset llvm${llv}]} {
             set llvariant llvm${llv}
         }
     }
     foreach ldv ${lldversions} {
         set llv [join [lrange [split ${ldv} .] 0 1] ""]
         if {[variant_isset llvm${llv}]} {
-            depends_lib-append \
-                port:llvm-${ldv} port:clang-${ldv}
+            if {!([variant_exists llvm${llv}] && [variant_isset llvm64bit])} {
+                depends_lib-append \
+                    port:llvm-${ldv} port:clang-${ldv}
+            } else {
+                # This is a hack; build and runtime dependencies are agnostic of the +universal variant
+                # *if depends_skip_archcheck is also set* and
+                # so the only way to register some kind of dependency on the required LLVM ports
+                # without forcing them to be installed +universal too.
+                depends_build-append \
+                    port:llvm-${ldv} port:clang-${ldv}
+                depends_run-append \
+                    port:llvm-${ldv} port:clang-${ldv}
+                depends_skip_archcheck \
+                    llvm-${ldv} clang-${ldv}
+            }
             if {[string match *meson* ${configure.cmd}]} {
+                if {[variant_exists llvm${llv}] && [variant_isset llvm64bit]} {
+                    ui_warning "+llvm64bit is to be implemented and currently ignored"
+                }
                 configure.args-append \
                     -Dllvm=true
                 set PATH $env(PATH)
                 set env(PATH) ${prefix}/libexec/llvm-${ldv}/bin:${PATH}
-                configure.args-replace \
-                    -Dgallium-drivers= \
-                    -Dgallium-drivers=swrast
+#                 configure.args-replace \
+#                     -Dgallium-drivers= \
+#                     -Dgallium-drivers=swrast
             } else {
-                configure.args-append \
-                    --enable-llvm \
-                    --with-llvm-prefix=${prefix}/libexec/llvm-${ldv}
-                configure.args-replace \
-                    --with-gallium-drivers= \
-                    --with-gallium-drivers=swrast
+                if {[variant_exists llvm${llv}] && [variant_isset llvm64bit]} {
+                    lappend merger_configure_args(x86_64) \
+                        --enable-llvm \
+                        --with-llvm-prefix=${prefix}/libexec/llvm-${ldv}
+                    lappend merger_configure_args(arm64) \
+                        --enable-llvm \
+                        --with-llvm-prefix=${prefix}/libexec/llvm-${ldv}
+                } else {
+                    configure.args-append \
+                        --enable-llvm \
+                        --with-llvm-prefix=${prefix}/libexec/llvm-${ldv}
+                }
+#                 configure.args-replace \
+#                     --with-gallium-drivers= \
+#                     --with-gallium-drivers=swrast
             }
         }
     }
@@ -350,37 +383,37 @@ if {[string match *meson* ${configure.cmd}]} {
 }
 
 livecheck.type  regex
-livecheck.url   http://www.mesa3d.org/
+livecheck.url   ${homepage}
 livecheck.regex {relnotes/([0-9.]+)\.html}
 
-# optional support for HFS-compression of the source and build dirs
-if {[info exists qt5::currentportgroupdir] && [file exists ${qt5::currentportgroupdir}/compress_workdir-1.0.tcl]} {
-    PortGroup       compress_workdir 1.0
-}
 
-configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
-pre-configure {
-    set cmd [join "${configure.cmd} ${configure.pre_args} ${configure.args}"]
-    configure.pre_args-prepend "-cf '${configure.cmd} "
-    configure.cmd "/bin/csh"
-    ui_debug "configure command set to `${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}`"
-    system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.log"
-}
-post-configure {
-    if {![catch {set fd [open "${workpath}/.macports.${subport}.configure.cmd" "w"]} err]} {
-        foreach var [array names ::env] {
-            puts ${fd} "${var}=$::env(${var})"
-        }
-        puts ${fd} "[join [lrange [split ${configure.env} " "] 0 end] "\n"]\n"
-        puts ${fd} "cd ${worksrcpath}"
-        if {[info exists configure.post_args]} {
-            puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}"
+if {[string match *meson* ${configure.cmd}]} {
+    meson.save_configure_cmd "log too"
+} else {
+    configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
+    pre-configure {
+        set cmd [join "${configure.cmd} ${configure.pre_args} ${configure.args}"]
+        configure.pre_args-prepend "-cf '${configure.cmd} "
+        configure.cmd "/bin/csh"
+        ui_debug "configure command set to `${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}`"
+        system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.log"
+    }
+    post-configure {
+        if {![catch {set fd [open "${workpath}/.macports.${subport}.configure.cmd" "w"]} err]} {
+            foreach var [array names ::env] {
+                puts ${fd} "${var}=$::env(${var})"
+            }
+            puts ${fd} "[join [lrange [split ${configure.env} " "] 0 end] "\n"]\n"
+            puts ${fd} "cd ${worksrcpath}"
+            if {[info exists configure.post_args]} {
+                puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}"
+            } else {
+                puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args}"
+            }
         } else {
-            puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args}"
-        }
-    } else {
-        if {[info exists fd]} {
-            unset fd
+            if {[info exists fd]} {
+                unset fd
+            }
         }
     }
 }
