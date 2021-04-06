@@ -116,7 +116,7 @@ if {[string match *meson* ${configure.cmd}]} {
                     -Dtools=all \
                     -Dglx-direct=true \
                     -Dbuild-tests=true
-#         post-destroot {
+        post-destroot {
 #             # meson rebuilds to-be-installed libraries without rpath information, so replace those with
 #             # the ones from the build dir that do have the info.
 #             xinstall -m 755 ${build.dir}/src/glx/libGL.so.1.2.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
@@ -128,7 +128,14 @@ if {[string match *meson* ${configure.cmd}]} {
 #             xinstall -m 755 ${build.dir}/src/gallium/targets/xa/libxatracker.so.2.4.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
 #             xinstall -m 755 ${build.dir}/src/egl/libEGL.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
 #             xinstall -m 755 ${build.dir}/src/gbm/libgbm.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-#         }
+            if {[file type ${prefix}/lib/${build_arch}-linux-gnu/] eq "directory"} {
+                # a previous version of this port probably installed its libraries there
+                xinstall -m 755 -d ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+                foreach l [glob ${destroot}${prefix}/lib/*.so ${destroot}${prefix}/lib/*.so.*] {
+                    ln -s [file join ".." [file tail ${l}]] ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+                }
+            }
+        }
     }
 } else {
     post-patch {
