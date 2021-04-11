@@ -118,7 +118,7 @@ variant cairo description {use cairo and pango} {
 #                             port:gettext \
 #                             port:libpng \
 #                             port:tiff \
-#                             port:jpeg
+#                             path:include/turbojpeg.h:libjpeg-turbo
 #     configure.args-delete   --without-cairo
     configure.args-append   --with-cairo
 }
@@ -154,7 +154,7 @@ variant x11 description {enable use of x11} {
 #                             port:xorg-libX11 \
 #                             port:xorg-libXt \
 #                             port:tiff \
-#                             port:jpeg \
+#                             path:include/turbojpeg.h:libjpeg-turbo \
 #                             port:libpng
     configure.args-delete   --without-x \
                             --without-jpeglib

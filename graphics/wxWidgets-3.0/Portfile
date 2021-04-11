@@ -81,7 +81,7 @@ set selectdir       ${workpath}/select
 select.group        wxWidgets
 select.file         ${selectdir}/${subport}
 
-depends_lib         port:jpeg \
+depends_lib         path:include/turbojpeg.h:libjpeg-turbo \
                     port:tiff \
                     port:libpng \
                     port:zlib \

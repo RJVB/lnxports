@@ -47,7 +47,7 @@ checksums               ${distname}${extract.suffix} \
 platform darwin {
     depends_lib         port:xorg-libXt
 }
-depends_lib             port:jpeg \
+depends_lib             path:include/turbojpeg.h:libjpeg-turbo \
                         port:tiff \
                         port:libpng \
                         port:jasper \

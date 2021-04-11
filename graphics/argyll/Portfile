@@ -31,7 +31,7 @@ platform darwin {
     depends_build       port:jam
 }
 
-depends_lib-append      port:jpeg
+depends_lib-append      path:include/turbojpeg.h:libjpeg-turbo
 depends_lib-append      port:libpng
 depends_lib-append      path:lib/pkgconfig/libusb-1.0.pc:libusb
 depends_lib-append      port:tiff

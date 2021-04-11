@@ -38,7 +38,7 @@ depends_build       port:pkgconfig
 #                     path:lib/pkgconfig/cairo.pc:cairo \
 #                     port:flac \
 #                     port:gdk-pixbuf2 \
-#                     port:jpeg \
+#                     path:include/turbojpeg.h:libjpeg-turbo \
 #                     port:lame \
 #                     path:lib/libcaca.dylib:libcaca \
 #                     port:libdv \
@@ -55,7 +55,7 @@ depends_build       port:pkgconfig
 depends_lib         port:gstreamer1-gst-plugins-base \
                     port:flac \
                     port:gdk-pixbuf2 \
-                    port:jpeg \
+                    path:include/turbojpeg.h:libjpeg-turbo \
                     port:libpng \
                     path:lib/libspeex.dylib:speex \
                     port:libvpx \
@@ -179,7 +179,7 @@ if {[variant_isset universal]} {
 # SSE register return with SSE disabled
 # <rdar://problem/9694837> - Fixed in XCode 4.2 (clang 211.10.1)
 # blacklist compilers that don't support C11 typedef redefinition
-# gstflvmux.h:73: error: redefinition of typedef ‘GstFlvMuxPadClass’
+# gstflvmux.h:73: error: redefinition of typedef âGstFlvMuxPadClassâ
 compiler.blacklist  *gcc-3.* *gcc-4.* {clang < 300}
 
 # in version 1.14.0 some functionality moved here from bad and ugly

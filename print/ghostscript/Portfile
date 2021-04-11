@@ -55,7 +55,7 @@ checksums           ${distname}.tar.gz \
 depends_lib         port:expat \
                     port:freetype \
                     port:jbig2dec \
-                    port:jpeg \
+                    path:include/turbojpeg.h:libjpeg-turbo \
                     port:libiconv \
                     port:libidn \
                     port:libpng \

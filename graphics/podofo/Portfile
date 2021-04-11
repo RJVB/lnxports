@@ -40,7 +40,7 @@ depends_lib     port:zlib \
                 port:libidn \
                 path:lib/libssl.dylib:openssl \
                 port:libpng \
-                port:jpeg \
+                path:include/turbojpeg.h:libjpeg-turbo \
                 port:tiff
 
 #post-extract {

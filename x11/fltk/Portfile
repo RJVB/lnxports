@@ -69,7 +69,7 @@ if {${subport} eq ${name}} {
 }
 
 depends_build   port:autoconf
-depends_lib     port:jpeg \
+depends_lib     path:include/turbojpeg.h:libjpeg-turbo \
                 port:libpng \
                 port:zlib
 
