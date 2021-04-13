@@ -1,0 +1,68 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           compiler_blacklist_versions 1.0
+PortGroup           LTO 1.0
+platform linux {
+    PortGroup       meson 1.0
+}
+
+name                libdrm
+epoch               1
+version             2.4.105
+categories          x11 graphics
+maintainers         openmaintainer
+license             MIT
+description         Userspace interface to kernel DRM services
+long_description    Userspace interface to kernel DRM services. \
+                    This library implements the userspace interface to the kernel DRM \
+                    services.  DRM stands for \"Direct Rendering Manager\", which is the \
+                    kernelspace portion of the \"Direct Rendering Infrastructure\" (DRI). \
+                    The DRI is currently used on Linux to provide hardware-accelerated \
+                    OpenGL drivers.
+
+
+homepage            https://dri.freedesktop.org/wiki/DRM/
+master_sites        https://dri.freedesktop.org/${name}
+platforms           linux
+use_xz              yes
+
+checksums           rmd160  5a3a2d8404a2b6873a96d9422f1ac30ff38d8012 \
+                    sha256  1d1d024b7cadc63e2b59cddaca94f78864940ab440843841113fbac6afaf2a46
+#                     size    420376
+
+depends_fetch-append \
+                    bin:wget:wget
+# avoid certificate issues on freedesktop.org
+fetch {
+    system "wget ${master_sites}/${distname}${extract.suffix} --no-check-certificate --progress=bar:force -O ${distpath}/${distname}${extract.suffix}"
+}
+
+depends_build       port:pkgconfig
+depends_lib-append  port:systemd
+
+patch.pre_args      -p1
+
+patchfiles-append   patch-default-perms.diff \
+
+post-patch {
+    reinplace "s|buildtype=debugoptimized|buildtype=${meson.build_type}|g" ${worksrcpath}/meson.build
+}
+configure.args-append \
+                    -Dudev=true
+
+configure.env-append \
+                    STRIP=echo
+
+compiler.blacklist gcc-3.3 gcc-4.0 gcc-4.2 llvm-gcc-4.2 {clang < 800}
+
+configure.ldflags-append -Wl,-rpath,${prefix}/${build_arch}-linux-gnu
+
+if {[string match *meson* ${configure.cmd}]} {
+    build.post_args-append -k 0
+} else {
+    build.post_args-append -k
+}
+
+
+meson.save_configure_cmd "log too"
