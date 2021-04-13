@@ -15,7 +15,7 @@ platform darwin {
 
 name                mesa
 epoch               1
-version             19.0.8 ; revision 1
+version             21.0.1
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -28,9 +28,13 @@ master_sites        https://archive.mesa3d.org
 platforms           macosx darwin
 use_xz              yes
 
-checksums           rmd160  c658d9e93d19bf2de694001c8c9886b8bb89ee2e \
-                    sha256  d017eb53a810c32dabeedf6ca2238ae1e897ce9090e470e9ce1d6c9e3f1b0862
-#                     size    11967592
+checksums           rmd160  db3e5d44cec00ffe085deadbcfb776a494632466 \
+                    sha256  379fc984459394f2ab2d84049efdc3a659869dc1328ce72ef0598506611712bb
+#                     size    14648932
+# # 20.3.5:
+# checksums           rmd160  0fd933f8a5a4eb615936281cf5fcc4aa90f9d281 \
+#                     sha256  909a72df63dfa3c0844ccf44a26ac028d148297ed333ab51560893923d7691ce
+# #                     size    14367412
 
 platform linux {
     depends_fetch-append \
@@ -84,7 +88,7 @@ if {[string match *meson* ${configure.cmd}]} {
                     -Ddri3=false \
                     -Degl=false \
                     -Dgbm=false \
-                    -Dosmesa=none \
+                    -Dosmesa=false \
                     -Dshared-llvm=false \
                     -Dgallium-drivers=
     }
@@ -102,14 +106,17 @@ if {[string match *meson* ${configure.cmd}]} {
             reinplace "s|SYS_memfd_create|__NR_memfd_create|g" \
                 ${worksrcpath}/src/intel/tools/aub_mem.c \
                 ${worksrcpath}/src/intel/vulkan/anv_gem_stubs.c \
-                ${worksrcpath}/src/intel/vulkan/anv_allocator.c
+                ${worksrcpath}/src/intel/vulkan/anv_allocator.c \
+                ${worksrcpath}/src/drm-shim/device.c
         }
+#                     -Ddri-drivers=i915,i965,r100,r200,swrast
         configure.args-append \
                     -Ddri3=true \
                     -Degl=true \
+                    -Dosmesa=false \
                     -Dvulkan-drivers=intel,amd \
-                    -Dplatforms=x11,drm,wayland,surfaceless \
-                    -Dgallium-drivers=r300,r600,nouveau,swrast,tegra,svga,virgl,swr \
+                    -Dplatforms=x11,wayland \
+                    -Dgallium-drivers=r300,r600,nouveau,swrast,svga,virgl,swr \
                     -Dgallium-extra-hud=true \
                     -Dgallium-va=true \
                     -Dgallium-opencl=standalone \
@@ -254,7 +261,7 @@ if {[string match *gcc* ${configure.compiler}]} {
 }
 
 configure.cppflags-delete -I${prefix}/include
-configure.cxxflags-append -std=c++11
+# configure.cxxflags-append -std=c++11
 
 platform linux {
     configure.ldflags-append -Wl,-rpath,${prefix}/${build_arch}-linux-gnu
@@ -283,7 +290,8 @@ platform linux {
 # }
 
 platform darwin {
-    variant egl description {enable EGL support} {
+    variant egl description {enable EGL support} {}
+    if {[variant_isset egl]} {
         depends_lib-append      port:xorg-libxshmfence
         if {[string match *meson* ${configure.cmd}]} {
             configure.args-replace \
@@ -374,11 +382,12 @@ platform darwin {
         }
     }
 
-variant osmesa description {enable OSMesa library} {
+variant osmesa description {enable OSMesa library} {}
+if {[variant_isset osmesa]} {
     if {[string match *meson* ${configure.cmd}]} {
         configure.args-replace \
-                    -Dosmesa=none \
-                    -Dosmesa=gallium
+                    -Dosmesa=false \
+                    -Dosmesa=true
     } else {
         configure.args-replace \
                     --disable-osmesa \
