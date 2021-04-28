@@ -3,6 +3,7 @@
 PortSystem          1.0
 PortGroup           meson 1.0
 PortGroup           LTO 1.0
+PortGroup           locale_select 1.0
 
 name                libsoup
 version             2.72.0
