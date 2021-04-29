@@ -115,10 +115,10 @@ patchfiles-append   patch-webkit2gtk-macports.diff
 platform darwin {
     # and a few more for webkit2-gtk-2.27.2
     patchfiles-append   patch-webkit2gtk-272-macports.diff
-}
 
-# and a few more for 282
-patchfiles-append   patch-webkit2gtk-2282-unprotected-egl-changes.diff
+    # and a few more for 282
+    patchfiles-append   patch-webkit2gtk-2282-unprotected-egl-changes.diff
+}
 
 # os log is only available on newer systems.
 patchfiles-append   patch-webkit2gtk-2282-os-log-availability.diff
