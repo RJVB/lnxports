@@ -1,5 +1,5 @@
 diff --git a/lib/widgets/ephy-certificate-dialog.c b/lib/widgets/ephy-certificate-dialog.c
-index a8df188dc64abc3c28f512b33309e91f7f62e74a..0be1f53228f79e66baa4d359f54ae0c74529ec8a 100644
+index a8df188..0be1f53 100644
 --- a/lib/widgets/ephy-certificate-dialog.c
 +++ b/lib/widgets/ephy-certificate-dialog.c
 @@ -345,7 +345,7 @@ ephy_certificate_dialog_new (GtkWindow           *parent,
@@ -12,7 +12,7 @@ index a8df188dc64abc3c28f512b33309e91f7f62e74a..0be1f53228f79e66baa4d359f54ae0c7
    if (parent)
      gtk_window_set_transient_for (GTK_WINDOW (dialog), parent);
 diff --git a/src/bookmarks/ephy-bookmark-row.c b/src/bookmarks/ephy-bookmark-row.c
-index 3f5414fd283fca5e9e9a10127ffc95500595567f..b367f8336d821979d97c97cfb574fff1b0e04ded 100644
+index 3f5414f..b367f83 100644
 --- a/src/bookmarks/ephy-bookmark-row.c
 +++ b/src/bookmarks/ephy-bookmark-row.c
 @@ -60,7 +60,7 @@ ephy_bookmark_row_button_clicked_cb (EphyBookmarkRow *row,
@@ -25,10 +25,10 @@ index 3f5414fd283fca5e9e9a10127ffc95500595567f..b367f8336d821979d97c97cfb574fff1
                           NULL);
  
 diff --git a/src/cookies-dialog.c b/src/cookies-dialog.c
-index 00365b17aa6db9d2d9149fbd71abf30097152099..e4b18e65a097f816754fcaa54c1d723243fa1189 100644
+index 0915708..47ca8ea 100644
 --- a/src/cookies-dialog.c
 +++ b/src/cookies-dialog.c
-@@ -447,6 +447,6 @@ EphyCookiesDialog *
+@@ -266,6 +266,6 @@ EphyCookiesDialog *
  ephy_cookies_dialog_new (void)
  {
    return g_object_new (EPHY_TYPE_COOKIES_DIALOG,
@@ -37,7 +37,7 @@ index 00365b17aa6db9d2d9149fbd71abf30097152099..e4b18e65a097f816754fcaa54c1d7232
                         NULL);
  }
 diff --git a/src/ephy-encoding-dialog.c b/src/ephy-encoding-dialog.c
-index 1dfa7705d7c675d6bb4a1fcc10fcb6ae1a008575..d91dc12df35a74f4ba05f8431e4aca3572cdb746 100644
+index 1dfa770..d91dc12 100644
 --- a/src/ephy-encoding-dialog.c
 +++ b/src/ephy-encoding-dialog.c
 @@ -521,7 +521,7 @@ EphyEncodingDialog *
@@ -50,7 +50,7 @@ index 1dfa7705d7c675d6bb4a1fcc10fcb6ae1a008575..d91dc12df35a74f4ba05f8431e4aca35
                         NULL);
  }
 diff --git a/src/ephy-search-engine-dialog.c b/src/ephy-search-engine-dialog.c
-index c8f5a977cc027bdad657efa2f41ce2b99309b4eb..9d68c032167bcddc5f47c839a90d47d60568bc37 100644
+index c8f5a97..9d68c03 100644
 --- a/src/ephy-search-engine-dialog.c
 +++ b/src/ephy-search-engine-dialog.c
 @@ -707,6 +707,6 @@ EphySearchEngineDialog *
@@ -62,10 +62,10 @@ index c8f5a977cc027bdad657efa2f41ce2b99309b4eb..9d68c032167bcddc5f47c839a90d47d6
                         NULL);
  }
 diff --git a/src/ephy-shell.c b/src/ephy-shell.c
-index e9ad2ae7d868c2faaee6b0efde80d41f8efde5b0..8ffa3c9de61c6b1c4e4e7f95c91b92c96f49ce6b 100644
+index f62d625..d6ccb00 100644
 --- a/src/ephy-shell.c
 +++ b/src/ephy-shell.c
-@@ -974,7 +974,7 @@ ephy_shell_get_prefs_dialog (EphyShell *shell)
+@@ -1000,7 +1000,7 @@ ephy_shell_get_prefs_dialog (EphyShell *shell)
  {
    if (shell->prefs_dialog == NULL) {
      shell->prefs_dialog = g_object_new (EPHY_TYPE_PREFS_DIALOG,
@@ -74,7 +74,7 @@ index e9ad2ae7d868c2faaee6b0efde80d41f8efde5b0..8ffa3c9de61c6b1c4e4e7f95c91b92c9
                                          NULL);
      g_signal_connect (shell->prefs_dialog,
                        "destroy",
-@@ -1171,9 +1171,9 @@ ephy_shell_open_uris_idle (OpenURIsData *data)
+@@ -1205,9 +1205,9 @@ ephy_shell_open_uris_idle (OpenURIsData *data)
    }
  
    /* Set address from the very beginning. Looks odd in app mode if it appears later on. */
@@ -88,7 +88,7 @@ index e9ad2ae7d868c2faaee6b0efde80d41f8efde5b0..8ffa3c9de61c6b1c4e4e7f95c91b92c9
    data->current_uri++;
    data->previous_embed = embed;
 diff --git a/src/passwords-dialog.c b/src/passwords-dialog.c
-index a6cc4a1f11b71d7d4753ef7a3e8798ea4eaa6205..d0d1c3b21407c1f91bbf386da3b3daf672d8c158 100644
+index a6cc4a1..d0d1c3b 100644
 --- a/src/passwords-dialog.c
 +++ b/src/passwords-dialog.c
 @@ -518,6 +518,6 @@ ephy_passwords_dialog_new (EphyPasswordManager *manager)
@@ -100,10 +100,10 @@ index a6cc4a1f11b71d7d4753ef7a3e8798ea4eaa6205..d0d1c3b21407c1f91bbf386da3b3daf6
                                                NULL));
  }
 diff --git a/src/prefs-dialog.c b/src/prefs-dialog.c
-index 1139fb8319ab90593f2d5d4b16598ddb17345f2b..9bfeb947fd8790041203d3ab76e7c4d9a4c767ce 100644
+index dc967fa..0cc47f4 100644
 --- a/src/prefs-dialog.c
 +++ b/src/prefs-dialog.c
-@@ -1707,7 +1707,7 @@ clear_personal_data_button_clicked_cb (GtkWidget   *button,
+@@ -1664,7 +1664,7 @@ clear_personal_data_button_clicked_cb (GtkWidget   *button,
    ClearDataDialog *clear_dialog;
  
    clear_dialog = g_object_new (EPHY_TYPE_CLEAR_DATA_DIALOG,
@@ -113,13 +113,13 @@ index 1139fb8319ab90593f2d5d4b16598ddb17345f2b..9bfeb947fd8790041203d3ab76e7c4d9
    gtk_window_set_transient_for (GTK_WINDOW (clear_dialog), GTK_WINDOW (dialog));
    gtk_window_set_modal (GTK_WINDOW (clear_dialog), TRUE);
 diff --git a/src/resources/gtk/prefs-dialog.ui b/src/resources/gtk/prefs-dialog.ui
-index 5d764b33bcd0e8eb6ed91ee0ebe2d0c1751c3291..0dda9e6623d34a17c7d94c27a567061f88e50796 100644
+index 1009a56..c3cb8b5 100644
 --- a/src/resources/gtk/prefs-dialog.ui
 +++ b/src/resources/gtk/prefs-dialog.ui
-@@ -8,12 +8,6 @@
-     <property name="destroy-with-parent">True</property>
-     <property name="icon-name">gtk-preferences</property>
+@@ -10,12 +10,6 @@
      <property name="type-hint">dialog</property>
+     <property name="default-width">600</property>
+     <property name="default-height">800</property>
 -    <child internal-child="headerbar">
 -      <object class="GtkHeaderBar">
 -        <property name="title" translatable="yes">Preferences</property>
@@ -130,7 +130,7 @@ index 5d764b33bcd0e8eb6ed91ee0ebe2d0c1751c3291..0dda9e6623d34a17c7d94c27a567061f
        <object class="GtkBox">
          <property name="visible">True</property>
 diff --git a/src/resources/gtk/search-engine-dialog.ui b/src/resources/gtk/search-engine-dialog.ui
-index b1969730ab6ed9cdb06e721775d28378e42ca958..4ded669daf7b698a8e5ef0f2db9bf43e31fe23e2 100644
+index b196973..4ded669 100644
 --- a/src/resources/gtk/search-engine-dialog.ui
 +++ b/src/resources/gtk/search-engine-dialog.ui
 @@ -6,12 +6,6 @@
@@ -147,7 +147,7 @@ index b1969730ab6ed9cdb06e721775d28378e42ca958..4ded669daf7b698a8e5ef0f2db9bf43e
        <object class="GtkBox">
          <property name="can_focus">False</property>
 diff --git a/src/resources/gtk/synced-tabs-dialog.ui b/src/resources/gtk/synced-tabs-dialog.ui
-index c8137e2fad787dd49d381638679160ca59666295..d25c524a2c06dc63bddccfbbcd22b8e6fc4ffe8e 100644
+index c8137e2..d25c524 100644
 --- a/src/resources/gtk/synced-tabs-dialog.ui
 +++ b/src/resources/gtk/synced-tabs-dialog.ui
 @@ -17,12 +17,6 @@
@@ -164,7 +164,7 @@ index c8137e2fad787dd49d381638679160ca59666295..d25c524a2c06dc63bddccfbbcd22b8e6
        <object class="GtkBox">
          <property name="visible">True</property>
 diff --git a/src/synced-tabs-dialog.c b/src/synced-tabs-dialog.c
-index 70034b2a72bb5f2cb4b8a491671fef9f6e5d8929..7babcdc9ec293a952f90cac0d66eaeb8aede9f56 100644
+index 70034b2..7babcdc 100644
 --- a/src/synced-tabs-dialog.c
 +++ b/src/synced-tabs-dialog.c
 @@ -350,7 +350,7 @@ SyncedTabsDialog *
@@ -177,7 +177,7 @@ index 70034b2a72bb5f2cb4b8a491671fef9f6e5d8929..7babcdc9ec293a952f90cac0d66eaeb8
                                                  NULL));
  }
 diff --git a/src/webapp-additional-urls-dialog.c b/src/webapp-additional-urls-dialog.c
-index b57db25f2ae0c21712d79a6821b94f48706be427..a18bc96612d08050b18cd90c7b769b3be337456a 100644
+index b57db25..a18bc96 100644
 --- a/src/webapp-additional-urls-dialog.c
 +++ b/src/webapp-additional-urls-dialog.c
 @@ -264,6 +264,6 @@ EphyWebappAdditionalURLsDialog *
@@ -189,10 +189,10 @@ index b57db25f2ae0c21712d79a6821b94f48706be427..a18bc96612d08050b18cd90c7b769b3b
                                                             NULL));
  }
 diff --git a/src/window-commands.c b/src/window-commands.c
-index 77128743b8751dd7b8634f98895fa77f2647b998..9cf4269e7a921e408185caa7c44f9c3cf87d3ec2 100644
+index 081f7f9..abdadaa 100644
 --- a/src/window-commands.c
 +++ b/src/window-commands.c
-@@ -230,7 +230,7 @@ show_profile_selector (GtkWidget *parent, GSList *profiles)
+@@ -229,7 +229,7 @@ show_profile_selector (GtkWidget *parent, GSList *profiles)
  
    selector = gtk_dialog_new_with_buttons (_("Select Profile"),
                                            GTK_WINDOW (parent),
@@ -201,21 +201,8 @@ index 77128743b8751dd7b8634f98895fa77f2647b998..9cf4269e7a921e408185caa7c44f9c3c
                                            _("_Cancel"),
                                            GTK_RESPONSE_CANCEL,
                                            _("_Select"),
-diff --git a/subprojects/libdazzle/src/shortcuts/dzl-shortcut-theme-editor.c b/subprojects/libdazzle/src/shortcuts/dzl-shortcut-theme-editor.c
-index b390ddad4204ec9bb67a56c608c94c0faa109a43..6f5e363c5698c0b109beae0cb32e684f674c167d 100644
---- a/subprojects/libdazzle/src/shortcuts/dzl-shortcut-theme-editor.c
-+++ b/subprojects/libdazzle/src/shortcuts/dzl-shortcut-theme-editor.c
-@@ -199,7 +199,7 @@ dzl_shortcut_theme_editor_row_activated (DzlShortcutThemeEditor *self,
-                              "shortcut-title", title,
-                              "title", _("Set Shortcut"),
-                              "transient-for", toplevel,
--                             "use-header-bar", TRUE,
-+                             "use-header-bar", FALSE,
-                              NULL);
- 
-       g_signal_connect_object (dialog,
 diff --git a/subprojects/libhandy/src/hdy-dialog.c b/subprojects/libhandy/src/hdy-dialog.c
-index 1557e1ccbb43ec312088eaa0cd613841af4f84ad..9a83d609d98cc07843b6f0cfa4e2bc9e54d62092 100644
+index a9827ba..993bbe6 100644
 --- a/subprojects/libhandy/src/hdy-dialog.c
 +++ b/subprojects/libhandy/src/hdy-dialog.c
 @@ -375,7 +375,7 @@ GtkWidget *
@@ -228,7 +215,7 @@ index 1557e1ccbb43ec312088eaa0cd613841af4f84ad..9a83d609d98cc07843b6f0cfa4e2bc9e
                         NULL);
  }
 diff --git a/subprojects/libhandy/src/hdy-header-group.c b/subprojects/libhandy/src/hdy-header-group.c
-index 864e47665b3bafdd38fac8c2234f57639729adf1..bbebeb8b3fa2eeafc5f774da53e1eec6c185a7f2 100644
+index 864e476..bbebeb8 100644
 --- a/subprojects/libhandy/src/hdy-header-group.c
 +++ b/subprojects/libhandy/src/hdy-header-group.c
 @@ -255,7 +255,8 @@ hdy_header_group_set_focus (HdyHeaderGroup *self,

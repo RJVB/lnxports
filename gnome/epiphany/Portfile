@@ -4,13 +4,13 @@ PortSystem          1.0
 PortGroup           meson 1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           locale_select 1.0
+PortGroup           LTO 1.0
 
 name                epiphany
-version             3.32.5
-revision            1
+version             3.33.4  ; revision 0
 license             GPL-2+
 set branch          [join [lrange [split ${version} .] 0 1] .]
-description         A GNOME Web browser.
+description         The GNOME Web browser.
 long_description    A web browser is more than an application, it is a \
                     way of thinking, it is a way of seeing the world. \
                     Epiphany's principles are simplicity and standards \
@@ -23,12 +23,12 @@ master_sites        gnome:sources/${name}/${branch}/
 
 use_xz              yes
 
-# 3.34.1
+# 3.34.1 and later need glib-2 >= 2.61.2
 # Dependency gio-2.0 found: NO found '2.58.3' but need: '>= 2.61.2'
 
-checksums           rmd160  c0f9bac3504319cac93c1968714daa91fd116415 \
-                    sha256  be9697eeb4d15f0b37bc8771ec0fab1b1cc0fa1b3c627602340972378af744c2 \
-                    size    5468976
+checksums           rmd160  8a567db68746c9094ae8632cb256e216b7a9484d \
+                    sha256  1097f840e958279b795e5e7c314978362b840b8ce0b2d35b8ef0d7232b9c7b68
+#                     size    5262484
 
 if {${os.platform} eq "darwin"} {
     depends_build-append \
@@ -52,6 +52,10 @@ if {${os.platform} eq "darwin"} {
 
     depends_run     port:adwaita-icon-theme \
                     port:gnome-keyring
+    if {![variant_isset quartz]} {
+        configure.cppflags-append \
+                    -DBUILDING_GTK__=1
+    }
 } else {
     depends_build-append \
                     port:pkgconfig \
@@ -70,7 +74,7 @@ if {${os.platform} eq "darwin"} {
                     path:lib/pkgconfig/webkit2gtk-4.0.pc:webkit2-gtk
 
     configure.ldflags-append \
-                    -lintl
+                    -Wl,-rpath,${prefix}/lib -Wl,-rpath,${prefix}/lib/${build_arch}-linux-gnu -Wl,-rpath,${prefix}/${build_arch}-linux-gnu -lintl
 }
 
 # error: invalid value 'gnu11' in '-std=gnu11'
@@ -85,8 +89,8 @@ patch.pre_args      -Np1
 
 # specify a python3 version
 patchfiles          patch-post-install-python.diff
-# webkit_web_context_set_web_process_count_limit() is deprecated in webkit2-gtk
-patchfiles          patch-no-limit-webprocesses.diff
+
+# patchfiles-append   patch-no-limit-webprocesses.diff
 
 variant nocsd description {disable as much as possible of the GNOME client-side-decoration feature} {
     patchfiles-append \
@@ -103,6 +107,7 @@ post-activate {
     system "${prefix}/bin/glib-compile-schemas ${prefix}/share/glib-2.0/schemas"
 }
 
+meson.save_configure_cmd "log too"
 build.pre_args-prepend -k 0
 
 livecheck.type      gnome
