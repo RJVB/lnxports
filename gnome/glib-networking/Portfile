@@ -1,0 +1,46 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           LTO 1.0
+PortGroup           meson 1.0
+PortGroup           locale_select 1.0
+
+name                glib-networking
+version             2.60.4
+revision            0
+set branch          [join [lrange [split ${version} .] 0 1] .]
+description         Network-related giomodules for glib
+long_description    ${description}
+maintainers         nomaintainer
+categories          gnome
+platforms           darwin
+license             LGPL-2+
+homepage            https://www.gnome.org/
+master_sites        gnome:sources/${name}/${branch}/
+
+use_xz              yes
+
+checksums           rmd160  18c4338b22d8e5dfe40e3d8a3162900add6158b6 \
+                    sha256  85e620bdf5838971412793e9d2a2ee72de7da6c4185e168c087b8d6abc788643 \
+                    size    185628
+
+depends_build-append \
+                    port:pkgconfig
+
+depends_lib-append  path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:gnutls \
+                    port:libproxy \
+                    port:gsettings-desktop-schemas \
+                    port:p11-kit
+
+depends_run         path:share/curl/curl-ca-bundle.crt:curl-ca-bundle
+
+patchfiles          patch-disable-gio-querymodules-during-destroot.diff
+
+compiler.c_standard 2011
+
+post-activate {
+    system "${prefix}/bin/gio-querymodules ${prefix}/lib/gio/modules"
+}
+
+livecheck.type      gnome
