@@ -111,6 +111,15 @@ configure.args-delete   -DCMAKE_INSTALL_RPATH=${prefix}/lib \
 configure.args-append   -DCMAKE_INSTALL_RPATH=${prefix}/lib/libomp \
                         -DCMAKE_INSTALL_NAME_DIR=${prefix}/lib/libomp \
                         -DLIBOMP_OMPT_SUPPORT=FALSE
+if {[variant_isset hwloc]} {
+    depends_lib-append  port:hwloc
+    configure.args-append \
+                        -DLIBOMP_USE_HWLOC=ON \
+                        -DLIBOMP_HWLOC_INSTALL_DIR=${prefix}
+} else {
+    configure.args-append \
+                        -DLIBOMP_USE_HWLOC=OFF
+}
 
 if {[string match *clang* ${configure.cxx}]} {
     set llvmlit [string map {"clang++" "llvm-lit"} ${configure.cxx}]
@@ -122,6 +131,8 @@ if {[string match *clang* ${configure.cxx}]} {
 
 variant top_level description \
     "Install (links to) omp.h and libs into ${prefix}/(include|lib)" {}
+
+variant hwloc description {Build hwloc support for affinity} {}
 
 post-extract {
     # Patch tool for build with CMAKE_INSTALL_PREFIX
