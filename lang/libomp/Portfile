@@ -2,13 +2,16 @@
 
 PortSystem              1.0
 PortGroup               cmake 1.1
-PortGroup               muniversal 1.0
+if {${os.major} <= 17} {
+    PortGroup           muniversal 1.0
+}
+PortGroup               clang_dependency 1.0
 PortGroup               compiler_blacklist_versions 1.0
-PortGroup               github 1.0
+PortGroup               LTO 1.0
 
 name                    libomp
 maintainers             {eborisch @eborisch} openmaintainer
-homepage                http://openmp.llvm.org
+homepage                https://openmp.llvm.org
 description             The OpenMP subproject of LLVM
 long_description        ${description} is intended to contain all of the\
                         components required to build an executing OpenMP\
@@ -18,83 +21,80 @@ long_description        ${description} is intended to contain all of the\
 
 categories              lang
 platforms               darwin linux
-# supported_archs         i386 x86_64
+supported_archs         arm64 i386 x86_64
 license                 {MIT NCSA}
+
+# Moved to epoch 1 for svn # -> version # change.
+epoch                   1
 
 subport                 libomp-devel {}
 
-if { ${subport} eq "libomp-devel" } {
-    if {${os.platform} eq "darwin" && ${configure.cxx_stdlib} eq "libstdc++"} {
-        version                 291764
-        replaced_by             libomp
+if {${os.platform} ne "darwin" || ${configure.cxx_stdlib} ne "libstdc++"} {
+    if { ${subport} eq "libomp-devel" } {
+        version         12.0.0
+        checksums       rmd160  1b263c4e77e91764cb9036da32a09a67887ff276 \
+                        sha256  eb1b7022a247332114985ed155a8fb632c28ce7c35a476e2c0caf865150f167d
+#                         size    1081412
+        livecheck.regex {"llvmorg-([0-9.rc-]+)".*}
     } else {
-        conflicts               libomp
-        github.setup            llvm-mirror openmp feadeef
-        worksrcdir              openmp-${version}
-        version                 329928
-        revision                0
-        name                    ${subport}
-        checksums \
-            rmd160  41fb67de6ff9655c4c782bb180baed52c9173ed6 \
-            sha256  0efe16f32a5f0b2107774a42ae019532770a949bcb8fb3fa421c020ed15e6259
-
-        livecheck.url \
-            http://llvm.org/viewvc/llvm-project/openmp/trunk/?view=log
-        livecheck.version       ${version}
-        livecheck.regex         revision=(\[0-9\]+)
-        set rtpath              "runtime/"
+        version         12.0.0
+        checksums       rmd160  1b263c4e77e91764cb9036da32a09a67887ff276 \
+                        sha256  eb1b7022a247332114985ed155a8fb632c28ce7c35a476e2c0caf865150f167d
+#                         size    1081412
+        livecheck.regex {"llvmorg-([0-9.]+)".*}
     }
-} else {
-    conflicts               libomp-devel
-#     if {${os.platform} eq "darwin" && ${configure.cxx_stdlib} ne "libstdc++"} {
-#         if {${os.major} <= 12} {
-#             # kmp_alloc.c includes <atomic> but libc++ is not the default on
-#             # these systems. https://trac.macports.org/ticket/52554
-#             configure.cflags-append -stdlib=libc++
-#         }
-        version                 6.0.0
-        revision                0
-        master_sites            https://releases.llvm.org/${version}
-        distname                openmp-${version}.src
-        use_xz                  yes
-        dist_subdir             openmp-release
-        checksums \
-            rmd160  09f2a0d8a2fd317ec583d59d5142f74fec2b9d1a \
-            sha256  7c0e050d5f7da3b057579fb3ea79ed7dc657c765011b402eb5bbe5663a7c38fc
 
-        worksrcdir              ${distname}
-        set rtpath              "runtime/"
-#     } else {
-#         # Last version working on libstdc++
-#         github.setup            llvm-mirror openmp 381 svn-tags/RELEASE_
-#         worksrcdir              openmp-${version}/final/runtime
-#         version                 3.8.1
-#         revision                3
-#         checksums \
-#             rmd160  a41054068a127ef84610afef8090109078cb6c46 \
-#             sha256  4c46b5946fe9b2a701661746d11c7c85c51a7f18673194a7ebd2a43470948a34
-#         set rtpath              "./"
-#     }
-    # Moved to epoch 1 for svn # -> version # change.
-    epoch                   1
-    name                    libomp
-    livecheck.version       [strsed ${version} {g/\.//}]
-    livecheck.url           https://github.com/llvm-mirror/openmp/branches
-    livecheck.regex         svn-tags/RELEASE_(\[0-9\]+)
+    if {${os.major} <= 12} {
+        # kmp_alloc.c includes <atomic> but libc++ is not the default on
+        # these systems. https://trac.macports.org/ticket/52554
+        configure.cflags-append -stdlib=libc++
+    }
+
+    # Build requires std::atomic
+    configure.cxxflags-append -std=c++11
+    compiler.cxx_standard   2011
+
+    master_sites        https://github.com/llvm/llvm-project/releases/download/llvmorg-${version} \
+                        https://releases.llvm.org/${version}
+    distname            openmp-[strsed ${version} {s/-//}].src
+    use_xz              yes
+    dist_subdir         openmp-release
+    worksrcdir          ${distname}
+    set rtpath          "runtime/"
+    
+    patchfiles-append   patch-libomp-use-gettid-on-Leopard.diff
+
+    livecheck.url       https://api.github.com/repos/llvm/llvm-project/tags
+} else {
+    if { ${subport} eq "libomp-devel" } {
+        version         291764
+        replaced_by     libomp
+    } else {
+        PortGroup       github 1.0
+        # Last version working on libstdc++
+        github.setup    llvm-mirror openmp 381 svn-tags/RELEASE_
+        name            libomp
+
+        worksrcdir      openmp-${version}/final/runtime
+        version         3.8.1
+        checksums       rmd160  a41054068a127ef84610afef8090109078cb6c46 \
+                        sha256  4c46b5946fe9b2a701661746d11c7c85c51a7f18673194a7ebd2a43470948a34
+        set rtpath      "./"
+    }
+    livecheck.type      none
 }
+
+depends_build-append    port:perl5
+cmake.out_of_source     yes
 
 # According to documentation builds with clang >= 3.3
 compiler.blacklist-append {clang < 500} *gcc*
 
-# Avoid dependency cycle
-# https://trac.macports.org/ticket/53110
-# foreach ver {3.8 3.9 4.0 5.0 devel} {
-#     if {![file exists ${prefix}/bin/clang-mp-${ver}]} {
-#         compiler.blacklist-append macports-clang-${ver}
-#     }
-# }
-
-# default_variants        +universal
+platform darwin {
+    if {${os.major} <= 17} {
+        default_variants    +universal
+    }
+}
 
 # Do actual install into ${prefix}/(install|lib)/libomp
 # A little unorthodox, but to have clang automatically find the includes and
@@ -110,6 +110,7 @@ configure.args-delete   -DCMAKE_INSTALL_RPATH=${prefix}/lib \
 # final destination we move them to
 configure.args-append   -DCMAKE_INSTALL_RPATH=${prefix}/lib/libomp \
                         -DCMAKE_INSTALL_NAME_DIR=${prefix}/lib/libomp \
+                        -DLIBOMP_OMPT_SUPPORT=FALSE
 
 if {[string match *clang* ${configure.cxx}]} {
     set llvmlit [string map {"clang++" "llvm-lit"} ${configure.cxx}]
@@ -132,18 +133,24 @@ post-destroot {
     set instdest ${destroot}${prefix}
     xinstall -d ${instdest}/share/doc/libomp
     xinstall -d ${instdest}/include/libomp
-    move {*}[glob -directory ${instdest}/tmp/include/ *.h] ${instdest}/include/libomp/
+    move ${instdest}/tmp/include/omp.h ${instdest}/include/libomp/
     xinstall -d ${instdest}/lib/libomp
-    foreach p [glob -directory ${instdest}/tmp/lib/ *.so] {
+
+    if {${os.platform} eq "darwin"} {
+        set shlext "dylib"
+    } else {
+        set shlext "so"
+    }
+    foreach p [glob -directory ${instdest}/tmp/lib/ *.${shlext}] {
         move ${p} ${instdest}/lib/libomp/
     }
-    if [variant_isset top_level] {
+
+    if {[variant_isset top_level]} {
         system -W ${instdest}/include \
           "ln -s libomp/*.h ."
         system -W ${instdest}/lib/ \
           "ln -s libomp/* ."
     }
-
 
     set fpath ${worksrcpath}/${rtpath}
     file copy ${fpath}/README.txt ${fpath}/../LICENSE.txt \
