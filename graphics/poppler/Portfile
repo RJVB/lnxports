@@ -11,7 +11,9 @@ platform darwin {
         PortGroup   legacysupport 1.0
     }
 }
-PortGroup           preserve_runtime_libraries 1.0
+if {${subport} ne "popper-qt5"} {
+    PortGroup       preserve_runtime_libraries 1.0
+}
 
 name                poppler
 conflicts           xpdf-tools
@@ -117,14 +119,13 @@ subport poppler-qt5 {
 
     configure.env-append    MOCQT5=${qt_bins_dir}/moc
     configure.args-delete   -DENABLE_QT5=OFF
-    configure.args-delete   -DENABLE_XPDF_HEADERS=ON
     configure.args-append   -DENABLE_UTILS=OFF
     configure.args-append   -DENABLE_CPP=OFF
     configure.args-append   -DENABLE_GLIB=OFF
 
     post-destroot {
         file delete ${destroot}${prefix}/lib/pkgconfig/poppler-cairo.pc
-        if {[variant_isset preserve_runtime_libraries]} {
+        if {[variant_exists preserve_runtime_libraries] && [variant_isset preserve_runtime_libraries]} {
            if {![catch {set installed [lindex [registry_active ${subport}] 0]}]} {
                 set _version [lindex $installed 1]
                 # check if the (or a) previous port version is active
