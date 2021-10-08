@@ -20,7 +20,7 @@ name                ffmpeg
 conflicts           ffmpeg-devel
 # Please increase the revision of mpv whenever ffmpeg's version is updated.
 epoch               1
-version             4.3.2
+version             4.3.2 ; revision 1
 license             LGPL-2.1+
 categories          multimedia
 maintainers         {devans @dbevans} {jeremyhu @jeremyhu} openmaintainer
@@ -224,6 +224,11 @@ platform linux {
     if {![regexp -all (arm64|ppc*) [get_canonical_archs]]} {
         configure.args-append   --enable-libdav1d
         depends_lib-append      port:dav1d
+    }
+    configure.args-append --disable-opencl
+    variant opencl description {enable OpenCL support} {}
+    if {[variant_isset opencl]} {
+        configure.args-replace --disable-opencl --enable-opencl
     }
 }
 

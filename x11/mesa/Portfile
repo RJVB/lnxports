@@ -15,7 +15,7 @@ platform darwin {
 
 name                mesa
 epoch               1
-version             21.0.1
+version             21.0.1 ; revision 1
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -119,10 +119,16 @@ if {[string match *meson* ${configure.cmd}]} {
                     -Dgallium-drivers=r300,r600,nouveau,swrast,svga,virgl,swr \
                     -Dgallium-extra-hud=true \
                     -Dgallium-va=true \
-                    -Dgallium-opencl=standalone \
+                    -Dgallium-opencl=disabled \
                     -Dtools=all \
-                    -Dglx-direct=true \
+                    -Dglx-direct=true
+        if {[string match *clang* ${configure.compiler}]} {
+            configure.args-append \
+                    -Dbuild-tests=false
+        } else {
+            configure.args-append \
                     -Dbuild-tests=true
+        }
         post-destroot {
 #             # meson rebuilds to-be-installed libraries without rpath information, so replace those with
 #             # the ones from the build dir that do have the info.
@@ -392,6 +398,18 @@ if {[variant_isset osmesa]} {
         configure.args-replace \
                     --disable-osmesa \
                     --enable-osmesa
+    }
+}
+variant opencl description {enable OpenCL} {}
+if {[variant_isset opencl]} {
+    if {[string match *meson* ${configure.cmd}]} {
+        configure.args-replace \
+                    -Dgallium-opencl=disabled \
+                    -Dgallium-opencl=standalone
+    } else {
+        configure.args-replace \
+                    --disable-opencl \
+                    --enable-opencl
     }
 }
 default_variants-append +osmesa

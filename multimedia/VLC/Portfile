@@ -48,7 +48,7 @@ if {${subport} eq ${name}} {
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.12
+version             3.0.12 ; revision 1
 license             GPL-2
 
 platforms           darwin
@@ -71,7 +71,8 @@ platform darwin {
 
 depends_build       port:pkgconfig \
                     port:protobuf-cpp \
-                    port:protobuf-cpp-dev
+                    port:protobuf-cpp-dev \
+				port:gettext-dev
 
 set vlcprefix       ${prefix}/libexec/vlc3
 configure.pre_args-replace \
