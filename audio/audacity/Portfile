@@ -38,10 +38,9 @@ if {${subport} eq "${name}-manual"} {
     return          0
 }
 
+variant wxsystem description {Depend on wxWidgets from MacPorts} {}
+
 # PortGroups for the main ports
-if {[variant_isset wxsystem]} {
-    PortGroup       wxWidgets 1.0
-}
 PortGroup           active_variants 1.1
 PortGroup           cmake 1.1
 #>> RJVB
@@ -68,12 +67,15 @@ long_description    Audacity is a free, easy-to-use, multi-track audio editor an
                     And more!
 
 subport             audacity-devel {
-    long_description A port of the Audacity audio editor aimed at development purposes.
+    long_description-append \
+                    \n This version of the port follows pre-releases, currently a 3.0.0 beta. \
+                    The v3 series can import .aup projects from the v2 series but can only \
+                    write in a new .aup3 format that the older versions cannot import!
 }
 
 
 if {${subport} eq "${name}"} {
-    conflicts       "${name}-devel"
+    conflicts       ${name}-devel
     # get the source tarball from github because it contains all required external libs
     # incl. those not in MacPorts.
     #github.setup    audacity audacity 2.3.0 Audacity-
@@ -87,10 +89,12 @@ if {${subport} eq "${name}"} {
         variant wx30 conflicts wx32 requires wxsystem description {build against wxWidgets-3.0} {}
     }
 } else {
-    conflicts       "${name}"
+    conflicts       ${name}
     # git describe --tags : Audacity-2.4.2-790-g463058e20
-    github.setup    audacity audacity 463058e20cf804d06bf1abe3ac629f0eba0e6bdd
-    version         2.4.2.790
+    # github.setup    audacity audacity 463058e20cf804d06bf1abe3ac629f0eba0e6bdd
+    ## 576b7e66 looks like possibly the last commit before the takeover by the new project owner:
+    github.setup    audacity audacity 576b7e66d2b96c39241d3d992259fc2bfa7855b0
+    version         3.0.2.129
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate for the current maintainer
     fetch.type      git
@@ -101,6 +105,9 @@ if {${subport} eq "${name}"} {
 }
 
 variant wx32 conflicts wx30 requires wxsystem description {build against wxWidgets-3.2} {}
+if {![variant_exists wxsystem] || [variant_isset wxsystem]} {
+    PortGroup       wxWidgets 1.0
+}
 
 compiler.cxx_standard 2014
 build.post_args-append -k
@@ -122,6 +129,8 @@ categories          audio
 
 platforms           darwin
 license             GPL-2+
+# openssl is a dependency of curl in cmake
+license_noconflict  openssl
 maintainers         gmail.com:rjvbertin openmaintainer
 universal_variant   no
 use_parallel_build  yes
@@ -129,11 +138,7 @@ use_parallel_build  yes
 homepage            http://www.audacityteam.org/
 
 if {[variant_isset wxsystem]} {
-    # we want to use the temporary wxWidgets-3.1 "Audacity-special" port!
-    variant qt description {build against wxQt-3.2 (experimental!!)} {}
-    if {[variant_isset qt]} {
-        wxWidgets.use   wxQt-3.2
-    } elseif {[variant_exists wx32] && [variant_isset wx32]} {
+    if {[variant_exists wx32] && [variant_isset wx32]} {
         wxWidgets.use   wxWidgets-3.2
     } elseif {[variant_exists wx30] && [variant_isset wx30]} {
         wxWidgets.use   wxWidgets-3.0
@@ -147,6 +152,7 @@ if {[variant_isset wxsystem]} {
     depends_lib-append  port:${wxWidgets.port}
 } else {
     set wxCommit    07e7d83
+    # different master_sites so we need to fetch and extract the audacity-wxWidgets sources "manually"
     post-fetch {
         if {![file exists ${distpath}/wxWidgets-${wxCommit}.tar.gz]} {
             ui_info "--->  Fetching wxWidgets-${wxCommit}.tar.gz"
@@ -165,8 +171,7 @@ if {[variant_isset wxsystem]} {
                     port:tiff \
                     port:libpng \
                     port:zlib \
-                    port:libiconv \
-                    port:expat
+                    port:libiconv
 }
 
 depends_build-append \
@@ -181,6 +186,7 @@ depends_lib-append  port:freetype \
                     port:soundtouch \
                     port:soxr \
                     port:twolame \
+                    port:expat \
                     path:lib/libavcodec.dylib:ffmpeg \
                     port:flac \
                     port:lame \
@@ -206,8 +212,7 @@ platform darwin {
                     add_enGB_translation.diff                     \
                     patch-more-decent-font-sizes.diff             \
                     patch-python.diff                             \
-                    patch-libnyquist-symbol-visibility.diff \
-                    patch-skip-gcc-version-test.diff
+                    patch-libnyquist-symbol-visibility.diff
     # use lame from MacPorts (partial revert of ae431bc5)
     # load ffmpeg libs from MacPorts (reverts of 1d40f33e)
     patchfiles-append \
@@ -217,6 +222,15 @@ platform darwin {
     patchfiles-append \
                     patch-implement-progdial=beep.diff \
                     patch-wxw-303.diff
+    if {[variant_isset wxsystem]} {
+        # make certain we're not embedding any wxWidgets libraries
+        add_patchfile_ifexists \
+                    ${PPREFIX}patch-no-embedded-wxW.diff
+    } else {
+        # make certain we're embedding our wxWidgets libraries
+        add_patchfile_ifexists \
+                    ${PPREFIX}patch-embed-wxW.diff
+    }
 }
 platform linux {
     patchfiles-append \
@@ -226,18 +240,24 @@ platform linux {
                     patch-avoid-clang-choke-on-confbase.diff                \
                     patch-rearrange-control-buttons.diff                    \
                     patch-python.diff                             \
-                    patch-libnyquist-symbol-visibility.diff \
-                    patch-skip-gcc-version-test.diff
+                    patch-libnyquist-symbol-visibility.diff
     # use lame from MacPorts (partial revert of ae431bc5)
     # load ffmpeg libs from MacPorts (reverts of 1d40f33e)
     patchfiles-append \
                     patch-use-MPlame.diff \
                     patch-use-MPffmpeg.diff
+    # I've begun to be hit by a known bug in libstdc++ and/or glibc, causing std::call_once
+    # to hang after a call to it was interrupted by an exception (cf. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66146
+    # and yes, it can happen on x86 too). Replace all calls to the function with something that
+    # has the same effect.
+    patchfiles-append \
+                    patch-linux-call_once.diff
     # for building against wxWidgets 3.0.3:
     add_patchfile_ifexists \
                     patch-wxw-303.diff
 }
 add_patchfile_ifexists \
+                    ${PPREFIX}patch-skip-gcc-version-test.diff \
                     ${PPREFIX}patch-enable-compact-menu.diff \
                     ${PPREFIX}patch-temp-fixes.diff
 if {[variant_isset wxsystem] && ${wxWidgets.use} ne "wxWidgets-3.2"} {

@@ -1,8 +1,8 @@
 diff --git a/src/toolbars/ControlToolBar.cpp b/src/toolbars/ControlToolBar.cpp
-index b4c8cf6f6a121b5cfff8d78e5061c01af9d80213..892b180f3cb626e8225c252c85a22645de6acaab 100644
+index bd2c38ddc..69b35a2ae 100644
 --- a/src/toolbars/ControlToolBar.cpp
 +++ b/src/toolbars/ControlToolBar.cpp
-@@ -348,6 +348,14 @@ void ControlToolBar::UpdatePrefs()
+@@ -349,6 +349,14 @@ void ControlToolBar::UpdatePrefs()
     ToolBar::UpdatePrefs();
  }
  
@@ -17,7 +17,7 @@ index b4c8cf6f6a121b5cfff8d78e5061c01af9d80213..892b180f3cb626e8225c252c85a22645
  void ControlToolBar::ArrangeButtons()
  {
     int flags = wxALIGN_CENTER | wxRIGHT;
-@@ -363,6 +371,7 @@ void ControlToolBar::ArrangeButtons()
+@@ -364,6 +372,7 @@ void ControlToolBar::ArrangeButtons()
  
     // Start with a little extra space
     mSizer->Add( 5, 55 );
@@ -25,7 +25,7 @@ index b4c8cf6f6a121b5cfff8d78e5061c01af9d80213..892b180f3cb626e8225c252c85a22645
  
     // Add the buttons in order based on ergonomic setting
     if( mErgonomicTransportButtons )
-@@ -374,10 +383,15 @@ void ControlToolBar::ArrangeButtons()
+@@ -375,10 +384,15 @@ void ControlToolBar::ArrangeButtons()
        mFF->MoveBeforeInTabOrder( mRecord );
  
        mSizer->Add( mPause,  0, flags, 2 );
@@ -41,7 +41,7 @@ index b4c8cf6f6a121b5cfff8d78e5061c01af9d80213..892b180f3cb626e8225c252c85a22645
        mSizer->Add( mRecord, 0, flags, 5 );
     }
     else
-@@ -389,10 +403,15 @@ void ControlToolBar::ArrangeButtons()
+@@ -390,10 +404,15 @@ void ControlToolBar::ArrangeButtons()
        mStop->MoveBeforeInTabOrder( mFF );
  
        mSizer->Add( mRewind, 0, flags, 2 );
