@@ -100,7 +100,7 @@ if {${subport} eq "${name}-legacy"} {
         variant wx30 conflicts wx32 requires wxsystem description {build against wxWidgets-3.0} {}
     }
 } else {
-    conflicts       ${name}
+    conflicts       "${name}-legacy"
     ## 576b7e66 looks like possibly the last commit before the takeover by the new project owner:
     github.setup    audacity audacity 576b7e66d2b96c39241d3d992259fc2bfa7855b0
     version         3.0.2.129
@@ -436,7 +436,7 @@ pre-build {
         system -W ${worksrcpath}/mac "scripts/get_gitident.sh"
         system "echo '#define GIT_DESC \"${version}\"' >> ${worksrcpath}/src/RevisionIdent.h"
     } else {
-        system "echo '#define GIT_DESC \"${version}\"' >> ${worksrcpath}/src/GitDesc.h"
+        system "echo '#define GIT_DESC \"${version}\"' > ${worksrcpath}/src/GitDesc.h"
     }
 }
 
