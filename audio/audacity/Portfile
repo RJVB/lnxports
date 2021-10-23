@@ -327,9 +327,14 @@ configure.args-append \
                     -D${_OPT}use_twolame=system \
                     -D${_OPT}use_midi=local \
                     -D${_OPT}use_pch=on
-# using port:sqlite3 leads to unstable behaviour?!
-configure.args-append \
+if {${subport} eq ${name}} {
+    # using port:sqlite3 leads to unstable behaviour?!
+    configure.args-append \
                     -D${_OPT}use_sqlite=local
+} else {
+    depends_lib-append \
+                    port:sqlite3
+}
 if {[variant_isset wxsystem]} {
     configure.args-append \
                     -DwxWidgets_CONFIG_EXECUTABLE=${wxWidgets.wxconfig} \
