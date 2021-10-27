@@ -7,6 +7,7 @@ PortGroup       locale_select 1.0
 name            glibc
 set baseversion 2.29
 set urev        3
+set thePrefix   /opt/glibc/${baseversion}
 version         ${baseversion}.${urev}
 description     The GNU C library
 long_description \
@@ -17,12 +18,21 @@ long_description \
                 with libraries from the host. For that reason this port installs only when you confirm having \
                 read this by setting the variant.
 
-variant I_read_the_info description "use this variant to signal that you read `port info ${name}`" {}
-pre-fetch {
-    if {![variant_isset I_read_the_info]} {
-        ui_error "Please confirm that you read `port info ${name}` and then set +I_read_the_info variant"
-        return -code error "User didn't follow the instructions"
+variant opt_libc conflicts I_read_the_info description "Install into ${thePrefix}" {}
+variant I_read_the_info conflicts opt_libc description "use this variant to signal that you read `port info ${name}`" {}
+if {![variant_isset opt_libc]} {
+    # correct!
+    set thePrefix ${prefix}
+    pre-fetch {
+        if {![variant_isset I_read_the_info]} {
+            ui_error "Please confirm that you read `port info ${name}` by setting the +I_read_the_info variant"
+            return -code error "User didn't follow the instructions"
+        }
     }
+} else {
+    configure.pre_args-replace \
+        --prefix=${prefix} \
+        --prefix=${thePrefix}
 }
 
 homepage        https://launchpad.net/ubuntu/+source/${name}
@@ -38,6 +48,7 @@ worksrcdir      ${name}-${baseversion}
 
 # Ubuntu's patches:
 patch.pre_args  -Np1
+    #kfreebsd/local-fbtl.diff 
 patchfiles-append \
     git-updates.diff \
     locale/check-unknown-symbols.diff \
@@ -63,7 +74,6 @@ patchfiles-append \
     kfreebsd/local-config_h_in.patch \
     kfreebsd/local-grantpt.diff \
     kfreebsd/local-sysdeps.diff \
-    kfreebsd/local-fbtl.diff \
     kfreebsd/local-fbtl-depends.diff \
     kfreebsd/local-scripts.diff \
     kfreebsd/local-getaddrinfo-freebsd-kernel.diff \
@@ -141,10 +151,16 @@ configure.args-append \
                 --enable-rpath
 
 platform linux {
-    configure.ldflags-append -Wl,-rpath=${prefix}/lib
-    build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
-    destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib
-#     destroot.violate_mtree yes
+    configure.ldflags-append -Wl,-rpath=${prefix}/lib -Wl,--dynamic-linker=${thePrefix}/lib/ld-${baseversion}.so
+    build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib -Wl,--dynamic-linker=${thePrefix}/lib/ld-${baseversion}.so
+    destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib -Wl,--dynamic-linker=${thePrefix}/lib/ld-${baseversion}.so
+    if {[variant_isset opt_libc]} {
+        configure.ldflags-append -Wl,-rpath=${thePrefix}/lib -L${thePrefix}/lib
+        build.env-append LDFLAGS=-Wl,-rpath=${thePrefix}/lib -L${thePrefix}/lib
+        destroot.env-append LDFLAGS=-Wl,-rpath=${thePrefix}/lib -L${thePrefix}/lib
+        destroot.violate_mtree yes
+    }
+    configure.ldflags-delete -Wl,--enable-new-dtags
 }
 
 ####################
@@ -160,18 +176,18 @@ if {[is_mainport]} {
 
     post-destroot {
         # this is provided by port:gettext-dev
-        file delete ${destroot}${prefix}/include/libintl.h
+        file delete ${destroot}${thePrefix}/include/libintl.h
         # provided by port:libiconv-dev
-        file delete ${destroot}${prefix}/include/iconv.h
+        file delete ${destroot}${thePrefix}/include/iconv.h
         # provided by port:libiconv
-        file delete ${destroot}${prefix}/bin/iconv
+        file delete ${destroot}${thePrefix}/bin/iconv
 
         ####################
         register_devport_standard_content
-        append_to_devport_standard_content ${prefix}/lib/*.map ${prefix}/lib/*.o ${prefix}/lib/libc.so ${prefix}/lib/libm.so
-#         append_to_devport_standard_content ${prefix}/lib/*.o
+        append_to_devport_standard_content ${thePrefix}/lib/*.map ${thePrefix}/lib/*.o ${thePrefix}/lib/libc.so ${thePrefix}/lib/libm.so
+#         append_to_devport_standard_content ${thePrefix}/lib/*.o
         # these are ASCII file "links" that should also go into the -dev port
-#         devport_content-append ${prefix}/lib/libc.so ${prefix}/lib/libm.so
+#         devport_content-append ${thePrefix}/lib/libc.so ${thePrefix}/lib/libm.so
         create_devport_content_archive
         ####################
 
