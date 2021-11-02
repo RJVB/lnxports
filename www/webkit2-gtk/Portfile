@@ -9,6 +9,9 @@ PortGroup           active_variants 1.1
 PortGroup           cmake 1.1
 PortGroup           locale_select 1.0
 PortGroup           LTO 1.0
+platform darwin {
+    PortGroup       compress_workdir 1.0
+}
 
 compiler.cxx_standard 2017
 cmake.generator     Ninja
@@ -18,7 +21,7 @@ build.pre_args-prepend -k 0
 name                webkit2-gtk
 conflicts           webkit2-gtk-devel
 version             2.28.2
-revision            2
+revision            1
 
 description         Apple's WebKit2 HTML rendering library for GTK+3
 long_description    ${description}
@@ -39,6 +42,7 @@ checksums           rmd160  a626f58cf30b6dd1ef8a63c165ce85770c4da675 \
 #                     size    21427772
 
 if {${os.platform} eq "darwin"} {
+    revision        [expr ${revision} + 1]
     depends_build-append \
                     port:gperf \
                     port:gtk-doc \
@@ -74,7 +78,8 @@ if {${os.platform} eq "darwin"} {
                     port:sqlite3 \
                     port:webp \
                     port:woff2 \
-                    port:zlib
+                    port:zlib \
+                    port:jemalloc
 } else {
     depends_build-append \
                     port:gperf \
@@ -121,21 +126,22 @@ platform darwin {
 }
 
 # os log is only available on newer systems.
-patchfiles-append   patch-webkit2gtk-2282-os-log-availability.diff
+patchfiles-append       patch-webkit2gtk-2282-os-log-availability.diff
 
 # enable Netscape plugin architecture on macOS
 # or can be explicitly disabled with the following addition if preferred
 # configure.args-append -DENABLE_NETSCAPE_PLUGIN_API=OFF
-patchfiles-append    patch-enable-plugin-architecture-unix.diff
+patchfiles-append       patch-enable-plugin-architecture-unix.diff
 
 # add a link library to WebCore. I am not sure this is still needed; builds and
 # runs without this patch.
 platform darwin {
-    patchfiles-append    patch-bundle-link-webcore.diff
+    patchfiles-append   patch-bundle-link-webcore.diff
 
     # Fix incompatibility with XCode 12:
     # https://bugs.webkit.org/show_bug.cgi?id=207871
-    patchfiles-append    patch-WTF-wtf-getVTablePointer.diff
+    patchfiles-append   patch-WTF-wtf-getVTablePointer.diff \
+                        patch-darwin.diff
 }
 
 # it is preferred to use the WebKit built in bmalloc if it builds on a given os.
@@ -146,13 +152,14 @@ configure.args-append \
     -DENABLE_INTROSPECTION=ON \
     -DENABLE_MINIBROWSER=OFF \
     -DENABLE_VIDEO=ON \
-    -DUSE_SYSTEM_MALLOC=OFF \
-    -DENABLE_WEBGL2=ON
+    -DENABLE_ACCELERATED_2D_CANVAS=ON \
+    -DENABLE_ASYNC_SCROLLING=ON \
+    -DENABLE_WEBGL2=ON \
+    -DUSE_SYSTEM_MALLOC=OFF
 platform linux {
     configure.args-append \
         -DUSE_WPE_RENDERER=OFF \
-        -DENABLE_BUBBLEWRAP_SANDBOX=OFF \
-        -DENABLE_ACCELERATED_2D_CANVAS=ON
+        -DENABLE_BUBBLEWRAP_SANDBOX=OFF
 }
 
 pre-configure {
