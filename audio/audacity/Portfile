@@ -92,6 +92,7 @@ if {${subport} eq "${name}-legacy"} {
     # get the source tarball from github because it contains all required external libs
     # incl. those not in MacPorts.
     github.setup    audacity audacity 2.4.2 Audacity-
+    revision        1
     checksums       rmd160  d9e04c029a144800e378a6b5464c74f3fdb2a7e2 \
                     sha256  032273e2408ad51f97c6846ac8d8fe9e4a3fbc6e4c620e630ea4c1d0124d9a94
 #                     size    61254313
@@ -103,7 +104,7 @@ if {${subport} eq "${name}-legacy"} {
     conflicts       "${name}-legacy"
     ## 576b7e66 looks like possibly the last commit before the takeover by the new project owner:
     github.setup    audacity audacity 576b7e66d2b96c39241d3d992259fc2bfa7855b0
-    version         3.0.2.129
+    version         3.0.2.129 ; revision 1
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate for the current maintainer
     fetch.type      git
@@ -120,8 +121,12 @@ if {${subport} eq "${name}-legacy"} {
 variant wx32 conflicts wx30 requires wxsystem description {build against wxWidgets-3.2} {}
 if {![variant_exists wxsystem] || [variant_isset wxsystem]} {
     PortGroup       wxWidgets 1.0
+} else {
+    depends_fetch-append \
+                    bin:wget:wget
 }
 
+supported_archs     x86_64 arm64
 compiler.cxx_standard 2014
 build.post_args-append -k
 cmake.generator     Ninja
@@ -188,8 +193,6 @@ set python_bin      ${prefix}/bin/python3.7
 
 depends_lib-append  port:freetype \
                     path:lib/pkgconfig/harfbuzz.pc:harfbuzz \
-                    port:libid3tag \
-                    port:libmad \
                     port:soundtouch \
                     port:soxr \
                     port:twolame \
@@ -200,6 +203,11 @@ depends_lib-append  port:freetype \
                     port:libogg \
                     port:libsndfile \
                     port:libvorbis
+if {${os.arch} ne "arm"} {
+    depends_lib-append \
+                    port:libid3tag \
+                    port:libmad
+}
 # audacity could use port:lv2 and port:lilv but would also require a port:suil for that to be possible.
 
 patch.pre_args      -Np1
@@ -315,6 +323,18 @@ configure.cxxflags-append \
                     -Wno-inconsistent-missing-override \
                     -Wno-overloaded-virtual
 
+platform linux {
+    cmake.install_rpath-append \
+                    ${prefix}/lib/audacity
+    configure.ldflags-append \
+                    -Wl,-rpath,${prefix}/lib/audacity
+    if {[variant_isset wxsystem]} {
+        cmake.install_rpath-append \
+                    ${wxWidgets.prefix}/lib/
+        configure.ldflags-append \
+                    -Wl,-rpath,${wxWidgets.prefix}/lib/
+    }
+}
 set _OPT "audacity_"
 configure.args-append \
                     -D${_OPT}lib_preference=system \
@@ -323,7 +343,6 @@ configure.args-append \
                     -D${_OPT}use_ffmpeg=linked \
                     -D${_OPT}use_lame=system \
                     -D${_OPT}use_flac=system \
-                    -D${_OPT}use_mad=system \
                     -D${_OPT}use_soxr=system \
                     -D${_OPT}use_vamp=local \
                     -D${_OPT}use_ogg=system \
@@ -335,6 +354,15 @@ configure.args-append \
                     -D${_OPT}use_twolame=system \
                     -D${_OPT}use_midi=local \
                     -D${_OPT}use_pch=on
+if {${os.arch} ne "arm"} {
+    configure.args-append \
+                    -D${_OPT}use_mad=system \
+                    -D${_OPT}use_id3tag=system
+} else {
+    configure.args-append \
+                    -D${_OPT}use_mad=off \
+                    -D${_OPT}use_id3tag=off
+}
 if {${subport} eq ${name}} {
     # using port:sqlite3 leads to unstable behaviour?!
     configure.args-append \
@@ -465,15 +493,45 @@ pre-build {
 }
 
 platform darwin {
+    proc fixup_wx_libraries {} {
+        global destroot aud_app_path wxWidgets.prefix
+        if {[variant_isset wxsystem]} {
+            # replace the embedded libraries with symlinks, so they're found via
+            # the @executable_path rpath.
+            foreach lwx [glob ${destroot}${aud_app_path}/Contents/Frameworks/libwx*] {
+                file delete ${lwx}
+                ln -s "${wxWidgets.prefix}/lib/[file tail ${lwx}]" ${lwx}
+            }
+        }
+    }
 
+    if {${subport} eq "${name}" && ![variant_isset wxsystem]} {
+        destroot {
+            # replace the destroot'ed app bundle with the one in ${build.dir}/bin that contains
+            # the right install_name settings in most of the wxWidgets libraries
+            file delete -force ${destroot}${aud_app_path}
+            system "ditto --rsrc ${build.dir}/bin/Audacity.app ${destroot}${aud_app_path}"
+            # this one is skipped
+            system "install_name_tool -id ${aud_app_path}/Contents/Frameworks/libwx_baseu-3.1.dylib \
+                ${destroot}${aud_app_path}/Contents/Frameworks/libwx_baseu-3.1.dylib"
+            foreach lwx {osx_cocoau_adv osx_cocoau_html baseu_net osx_cocoau_qa osx_cocoau_core baseu_xml baseu} {
+                # update the references where necessary:
+                system "install_name_tool -change ${build.dir}/lib/libwx_${lwx}-3.1.dylib \
+                    ${aud_app_path}/Contents/Frameworks/libwx_${lwx}-3.1.dylib \
+                    ${destroot}${aud_app_path}/Contents/modules/mod-script-pipe.so"
+            }
+        }
+    }
     post-destroot {
         if {${subport} eq "${name}-legacy"} {
             file rename ${destroot}${prefix}/Audacity.app ${destroot}${aud_app_path}
             file delete -force ${destroot}${prefix}/share/audacity/plug-ins
             file delete -force ${destroot}${prefix}/share/audacity/nyquist
             file delete -force ${destroot}${prefix}/share/audacity/modules
+            xinstall -m 755 -d ${destroot}${prefix}/share/audacity
             ln -s ${aud_app_path}/Contents/plug-ins ${destroot}${prefix}/share/audacity/
             file delete -force ${destroot}/Resources
+            fixup_wx_libraries
             if {[variant_isset suil]} {
                 xinstall -m 755 -d ${destroot}${aud_app_path}/Contents/Frameworks
                 file rename ${build.dir}/bin/MacPorts/lib/audacity/suil_qt5_in_cocoa.so \
@@ -481,12 +539,7 @@ platform darwin {
                 ln -s suil_qt5_in_cocoa.dylib ${destroot}${aud_app_path}/Contents/Frameworks/suil_qt5_in_cocoa.so
             }
         } else {
-            file rename ${destroot}${prefix}/Audacity.app ${destroot}${aud_app_path}
-            if {[variant_isset wxsystem]} {
-                # I haven't yet figured out how to disable the copying of wx libraries into the bundle
-                # but they can be pruned because CopyLibs.cmake is not invoked.
-                file delete -force ${destroot}${aud_app_path}/Contents/Frameworks
-            }
+            fixup_wx_libraries
             xinstall -m 755 -d ${destroot}${prefix}/share/audacity
             ln -s ${aud_app_path}/Contents/plug-ins ${destroot}${prefix}/share/audacity/
             xinstall -m 755 -d ${destroot}${prefix}/share/mime/packages
@@ -521,7 +574,7 @@ platform darwin {
         foreach r [glob -nocomplain ${destroot}${prefix}/share/audacity/*] {
             set f [file tail ${r}]
             if {![file exists ${destroot}${aud_app_path}/Contents/Resources/${f}]} {
-                ln -s ${prefix}/share/audacity/${f} ${destroot}${aud_app_path}/Contents/Resources
+                ln -s ${prefix}/share/audacity/${f} ${destroot}${aud_app_path}/Contents/Resources/
             }
         }
         # install a wrapper script in ${prefix}/bin
@@ -535,6 +588,10 @@ platform linux {
             # delete any of these
             foreach l [glob -nocomplain ${destroot}${prefix}/lib/audacity/libwx*.so] {
                 file delete ${l}
+            }
+        } else {
+            foreach l [glob -nocomplain ${build.dir}/lib/libwx*.so] {
+                xinstall -m 755 ${l} ${destroot}${prefix}/lib/audacity/
             }
         }
     }
