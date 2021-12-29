@@ -1,0 +1,31 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           python 1.0
+
+name                py-distro
+github.setup        nir0s distro 1.5.0 v
+revision            0
+python.versions     27 36 37 38
+license             Apache-2
+maintainers         {mps @Schamschula} openmaintainer
+description         distro provides information about the OS distribution it runs on, \
+                    such as a reliable machine-readable ID, or version information.
+long_description    ${description}
+platforms           darwin
+
+if {${os.platform} eq "darwin"} {
+    checksums       rmd160  69383f8c672d7355516646aa898c924c2490b5ff \
+                    sha256  6922ea1514375f31ada8e0354a83f4cf502b5b371da53aa1ed8159c5e08a694e \
+                    size    51057
+} else {
+    checksums       rmd160  426f8faefd9f243fc1e0315179c6eae29bbdeb80 \
+                    sha256  73b398b9c0b954f5837579d9bcf6fc2272883374e409522e6d353f885100fe6a
+#                     size    51090
+}
+
+if {${name} ne ${subport}} {
+    depends_lib-append  \
+                    port:py${python.version}-setuptools
+}
