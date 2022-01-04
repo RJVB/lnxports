@@ -62,7 +62,7 @@ openssl.branch      1.1
 # blacklist llvm-gcc-4.2 compiler known to produce bad code
 compiler.blacklist-append *llvm-gcc-4.2
 # sadly...
-conflicts_build     ${subport}
+conflicts_build     ${subport} py37-setuptools
 
 # ensurepip arg may be removed later, now conflicts with pip and setuptools
 # packages
