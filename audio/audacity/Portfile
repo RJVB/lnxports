@@ -104,7 +104,7 @@ if {${subport} eq "${name}-legacy"} {
     conflicts       "${name}-legacy"
     ## 576b7e66 looks like possibly the last commit before the takeover by the new project owner:
     github.setup    audacity audacity 576b7e66d2b96c39241d3d992259fc2bfa7855b0
-    version         3.0.2.129 ; revision 1
+    version         3.0.2.129 ; revision 2
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate for the current maintainer
     fetch.type      git
@@ -290,6 +290,8 @@ if {[variant_isset qt]} {
     patchfiles-append \
                     patch-for-wxqt.diff
 }
+
+patchfiles-append   patch-format-feedback.diff
 
 # among other things, we add frameworks AudioToolbox, Cocoa and Carbon because somewhere after wxW 3.1.3
 # the wx build system no longer exports private libraries. Carbon could be temporary because wxW

@@ -1,0 +1,330 @@
+diff --git a/lib-src/portaudio-v19/include/portaudio.h b/lib-src/portaudio-v19/include/portaudio.h
+index ae1cbe280407dc74a55f3b2414679a2ffb5d6154..b40aca4196d1e3497ed46d01ab6f93b4e7f23d7d 100644
+--- a/lib-src/portaudio-v19/include/portaudio.h
++++ b/lib-src/portaudio-v19/include/portaudio.h
+@@ -1065,6 +1065,9 @@ typedef struct PaStreamInfo
+      parameter passed to Pa_OpenStream().
+     */
+     double sampleRate;
++    /** RJVB: sampleFormat
++    */
++    PaSampleFormat sampleFormat;
+     
+ } PaStreamInfo;
+ 
+diff --git a/lib-src/portaudio-v19/src/common/pa_converters.c b/lib-src/portaudio-v19/src/common/pa_converters.c
+index 2107f5e28913f00ad1ae6c0fceeda4c7a320f41f..83fbd053d4e34ab7af15c456f6e57a1596c40e72 100644
+--- a/lib-src/portaudio-v19/src/common/pa_converters.c
++++ b/lib-src/portaudio-v19/src/common/pa_converters.c
+@@ -66,6 +66,34 @@
+ #include "pa_endianness.h"
+ #include "pa_types.h"
+ 
++#include <stdio.h>
++
++const char *sampleFormatString(PaSampleFormat format)
++{
++     switch( format )
++     {
++        case paFloat32:
++           return "32 bit floats";
++           break;
++        case paInt16:
++           return "16 bit";
++           break;
++        case paInt24:
++           return "24 bit";
++        case paInt32:
++           return "32 bit";
++           break;
++        case paInt8:
++           return "8 bit (signed)";
++           break;
++        case paUInt8:
++           return "8 bit (unsigned)";
++           break;
++        default:
++           return "unknown";
++           break;
++     }
++}
+ 
+ PaSampleFormat PaUtil_SelectClosestAvailableFormat(
+         PaSampleFormat availableFormats, PaSampleFormat format )
+@@ -115,6 +143,8 @@ PaSampleFormat PaUtil_SelectClosestAvailableFormat(
+         result = format;
+     }
+ 
++//     fprintf(stderr, "Requested format \"%s\", using closest supported \"%s\"\n",
++//             sampleFormatString(format), sampleFormatString(result));
+     return result;
+ }
+ 
+diff --git a/lib-src/portaudio-v19/src/common/pa_front.c b/lib-src/portaudio-v19/src/common/pa_front.c
+index b4b31869241a2f26bce7556d92bac3ce72b52978..1294ab98a9cde886866b66113fada92e8a9ff015 100644
+--- a/lib-src/portaudio-v19/src/common/pa_front.c
++++ b/lib-src/portaudio-v19/src/common/pa_front.c
+@@ -1569,6 +1569,7 @@ const PaStreamInfo* Pa_GetStreamInfo( PaStream *stream )
+         PA_LOGAPI(("\t\tPaTime inputLatency: %f\n", result->inputLatency ));
+         PA_LOGAPI(("\t\tPaTime outputLatency: %f\n", result->outputLatency ));
+         PA_LOGAPI(("\t\tdouble sampleRate: %f\n", result->sampleRate ));
++        PA_LOGAPI(("\t\tPaSampleFormat sampleFormat: 0x%lx\n", result->sampleFormat ));
+         PA_LOGAPI(("\t}\n" ));
+ 
+     }
+diff --git a/lib-src/portaudio-v19/src/common/pa_stream.c b/lib-src/portaudio-v19/src/common/pa_stream.c
+index c4376f93b969bd02a0f90f1eb07478db8efe1501..d6fe7d85f9f57095dae6143eff6e7688cc8d0e8d 100644
+--- a/lib-src/portaudio-v19/src/common/pa_stream.c
++++ b/lib-src/portaudio-v19/src/common/pa_stream.c
+@@ -93,6 +93,7 @@ void PaUtil_InitializeStreamRepresentation( PaUtilStreamRepresentation *streamRe
+     streamRepresentation->streamInfo.inputLatency = 0.;
+     streamRepresentation->streamInfo.outputLatency = 0.;
+     streamRepresentation->streamInfo.sampleRate = 0.;
++    streamRepresentation->streamInfo.sampleFormat = 0;
+ 
+     streamRepresentation->hostApiType = 0;
+ }
+diff --git a/lib-src/portaudio-v19/src/hostapi/alsa/pa_linux_alsa.c b/lib-src/portaudio-v19/src/hostapi/alsa/pa_linux_alsa.c
+index 5d44ace3970fbbd8ab28b355e7d4c48610bbd7b6..d2c9ac1cc57633d1cd9f5463730eb2f77fe75c4f 100644
+--- a/lib-src/portaudio-v19/src/hostapi/alsa/pa_linux_alsa.c
++++ b/lib-src/portaudio-v19/src/hostapi/alsa/pa_linux_alsa.c
+@@ -505,6 +505,7 @@ static int PaAlsa_LoadLibrary()
+     _PA_LOAD_FUNC(snd_asoundlib_version);
+     _PA_LOAD_FUNC(snd_strerror);
+     _PA_LOAD_FUNC(snd_output_stdio_attach);
++
+ #undef _PA_LOAD_FUNC
+ 
+ #ifdef PA_ALSA_DYNAMIC
+@@ -1705,6 +1706,34 @@ static snd_pcm_format_t Pa2AlsaFormat( PaSampleFormat paFormat )
+     }
+ }
+ 
++static PaSampleFormat Alsa2PaFormat( snd_pcm_format_t aFormat )
++{
++    switch( aFormat )
++    {
++        case SND_PCM_FORMAT_FLOAT:
++            return paFloat32;
++
++        case SND_PCM_FORMAT_S16:
++            return paInt16;
++
++        case SND_PCM_FORMAT_S24_3LE:
++        case SND_PCM_FORMAT_S24_3BE:
++            return paInt24;
++
++        case SND_PCM_FORMAT_S32:
++            return paInt32;
++
++        case SND_PCM_FORMAT_S8:
++            return paInt8;
++
++        case SND_PCM_FORMAT_U8:
++            return paUInt8;
++
++        default:
++            return paCustomFormat;
++    }
++}
++
+ /** Open an ALSA pcm handle.
+  *
+  * The device to be open can be specified by name in a custom PaAlsaStreamInfo struct, or it will be by
+@@ -1908,6 +1937,9 @@ static PaError PaAlsaStreamComponent_Initialize( PaAlsaStreamComponent *self, Pa
+     self->card = snd_pcm_info_get_card( pcmInfo );
+ 
+     PA_ENSURE( hostSampleFormat = PaUtil_SelectClosestAvailableFormat( GetAvailableFormats( self->pcm ), userSampleFormat ) );
++    extern const char *sampleFormatString(PaSampleFormat);
++    fprintf(stderr, "Requested format \"%s\", using closest supported \"%s\"\n",
++            sampleFormatString(userSampleFormat), sampleFormatString(hostSampleFormat));
+ 
+     self->hostSampleFormat = hostSampleFormat;
+     self->nativeFormat = Pa2AlsaFormat( hostSampleFormat );
+@@ -1956,7 +1988,7 @@ static int nearbyint_(float value) {
+  *
+  */
+ static PaError PaAlsaStreamComponent_InitialConfigure( PaAlsaStreamComponent *self, const PaStreamParameters *params,
+-        int primeBuffers, snd_pcm_hw_params_t *hwParams, double *sampleRate )
++        int primeBuffers, snd_pcm_hw_params_t *hwParams, double *sampleRate, PaSampleFormat* sampleFormat )
+ {
+     /* Configuration consists of setting all of ALSA's parameters.
+      * These parameters come in two flavors: hardware parameters
+@@ -2056,6 +2088,18 @@ static PaError PaAlsaStreamComponent_InitialConfigure( PaAlsaStreamComponent *se
+     ENSURE_( alsa_snd_pcm_hw_params_set_channels( pcm, hwParams, self->numHostChannels ), paInvalidChannelCount );
+ 
+     *sampleRate = sr;
++    {   snd_pcm_format_t format = SND_PCM_FORMAT_UNKNOWN;
++       	snd_pcm_hw_params_t *currentParms = NULL;
++        alsa_snd_pcm_hw_params_alloca(&currentParms);
++        static int ret, ret2;
++        ret = snd_pcm_hw_params_current(pcm, currentParms);
++        ret2 = snd_pcm_hw_params_get_format(currentParms, &format);
++        fprintf(stderr, "Getting current format: %d (%d,%d)\n", format, ret, ret2);
++        if (ret < 0) {
++            snd_pcm_hw_params_get_format(hwParams, &format);
++        }
++        *sampleFormat = Alsa2PaFormat(format);
++    }
+ 
+ end:
+     return result;
+@@ -2709,6 +2753,7 @@ static PaError PaAlsaStream_Configure( PaAlsaStream *self, const PaStreamParamet
+ {
+     PaError result = paNoError;
+     double realSr = sampleRate;
++    PaSampleFormat sampleFormat;
+     snd_pcm_hw_params_t* hwParamsCapture, * hwParamsPlayback;
+ 
+     alsa_snd_pcm_hw_params_alloca( &hwParamsCapture );
+@@ -2716,10 +2761,10 @@ static PaError PaAlsaStream_Configure( PaAlsaStream *self, const PaStreamParamet
+ 
+     if( self->capture.pcm )
+         PA_ENSURE( PaAlsaStreamComponent_InitialConfigure( &self->capture, inParams, self->primeBuffers, hwParamsCapture,
+-                    &realSr ) );
++                    &realSr, &sampleFormat ) );
+     if( self->playback.pcm )
+         PA_ENSURE( PaAlsaStreamComponent_InitialConfigure( &self->playback, outParams, self->primeBuffers, hwParamsPlayback,
+-                    &realSr ) );
++                    &realSr, &sampleFormat ) );
+ 
+     PA_ENSURE( PaAlsaStream_DetermineFramesPerBuffer( self, realSr, inParams, outParams, framesPerUserBuffer,
+                 hwParamsCapture, hwParamsPlayback, hostBufferSizeMode ) );
+@@ -2741,6 +2786,7 @@ static PaError PaAlsaStream_Configure( PaAlsaStream *self, const PaStreamParamet
+ 
+     /* Should be exact now */
+     self->streamRepresentation.streamInfo.sampleRate = realSr;
++    self->streamRepresentation.streamInfo.sampleFormat = sampleFormat;
+ 
+     /* this will cause the two streams to automatically start/stop/prepare in sync.
+      * We only need to execute these operations on one of the pair.
+diff --git a/lib-src/portaudio-v19/src/hostapi/asihpi/pa_linux_asihpi.c b/lib-src/portaudio-v19/src/hostapi/asihpi/pa_linux_asihpi.c
+index f5a529028480657c473c7b9f4ae0c5f0ce091738..2d0e00f20f46ed8ff82523006a13d73d4168cbe7 100644
+--- a/lib-src/portaudio-v19/src/hostapi/asihpi/pa_linux_asihpi.c
++++ b/lib-src/portaudio-v19/src/hostapi/asihpi/pa_linux_asihpi.c
+@@ -1807,6 +1807,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
+ 
+     stream->baseStreamRep.streamInfo.structVersion = 1;
+     stream->baseStreamRep.streamInfo.sampleRate = sampleRate;
++    stream->baseStreamRep.streamInfo.sampleFormat = hostOutputSampleFormat;
+     /* Determine input latency from buffer processor and buffer sizes */
+     if( stream->input )
+     {
+diff --git a/lib-src/portaudio-v19/src/hostapi/asio/pa_asio.cpp b/lib-src/portaudio-v19/src/hostapi/asio/pa_asio.cpp
+index f230d8788d404c395497093d8b9e2503b906a75d..818eed9e5da02beafc244845445e8394b7b5a122 100644
+--- a/lib-src/portaudio-v19/src/hostapi/asio/pa_asio.cpp
++++ b/lib-src/portaudio-v19/src/hostapi/asio/pa_asio.cpp
+@@ -2741,6 +2741,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
+                 (long)((PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->bufferProcessor)*1000)/ sampleRate)
+                 ));
+     }
++    stream->streamRepresentation.streamInfo.sampleFormat = hostOutputSampleFormat;
+ 
+     stream->asioHostApi = asioHostApi;
+     stream->framesPerHostCallback = framesPerHostBuffer;
+diff --git a/lib-src/portaudio-v19/src/hostapi/coreaudio/pa_mac_core.c b/lib-src/portaudio-v19/src/hostapi/coreaudio/pa_mac_core.c
+index 257e9dedc3f66248b1108537d63bae7128c5e87f..3f5514385e194f20b64124a2adf101191741d2ef 100644
+--- a/lib-src/portaudio-v19/src/hostapi/coreaudio/pa_mac_core.c
++++ b/lib-src/portaudio-v19/src/hostapi/coreaudio/pa_mac_core.c
+@@ -2041,6 +2041,8 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
+     }
+     
+     stream->streamRepresentation.streamInfo.sampleRate = sampleRate;
++    // FIX - hardcoded to 32float!
++    stream->streamRepresentation.streamInfo.sampleFormat = hostOutputSampleFormat;
+ 
+     stream->sampleRate = sampleRate;
+     
+diff --git a/lib-src/portaudio-v19/src/hostapi/dsound/pa_win_ds.c b/lib-src/portaudio-v19/src/hostapi/dsound/pa_win_ds.c
+index 1638a7521616d37aa6102b1b0092bbff24854c3d..745463b6f3abf7d2e2fc1933c9e37c9825b85e66 100644
+--- a/lib-src/portaudio-v19/src/hostapi/dsound/pa_win_ds.c
++++ b/lib-src/portaudio-v19/src/hostapi/dsound/pa_win_ds.c
+@@ -2329,6 +2329,8 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
+     SetStreamInfoLatencies( stream, framesPerBuffer, pollingPeriodFrames, sampleRate );
+ 
+     stream->streamRepresentation.streamInfo.sampleRate = sampleRate;
++    // is this really the obtained format?
++    stream->streamRepresentation.streamInfo.sampleFormat = hostOutputSampleFormat;
+ 
+     *s = (PaStream*)stream;
+ 
+diff --git a/lib-src/portaudio-v19/src/hostapi/skeleton/pa_hostapi_skeleton.c b/lib-src/portaudio-v19/src/hostapi/skeleton/pa_hostapi_skeleton.c
+index 6edc22cf700ba3062b28afb51bde5b0ffd4378d9..3938d14634b1aca15275972bc98575416a3c1fff 100644
+--- a/lib-src/portaudio-v19/src/hostapi/skeleton/pa_hostapi_skeleton.c
++++ b/lib-src/portaudio-v19/src/hostapi/skeleton/pa_hostapi_skeleton.c
+@@ -522,6 +522,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
+     stream->streamRepresentation.streamInfo.outputLatency =
+             (PaTime)PaUtil_GetBufferProcessorOutputLatencyFrames(&stream->bufferProcessor) / sampleRate; /* outputLatency is specified in _seconds_ */
+     stream->streamRepresentation.streamInfo.sampleRate = sampleRate;
++    stream->streamRepresentation.streamInfo.sampleFormat = hostOutputSampleFormat;
+ 
+     
+     /*
+diff --git a/lib-src/portaudio-v19/src/hostapi/wasapi/pa_win_wasapi.c b/lib-src/portaudio-v19/src/hostapi/wasapi/pa_win_wasapi.c
+index bb27bc6e905417d793326e0490b3532b1d84b9f1..6bd5d9b444dc85384fdad26babe6d87c1791912d 100644
+--- a/lib-src/portaudio-v19/src/hostapi/wasapi/pa_win_wasapi.c
++++ b/lib-src/portaudio-v19/src/hostapi/wasapi/pa_win_wasapi.c
+@@ -3992,6 +3992,7 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
+ 
+ 	// Set SR
+     stream->streamRepresentation.streamInfo.sampleRate = sampleRate;
++    stream->streamRepresentation.streamInfo.sampleFormat = hostOutputSampleFormat;
+ 
+     (*s) = (PaStream *)stream;
+     return result;
+diff --git a/src/AudioIO.cpp b/src/AudioIO.cpp
+index 9ccc16667cb75ab7b04ea28c97129b07dbd74ae7..d4fdc1626bfa427a6ef2847d1fe14a0a175a0667 100644
+--- a/src/AudioIO.cpp
++++ b/src/AudioIO.cpp
+@@ -1383,7 +1383,7 @@ bool AudioIO::StartPortAudioStream(const AudioIOStartStreamOptions &options,
+       if (mLastPaError == paNoError) {
+          break;
+       }
+-      wxLogDebug("Attempt %u to open capture stream failed with: %d", 1 + tries, mLastPaError);
++      wxLogDebug("Attempt %u to open capture stream failed with: %s (%d)", 1 + tries, Pa_GetErrorText(mLastPaError), mLastPaError);
+       wxMilliSleep(1000);
+    }
+ 
+@@ -1431,6 +1431,42 @@ bool AudioIO::StartPortAudioStream(const AudioIOStartStreamOptions &options,
+    }
+ #endif
+ 
++   if (mPortStreamV19 != NULL && mLastPaError == paNoError) {
++      const auto info = Pa_GetStreamInfo(mPortStreamV19);
++      if (info) {
++         char *format;
++         switch( info->sampleFormat )
++         {
++            case paFloat32:
++               format = "32 bit floats";
++               break;
++
++            case paInt16:
++               format = "16 bit";
++               break;
++
++            case paInt24:
++               format = "24 bit";
++
++            case paInt32:
++               format = "32 bit";
++               break;
++
++            case paInt8:
++               format = "8 bit (signed)";
++               break;
++
++            case paUInt8:
++               format = "8 bit (unsigned)";
++               break;
++
++            default:
++               format = "unknown";
++               break;
++         }
++         wxLogInfo("Started PortAudio stream with sampleRate=%g and format %s", info->sampleRate, format);
++      }
++   }
+    return (mLastPaError == paNoError);
+ }
+ 
