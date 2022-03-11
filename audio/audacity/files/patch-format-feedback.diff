@@ -223,15 +223,48 @@ index f230d8788d404c395497093d8b9e2503b906a75d..818eed9e5da02beafc244845445e8394
      stream->asioHostApi = asioHostApi;
      stream->framesPerHostCallback = framesPerHostBuffer;
 diff --git a/lib-src/portaudio-v19/src/hostapi/coreaudio/pa_mac_core.c b/lib-src/portaudio-v19/src/hostapi/coreaudio/pa_mac_core.c
-index 257e9dedc3f66248b1108537d63bae7128c5e87f..3f5514385e194f20b64124a2adf101191741d2ef 100644
+index 257e9dedc3f66248b1108537d63bae7128c5e87f..c79cbe3cea573dc688e3d0c8c50d86e928f549c8 100644
 --- a/lib-src/portaudio-v19/src/hostapi/coreaudio/pa_mac_core.c
 +++ b/lib-src/portaudio-v19/src/hostapi/coreaudio/pa_mac_core.c
-@@ -2041,6 +2041,8 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
+@@ -2041,6 +2041,41 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
      }
      
      stream->streamRepresentation.streamInfo.sampleRate = sampleRate;
-+    // FIX - hardcoded to 32float!
-+    stream->streamRepresentation.streamInfo.sampleFormat = hostOutputSampleFormat;
++    if (stream->inputUnit) {
++        AudioStreamBasicDescription sourceFormat;
++        UInt32 size = sizeof( AudioStreamBasicDescription );
++
++        #define ERR_WRAP(mac_err) do { result = mac_err ; if ( result != noErr ) return ERR(result) ; } while(0)
++       /* keep the sample rate of the device, or we confuse AUHAL */
++        ERR_WRAP( AudioUnitGetProperty( stream->inputUnit,
++                                        kAudioUnitProperty_StreamFormat,
++                                        kAudioUnitScope_Input,
++                                        INPUT_ELEMENT,
++                                        &sourceFormat,
++                                        &size ) );
++        PaSampleFormat format;
++        switch (sourceFormat.mBitsPerChannel) {
++            case 8:
++                format = (sourceFormat.mFormatFlags & kAudioFormatFlagIsSignedInteger)? paInt8 : paUInt8;
++                break;
++            case 16:
++                format = paInt16;
++                break;
++            case 24:
++                format = paInt24;
++                break;
++            case 32:
++                format = (sourceFormat.mFormatFlags & kAudioFormatFlagIsFloat)? paFloat32 : paInt32;
++                break;
++            default:
++                format = paCustomFormat;
++                break;
++        }
++        if (sampleRate != sourceFormat.mSampleRate) {
++            fprintf(stderr, "Supposed sampleRate=%gHz; actual=%gHz\n", sampleRate, sourceFormat.mSampleRate);
++        }
++        stream->streamRepresentation.streamInfo.sampleFormat = format;
++    }
  
      stream->sampleRate = sampleRate;
      
