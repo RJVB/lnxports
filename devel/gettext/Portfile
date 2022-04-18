@@ -102,6 +102,32 @@ if {${subport} eq "${name}"} {
     }
 }
 
+set stubports {libasprintf libtextstyle gettext-runtime gettext-tools-libs}
+
+foreach p ${stubports} {
+    subport ${p} {
+        description ${p}
+        long_description ${p}: compatibility stubport
+        depends_fetch
+        depends_build
+        depends_run
+        depends_lib     port:gettext
+        installs_libs   no
+        supported_archs noarch
+        distfiles
+        fetch {}
+        checksum {}
+        extract {}
+        use_configure   no
+        patchfiles
+        build           {}
+        destroot {
+            xinstall -m 755 -d ${destroot}${prefix}/share/gettext
+        }
+        destroot.keepdirs ${destroot}${prefix}/share/gettext
+    }
+}
+
 livecheck.type          regex
 livecheck.url           http://ftp.gnu.org/gnu/gettext/?C=M&O=D
 livecheck.regex         ${name}-(\[0-9.\]+)\\.tar
