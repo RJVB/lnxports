@@ -1,0 +1,58 @@
+diff --git src/modules/modules.h src/modules/modules.h
+index 1447909..1206768 100644
+--- src/modules/modules.h
++++ src/modules/modules.h
+@@ -121,10 +121,16 @@ ssize_t module_list_cap (module_t ***, const char *);
+ 
+ int vlc_bindtextdomain (const char *);
+ 
++#ifdef __cplusplus
++extern "C" {
++#endif
+ /* Low-level OS-dependent handler */
+ int module_Load (vlc_object_t *, const char *, module_handle_t *, bool);
+ void *module_Lookup (module_handle_t, const char *);
+ void module_Unload (module_handle_t);
++#ifdef __cplusplus
++}
++#endif
+ 
+ /* Plugins cache */
+ vlc_plugin_t *vlc_cache_load(vlc_object_t *, const char *, block_t **);
+diff --git src/Makefile.am src/Makefile.am
+index 502990c..869b168 100644
+--- src/Makefile.am
++++ src/Makefile.am
+@@ -399,7 +399,7 @@ libvlccore_la_SOURCES += \
+ else
+ libvlccore_la_SOURCES += \
+ 	posix/filesystem.c \
+-	posix/plugin.c \
++	posix/plugin.cpp \
+ 	posix/rand.c \
+ 	posix/timer.c
+ if HAVE_ANDROID
+diff --git src/posix/plugin.cpp src/posix/plugin.cpp
+index eb438b6..a487fcf 100644
+--- src/posix/plugin.cpp
++++ src/posix/plugin.cpp
+@@ -24,6 +24,9 @@
+  * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
+  *****************************************************************************/
+ 
++#include <stdlib.h>
++using namespace std;
++
+ #ifdef HAVE_CONFIG_H
+ # include "config.h"
+ #endif
+@@ -57,7 +60,8 @@ int module_Load (vlc_object_t *p_this, const char *path,
+     const int flags = 0;
+ #endif
+ 
+-    module_handle_t handle = dlopen (path, flags);
++    module_handle_t handle = NULL;
++    handle = dlopen (path, flags);
+     if( handle == NULL )
+     {
+         msg_Warn( p_this, "cannot load module `%s' (%s)", path, dlerror() );

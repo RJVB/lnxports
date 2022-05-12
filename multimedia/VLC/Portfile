@@ -48,7 +48,7 @@ if {${subport} eq ${name}} {
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.12 ; revision 1
+version             3.0.12 ; revision 2
 license             GPL-2
 
 platforms           darwin
@@ -151,7 +151,8 @@ depends_lib-append  path:lib/libavcodec.diff:ffmpeg \
                     port:tiff \
                     port:twolame \
                     port:x264 \
-                    port:x265
+                    port:x265 \
+				port:aribb24
 depends_run-append  port:libaacs \
                     port:libbdplus
 
@@ -188,6 +189,12 @@ depends_run-append  port:libaacs \
 }
 
 platform linux {
+    post-extract {
+        if {![file exists ${worksrcpath}/src/posix/plugin.cpp]} {
+            file rename ${worksrcpath}/src/posix/plugin.c ${worksrcpath}/src/posix/plugin.cpp
+        }
+    }
+
 # platform dependencies for Ubuntu 14.04 :
 # liba52-0.7.4-dev libaa1-dev libasound2-dev libass-dev libavahi-client-dev libavc1394-dev
 # libbluray-dev libcaca-dev libcddb2-dev libcdio-dev libchromaprint-dev libcrystalhd-dev
@@ -488,7 +495,9 @@ if {${subport} ne "lib${name}"} {
         description {Enable all variants except x11 (and except freerdp, currently)} {}
 }
 
-patchfiles-append           patch-for-lua53.diff
+patchfiles-append           patch-for-lua53.diff \
+                            patch-dav1dv1.diff \
+                            patch-plugin_in_cpp.diff
 
 platform darwin {
     default_variants-append +quartz

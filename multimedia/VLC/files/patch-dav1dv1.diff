@@ -1,0 +1,49 @@
+diff --git modules/codec/orig.dav1d.c modules/codec/dav1d.c
+index 3e44d52..67bdec3 100644
+--- modules/codec/orig.dav1d.c
++++ modules/codec/dav1d.c
+@@ -63,9 +63,9 @@ vlc_module_begin ()
+     set_category(CAT_INPUT)
+     set_subcategory(SUBCAT_INPUT_VCODEC)
+ 
+-    add_integer_with_range("dav1d-thread-frames", 0, 0, DAV1D_MAX_FRAME_THREADS,
++    add_integer_with_range("dav1d-thread-frames", 0, 0, DAV1D_MAX_THREADS,
+                 THREAD_FRAMES_TEXT, THREAD_FRAMES_LONGTEXT, false)
+-    add_integer_with_range("dav1d-thread-tiles", 0, 0, DAV1D_MAX_TILE_THREADS,
++    add_integer_with_range("dav1d-thread-tiles", 0, 0, DAV1D_MAX_THREADS,
+                 THREAD_TILES_TEXT, THREAD_TILES_LONGTEXT, false)
+ vlc_module_end ()
+ 
+@@ -282,12 +282,12 @@ static int OpenDecoder(vlc_object_t *p_this)
+         return VLC_ENOMEM;
+ 
+     dav1d_default_settings(&p_sys->s);
+-    p_sys->s.n_tile_threads = var_InheritInteger(p_this, "dav1d-thread-tiles");
+-    if (p_sys->s.n_tile_threads == 0)
+-        p_sys->s.n_tile_threads = VLC_CLIP(vlc_GetCPUCount(), 1, 4);
+-    p_sys->s.n_frame_threads = var_InheritInteger(p_this, "dav1d-thread-frames");
+-    if (p_sys->s.n_frame_threads == 0)
+-        p_sys->s.n_frame_threads = __MAX(1, vlc_GetCPUCount());
++    p_sys->s.n_threads = var_InheritInteger(p_this, "dav1d-thread-tiles");
++    if (p_sys->s.n_threads == 0)
++        p_sys->s.n_threads = VLC_CLIP(vlc_GetCPUCount(), 1, 4);
++    p_sys->s.n_threads = var_InheritInteger(p_this, "dav1d-thread-frames");
++    if (p_sys->s.n_threads == 0)
++        p_sys->s.n_threads = __MAX(1, vlc_GetCPUCount());
+     p_sys->s.allocator.cookie = dec;
+     p_sys->s.allocator.alloc_picture_callback = NewPicture;
+     p_sys->s.allocator.release_picture_callback = FreePicture;
+@@ -299,11 +299,11 @@ static int OpenDecoder(vlc_object_t *p_this)
+     }
+ 
+     msg_Dbg(p_this, "Using dav1d version %s with %d/%d frame/tile threads",
+-            dav1d_version(), p_sys->s.n_frame_threads, p_sys->s.n_tile_threads);
++            dav1d_version(), p_sys->s.n_threads, p_sys->s.n_threads);
+ 
+     dec->pf_decode = Decode;
+     dec->pf_flush = FlushDecoder;
+-    dec->i_extra_picture_buffers = (p_sys->s.n_frame_threads - 1);
++    dec->i_extra_picture_buffers = (p_sys->s.n_threads - 1);
+ 
+     dec->fmt_out.video.i_width = dec->fmt_in.video.i_width;
+     dec->fmt_out.video.i_height = dec->fmt_in.video.i_height;
