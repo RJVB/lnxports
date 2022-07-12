@@ -30,10 +30,12 @@ if {${os.platform} eq "darwin"} {
             port:py${python.version}-setuptools
     }
 } else {
-    configure {}
-    build {}
-    destroot {
-        xinstall -m 755 -d ${destroot}${python.pkgd}/appnope
+    if {${name} ne ${subport}} {
+        configure {}
+        build {}
+        destroot {
+            xinstall -m 755 -d ${destroot}${python.pkgd}/appnope
+        }
+        destroot.keepdirs-append ${destroot}${python.pkgd}/appnope
     }
-    destroot.keepdirs-append ${destroot}${python.pkgd}/appnope
 }
