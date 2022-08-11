@@ -9,7 +9,7 @@ PortGroup           LTO 1.0
 # Warning: fluidsynth 2.2.0 breaks API (not just ABI as claimed) and causes some dependent ports
 # such as QTads 3.0.0 not to compile. Verify that dependents are updated to work with fluidsynth 2.2+
 # before updating fluidsynth to that version. See https://github.com/FluidSynth/fluidsynth/releases/tag/v2.2.0
-github.setup        FluidSynth fluidsynth 2.1.9 v
+github.setup        FluidSynth fluidsynth 2.2.8 v
 categories          multimedia audio
 maintainers         gmail.com:rjvbertin {mojca @mojca} openmaintainer
 license             LGPL
@@ -24,9 +24,9 @@ platforms           darwin linux
 
 homepage            http://www.fluidsynth.org/
 
-checksums           rmd160  c5a51617ce7a82033dbe5908ce7b2fabf3e5d1c3 \
-                    sha256  dca6ce2e1eff22d32f40d55470c079c8fc8999a6e5628bf85f8cb2183f827934
-#                     size    1369736
+checksums           rmd160  6b58e02c6e36a4ae9fdd81c5f35f3190cb24ae2c \
+                    sha256  a7b012d30f7c3f9272b548dcb5fddacd4fe1f54034d47b574e4b1f6d967d82bc
+#                     size    1751702
 
 depends_build-append \
                     path:bin/pkg-config:pkgconfig

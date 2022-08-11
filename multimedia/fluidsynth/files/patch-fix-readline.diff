@@ -1,20 +1,20 @@
---- orig.CMakeLists.txt	2018-12-30 12:42:00.000000000 +0100
-+++ CMakeLists.txt	2019-02-12 20:41:09.535814345 +0100
-@@ -168,8 +168,8 @@
- # Options for the GNU C compiler only
- if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "Intel" )
-   if ( NOT APPLE AND NOT OS2 )
+--- CMakeLists.txt.orig	2022-08-11 11:35:23.388390438 +0200
++++ CMakeLists.txt	2022-08-11 11:37:44.061646831 +0200
+@@ -202,8 +202,8 @@
+ 
+ if ( CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "Intel" )
+   if ( NOT APPLE AND NOT OS2 AND NOT EMSCRIPTEN )
 -    set ( CMAKE_EXE_LINKER_FLAGS
 -          "${CMAKE_EXE_LINKER_FLAGS} -Wl,--as-needed" )
 +    #set ( CMAKE_EXE_LINKER_FLAGS
 +          #"${CMAKE_EXE_LINKER_FLAGS} -Wl,--as-needed" )
      set ( CMAKE_SHARED_LINKER_FLAGS
            "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined" )
-   endif ( NOT APPLE AND NOT OS2 )
---- src/orig.CMakeLists.txt	2018-12-30 12:42:00.000000000 +0100
-+++ src/CMakeLists.txt	2019-02-12 20:46:58.035814345 +0100
-@@ -318,6 +318,7 @@
-     ${LIBSNDFILE_LIBRARIES}
+   endif ( NOT APPLE AND NOT OS2 AND NOT EMSCRIPTEN )
+--- src/CMakeLists.txt.orig	2022-08-11 11:35:23.348389512 +0200
++++ src/CMakeLists.txt	2022-08-11 11:35:23.388390438 +0200
+@@ -366,6 +366,7 @@
+     ${SDL2_LIBRARIES}
      ${DBUS_LIBRARIES}
      ${READLINE_LIBS}
 +    @PREFIX@/lib/libncurses.so
