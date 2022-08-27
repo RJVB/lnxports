@@ -1,0 +1,39 @@
+PortSystem      1.0
+PortGroup       cmake 1.1
+PortGroup       github 1.0
+PortGroup       LTO 1.0
+
+github.setup    apple swift-corelibs-libdispatch 5.5 release/
+name            libdispatch
+checksums       rmd160  3f4d04c313d49ed42c69335e9c790fb7a46baf36 \
+                sha256  c64af05e33e7285ff65eae680be316221fae2340d16ebe9dd28b076128b62425
+#                 size    592527
+
+subport libdispatch-devel {}
+
+if {${subport} ne "${name}"} {
+    github.setup \
+                apple swift-corelibs-libdispatch 4bf826d25b5f9fad73f6311daf6a2f5ab29d9106
+    name        libdispatch-devel
+    version     22.8.24
+    distname    libdispatch-git
+    fetch.type  git
+    conflicts   libdispatch
+} else {
+    conflicts   libdispatch-devel
+}
+
+categories      sysutils
+platforms       linux
+license         Apache-2
+maintainers     gmail.com:rjvbertin openmaintainer
+description     The libdispatch Project, (a.k.a. Grand Central Dispatch), for concurrency on multicore hardware
+long_description \
+                Grand Central Dispatch (GCD or libdispatch) provides comprehensive support \
+                for concurrent code execution on multicore hardware.
+
+configure.args-append \
+                -DCMAKE_STRIP:PATH=/bin/echo
+
+cmake.save_configure_cmd "log too"
+
