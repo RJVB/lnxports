@@ -14,9 +14,16 @@ platform darwin {
 }
 
 compiler.cxx_standard 2017
-cmake.generator     Ninja
+platform darwin {
+    cmake.generator Ninja
+}
 cmake.save_configure_cmd "log too"
 build.pre_args-prepend -k 0
+
+# ensure pre-compiled headers and the possible use of ccache can co-exist
+configure.env-append \
+                    "CCACHE_SLOPPINESS=pch_defines,time_macros"
+build.env-append    "CCACHE_SLOPPINESS=pch_defines,time_macros"
 
 name                webkit2-gtk
 conflicts           webkit2-gtk-devel
@@ -81,6 +88,7 @@ if {${os.platform} eq "darwin"} {
                     port:zlib \
                     port:jemalloc
 } else {
+    revision        [expr ${revision} + 2]
     depends_build-append \
                     port:gperf \
                     port:pkgconfig \
@@ -106,8 +114,8 @@ if {${os.platform} eq "darwin"} {
                     port:sqlite3 \
                     port:webp \
                     port:zlib
-    configure.ldflags-append \
-                    -lintl
+#     configure.ldflags-append \
+#                     -lintl
 }
 
 # 1. add missing JavaScriptCore include directory used only on Apple webkit builds
@@ -159,7 +167,8 @@ configure.args-append \
 platform linux {
     configure.args-append \
         -DUSE_WPE_RENDERER=OFF \
-        -DENABLE_BUBBLEWRAP_SANDBOX=OFF
+        -DENABLE_BUBBLEWRAP_SANDBOX=OFF \
+        -DUSE_LD_LLD=OFF -DUSE_LD_GOLD=OFF
 }
 
 pre-configure {
