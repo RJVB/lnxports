@@ -1,0 +1,51 @@
+PortSystem      1.0
+PortGroup       github 1.0
+PortGroup       cmake 1.1
+PortGroup       LTO 1.0
+
+github.setup    mheily libkqueue 2.6.2 v
+distname        ${name}-git
+fetch.type      git
+
+categories      devel sysutils
+platforms       linux freebsd
+license         Mark Heily
+maintainers     gmail.com:rjvbertin openmaintainer
+description     kqueue(2) compatibility library
+long_description \
+                A user space implementation of the kqueue(2) kernel event \
+                notification mechanism libkqueue acts as a translator between \
+                the kevent structure and the native kernel facilities on Linux, \
+                Android, Solaris, and Windows.
+
+patch.pre_args  -Np1
+
+# github.setup    RJVB relaunchd 3383821ac610d71e8a2ddfe142ca702b477f376b
+# version         0.2.1.5
+# description     A service management daemon similar to Apple's launchd
+# 
+# use_configure   no
+# 
+# depends_build-append \
+#                 port:bsdmake
+# 
+# build.cmd       ${prefix}/bin/bsdmake
+# build.target
+# build.post_args-append \
+#                 V=1 VERBOSE=1 MACHINE=Linux PREFIX=${prefix}
+# if {[tbool configure.ccache]} {
+#     depends_build-append \
+#                 port:ccache
+#     build.env-append \
+#                 "CC=${prefix}/bin/ccache ${configure.cc}"
+# } else {
+#     build.env-append \
+#                 "CC=${configure.cc}"
+# }
+# build.env-append \
+#                 "CFLAGS=${configure.cflags} -D_GNU_SOURCE -Wno-tautological-constant-compare" \
+#                 "LDFLAGS=${configure.ldflags} -lkqueue"
+# destroot.post_args-append \
+#                 PREFIX=${prefix} MANDIR=${prefix}/share/man
+# destroot.keepdirs-append \
+#                 ${destroot}${prefix}/var/db/launchd
