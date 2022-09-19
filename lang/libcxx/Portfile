@@ -4,7 +4,7 @@ PortGroup               LTO 1.0
 
 name                    libcxx
 epoch                   1
-version                 8.0.0
+version                 9.0.1
 categories              lang
 platforms               darwin
 license                 MIT NCSA
@@ -19,7 +19,8 @@ long_description        ${description} \
 
 homepage                http://libcxx.llvm.org/
 
-master_sites            http://www.llvm.org/releases/${version}/
+# master_sites            http://www.llvm.org/releases/${version}/
+master_sites            https://github.com/llvm/llvm-project/releases/download/llvmorg-${version}
 dist_subdir             llvm
 
 livecheck.url           http://www.llvm.org/
@@ -30,11 +31,11 @@ distname                ${name}-${version}.src
 distfiles-append        llvm-${version}.src${extract.suffix}
 
 checksums               ${name}-${version}.src${extract.suffix} \
-                        rmd160  bc1e240208c88e1718a4892932f40b299628301a \
-                        sha256  c2902675e7c84324fb2c1e45489220f250ede016cc3117186785d9dc291f9de2 \
+                        rmd160  b85b557e1fa372f2f3eb854c13ca103abb671d66 \
+                        sha256  0981ff11b862f4f179a13576ab0a2f5530f46bd3b6b4a90f568ccc6a62914b34 \
                         llvm-${version}.src${extract.suffix} \
-                        rmd160  a0740d83ae981506ddb7cfd389cafc52b7f317b2 \
-                        sha256  8872be1b12c61450cacc82b3d153eab02be2546ef34fa3580ed14137bb26224c
+                        rmd160  151c137ac3a514b6d32aaee5bb77dd32eb7d1f19 \
+                        sha256  00a1ee1f389f81e9979f3a640a01c431b3021de0d42278f6508391a2f0b81c9a
 
 if {${os.platform} eq "linux"} {
     PortGroup           cmake 1.1
@@ -48,7 +49,6 @@ if {${os.platform} eq "linux"} {
 
     patch.pre_args -p1
     patchfiles-append \
-        3001-Fix-local-and-iterator-when-building-with-Lion-and-n.patch \
         3002-Fix-missing-long-long-math-prototypes-when-using-the.patch \
         3003-implement-atomic-using-mutex-lock_guard-for-64b-ops-.patch \
         patch-accept-build_types.diff
