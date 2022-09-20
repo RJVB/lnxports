@@ -4,7 +4,7 @@ PortGroup               LTO 1.0
 
 name                    libcxx
 epoch                   1
-version                 9.0.1
+version                 9.0.1 ; revision 1
 categories              lang
 platforms               darwin
 license                 MIT NCSA
@@ -51,7 +51,8 @@ if {${os.platform} eq "linux"} {
     patchfiles-append \
         3002-Fix-missing-long-long-math-prototypes-when-using-the.patch \
         3003-implement-atomic-using-mutex-lock_guard-for-64b-ops-.patch \
-        patch-accept-build_types.diff
+        patch-accept-build_types.diff \
+        patch-config-availability+ABIhiding.diff
 
     cmake.install_prefix \
                         /usr
