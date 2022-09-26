@@ -1,7 +1,7 @@
-diff --git b/projects/libcxx/include/orig.__config a/projects/libcxx/include/__config
+diff --git b/libcxx/include/orig.__config a/libcxx/include/__config
 index 1ecced9..280a117 100644
---- b/projects/libcxx/include/orig.__config
-+++ a/projects/libcxx/include/__config
+--- b/libcxx/include/orig.__config
++++ a/libcxx/include/__config
 @@ -20,6 +20,12 @@
  #pragma GCC system_header
  #endif

@@ -4,7 +4,8 @@ PortGroup               LTO 1.0
 
 name                    libcxx
 epoch                   1
-version                 9.0.1 ; revision 1
+set llvm_version        12
+version                 12.0.1
 categories              lang
 platforms               darwin
 license                 MIT NCSA
@@ -27,33 +28,53 @@ livecheck.url           http://www.llvm.org/
 livecheck.regex         download.html\#(\\d+\\.\\d+(\\.\\d+)+)
 
 use_xz                  yes
-distname                ${name}-${version}.src
-distfiles-append        llvm-${version}.src${extract.suffix}
+distname                llvm-project-${version}.src
 
-checksums               ${name}-${version}.src${extract.suffix} \
-                        rmd160  b85b557e1fa372f2f3eb854c13ca103abb671d66 \
-                        sha256  0981ff11b862f4f179a13576ab0a2f5530f46bd3b6b4a90f568ccc6a62914b34 \
-                        llvm-${version}.src${extract.suffix} \
-                        rmd160  151c137ac3a514b6d32aaee5bb77dd32eb7d1f19 \
-                        sha256  00a1ee1f389f81e9979f3a640a01c431b3021de0d42278f6508391a2f0b81c9a
+checksums               rmd160  15499e64ebb42b73e78f2fec5ac4749c7d1a530f \
+                        sha256  129cb25cd13677aad951ce5c2deb0fe4afc1e9d98950f53b51bdcfb5a73afa0e
+#                         size    90910004
+
+set suffix              mp-${llvm_version}
 
 if {${os.platform} eq "linux"} {
     PortGroup           cmake 1.1
-    worksrcdir          llvm-${version}.src
+    cmake.set_c_standard     no
+    cmake.set_cxx_standard   no
+    worksrcdir          ${distname}
     depends_build       port:libedit
     depends_lib         port:libffi port:ncurses port:zlib
 
-    post-extract {
-        file rename ${workpath}/${name}-${version}.src ${worksrcpath}/projects/libcxx
-    }
+#     post-extract {
+#         file rename ${workpath}/${name}-${version}.src ${worksrcpath}/projects/libcxx
+#     }
 
     patch.pre_args -p1
     patchfiles-append \
-        3002-Fix-missing-long-long-math-prototypes-when-using-the.patch \
-        3003-implement-atomic-using-mutex-lock_guard-for-64b-ops-.patch \
+        0001-MacPorts-only-clang-use-MP-omp-locations.patch \
+        0002-MacPorts-Only-Don-t-embed-the-deployment-target-in-t.patch \
+        0003-MacPorts-Only-Prepare-clang-format-for-replacement-w.patch \
+        0004-MacPorts-Only-Fix-name-of-scan-view-executable-insid.patch \
+        0011-Fix-missing-long-long-math-prototypes-when-using-the.patch \
         patch-accept-build_types.diff \
         patch-config-availability+ABIhiding.diff \
         patch-experimental-no-lto.diff
+    # make benchmarks buildable (incl. not requiring over 2G of RAM to build)
+    patchfiles-append \
+        patch-strings-benchmark.diff \
+        patch-cheaper-variant-benchmark.diff
+
+    post-patch {
+        reinplace "s|@@PREFIX@@|${prefix}|" \
+            ${patch.dir}/clang/lib/Driver/ToolChains/Clang.cpp \
+            ${patch.dir}/clang/lib/Driver/ToolChains/CommonArgs.cpp
+
+        reinplace "s|@CLANG_FORMAT_PATH@|${prefix}/bin/clang-format-${suffix}|g" \
+            ${patch.dir}/clang/tools/clang-format/clang-format-bbedit.applescript \
+            ${patch.dir}/clang/tools/clang-format/clang-format-diff.py            \
+            ${patch.dir}/clang/tools/clang-format/clang-format-sublime.py         \
+            ${patch.dir}/clang/tools/clang-format/clang-format.el                 \
+            ${patch.dir}/clang/tools/clang-format/clang-format.py
+    }
 
     cmake.install_prefix \
                         /usr
@@ -62,21 +83,26 @@ if {${os.platform} eq "linux"} {
                         regardless of where MacPorts is installed.
 
     if {[file exists ${filespath}/find_abi_headers.sh]} {
-        set abi_header_dirs [exec ${filespath}/find_abi_headers.sh ${configure.compiler}]
+        set abi_header_dirs [exec ${filespath}/find_abi_headers.sh ${configure.cxx}]
+        pre-configure {
+            ui_info "abi_header_dirs=${abi_header_dirs}"
+        }
     } else {
         # we're probably executed from the registry, e.g. while deactivating the port
         set abi_header_dirs {}
     }
 
+#                         -DLLVM_PATH=${worksrcpath}
     configure.args-append \
-                        -DLLVM_PATH=${worksrcpath} \
+                        -DLLVM_ENABLE_RUNTIMES=libcxx \
                         -DLLVM_TARGETS_TO_BUILD="X86\;AMDGPU" \
                         -DLIBCXXABI_ENABLE_STATIC=OFF \
                         -DLIBCXX_ENABLE_STATIC=OFF \
                         -DLIBCXX_CXX_ABI=libstdc++ \
                         -DLIBCXX_CXX_ABI_INCLUDE_PATHS="${abi_header_dirs}" \
                         -DLIBCXX_ENABLE_ASSERTIONS=OFF \
-                        -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++
+                        -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++ \
+                        -DLIBCXX_LINK_TESTS_WITH_SHARED_LIBCXXABI=ON
 
     cmake.save_configure_cmd "log too"
 
@@ -90,7 +116,8 @@ if {${os.platform} eq "linux"} {
                         -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON
     }
 
-    build.dir           ${configure.dir}/projects/libcxx
+#     build.dir           ${configure.dir}/projects/libcxx
+    cmake.source_dir    ${worksrcpath}/runtimes
     destroot.violate_mtree yes
 
     test.run            yes
