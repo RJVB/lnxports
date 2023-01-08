@@ -104,7 +104,7 @@ if {${subport} eq "${name}-legacy"} {
     conflicts       "${name}-legacy"
     ## 576b7e66 looks like possibly the last commit before the takeover by the new project owner:
     github.setup    audacity audacity 576b7e66d2b96c39241d3d992259fc2bfa7855b0
-    version         3.0.2.129 ; revision 2
+    version         3.0.2.129 ; revision 3
     # this port is intended to facilitate development efforts shared with "upstreams"
     # so using git instead of a tarball fetch type is more appropriate for the current maintainer
     fetch.type      git
@@ -298,6 +298,9 @@ patchfiles-append   patch-format-feedback.diff
 # dropped Carbon usage somewhere around 3.1.4 but drops support for 10.9- earlier. This is not
 # required when building against port:wxWidgets-3.1 but it won't hurt either.
 patchfiles-append   ${PPREFIX}patch-cmakefiles.diff
+
+# make export work with ffmpeg 4.4:
+patchfiles-append   patch-use-ffmpeg-4.4.diff
 
 # if {${subport} eq "${name}"} {
 # #>> RJVB
