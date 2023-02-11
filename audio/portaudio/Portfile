@@ -1,19 +1,14 @@
 # -*- Mode: Tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup           github 1.0
 # PortGroup           cmake 1.1
 PortGroup           LTO 1.0
 
 name                portaudio
-set major           19
-set minor           6
-set reldate         20161030
-set distversion     ${major}[format %04d [expr {$minor * 100}]]_${reldate}
-version             ${major}.${minor}.${reldate}
-epoch               1
 categories          audio devel
 platforms           darwin macosx
-maintainers         nomaintainer
+maintainers         {ra1nb0w @ra1nb0w} openmaintainer
 license             MIT
 
 description         PortAudio is a free, cross platform, open-source, audio I/O library.
@@ -27,16 +22,14 @@ long_description    PortAudio is a free, cross platform, open-source, audio I/O 
                     Many applications use PortAudio for Audio I/O.
 
 homepage            http://www.portaudio.com/
-master_sites        ${homepage}archives
 
-distname            pa_stable_v${distversion}
-extract.suffix      .tgz
-
-checksums           rmd160  e6e5cd3f3cb7469aa17549c189e445d573567e13 \
-                    sha256  f5a21d7dcd6ee84397446fa1fa1a0675bb2e8a4a6dceb4305a8404698d8d1513
-#                     size    1450572
-
-worksrcdir          ${name}
+# next commit aa053464eb261337c2c763f2a3df1e5ef8f4797e drop 10.5 support
+github.setup        Portaudio portaudio 147dd722548358763a8b649b3e4b41dfffbcfbb6
+version             20210401-[string range ${github.version} 0 7]
+checksums           rmd160  2449e768b762c5c1777dd3c2a291e3cdbe9dc30c \
+                    sha256  d29bbe2b5a6f9447571e738a65c09239da61e73eae7d3b6ffd7cb7a32b2a8709 \
+                    size    1463021
+revision            0
 
 # By default, PortAudio is built as a universal binary.
 # To build a non-universal library for the host architecture,
@@ -57,45 +50,6 @@ configure.args      --disable-mac-universal \
 #                     -DPA_USE_COREAUDIO=ON \
 #                     -DPA_USE_DS=OFF
 
-variant jack description {enable JACK support} {
-    configure.args-replace --disable-jack \
-                    --enable-jack
-#     configure.args-replace \
-#                     -DPA_USE_JACK=OFF \
-#                     -DPA_USE_JACK=ON
-    depends_lib-append \
-                    port:jack
-}
-
-variant tools description "install the example and test utilities to ${prefix}/libexec/portaudio" {
-#     configure.args-append \
-#                     -DPA_BUILD_TESTS=ON \
-#                     -DPA_BUILD_EXAMPLES=ON
-    post-build {
-        # be certain the targets were build
-        system -W ${build.dir} "make tests"
-        system -W ${build.dir} "make examples"
-    }
-    post-destroot {
-        set utildir ${destroot}${prefix}/libexec/portaudio
-        xinstall -m 755 -d ${utildir}
-        foreach b [glob ${build.dir}/bin/.libs/pa*] {
-            xinstall -m 755 ${b} ${utildir}
-        }
-    }
-}
-
-# patch-configure removes -Werror, and adds -DNDEBUG.
-patchfiles          patch-configure.diff \
-                    patch-ltmain.sh.diff \
-                    patch-src__common__pa_types.h.diff \
-                    patch-audacity-portmixer.diff
-
-platform darwin {
-    if {${os.major} >= 10} {
-        patchfiles-append patch-src__hostapi__coreaudio__pa_mac_core.c.diff
-    }
-}
 platform linux {
     configure.args-delete \
                     --without-asihpi
@@ -107,32 +61,44 @@ platform linux {
 #                     -DPA_USE_ALSA=ON
 }
 
-# post-configure {
-#     xinstall -m 755 -d ${build.dir}/bindings/cpp
-#     system -W ${build.dir}/bindings/cpp "env ${configure.env} CC=${configure.cc} CXX=${configure.cxx} \
-#         \"CPPFLAGS=${configure.cppflags}\" \"CFLAGS=${configure.cflags}\" \"CXXFLAGS=${configure.cxxflags}\" \
-#         \"LDFLAGS=${configure.ldflags}\" ${worksrcpath}/bindings/cpp/configure --prefix=${prefix} --disable-silent-rules --disable-dependency-tracking --enable-fast-install"
-# }
-# 
-# post-build {
-#     system -W ${build.dir}/bindings/cpp "make -kw"
-# }
-
 # use_parallel_build  no
 
+# patch-configure removes -Werror, and adds -DNDEBUG.
+patchfiles          patch-configure.diff \
+                    patch-ltmain.sh.diff \
+                    patch-src__common__pa_types.h.diff \
+                    patch-audacity-portmixer.diff
+
+variant jack description {Enable JACK support} {
+#     configure.args-replace \
+#                     -DPA_USE_JACK=OFF \
+#                     -DPA_USE_JACK=ON
+    depends_lib-append \
+                    port:jack
+    configure.args-replace \
+                    --without-jack \
+                    --with-jack
+}
+
+variant tools description {Install the example and test utilities to ${prefix}/libexec/${name}} {
+#     configure.args-append \
+#                     -DPA_BUILD_TESTS=ON \
+#                     -DPA_BUILD_EXAMPLES=ON
+    post-destroot {
+        set utildir ${destroot}${prefix}/libexec/${name}
+        xinstall -m 755 -d ${utildir}
+        # avoid installing any .dSYM directories that might have been created
+        xinstall -m 755 {*}[glob -type f ${build.dir}/bin/.libs/pa*] ${utildir}
+    }
+}
+
 post-destroot {
-#     system -W ${build.dir}/bindings/cpp "make -kw install ${DESTDIR}=${destroot}"
     xinstall -d ${destroot}${prefix}/share/doc/${name}
     xinstall -m 644 -W ${worksrcpath} \
-        README.txt \
+        README.md \
         LICENSE.txt \
         ${destroot}${prefix}/share/doc/${name}
     # The build of PyAudio requires pa_mac_core.h.
     xinstall -m 644 ${worksrcpath}/include/pa_mac_core.h \
         ${destroot}${prefix}/include
 }
-
-livecheck.type      regex
-livecheck.url       [lindex ${master_sites} 0]
-livecheck.version   ${distversion}
-livecheck.regex     pa_stable_v(\[0-9._\]+)\\.

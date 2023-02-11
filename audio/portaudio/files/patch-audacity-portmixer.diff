@@ -1,13 +1,8 @@
-Description: Add features needed to make portmixer work with audacity.
-Author: Audacity Team
-Last-Update: 2011-12-07
-Synced with version 190600_20161030 on 20170507
-
 diff --git configure.in configure.in
-index 13816fb7a34eb9aea37050b86e3543aa0adc9282..83c239a12f38fe652948d4293ab161346f377301 100644
+index bb4ae96..fe0e112 100644
 --- configure.in
 +++ configure.in
-@@ -420,6 +420,7 @@ case "${host_os}" in
+@@ -415,6 +415,7 @@ case "${host_os}" in
                     DLL_LIBS="$DLL_LIBS -lossaudio"
                     LIBS="$LIBS -lossaudio"
             fi
@@ -15,8 +10,118 @@ index 13816fb7a34eb9aea37050b86e3543aa0adc9282..83c239a12f38fe652948d4293ab16134
             AC_DEFINE(PA_USE_OSS,1)
          fi
  
+diff --git include/pa_unix_oss.h include/pa_unix_oss.h
+new file mode 100644
+index 0000000..64e04cb
+--- /dev/null
++++ include/pa_unix_oss.h
+@@ -0,0 +1,104 @@
++#ifndef PA_UNIX_OSS_H
++#define PA_UNIX_OSS_H
++
++/*
++ * $Id: portaudio.patch,v 1.10 2009-06-30 04:52:59 llucius Exp $
++ * PortAudio Portable Real-Time Audio Library
++ * OSS-specific extensions
++ *
++ * Copyright (c) 1999-2000 Ross Bencina and Phil Burk
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining
++ * a copy of this software and associated documentation files
++ * (the "Software"), to deal in the Software without restriction,
++ * including without limitation the rights to use, copy, modify, merge,
++ * publish, distribute, sublicense, and/or sell copies of the Software,
++ * and to permit persons to whom the Software is furnished to do so,
++ * subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be
++ * included in all copies or substantial portions of the Software.
++ *
++ * Any person wishing to distribute modifications to the Software is
++ * requested to send the modifications to the original developer so that
++ * they can be incorporated into the canonical version.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
++ * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
++ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
++ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
++ *
++ */
++
++/** @file
++ * OSS-specific PortAudio API extension header file.
++ */
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++const char *PaOSS_GetStreamInputDevice( PaStream *s );
++
++const char *PaOSS_GetStreamOutputDevice( PaStream *s );
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
++#ifndef PA_UNIX_OSS_H
++#define PA_UNIX_OSS_H
++
++/*
++ * $Id: portaudio.patch,v 1.10 2009-06-30 04:52:59 llucius Exp $
++ * PortAudio Portable Real-Time Audio Library
++ * OSS-specific extensions
++ *
++ * Copyright (c) 1999-2000 Ross Bencina and Phil Burk
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining
++ * a copy of this software and associated documentation files
++ * (the "Software"), to deal in the Software without restriction,
++ * including without limitation the rights to use, copy, modify, merge,
++ * publish, distribute, sublicense, and/or sell copies of the Software,
++ * and to permit persons to whom the Software is furnished to do so,
++ * subject to the following conditions:
++ *
++ * The above copyright notice and this permission notice shall be
++ * included in all copies or substantial portions of the Software.
++ *
++ * Any person wishing to distribute modifications to the Software is
++ * requested to send the modifications to the original developer so that
++ * they can be incorporated into the canonical version.
++ *
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR
++ * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
++ * CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
++ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
++ *
++ */
++
++/** @file
++ * OSS-specific PortAudio API extension header file.
++ */
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++const char *PaOSS_GetStreamInputDevice( PaStream *s );
++
++const char *PaOSS_GetStreamOutputDevice( PaStream *s );
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
 diff --git include/pa_win_ds.h include/pa_win_ds.h
-index 5d3864168c4508b5ad6559f5ac73b64097637d98..ba1c24546a1c12b8f15706c1b6fd96db2979388e 100644
+index 8081abd..7880af6 100644
 --- include/pa_win_ds.h
 +++ include/pa_win_ds.h
 @@ -86,6 +86,21 @@ typedef struct PaWinDirectSoundStreamInfo{
@@ -42,10 +147,10 @@ index 5d3864168c4508b5ad6559f5ac73b64097637d98..ba1c24546a1c12b8f15706c1b6fd96db
  
  #ifdef __cplusplus
 diff --git include/portaudio.h include/portaudio.h
-index 8a94aafbbb8104bbda9a5320d1d6fc4b843adf7e..9c8a2959f20c50c392124c6d7f13f326470b0cfe 100644
+index 5d84731..7660c8a 100644
 --- include/portaudio.h
 +++ include/portaudio.h
-@@ -1197,6 +1197,15 @@ signed long Pa_GetStreamReadAvailable( PaStream* stream );
+@@ -1200,6 +1200,15 @@ signed long Pa_GetStreamReadAvailable( PaStream* stream );
  signed long Pa_GetStreamWriteAvailable( PaStream* stream );
  
  
@@ -62,7 +167,7 @@ index 8a94aafbbb8104bbda9a5320d1d6fc4b843adf7e..9c8a2959f20c50c392124c6d7f13f326
  
  
 diff --git src/common/pa_front.c src/common/pa_front.c
-index 188cee9e5578f0e050cddbe3c86a9463dc2b22e2..52f44a677dc0f4f3699e019be452337a2ac928d7 100644
+index 65a656f..0b5dedc 100644
 --- src/common/pa_front.c
 +++ src/common/pa_front.c
 @@ -1257,8 +1257,10 @@ PaError Pa_OpenStream( PaStream** stream,
@@ -111,7 +216,7 @@ index 188cee9e5578f0e050cddbe3c86a9463dc2b22e2..52f44a677dc0f4f3699e019be452337a
  PaError Pa_GetSampleSize( PaSampleFormat format )
  {
 diff --git src/common/pa_stream.c src/common/pa_stream.c
-index 03a0ee6ee32e8752949d75a05d57fa5380329858..c4376f93b969bd02a0f90f1eb07478db8efe1501 100644
+index ffbf530..305f7c8 100644
 --- src/common/pa_stream.c
 +++ src/common/pa_stream.c
 @@ -93,6 +93,8 @@ void PaUtil_InitializeStreamRepresentation( PaUtilStreamRepresentation *streamRe
@@ -124,7 +229,7 @@ index 03a0ee6ee32e8752949d75a05d57fa5380329858..c4376f93b969bd02a0f90f1eb07478db
  
  
 diff --git src/common/pa_stream.h src/common/pa_stream.h
-index 678e2ad5ea0897904aaed1fd14c055a74a96f6ba..70572c7523dfce1cc77738979663bb6f98702d06 100644
+index 4afda39..0a5cd1e 100644
 --- src/common/pa_stream.h
 +++ src/common/pa_stream.h
 @@ -152,6 +152,7 @@ typedef struct PaUtilStreamRepresentation {
@@ -136,10 +241,10 @@ index 678e2ad5ea0897904aaed1fd14c055a74a96f6ba..70572c7523dfce1cc77738979663bb6f
  
  
 diff --git src/hostapi/alsa/pa_linux_alsa.c src/hostapi/alsa/pa_linux_alsa.c
-index 584cde8901d7f16630ca1e4bc864059da0edd8f3..558fb3d11c5fbdc0deeffe633e62f29b93c06fdf 100644
+index a66f90d..eafc7cd 100644
 --- src/hostapi/alsa/pa_linux_alsa.c
 +++ src/hostapi/alsa/pa_linux_alsa.c
-@@ -621,6 +621,7 @@ typedef struct
+@@ -623,6 +623,7 @@ typedef struct
      StreamDirection streamDir;
  
      snd_pcm_channel_area_t *channelAreas;  /* Needed for channel adaption */
@@ -147,7 +252,7 @@ index 584cde8901d7f16630ca1e4bc864059da0edd8f3..558fb3d11c5fbdc0deeffe633e62f29b
  } PaAlsaStreamComponent;
  
  /* Implementation specific stream structure */
-@@ -1873,6 +1874,7 @@ static PaError PaAlsaStreamComponent_Initialize( PaAlsaStreamComponent *self, Pa
+@@ -1880,6 +1881,7 @@ static PaError PaAlsaStreamComponent_Initialize( PaAlsaStreamComponent *self, Pa
  {
      PaError result = paNoError;
      PaSampleFormat userSampleFormat = params->sampleFormat, hostSampleFormat = paNoError;
@@ -155,7 +260,7 @@ index 584cde8901d7f16630ca1e4bc864059da0edd8f3..558fb3d11c5fbdc0deeffe633e62f29b
      assert( params->channelCount > 0 );
  
      /* Make sure things have an initial value */
-@@ -1900,6 +1902,9 @@ static PaError PaAlsaStreamComponent_Initialize( PaAlsaStreamComponent *self, Pa
+@@ -1907,6 +1909,9 @@ static PaError PaAlsaStreamComponent_Initialize( PaAlsaStreamComponent *self, Pa
      self->device = params->device;
  
      PA_ENSURE( AlsaOpen( &alsaApi->baseHostApiRep, params, streamDir, &self->pcm ) );
@@ -165,7 +270,7 @@ index 584cde8901d7f16630ca1e4bc864059da0edd8f3..558fb3d11c5fbdc0deeffe633e62f29b
      self->nfds = alsa_snd_pcm_poll_descriptors_count( self->pcm );
  
      PA_ENSURE( hostSampleFormat = PaUtil_SelectClosestAvailableFormat( GetAvailableFormats( self->pcm ), userSampleFormat ) );
-@@ -4605,9 +4610,7 @@ PaError PaAlsa_GetStreamInputCard( PaStream* s, int* card )
+@@ -4625,9 +4630,7 @@ PaError PaAlsa_GetStreamInputCard( PaStream* s, int* card )
      /* XXX: More descriptive error? */
      PA_UNLESS( stream->capture.pcm, paDeviceUnavailable );
  
@@ -176,7 +281,7 @@ index 584cde8901d7f16630ca1e4bc864059da0edd8f3..558fb3d11c5fbdc0deeffe633e62f29b
  
  error:
      return result;
-@@ -4624,9 +4627,7 @@ PaError PaAlsa_GetStreamOutputCard( PaStream* s, int* card )
+@@ -4644,9 +4647,7 @@ PaError PaAlsa_GetStreamOutputCard( PaStream* s, int* card )
      /* XXX: More descriptive error? */
      PA_UNLESS( stream->playback.pcm, paDeviceUnavailable );
  
@@ -188,7 +293,7 @@ index 584cde8901d7f16630ca1e4bc864059da0edd8f3..558fb3d11c5fbdc0deeffe633e62f29b
  error:
      return result;
 diff --git src/hostapi/coreaudio/pa_mac_core_blocking.c src/hostapi/coreaudio/pa_mac_core_blocking.c
-index 679c6ba0aec3e17a30bf9f6fae0434133852b65a..a69e08589aba8c0cf1d099a1af98a908371fbc0b 100644
+index 70515f9..9a701e8 100644
 --- src/hostapi/coreaudio/pa_mac_core_blocking.c
 +++ src/hostapi/coreaudio/pa_mac_core_blocking.c
 @@ -66,6 +66,9 @@
@@ -202,13 +307,14 @@ index 679c6ba0aec3e17a30bf9f6fae0434133852b65a..a69e08589aba8c0cf1d099a1af98a908
  # include <libkern/OSAtomic.h>
  #endif
 diff --git src/hostapi/oss/pa_unix_oss.c src/hostapi/oss/pa_unix_oss.c
-index 51e963048fa66d1e7748c4e63928fe1dd6d3db66..f257d80398fbbaf5f7886bcd74e14fe3b32c669f 100644
+index 20113e2..562e79d 100644
 --- src/hostapi/oss/pa_unix_oss.c
 +++ src/hostapi/oss/pa_unix_oss.c
-@@ -2043,3 +2043,26 @@ error:
+@@ -2050,3 +2050,27 @@ error:
+     return result;
  #endif
  }
- 
++
 +const char *PaOSS_GetStreamInputDevice( PaStream* s )
 +{
 +    PaOssStream *stream = (PaOssStream*)s;
