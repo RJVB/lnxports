@@ -1,10 +1,12 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup			LTO 1.0
 
 name                sqlite3
 # don't forget to update the checksums for sqlite3-tools when updating sqlite3
-version             3.20.1
+version             3.41.0
+revision            0
 categories          databases
 platforms           darwin
 license             public-domain
@@ -21,21 +23,27 @@ long_description    SQLite3 is an SQL database engine in a C library. \
                     to administer an SQLite3 database and which serves as \
                     an example of how to use the SQLite3 library.
 
-homepage            http://www.sqlite.org/
-master_sites        ${homepage}2017
+homepage            https://www.sqlite.org/
+master_sites        ${homepage}2023
 
 set padded_ver      [string range [subst [regsub -all {\.([0-9]+)} "${version}.0.0" {[format %02d \1]}]] 0 6]
 distname            sqlite-autoconf-${padded_ver}
 
-checksums           rmd160  9e6f5367269bdeba47cce342be0cb428b1d6e169 \
-                    sha256  ec66595b29bc0798b023a5122021ea646ab4fa9e2f735937c5426feeba950742
+checksums           rmd160  bd6153b6a89b89bb44972e707a54aef76f659d1b \
+                    sha256  49f77ac53fd9aa5d7395f2499cb816410e5621984a121b858ccca05310b05c70 \
+                    size    3124499
 
 depends_lib         port:libedit \
-                    port:ncurses
+                    port:ncurses \
+                    port:zlib
 
-# patchfiles          patch-configure-ac.diff
-use_autoreconf      yes
-autoreconf.args     -fvi
+if {${subport} ne "${name}-tools"} {
+    configure.checks.implicit_function_declaration.whitelist-append strchr
+
+    patchfiles      patch-sqlite3_fix-atomic-clang-4.diff
+} else {
+    patchfiles      patch-sqlite3-tools_fix-atomic-clang-4.diff
+}
 
 # on linux we apparently *have* to enable fts5 to avoid "missing log()" link errors
 configure.args      --enable-threadsafe \
@@ -44,70 +52,79 @@ configure.args      --enable-threadsafe \
                     --enable-fts5 \
                     AWK=/usr/bin/awk
 
-# if {${subport} eq ${name}} {
-#     post-patch {
-#         reinplace "s|-ltinfo||" ${worksrcpath}/configure
-#     }
-# }
-
-# search in worksrcpath for sqlite3.h first -- dont pick up an installed one!
-configure.cppflags-prepend  -DSQLITE_DISABLE_INTRINSIC \
-                            -DSQLITE_ENABLE_COLUMN_METADATA \
-                            -DSQLITE_ENABLE_FTS3_PARENTHESIS \
-                            -DSQLITE_ENABLE_FTS4 \
-                            -DSQLITE_ENABLE_FTS5 \
-                            -DSQLITE_ENABLE_RTREE \
-                            -DSQLITE_SECURE_DELETE \
-                            -DSQLITE_ENABLE_STAT4 \
-                            -DSQLITE_ENABLE_UNLOCK_NOTIFY \
-                            -DSQLITE_SOUNDEX \
-                            -I${worksrcpath}
-
 build.type          gnu
 
 livecheck.type      regex
-livecheck.url       http://www.sqlite.org/news.html
+livecheck.url       https://www.sqlite.org/news.html
 livecheck.regex     (3(?:\\.\[0-9\]+)+)
 
-post-destroot {
-    if {${subport} eq ${name}} {
+platform darwin 8 {
+    # See http://trac.macports.org/ticket/32930 for why this is needed.
+    configure.cppflags-append -DSQLITE_WITHOUT_ZONEMALLOC
+}
+
+if {${subport} eq ${name}} {
+    post-patch {
+        reinplace "s|-ltinfo||" ${worksrcpath}/configure
+    }
+
+    # search in worksrcpath for sqlite3.h first -- don't pick up an installed one!
+    configure.cppflags-prepend  -DSQLITE_DISABLE_INTRINSIC \
+                                -DSQLITE_ENABLE_COLUMN_METADATA \
+                                -DSQLITE_ENABLE_FTS3_PARENTHESIS \
+                                -DSQLITE_ENABLE_FTS4 \
+                                -DSQLITE_ENABLE_FTS5 \
+                                -DSQLITE_ENABLE_JSON1 \
+                                -DSQLITE_ENABLE_RTREE \
+                                -DSQLITE_SECURE_DELETE \
+                                -DSQLITE_ENABLE_STAT4 \
+                                -DSQLITE_ENABLE_UNLOCK_NOTIFY \
+                                -DSQLITE_SOUNDEX \
+                                -I${worksrcpath}
+
+    post-destroot {
         xinstall -m 644 ${worksrcpath}/${name}.1 ${destroot}${prefix}/share/man/man1
     }
 }
 
-platform darwin 8 {
-    configure.cppflags-append -DSQLITE_WITHOUT_ZONEMALLOC
+subport ${name}-tcl {
+    depends_lib     port:tcl
+
+    configure.dir   ${worksrcpath}/tea
+    build.dir       ${configure.dir}
+
+    configure.args  --exec-prefix=${prefix} \
+                    --with-tcl=${prefix}/lib \
+                    --with-tclinclude=${prefix}/include
+
+    configure.cppflags-prepend  -I${worksrcpath}
+
+    if {${build_arch} eq "i386"} {
+        patch.dir   ${configure.dir}
+        patchfiles  patch-tea-configure.diff
+    }
 }
 
 subport ${name}-tools {
-    distname                  sqlite-src-${padded_ver}
-    description               A bundle of command-line tools for managing SQLite \
-                              database files
+    distname                sqlite-src-${padded_ver}
 
-    long_description          A bundle of command-line tools for managing SQLite \
-                              database files, including the sqldiff program and the \
-                              sqlite3_analyzer program.
+    description             A bundle of command-line tools for managing SQLite \
+                            database files
+    long_description        {*}${description}, including the sqldiff program and the \
+                            sqlite3_analyzer program.
 
-    checksums       rmd160  5260e6bcf35dc360a6dd31cec4792268feede6b7 \
-                    sha256  665bcae19f313c974e3fc2e375b93521c3668d79bc7b66250c24a4a4aeaa2c2a
-    use_zip                   yes
-    depends_lib               port:tcl
-    configure.args            --with-tcl=${prefix}/lib
-    build.target              sqldiff sqlite3_analyzer
+    checksums       rmd160  546b2e5aa9ea40ee2b0cff927305d14ed1db4ac4 \
+                    sha256  64a7638a35e86b991f0c15ae8e2830063b694b28068b8f7595358e3205a9eb66 \
+                    size    13831104
+
+    use_zip                 yes
+    depends_lib             port:tcl \
+                            port:zlib
+
+    configure.args          --with-tcl=${prefix}/lib
+    build.target            sqldiff sqlite3_analyzer
     destroot {
         xinstall -m 755 ${worksrcpath}/sqldiff ${destroot}${prefix}/bin
         xinstall -m 755 ${worksrcpath}/sqlite3_analyzer ${destroot}${prefix}/bin
-    }
-    pre-activate {
-        # tcl previously conflicted because it installed files now provided by sqlite3-tools
-        if {![catch {set installed [lindex [registry_active tcl] 0]}]} {
-            set _version [lindex $installed 1]
-            set _revision [lindex $installed 2]
-            set _cmp866 [vercmp $_version 8.6.6]
-            if {($_cmp866 < 0) || ($_cmp866 == 0 && $_revision < 1)} {
-                # tcl used to install some files now provided by sqlite3-tools in versions < 8.6.6_1
-                registry_deactivate_composite tcl "" [list ports_nodepcheck 1]
-            }
-        }
     }
 }
