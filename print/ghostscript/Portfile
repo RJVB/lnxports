@@ -3,6 +3,9 @@
 PortSystem          1.0
 PortGroup           muniversal 1.0
 PortGroup           LTO 1.0
+platform darwin {
+    PortGroup       preserve_runtime_libraries 1.0
+}
 
 name                ghostscript
 version             9.56.1
@@ -14,7 +17,7 @@ description         GPL Ghostscript, An interpreter for PostScript and PDF
 long_description    Ghostscript is the well-known PostScript interpreter which \
                     is available for all common and most esoteric platforms and \
                     supports many different printers and some displays.
-platforms           linux
+platforms           linux darwin
 homepage            https://www.ghostscript.com/
 master_sites        https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs[strsed ${version} {g/\.//}]:source \
                     sourceforge:project/gs-fonts/gs-fonts/6.0%20%28misc%2C%20AFPL%29/:otherfonts \
@@ -33,7 +36,9 @@ distfiles           ${distname}.tar.gz:source \
                     ghostscript-fonts-std-8.11.tar.gz:stdfonts \
                     ${mappingresources_commit}.zip:misc
 
-# patchfiles          patch-base_unix-dll.mak.diff
+platform darwin {
+    patchfiles      patch-base_unix-dll.mak.diff
+}
 patchfiles-append   patch-base_unixinst.mak.diff
 
 checksums           ${distname}.tar.gz \
@@ -53,8 +58,6 @@ checksums           ${distname}.tar.gz \
                     sha256  03bb11a4db4b01f8509e93db469a24f904934fece3b5b9b8be932267ed7173f4 \
                     size    1600471
 
-#                     port:fontconfig \
-#                     port:libpaper
 depends_lib         port:freetype \
                     port:jbig2dec \
                     path:include/turbojpeg.h:libjpeg-turbo \
@@ -67,6 +70,14 @@ depends_lib         port:freetype \
                     port:lcms2
 
 depends_build       port:pkgconfig
+
+platform darwin {
+    depends_build-append \
+                    port:cctools
+    depends_lib-append \
+                    port:fontconfig \
+                    port:libpaper
+}
 
 # tell ghostscript it's OK to use the system pkg-config even when cross-compiling
 # see https://trac.macports.org/ticket/66627
@@ -83,6 +94,12 @@ post-extract {
 
     foreach d {expat freetype jbig2dec jpeg lcms2mt libpng openjpeg tiff zlib} {
         move ${worksrcpath}/${d} ${worksrcpath}/${d}_local
+    }
+
+    platform darwin {
+    # https://trac.macports.org/ticket/62832
+    delete ${worksrcpath}/tesseract
+    delete ${worksrcpath}/leptonica
     }
 
     #move ${workpath}/MappingOther/Adobe-CNS1-ETen-B5 ${workpath}/MappingOther/Adobe-CNS1-ETenms-B5
@@ -126,19 +143,42 @@ configure.args      --disable-compile-inits \
                     --without-gpdl \
                     --without-x \
                     --with-system-libtiff
+configure.args-append \
+                    --with-pdf=gpdf
 
 build.target        so
 # ghostscript doesn't respect the full LDFLAGS spec in all of its build steps
-pre-build {
-    if {[info exists ::env(LD_LIBRARY_PATH)]} {
-        build.env-append "LD_LIBRARY_PATH=${prefix}/lib:$env(LD_LIBRARY_PATH)"
-    } else {
-        build.env-append "LD_LIBRARY_PATH=${prefix}/lib"
+platform linux {
+    pre-build {
+        if {[info exists ::env(LD_LIBRARY_PATH)]} {
+            build.env-append "LD_LIBRARY_PATH=${prefix}/lib:$env(LD_LIBRARY_PATH)"
+        } else {
+            build.env-append "LD_LIBRARY_PATH=${prefix}/lib"
+        }
     }
 }
 
 destroot.target     soinstall
 post-destroot {
+    xinstall -m 755 ${worksrcpath}/sobin/gpdfc ${destroot}${prefix}/bin/gpdf
+    xinstall -m 755 {*}[glob -directory ${worksrcpath}/sobin libgpdf.*] ${destroot}${prefix}/lib/
+    platform darwin {
+        # make certain that dependendents depend correctly on the libg?.X.dylib symlink
+        # and not on the actual libg?.X.Y.dylib binary!
+        if {[variant_isset ghostpdl]} {
+            set libs {gs gpdf gpcl6 gxps gpdl}
+        } else {
+            set libs {gs gpdf}
+        }
+        foreach lib ${libs} {
+            system "install_name_tool -id ${prefix}/lib/lib${lib}.9.dylib \
+                ${destroot}${prefix}/lib/lib${lib}.9.56.dylib"
+        }
+
+        # preserve the libraries from previous versions of the port that weren't so thoughtful
+        preserve_libraries ${prefix}/lib libgs.*.dylib
+    }
+
     ln -s gsc ${destroot}${prefix}/bin/gs
 
     if {[variant_isset ghostpdl]} {
@@ -202,15 +242,19 @@ post-destroot {
             ${destroot}${prefix}/include/ghostscript/
 }
 
-# post-activate {
-#     system "${prefix}/bin/fc-cache -v ${prefix}/share/fonts/Type1/gsfonts"
-# }
+platform darwin {
+post-activate {
+    system "${prefix}/bin/fc-cache -v ${prefix}/share/fonts/Type1/gsfonts"
+}
+}
 
 configure.universal_args-delete --disable-dependency-tracking
 
 variant x11 {
-#     depends_lib-append      port:xorg-libXext
-#     depends_lib-append      port:xorg-libXt
+    platform darwin {
+    depends_lib-append      port:xorg-libXext
+    depends_lib-append      port:xorg-libXt
+    }
     configure.args-replace  --without-x --with-x
 }
 
@@ -225,11 +269,12 @@ variant ghostpdl description {Install GhostPDL} {
     configure.args-replace  --without-xps --with-xps=gxps
     configure.args-replace  --without-gpdl --with-gpdl=gpdl
 
-    platform linux {
+    if {${os.platform} eq "linux"} {
         depends_build-append port:patchelf
         post-destroot {
             system "patchelf --set-rpath ${prefix}/lib ${destroot}${prefix}/bin/gpdlc"
         }
+    } else {
     }
 
     notes "
