@@ -9,7 +9,7 @@ platform linux {
 
 name                libdrm
 epoch               1
-version             2.4.105
+version             2.4.105 ; revision 1
 categories          x11 graphics
 maintainers         openmaintainer
 license             MIT
@@ -49,7 +49,16 @@ post-patch {
     reinplace "s|buildtype=debugoptimized|buildtype=${meson.build_type}|g" ${worksrcpath}/meson.build
 }
 configure.args-append \
-                    -Dudev=true
+                    -Dudev=true \
+                    -Dvalgrind=false
+
+variant valgrind description {build with valgrind support} {
+    depends_build-append port:valgrind
+    depends_run-append   port:valgrind
+    configure.args-replace \
+                    -Dvalgrind=false \
+                    -Dvalgrind=true
+}
 
 configure.env-append \
                     STRIP=echo
