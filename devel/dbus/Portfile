@@ -7,7 +7,9 @@ PortGroup       locale_select 1.0
 
 name            dbus
 version         1.14.6
-# revision        0
+platform linux {
+    revision    1
+}
 
 checksums       rmd160  802226399454544eb5d5e0d778dbf2a437dce7b5 \
                 sha256  fd2bdf1bb89dc365a46531bff631536f22b0d1c6d5ce2c5c5e59b55265b3d66b
@@ -46,6 +48,11 @@ patchfiles-append \
                 darwin/patch-improve-systembus.diff \
                 darwin/patch-autogen.diff \
                 darwin/patch-enable-standard-launch2.diff
+}
+platform linux {
+    patchfiles-append \
+                ubuntu/aa-get-connection-apparmor-security-context.patch \
+                ubuntu/dont-stop-dbus.patch
 }
 
 depends_build       \
@@ -285,7 +292,7 @@ post-destroot {
         # it's probably very unwise to replace the host dbus on Linux so we only provide link-time things
         # like libraries and the privileged helper. A suffix is added to the executables so it should be
         # safe to leave most; we just remove the launch tool
-        file delete ${destroot}${prefix}/bin/dbus-launch-mp
+        # file delete ${destroot}${prefix}/bin/dbus-launch-mp
         # Also remove any items that are already installed by the host dbus install.
         file delete ${destroot}/usr/share/dbus-1/system.conf ${destroot}/usr/share/dbus-1/session.conf
         # no longer needed:
