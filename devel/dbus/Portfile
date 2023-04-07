@@ -108,7 +108,7 @@ if {[getuid] != 0} {
     set dbus_user     ${install.user}
     set dbus_group    ${install.group}
 } else {
-    if {${os.platform} eq "darwin" && ${os.major} >= 9} {
+    if {${os.major} >= 9} {
         set dbus_user     _messagebus
     } else {
         set dbus_user     messagebus
@@ -132,6 +132,10 @@ startupitems        name        dbus-system \
                     uniquename  ${agent_uniquename} \
                     plist       ${agent_uniquename}.plist
 ## darwin
+}
+platform linux {
+    set dbus_user     root
+    set dbus_group    messagebus
 }
 
 depends_lib     port:expat
@@ -288,11 +292,13 @@ post-destroot {
     system "env DYLD_LIBRARY_PATH=${destroot}${prefix}/lib ${destroot}${prefix}/bin/dbus-uuidgen --ensure=${destroot}${prefix}/var/lib/dbus/machine-id"
     } else {
         # clean up the workaround from the pre-destroot:
-        file delete ${destroot}${prefix}/libexec/dbus-daemon-launch-helper
+        ln -f ${destroot}${prefix}/libexec/dbus-daemon-launch-helper-mp ${destroot}${prefix}/libexec/dbus-daemon-launch-helper
+
         # it's probably very unwise to replace the host dbus on Linux so we only provide link-time things
         # like libraries and the privileged helper. A suffix is added to the executables so it should be
         # safe to leave most; we just remove the launch tool
         # file delete ${destroot}${prefix}/bin/dbus-launch-mp
+
         # Also remove any items that are already installed by the host dbus install.
         file delete ${destroot}/usr/share/dbus-1/system.conf ${destroot}/usr/share/dbus-1/session.conf
         # no longer needed:
@@ -313,6 +319,13 @@ post-activate {
             file attributes ${prefix}/Library/LaunchDaemons/${daemon_uniquename}.plist -owner root -group wheel
         }
     } else {
+        # it's not certain we'd ever be using the privileged helper instead of the one already
+        # installed in the system, but let's just make certain it's set up correctly:
+        if {[file exists ${prefix}/libexec/dbus-daemon-launch-helper-mp]} {
+            file attributes ${prefix}/libexec/dbus-daemon-launch-helper-mp -group ${dbus_group}
+            system "chmod u+s ${prefix}/libexec/dbus-daemon-launch-helper-mp"
+            ln -f ${prefix}/libexec/dbus-daemon-launch-helper-mp ${prefix}/libexec/dbus-daemon-launch-helper
+        }
         if {![file exists /usr/share/dbus-1/system.conf] && [file exists /etc/dbus-1/system.conf]} {
             ln -s /etc/dbus-1/system.conf /usr/share/dbus-1
         }
