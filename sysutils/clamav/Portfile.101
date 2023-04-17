@@ -8,8 +8,7 @@ PortGroup LTO 1.0
 PortGroup openssl 1.0
 
 name			clamav
-version		 	0.104.4
-revision            1
+version		 	1.0.1
 categories		sysutils
 maintainers	 	{geeklair.net:dluke @danielluke}
 description	 	clamav antivirus software
@@ -21,16 +20,11 @@ long_description	Clam AntiVirus is a GPL anti-virus toolkit for UNIX. The \
 
 homepage		http://www.clamav.net
 master_sites		http://www.clamav.net/downloads/production
-checksums	rmd160	9158544048971e28c71ebf60ea39b42afcb8ce04 \
-		sha256	8ac32e910aa744cc7f921c5122ba523ef1ffbbbf94545f94fc4a976b502be74b
-# 		size	12027448
+checksums	rmd160	c4abb4771e07c18a8b6763f53e2fb56164493a11 \
+		sha256	0872dc1b82ff4cd7e8e4323faf5ee41a1f66ae80865d05429085b946355d86ee
+# 		size	31305590
 
 platforms       linux
-
-platform linux {
-    patchfiles-append \
-               patch-build-against-llvm360.diff
-}
 
 # Disable tests to avoid extra dependencies
 configure.args-append	-DENABLE_TESTS=OFF \
@@ -38,16 +32,18 @@ configure.args-append	-DENABLE_TESTS=OFF \
 			-DENABLE_STATIC_LIB=OFF \
 			-DBYTECODE_RUNTIME=llvm \
 			-DDATABASE_DIRECTORY=/var/lib/clamav \
-			-DLLVM_CONFIG=/usr/bin/llvm-config-3.6 \
-			-DLLVM_FIND_VERSION=3.6.0 \
+			-DLLVM_CONFIG=${prefix}/bin/llvm-config-mp-8.0 \
 			-DENABLE_SYSTEMD=OFF
 
-#Parallel build causes build failures as of 0.104.0
 use_parallel_build	yes
 
 depends_build  port:pkgconfig \
-			bin:git:git \
-			port:python39
+			bin:git:git
+platform darwin {
+    depends_build-append \
+			port:rust \
+			port:cargo
+}
 
 depends_lib		port:libiconv \
 			port:zlib \
@@ -82,10 +78,6 @@ platform darwin 8 {
 	configure.args-append	-DOPTIMIZE=OFF
 }
 
-post-destroot {
-	file delete -force ${destroot}${prefix}/share/doc/ClamAV
-}
-
 variant clamav_milter description {build with libmilter support} {
 	depends_lib-append port:libmilter
 	configure.args-replace	-DENABLE_MILTER=OFF -DENABLE_MILTER=ON
@@ -102,7 +94,7 @@ variant tests description {Enable running 'port test'} {
 	ui_msg "Tests run using the installed version of this port."
 
 	depends_test	port:check \
-			port:py39-pytest
+			port:py310-pytest
 
 	configure.args-delete	-DENABLE_TESTS=OFF
 	configure.pre_args-replace	-DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON \
