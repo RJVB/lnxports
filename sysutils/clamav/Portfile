@@ -7,6 +7,16 @@ PortGroup locale_select 1.0
 PortGroup LTO 1.0
 PortGroup openssl 1.0
 
+# v0.104.x is the last version that doesn't require rust for building. If we want to upgrade
+# beyond that without imposing the installation of a sufficiently up-to-date port:rust (which
+# is quite a challenge to port to Linux). The solution may be to use a "rustup" install inside
+# `port work clamav`. We'd download the install script using
+# curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > $TMPDIR/install.sh 
+# then probably need to modify it to invoke our own gmktemp instead of the system mktemp
+# and then invoke it with the arguments `-profile minimal --no-modify-path` and RUSTUP_HOME and
+# CARGO_HOME set appropriately. Quick testing suggests we would need to invoke cargo and rustc
+# directly from the toolchains/stable-*/bin directory, or keep the RUSTUP_HOME env.var set.
+
 name			clamav
 version		 	0.104.4
 revision            1
@@ -25,7 +35,7 @@ checksums	rmd160	9158544048971e28c71ebf60ea39b42afcb8ce04 \
 		sha256	8ac32e910aa744cc7f921c5122ba523ef1ffbbbf94545f94fc4a976b502be74b
 # 		size	12027448
 
-platforms       linux
+platforms       darwin linux
 
 platform linux {
     patchfiles-append \
@@ -35,12 +45,15 @@ platform linux {
 # Disable tests to avoid extra dependencies
 configure.args-append	-DENABLE_TESTS=OFF \
 			-DENABLE_MILTER=OFF \
-			-DENABLE_STATIC_LIB=OFF \
+			-DENABLE_STATIC_LIB=OFF
+platform linux {
+	configure.args-append \
 			-DBYTECODE_RUNTIME=llvm \
 			-DDATABASE_DIRECTORY=/var/lib/clamav \
 			-DLLVM_CONFIG=/usr/bin/llvm-config-3.6 \
 			-DLLVM_FIND_VERSION=3.6.0 \
 			-DENABLE_SYSTEMD=OFF
+}
 
 #Parallel build causes build failures as of 0.104.0
 use_parallel_build	yes
