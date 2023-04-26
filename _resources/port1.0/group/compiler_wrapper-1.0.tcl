@@ -9,12 +9,15 @@ namespace eval compwrap { }
 
 options compwrap.add_compiler_flags
 default compwrap.add_compiler_flags yes
+options compwrap.unwrap_linker_flags
 
 options compwrap.add_legacysupport_flags
 if {${os.platform} eq "darwin"} {
     default compwrap.add_legacysupport_flags yes
+    default compwrap.unwrap_linker_flags no
 } else {
     default compwrap.add_legacysupport_flags no
+    default compwrap.unwrap_linker_flags yes
 }
 
 options compwrap.print_compiler_command
@@ -188,6 +191,11 @@ post-extract {
         }
         puts ${f} "exec ${comp} ${comp_opts}"
         close ${f}
+        if {${tag} eq "ld" && [option compwrap.unwrap_linker_flags]} {
+            reinplace -q "s|-Wl,\\(\[^,\\s\]*\\),\\(\[^,\\s\]*\\),\\(\[^,\\s\]*\\)\\(\\s\\)|\\1 \\2 \\3\\4|g" ${wrapcomp}
+            reinplace "s|-Wl,\\(\[^,\\s\]*\\),\\(\[^,\\s\]*\\)\\(\\s\\)|\\1 \\2\\3|g" ${wrapcomp}
+            reinplace "s|-Wl,\\(\[^,\\s\]*\\)\\(\[^,\]\\)|\\1\\2|g" ${wrapcomp}
+        }
     }
 }
 
