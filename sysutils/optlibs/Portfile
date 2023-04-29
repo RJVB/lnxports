@@ -1,0 +1,32 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+
+name                optlibs
+version             1.0
+
+description         launcher script that injects LinuxPorts library paths
+
+long_description    {*}${description} so applications use libraries installed under \
+                    ${prefix}. This includes Qt5 libraries. If port:wrapped-syscalls \
+                    is installed its library is injected via LD_PRELOAD so the issues \
+                    resolved by that library are handled.
+categories          devel
+platforms           linux
+license             none
+
+maintainers         gmail.com:rjvbertin openmaintainer
+
+use_configure       no
+installs_libs       yes
+
+fetch {}
+checksum {}
+extract {}
+build {}
+
+destroot {
+    xinstall -m 755 ${filespath}/optlibs.sh ${destroot}${prefix}/bin/optlibs
+    reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/optlibs
+}
+
