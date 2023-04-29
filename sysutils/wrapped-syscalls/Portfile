@@ -5,8 +5,8 @@ PortGroup           github 1.0
 set LTO.allow_ThinLTO no
 PortGroup           LTO 1.0
 
-github.setup        RJVB wrapped-syscalls 7f2c17745bfe2b9dbcdc015010eba09cffbea629
-version             1.0.0.1
+github.setup        RJVB wrapped-syscalls 1cd3601654ce8b52febbc3212981dcd92cc9fc3c
+version             1.0.0.2
 fetch.type          git
 distname            wrapped-syscalls-git
 
@@ -28,6 +28,9 @@ build.target
 build.post_args-append \
     "CC=${configure.cc}" \
     "CFLAGS=\"${configure.cflags} ${configure.ldflags}\""
+pre-build {
+	file delete -force ${worksrcpath}/libwrapped_syscalls.so
+}
 
 destroot {
     xinstall -m 755 ${worksrcpath}/libwrapped_syscalls.so ${destroot}${prefix}/lib/
