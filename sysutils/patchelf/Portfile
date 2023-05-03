@@ -4,9 +4,9 @@ PortSystem          1.0
 PortGroup           github 1.0
 PortGroup           conflicts_build 1.0
 
-github.setup        speleo3 patchelf 29c085fd9d3fc972f75b3961905d6b4ecce7eb2b
+github.setup        NixOS patchelf 008a582741617e2d7d5aa4aab1e8ddfdec0067d9
 fetch.type          git
-version             0.9.36
+version             0.18.0.4
 worksrcdir          ${name}-git
 distname            ${name}-git
 
