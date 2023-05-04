@@ -132,9 +132,9 @@ long_description    Audacity is a free, easy-to-use, multi-track audio editor an
                     And more!
 
 conflicts           audacity2-legacy audacity3-legacy audacity-legacy audacity-gtk
-github.setup        audacity audacity d993c076296116bb82fddd8d71fcde3ad9df9d5e
+github.setup        audacity audacity 9b9b93591b24db98e2aa1ebd4c2a854c5280a535
 
-version             3.2.5.487
+version             3.2.5.515
 # this port is intended to facilitate development efforts shared with "upstreams"
 # so using git instead of a tarball fetch type is more appropriate for the current maintainer
 fetch.type          git
@@ -358,12 +358,10 @@ platform linux {
                     ${prefix}/lib/audacity
     configure.ldflags-append \
                     -Wl,-rpath,${prefix}/lib/audacity
-    if {[variant_isset wxsystem]} {
-        cmake.install_rpath-append \
+    cmake.install_rpath-append \
                     ${wxWidgets.prefix}/lib/
-        configure.ldflags-append \
+    configure.ldflags-append \
                     -Wl,-rpath,${wxWidgets.prefix}/lib/
-    }
 }
 
 set _OPT "audacity_"
@@ -541,8 +539,11 @@ notes "
     https://manual.audacityteam.org/man/installing_and_updating_audacity_on_linux.html#locate)
 "
 
-if {![variant_isset wxsystem]} {
-    notes-append ">> You can now `sudo port deactivate audacity-wxWidgets`! <<"
+platform darwin {
+    if {![variant_isset wxsystem]} {
+        # audacity-wxWidgets was embedded into the app bundle
+        notes-append ">> You can now `sudo port deactivate audacity-wxWidgets`! <<"
+    }
 }
 
 # kate: backspace-indents true; indent-pasted-text true; indent-width 4; keep-extra-spaces true; remove-trailing-spaces modified; replace-tabs true; replace-tabs-save true; syntax Tcl/Tk; tab-indents true; tab-width 4;
@@ -585,14 +586,14 @@ platform darwin {
                         wxW/patch-fix-cocoa-process.diff \
                         wxW/patch-cocoa-build.diff
 
-    set wxtype          osx_cocoa
+    set wxtype          gtk2
     compiler.c_standard 2011
     compiler.cxx_standard 2014
 
     cmake.install_prefix ${wxWidgets.prefix}
     configure.args-append \
                         -DwxBUILD_TOOLKIT=${wxtype} \
-                        -DwxUSE_ACCESSIBILITY=ON \
+                        -DwxUSE_ACCESSIBILITY=[expr {${os.platform} eq "darwin"}] \
                         -DwxUSE_LIBICONV=sys \
                         -DwxUSE_LIBJPEG=sys \
                         -DwxUSE_LIBTIFF=sys \
@@ -611,13 +612,13 @@ platform darwin {
                         -DCMAKE_CXX_STANDARD_REQUIRED=ON \
                         -DwxBUILD_COMPATIBILITY=3.0
 
-    if { ${os.major} == 13 } {
+    if { ${os.platform} eq "darwin" && ${os.major} == 13 } {
         configure.sdkroot ${developer_dir}/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk
     }
 
     post-configure {
         if {![catch "registry_active ${subport}"]} {
-            ui_warning "${subport} will not be packaged (destrooted) because it is already active."
+            ui_warn "${subport} will not be packaged (destrooted) because if it is still active by that time"
         }
     }
     pre-destroot {
