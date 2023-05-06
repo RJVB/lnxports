@@ -1,0 +1,13 @@
+diff --git a/libraries/lib-realtime-effects/RealtimeEffectState.cpp b/libraries/lib-realtime-effects/RealtimeEffectState.cpp
+index c3dd0efc..9fd344f4 100644
+--- a/libraries/lib-realtime-effects/RealtimeEffectState.cpp
++++ b/libraries/lib-realtime-effects/RealtimeEffectState.cpp
+@@ -303,7 +303,7 @@ struct RealtimeEffectState::Access final : EffectSettingsAccess {
+       if (auto pOther = dynamic_cast<const Access*>(&other)) {
+          auto &mine = mwState;
+          auto &theirs = pOther->mwState;
+-         auto less = std::owner_less{};
++         auto less = std::owner_less<>{};
+          return !(less(mine, theirs) || less(theirs, mine));
+       }
+       return false;
