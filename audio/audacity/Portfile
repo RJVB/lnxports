@@ -643,7 +643,7 @@ platform darwin {
 
         post-configure {
             if {![catch "registry_active ${subport}"]} {
-                ui_warn "${subport} will not be packaged (destrooted) because if it is still active by that time"
+                ui_warn "${subport} will not be packaged (destrooted) if it is still active by that time"
             }
         }
         pre-destroot {
