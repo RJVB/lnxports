@@ -280,7 +280,8 @@ platform linux {
     # and yes, it can happen on x86 too). Replace all calls to the function with something that
     # has the same effect.
     add_patchfile_ifexists \
-                    ${PPREFIX}patch-linux-call_once.diff
+                    ${PPREFIX}patch-linux-call_once.diff \
+                    ${PPREFIX}patch-fix-owner_less.diff
 }
 patchfiles-append   patch-enable-compact-menu.diff
 add_patchfile_ifexists \
@@ -368,11 +369,19 @@ platform linux {
                     ${wxWidgets.prefix}/lib/
     configure.ldflags-append \
                     -Wl,-rpath,${wxWidgets.prefix}/lib/
+    # just add the Qt5 lib path. We attempt not to build the Qt5 suil plugin
+    # but it seems the build system doesn't heed that instruction so we can
+    # just as well make certain it uses our libraries if they're there.
+    cmake.install_rpath-append \
+                    ${prefix}/libexec/qt5/lib
+    configure.ldflags-append \
+                    -Wl,-rpath,${prefix}/libexec/qt5/lib
 }
 
 set _OPT "audacity_"
 configure.args-append \
                     -DCMAKE_MACOSX_RPATH=ON \
+                    -DCMAKE_STRIP=/bin/echo \
                     -D${_OPT}lib_preference=system \
                     -D${_OPT}has_tests=off \
                     -D${_OPT}has_sentry_reporting=off \
@@ -528,6 +537,11 @@ platform linux {
         }
         file delete ${destroot}${prefix}/share/audacity/plug-ins/cmake_install.cmake
         file delete ${destroot}${prefix}/share/audacity/nyquist/cmake_install.cmake
+        # install a wrapper script that sets LD_LIBRARY_PATH, which may be required
+        # for dynamic FFmpeg loading to work.
+	   file rename ${destroot}${prefix}/bin/audacity ${destroot}${prefix}/bin/audacity.bin
+	   xinstall -m 755 ${filespath}/audacity.sh ${destroot}${prefix}/bin/audacity
+	   reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/audacity
     }
 }
 
