@@ -48,7 +48,7 @@ if {${subport} eq ${name}} {
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.12 ; revision 2
+version             3.0.12 ; revision 3
 license             GPL-2
 
 platforms           darwin
@@ -287,7 +287,7 @@ pre-configure {
     configure.pre_args-prepend "-cf '${configure.cmd} "
     configure.cmd "/bin/csh"
     ui_debug "configure command set to `cmd=${configure.cmd} pre_args=${configure.pre_args} args=${configure.args} post_args=${configure.post_args}`"
-    system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.log"
+    system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.cmd"
 }
 
 # do autoreconf only the first time around
@@ -379,7 +379,10 @@ configure.args-append \
 
 # 20150209: Jack really would require a newer variant than what's currently in MacPorts
 variant jack description {Enable jack plugin for audio output} {
-    depends_lib-append      port:jack port:portaudio
+    platform darwin {
+        # get the jack dependencies from the Linux distro, for now
+        depends_lib-append  port:jack
+    }
     configure.args-delete   --disable-jack
     configure.args-append   --enable-jack
 }

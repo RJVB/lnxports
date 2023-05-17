@@ -73,8 +73,10 @@ variant jack description {Enable JACK support} {
 #     configure.args-replace \
 #                     -DPA_USE_JACK=OFF \
 #                     -DPA_USE_JACK=ON
-    depends_lib-append \
+    platform darwin {
+        depends_lib-append \
                     port:jack
+    }
     configure.args-replace \
                     --without-jack \
                     --with-jack

@@ -425,6 +425,12 @@ if {[variant_isset suil]} {
 platform linux {
     configure.cppflags-append \
                     -I${prefix}/include -DUSE_AQUA_THEME
+    variant jack description {enable JACK support} {}
+    if {[variant_isset jack]} {
+       configure.args-replace \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_JACK=On \
+                    -DCMAKE_DISABLE_FIND_PACKAGE_JACK=Off
+    }
 }
 
 # make sure the C++ stdlib argument is added to the LDFLAGS too
