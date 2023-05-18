@@ -24,12 +24,17 @@ long_description    PortAudio is a free, cross platform, open-source, audio I/O 
 homepage            http://www.portaudio.com/
 
 # next commit aa053464eb261337c2c763f2a3df1e5ef8f4797e drop 10.5 support
-github.setup        Portaudio portaudio 147dd722548358763a8b649b3e4b41dfffbcfbb6
-version             20210401-[string range ${github.version} 0 7]
-checksums           rmd160  2449e768b762c5c1777dd3c2a291e3cdbe9dc30c \
-                    sha256  d29bbe2b5a6f9447571e738a65c09239da61e73eae7d3b6ffd7cb7a32b2a8709 \
-                    size    1463021
-revision            0
+github.setup        Portaudio portaudio b323e01523520a78c71fbbbb4262b0f3e4ab3f49
+# version             20210401-[string range ${github.version} 0 7]
+# RC(1) = 99; RC2 = 999 etc.
+version             19.7.0.999.123
+epoch               230518
+fetch.type          git
+distname            ${name}-git
+# checksums           rmd160  2449e768b762c5c1777dd3c2a291e3cdbe9dc30c \
+#                     sha256  d29bbe2b5a6f9447571e738a65c09239da61e73eae7d3b6ffd7cb7a32b2a8709 \
+#                     size    1463021
+# revision            0
 
 # By default, PortAudio is built as a universal binary.
 # To build a non-universal library for the host architecture,
@@ -63,12 +68,25 @@ platform linux {
 
 # use_parallel_build  no
 
-# patch-configure removes -Werror, and adds -DNDEBUG.
-patchfiles          patch-configure.diff \
-                    patch-ltmain.sh.diff \
+patchfiles          patch-ltmain.sh.diff \
                     patch-src__common__pa_types.h.diff \
                     patch-audacity-portmixer.diff
 
+pre-configure {
+    use_autoreconf [expr ![file exists ${worksrcpath}/config.log]]
+    autoreconf.args -fvi
+    # autoreconf can remove a needed script, somehow
+    if {[file exists ${worksrcpath}/depcomp] && ![file exists ${workpath}/depcomp.bak]} {
+        xinstall -m 755 ${worksrcpath}/depcomp ${workpath}/depcomp.bak
+    }
+}
+post-configure {
+    # restore the required script, if necessary
+    if {![file exists ${worksrcpath}/depcomp] && [file exists ${workpath}/depcomp.bak]} {
+        xinstall -m 755 ${workpath}/depcomp.bak ${worksrcpath}/depcomp
+    }
+}
+        
 variant jack description {Enable JACK support} {
 #     configure.args-replace \
 #                     -DPA_USE_JACK=OFF \
