@@ -15,7 +15,7 @@ platform darwin {
 
 name                mesa
 epoch               1
-version             21.0.1 ; revision 1
+version             21.0.1 ; revision 2
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -65,7 +65,8 @@ platform darwin {
 }
 platform linux {
     depends_lib-append \
-                    port:xorg-libxcb
+                    port:xorg-libxcb \
+                    port:xorg-libXvMC
 }
 
 patch.pre_args      -p1
@@ -402,6 +403,7 @@ if {[variant_isset osmesa]} {
 }
 variant opencl description {enable OpenCL} {}
 if {[variant_isset opencl]} {
+    depends_build-append port:libclc
     if {[string match *meson* ${configure.cmd}]} {
         configure.args-replace \
                     -Dgallium-opencl=disabled \
