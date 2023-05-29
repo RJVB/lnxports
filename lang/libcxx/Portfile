@@ -20,7 +20,6 @@ long_description        ${description} \
 
 homepage                http://libcxx.llvm.org/
 
-# master_sites            http://www.llvm.org/releases/${version}/
 master_sites            https://github.com/llvm/llvm-project/releases/download/llvmorg-${version}
 dist_subdir             llvm
 
@@ -36,13 +35,32 @@ checksums               rmd160  15499e64ebb42b73e78f2fec5ac4749c7d1a530f \
 
 set suffix              mp-${llvm_version}
 
+compiler.blacklist-append *gcc* clang
+# pick the newest available (= installed) port:clang-XY compiler:
+foreach clv {3.9 4.0 5.0 6.0 7.0 8.0 9.0 10 11 12 13 14 15 16 17 18 19 20} {
+    if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
+        compiler.whitelist-prepend macports-clang-${clv}
+    }
+    compiler.fallback-prepend macports-clang-${clv}
+}
+
+if {[string match *clang++-mp-* ${configure.cxx}]} {
+    set clangversion [lindex [split ${configure.cc} -] 2]
+    depends_build-append port:clang-${clangversion}
+} else {
+    pre-configure {
+        ui_error "This port needs to be built with a clang compiler from MacPorts (>= 3.9)"
+        return -code error "install a MacPorts clang compiler or invoke the install with `configure.compiler=macports-clang-XY`"
+    }
+}
+
 if {${os.platform} eq "linux"} {
     PortGroup           cmake 1.1
     cmake.set_c_standard     no
     cmake.set_cxx_standard   no
     worksrcdir          ${distname}
-    depends_build       port:libedit
-    depends_lib         port:libffi port:ncurses port:zlib
+    depends_build-append port:libedit
+    depends_lib-append  port:libffi port:ncurses port:zlib
 
 #     post-extract {
 #         file rename ${workpath}/${name}-${version}.src ${worksrcpath}/projects/libcxx
