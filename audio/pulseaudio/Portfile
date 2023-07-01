@@ -1,0 +1,286 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+# TODO: Improve atomics by using libkern/OSAtomics.h
+#       https://bugs.freedesktop.org/show_bug.cgi?id=67795
+
+PortSystem          1.0
+PortGroup           active_variants 1.1
+PortGroup           compiler_blacklist_versions 1.0
+PortGroup           locale_select 1.0
+PortGroup           LTO 1.0
+PortGroup           meson 1.0
+
+name                pulseaudio
+version             16.1
+platform linux {
+    revision        0
+}
+license             LGPL-2.1+ MIT BSD
+categories          audio
+maintainers         {ionic @Ionic} openmaintainer
+platforms           darwin
+description         A sound server for POSIX OSes
+
+long_description    PulseAudio is a sound server for POSIX OSes, meaning that it is a proxy \
+                    for your sound applications. It allows you to do advanced operations \
+                    on your sound data as it passes between your application and your hardware. \
+                    Things like transferring the audio to a different machine, changing the \
+                    sample format or channel count and mixing several sounds into one are \
+                    easily achieved using a sound server.
+
+homepage            https://www.freedesktop.org/wiki/Software/PulseAudio/
+master_sites        https://www.freedesktop.org/software/${name}/releases/
+
+use_xz              yes
+
+checksums           rmd160  6c3995910ce8b3a52b6d2782a834714378462d5a \
+                    sha256  8eef32ce91d47979f95fd9a935e738cd7eb7463430dabc72863251751e504ae4
+#                     size    1545596
+
+set perl_branch     5
+
+depends_build       port:pkgconfig \
+                    port:intltool \
+                    port:autoconf \
+                    port:automake \
+                    port:libtool \
+                    port:gettext \
+                    port:p${perl_branch}-xml-parser
+platform linux {
+    depends_lib-append \
+                    port:bluez
+    depends_build-append \
+                    port:gettext-dev
+    configure.ldflags-append \
+                    "-L${prefix}/lib -lintl"
+}
+
+if {${os.platform} eq "darwin"} {
+    depends_lib     port:libiconv \
+                    port:libsndfile \
+                    port:libtool \
+                    port:gdbm \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:dbus \
+                    port:fftw-3-single \
+                    path:lib/libspeexdsp.dylib:speexDSP \
+                    port:orc \
+                    port:soxr
+} else {
+    depends_lib     port:libiconv \
+                    port:libsndfile \
+                    port:libtool \
+                    port:gdbm \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:dbus \
+                    port:fftw-3 \
+                    path:lib/libspeexdsp.so:speexDSP \
+                    port:soxr
+}
+
+# configure falls back to libatomic_ops as last resort
+# if no linux kernel support and inline asm snippet fails to build
+# likely to fail on Leopard and older
+# https://trac.macports.org/ticket/42052
+
+platform darwin {
+    if {${os.major} < 10} {
+        depends_lib-append  port:libatomic_ops
+    }
+}
+
+# DO NOT USE! Maintainer-only helper. DO NOT USE!
+#configure.cflags-append -g3 -ggdb3 -gdwarf-4 -O0
+#configure.cxxflags-append -g3 -ggdb3 -gdwarf-4 -O0
+
+# Some patches make PulseAudio startup correctly.
+# Will hopefully be merged upstream soon.
+# All work has or will be sent upstream.
+# C.f. https://bugs.freedesktop.org/show_bug.cgi?id=62987
+# and posts on the mailing list.
+patchfiles          patch-src_modules_macosx_module_coreaudio_device.c-respect-PA_NAME_MAX.diff \
+                    patch-src_daemon_default.pa.in-skip-consolekit-and-systemdlogin.diff \
+                    patch-pa_binary.diff
+
+platform linux {
+    patchfiles-append \
+                    patch-old-jack.diff
+}
+
+platform darwin {
+    # Blacklist compilers that do not support C11.
+    compiler.blacklist  {*gcc-3*} {*gcc-4.[0-8]} {clang < 300} cc
+}
+
+if {${os.platform} eq "darwin"} {
+    pre-configure {
+        ui_error "Not completed yet"
+        return -code error "Port not yet ported to Darwin"
+    }
+    configure.args  --with-mac-version-min=$macosx_deployment_target \
+                    --with-caps \
+                    --with-soxr \
+                    --with-speex \
+                    --disable-silent-rules \
+                    --disable-tests \
+                    --disable-gtk3 \
+                    --disable-x11 \
+                    --disable-oss-output \
+                    --disable-alsa \
+                    --disable-esound \
+                    --disable-solaris \
+                    --disable-waveout \
+                    --disable-avahi \
+                    --disable-gconf \
+                    --disable-gsettings \
+                    --disable-jack \
+                    --disable-asyncns \
+                    --disable-tcpwrap \
+                    --disable-lirc \
+                    --disable-bluez4 \
+                    --disable-bluez5 \
+                    --disable-udev \
+                    --disable-hal-compat \
+                    --disable-openssl \
+                    --disable-systemd-daemon \
+                    --disable-systemd-login \
+                    --disable-systemd-journal \
+                    --enable-neon-opt=no \
+                    --enable-orc \
+                    --enable-adrian-aec
+} else {
+    depends_lib-append \
+                    port:gstreamer1-gst-plugins-base
+    configure.args  -Dsoxr=enabled \
+                    -Dspeex=enabled \
+                    -Dtests=false \
+                    -Dgtk=disabled \
+                    -Dx11=disabled \
+                    -Djack=disabled \
+                    -Dorc=enabled \
+                    -Dadrian-aec=true \
+                    -Dgstreamer=enabled \
+                    -Dipv6=true
+}
+configure.args-append \
+                    -Dbashcompletiondir=${prefix}/share/bash-completion/completions
+
+meson.save_configure_cmd "log too"
+
+test.run            no
+test.target         check
+
+platform darwin {
+    add_users       pulse group=pulse realname=Pulse\ Audio
+}
+
+variant x11 conflicts minimal {
+    configure.args-replace  -Dx11=disabled \
+                            -Dx11=enabled
+    platform darwin {
+        depends_lib-append  port:xorg-libX11 \
+                            port:xorg-libxcb \
+                            port:xorg-libice \
+                            port:xorg-libsm \
+                            port:xorg-libXtst
+    }
+}
+
+variant jack conflicts minimal description {Enable Jack support} {
+    configure.args-delete  -Djack-disabled
+    configure.args-append   -Djack=enabled
+    platform darwin {
+        # depend on the distro-version on Linux for now
+        depends_lib-append  port:jack
+    }
+}
+
+variant openssl conflicts minimal description {Enable OpenSSL (& Airtunes) support } {
+    configure.args-delete   -Dopenssl -Davahi
+    depends_lib-append      port:openssl
+    platform darwin {
+        depends_lib-append \
+                            port:avahi
+    }
+}
+
+variant gconf conflicts minimal description {Enable GConf and GSettings support } {
+    configure.args-delete   --disable-gconf
+    configure.args-append   -Dgsettings=enabled
+    depends_lib-append      port:gconf
+}
+
+variant gtk3 conflicts minimal description {Enable gtk3 support } {
+    configure.args-replace  -Dgtk=disabled \
+                            -Dgtk=enabled
+    depends_lib-append      port:gtk3
+}
+
+variant _internal_valgrind description {DO NOT USE! Enable valgrind support. DO NOT USE!} {
+    depends_lib-append      path:bin/valgrind:valgrind-devel
+    patchfiles-append       patch-src_daemon_caps.c-enable-root.diff
+}
+
+# variant esound description {Enable optional esound emulation support.} {
+#     configure.args-replace  --disable-esound \
+#                             --enable-esound
+# }
+
+variant minimal conflicts jack conflicts x11 conflicts openssl conflicts gconf gtk3 description {Builds a minimal version. Do not use if unsure. Please build this ONLY in trace mode.} {
+    depends_lib-delete      port:libiconv \
+                            port:gdbm \
+                            path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                            port:dbus \
+                            port:fftw-3-single \
+                            port:fftw-3 \
+                            port:orc \
+                            port:soxr
+
+    configure.args-replace  -Dsoxr=enabled \
+                            -Dsoxr=disabled
+
+    configure.args-replace  -Dorc=enabled \
+                            -Dorc=disabled
+
+    configure.args-append   -Ddatabase=simple \
+                            -Dglib=disabled \
+                            -Ddbus=disabled \
+                            -Dfftw=disabled
+
+    require_active_variants libsndfile no_external_libs
+}
+
+if {![variant_isset minimal]} {
+    default_variants        +x11
+}
+platform linux {
+    default_variants-append +gtk3
+}
+
+post-destroot {
+    # RJVB
+    file rename ${destroot}${prefix}/bin/pulseaudio ${destroot}${prefix}/bin/pulseaudio.daemon
+    file rename ${destroot}${prefix}/share/man/man1/pulseaudio.1 ${destroot}${prefix}/share/man/man1/pulseaudio.daemon.1
+    foreach f [glob ${destroot}${prefix}/etc/pulse/*] {
+        file rename ${f} ${f}.sample
+    }
+    platform linux {
+        xinstall -m 755 -d ${destroot}${prefix}/lib/udev/rules.d
+        file rename ${destroot}/lib/udev/rules.d/90-pulseaudio.rules  ${destroot}${prefix}/lib/udev/rules.d/
+    }
+}
+
+post-activate {
+    if {![variant_isset minimal]} {
+        catch {exec ${prefix}/bin/glib-compile-schemas ${prefix}/share/glib-2.0/schemas/}
+    }
+
+    if {![file exists ${prefix}/etc/pulse/default.pa]} {
+        file copy ${prefix}/etc/pulse/default.pa.sample ${prefix}/etc/pulse/default.pa
+    }
+}
+
+
+livecheck.type      regex
+livecheck.url       ${master_sites}
+livecheck.regex     "${name}-(\\d+(?:\\.\\d+)*)${extract.suffix}"
