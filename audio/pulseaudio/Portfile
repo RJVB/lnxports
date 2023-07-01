@@ -259,8 +259,10 @@ platform linux {
 
 post-destroot {
     # RJVB
-    file rename ${destroot}${prefix}/bin/pulseaudio ${destroot}${prefix}/bin/pulseaudio.daemon
-    file rename ${destroot}${prefix}/share/man/man1/pulseaudio.1 ${destroot}${prefix}/share/man/man1/pulseaudio.daemon.1
+    platform darwin {
+        file rename ${destroot}${prefix}/bin/pulseaudio ${destroot}${prefix}/bin/pulseaudio.daemon
+        file rename ${destroot}${prefix}/share/man/man1/pulseaudio.1 ${destroot}${prefix}/share/man/man1/pulseaudio.daemon.1
+    }
     foreach f [glob ${destroot}${prefix}/etc/pulse/*] {
         file rename ${f} ${f}.sample
     }
