@@ -15,7 +15,7 @@ platform darwin {
 
 name                mesa
 epoch               1
-version             21.0.1 ; revision 2
+version             21.0.1 ; revision 3
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -76,6 +76,7 @@ platform darwin {
 }
 
 patchfiles-append   patch-meson.diff \
+                    patch-verbose-loader_open_device.diff
 
 if {[string match *meson* ${configure.cmd}]} {
     platform darwin {
