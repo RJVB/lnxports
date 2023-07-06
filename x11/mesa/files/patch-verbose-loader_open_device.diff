@@ -1,10 +1,16 @@
 diff --git b/src/loader/orig.loader.c a/src/loader/loader.c
-index d64bc7c..90850b2 100644
+index d64bc7c..c8d1ed8 100644
 --- b/src/loader/orig.loader.c
 +++ a/src/loader/loader.c
-@@ -84,17 +84,19 @@ loader_open_device(const char *device_name)
+@@ -83,18 +83,25 @@ int
+ loader_open_device(const char *device_name)
  {
     int fd;
++   struct stat dum;
++   if (stat(device_name, &dum) == -1 && errno == ENOENT) {
++//       log_(_LOADER_WARNING, "loader_open_device() pid=%d %s doesn't exist\n", getpid(), device_name);
++	 return -1;
++   }
  #ifdef O_CLOEXEC
 +   errno = 0;
     fd = open(device_name, O_RDWR | O_CLOEXEC);

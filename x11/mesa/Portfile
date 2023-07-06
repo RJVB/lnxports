@@ -464,3 +464,7 @@ if {[string match *meson* ${configure.cmd}]} {
         }
     }
 }
+
+post-activate {
+    ui_msg "--->    ${subport} activated!"
+}
