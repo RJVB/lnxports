@@ -1,0 +1,184 @@
+PortSystem              1.0
+PortGroup               compiler_blacklist_versions 1.0
+PortGroup               LTO 1.0
+PortGroup               cmake 1.1
+# Do not propagate c/c++ standards as set by base
+cmake.set_c_standard    no
+cmake.set_cxx_standard  no
+
+platform darwin {
+    PortGroup           legacysupport 1.1
+    # link legacysupport statically for compilers
+    legacysupport.use_static              yes
+    # Sysconf wrapping causes issues so disable
+    legacysupport.disable_function_wrap   yes
+}
+
+name                    libcxx-devel
+epoch                   1
+set llvm_version        16
+version                 16.0.6
+categories              lang
+platforms               darwin
+license                 MIT NCSA
+maintainers             gmail.com:rjvbertin
+description             libc++ is a new implementation of the C++ standard library with support for C++11 and portions of C++14.
+long_description        ${description} \
+                        Because objects cannot be passed between different versions of the C++ runtime, this port must \
+                        replace the host version in order to be used.  On Snow Leopard and earlier, this is done \
+                        automatically because there is no existing host version of this library.  On Lion and later, \
+                        users must build the port with +replacemnt_libcxx and install the root manually if they wish \
+                        to replace the existing host implementation.
+
+homepage                http://libcxx.llvm.org/
+
+master_sites            https://github.com/llvm/llvm-project/releases/download/llvmorg-${version}
+dist_subdir             llvm
+
+livecheck.url           http://www.llvm.org/
+livecheck.regex         download.html\#(\\d+\\.\\d+(\\.\\d+)+)
+
+use_xz                  yes
+distname                llvm-project-${version}.src
+
+checksums               rmd160  b86eeac2e1dd052a182022109374372844934cfc \
+                        sha256  ce5e71081d17ce9e86d7cbcfa28c4b04b9300f8fb7e78422b1feb6bc52c3028e
+#                         size    118013488
+
+
+set suffix              mp-${llvm_version}
+
+compiler.blacklist-append *gcc* clang
+# pick the newest available (= installed) port:clang-XY compiler:
+foreach clv {3.9 4.0 5.0 6.0 7.0 8.0 9.0 10 11 12 13 14 15 16 17 18 19 20} {
+    if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
+        compiler.whitelist-prepend macports-clang-${clv}
+    }
+    compiler.fallback-prepend macports-clang-${clv}
+}
+
+if {[string match *clang++-mp-* ${configure.cxx}]} {
+    compiler.blacklist-append {clang < 1204} {macports-clang-[5-9].0} {macports-clang-1[0-3]}
+    compiler.fallback       clang macports-clang-14 macports-clang-15
+    set clangversion [lindex [split ${configure.cc} -] 2]
+    if {${clangversion} ne ""} {
+        depends_build-append port:clang-${clangversion}
+        if {${clangversion} < 14} {
+            pre-configure {
+                ui_error "This port requires at least clang 14 to be built!"
+                return -code error "Please install or specify a sufficiently recent compiler"
+            }
+        }
+    }
+} else {
+    pre-configure {
+        ui_error "This port needs to be built with a clang compiler from MacPorts (>= 3.9)"
+        return -code error "install a MacPorts clang compiler or invoke the install with `configure.compiler=macports-clang-XY`"
+    }
+}
+
+if {${os.platform} eq "linux"} {
+    worksrcdir          ${distname}
+    depends_build-append port:libedit
+    depends_lib-append  port:libffi port:ncurses port:zlib
+
+#     post-extract {
+#         file rename ${workpath}/${name}-${version}.src ${worksrcpath}/projects/libcxx
+#     }
+
+    patch.pre_args -p1
+    patchfiles-append \
+        0010-compiler-rt-cmake-config-ix.cmake-was-Leopard-No-ASA.patch \
+        0011-Fix-missing-long-long-math-prototypes-when-using-the.patch \
+        0012-compiler-rt-add-some-defs-missing-in-older-SDKs.patch \
+        0016-10.10-and-less-compiler-rt-find-macosx-sdk.patch \
+        0017-10.6-and-less-libcxxabi-work-around-no-reexported_symbo.patch \
+        0017-10.6-and-less-libcxx-work-around-no-reexported_symbo.patch \
+        0021-10.6-and-less-libcxx-disable-Availability-tests.patch \
+        0024-10.5-and-less-compiler-rt-work-around-no-libdispatch.patch \
+        patch-accept-build_types.diff \
+        patch-config-availability+ABIhiding.diff \
+        patch-experimental-no-lto.diff
+    # make benchmarks buildable (incl. not requiring over 2G of RAM to build)
+    patchfiles-append \
+        patch-strings-benchmark.diff \
+        patch-cheaper-variant-benchmark.diff
+
+# https://trac.macports.org/ticket/67686
+# revert commit that breaks rpath linkages in clang runtime
+if {${os.platform} eq "darwin"} {
+    patchfiles-append b98da4c71edda3df0a0555b1ab63ec52e92252b4-inverse.patch
+}
+
+if {${os.platform} eq "darwin" && ${os.major} < 12} {
+    # On OSX10.7 and older revert call to add_security_warnings as fails with
+    #   add_security_warnings Function invoked with incorrect arguments
+    post-patch {
+        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
+            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
+            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+    }
+
+    # On OSX10.7 and older revert call to add_security_warnings as fails with
+    #   add_security_warnings Function invoked with incorrect arguments
+    post-patch {
+        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
+            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
+            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+    }
+}
+
+
+    cmake.install_prefix \
+                        /usr
+    long_description-append \
+                        On Linux, this installs libc++ to ${cmake.install_prefix} \
+                        regardless of where MacPorts is installed.
+
+    if {[file exists ${filespath}/find_abi_headers.sh]} {
+        set abi_header_dirs [exec ${filespath}/find_abi_headers.sh ${configure.cxx}]
+        pre-configure {
+            ui_info "abi_header_dirs=${abi_header_dirs}"
+        }
+    } else {
+        # we're probably executed from the registry, e.g. while deactivating the port
+        set abi_header_dirs {}
+    }
+
+#                         -DLLVM_PATH=${worksrcpath}
+    configure.args-append \
+                        -DLLVM_ENABLE_RUNTIMES=libcxx \
+                        -DLLVM_TARGETS_TO_BUILD="X86\;AMDGPU" \
+                        -DLIBCXXABI_ENABLE_STATIC=OFF \
+                        -DLIBCXX_ENABLE_STATIC=OFF \
+                        -DLIBCXX_CXX_ABI=libstdc++ \
+                        -DLIBCXX_CXX_ABI_INCLUDE_PATHS="${abi_header_dirs}" \
+                        -DLIBCXX_ENABLE_ASSERTIONS=OFF \
+                        -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++ \
+                        -DLIBCXX_LINK_TESTS_WITH_SHARED_LIBCXXABI=ON \
+                        -DLIBCXX_INSTALL_LIBRARY=ON
+
+    cmake.save_configure_cmd "log too"
+    if {${build.jobs} ne 1} {
+        build.post_args-append -wk
+    }
+
+    variant benchmark_libcxx description {build the benchmark against libc++} {
+        configure.args-replace \
+                        -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++ \
+                        -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libc++
+    }
+    variant static_abi description {link the ABI library (libstdc++) statically} {
+        configure.args-append \
+                        -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON
+    }
+
+#     build.dir           ${configure.dir}/projects/libcxx
+    cmake.source_dir    ${worksrcpath}/runtimes
+    destroot.violate_mtree yes
+
+    test.run            yes
+    test.dir            ${configure.dir}
+    test.target         check-libcxx
+
+}
