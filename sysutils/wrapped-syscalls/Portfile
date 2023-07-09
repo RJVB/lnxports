@@ -5,8 +5,8 @@ PortGroup           github 1.0
 set LTO.allow_ThinLTO no
 PortGroup           LTO 1.0
 
-github.setup        RJVB wrapped-syscalls 1cd3601654ce8b52febbc3212981dcd92cc9fc3c
-version             1.0.0.2
+github.setup        RJVB wrapped-syscalls b05677f11a2458e7386794414c6133e5d3948341
+version             1.0.0.3
 fetch.type          git
 distname            wrapped-syscalls-git
 
