@@ -128,6 +128,15 @@ if {${os.platform} eq "darwin" && ${os.major} < 12} {
     }
 }
 
+# make some space, but only after the patching so it's easier to share
+# patchfiles with the main llvm ports.
+post-patch {
+	file delete -force ${worksrcpath}/clang
+	file delete -force ${worksrcpath}/llvm/lib
+	file delete -force ${worksrcpath}/llvm/test
+	file delete -force ${worksrcpath}/polly
+	file delete -force ${worksrcpath}/lldb
+}
 
     cmake.install_prefix \
                         /usr
