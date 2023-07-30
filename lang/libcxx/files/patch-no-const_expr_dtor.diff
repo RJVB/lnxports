@@ -1,0 +1,18 @@
+diff --git a/libcxx/include/optional b/libcxx/include/optional
+index 118db66..298b6f6 100644
+--- a/libcxx/include/optional
++++ b/libcxx/include/optional
+@@ -221,7 +221,12 @@ struct __optional_destruct_base<_Tp, false>
+     bool __engaged_;
+ 
+     _LIBCPP_INLINE_VISIBILITY
+-    _LIBCPP_CONSTEXPR_AFTER_CXX17 ~__optional_destruct_base()
++#if !defined(__linux__) || __clang_major__ > 9
++    // on Linux we can rely on clang_major being an actual LLVM version number
++    // and thus determine whether it supports const_expr dtors (clang 10 and up).
++    _LIBCPP_CONSTEXPR_AFTER_CXX17
++#endif
++    ~__optional_destruct_base()
+     {
+         if (__engaged_)
+             __val_.~value_type();
