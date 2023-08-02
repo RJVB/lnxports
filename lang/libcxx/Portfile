@@ -24,12 +24,7 @@ platforms               darwin
 license                 MIT NCSA
 maintainers             gmail.com:rjvbertin
 description             libc++ is a new implementation of the C++ standard library with support for C++11 and portions of C++14.
-long_description        ${description} \
-                        Because objects cannot be passed between different versions of the C++ runtime, this port must \
-                        replace the host version in order to be used.  On Snow Leopard and earlier, this is done \
-                        automatically because there is no existing host version of this library.  On Lion and later, \
-                        users must build the port with +replacemnt_libcxx and install the root manually if they wish \
-                        to replace the existing host implementation.
+long_description        ${description}
 
 homepage                http://libcxx.llvm.org/
 
@@ -85,7 +80,7 @@ if {${os.platform} eq "linux"} {
     # depends_build-append port:libedit
     # depends_lib-append  port:libffi port:ncurses port:zlib
 
-    patch.pre_args -p1
+    patch.pre_args -Np1
     patchfiles-append \
         0010-compiler-rt-cmake-config-ix.cmake-was-Leopard-No-ASA.patch \
         0011-Fix-missing-long-long-math-prototypes-when-using-the.patch \
@@ -133,12 +128,12 @@ if {${os.platform} eq "darwin" && ${os.major} < 12} {
 # make some space, but only after the patching so it's easier to share
 # patchfiles with the main llvm ports.
 post-patch {
-	ui_info "Cleaning up unneeded directories"
-	file delete -force ${worksrcpath}/clang
-	file delete -force ${worksrcpath}/llvm/lib
-	file delete -force ${worksrcpath}/llvm/test
-	file delete -force ${worksrcpath}/polly
-	file delete -force ${worksrcpath}/lldb
+    ui_info "Cleaning up unneeded directories"
+    file delete -force ${worksrcpath}/clang
+    file delete -force ${worksrcpath}/llvm/lib
+    file delete -force ${worksrcpath}/llvm/test
+    file delete -force ${worksrcpath}/polly
+    file delete -force ${worksrcpath}/lldb
 }
 
     cmake.install_prefix \
