@@ -78,6 +78,8 @@ if {[string match *clang++-mp-* ${configure.cxx}]} {
     }
 }
 
+variant pstl description "Build libc++ with ParallelSTL support (TBB backend)" {}
+
 if {${os.platform} eq "linux"} {
     worksrcdir          ${distname}
     # depends_build-append port:libedit
@@ -103,6 +105,12 @@ if {${os.platform} eq "linux"} {
     # clang-13/work/build/include/c++/v1/optional:224:5: error: destructor cannot be marked constexpr
     #     _LIBCPP_CONSTEXPR_AFTER_CXX17 ~__optional_destruct_base()
     patchfiles-append patch-no-const_expr_dtor.diff
+
+    # let's see what we gain from supporting ParellelSTL
+    # see https://reviews.llvm.org/D129452
+    patchfiles-append \
+        patch-use-pstl.diff \
+        patch-no_result_of.diff
 
 if {${os.platform} eq "darwin" && ${os.major} < 12} {
     # On OSX10.7 and older revert call to add_security_warnings as fails with
@@ -166,6 +174,20 @@ post-patch {
         build.post_args-append -wk
     }
 
+    if {[variant_isset pstl]} {
+        depends_lib-append \
+                        port:onetbb
+        configure.args-replace \
+                        -DLLVM_ENABLE_RUNTIMES=libcxx \
+                        -DLLVM_ENABLE_RUNTIMES="pstl\;libcxx"
+        configure.args-append \
+                        -DPSTL_PARALLEL_BACKEND=tbb \
+                        -DLIBCXX_ENABLE_PARALLEL_ALGORITHMS=ON \
+                        -DPSTL_HIDE_FROM_ABI_PER_TU=ON
+        cmake.install_rpath-append \
+                        ${prefix}/libexec/onetbb/lib
+    }
+
     variant benchmark_libcxx description {build the benchmark against libc++} {
         configure.args-replace \
                         -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++ \
@@ -178,6 +200,17 @@ post-patch {
 
     cmake.source_dir    ${worksrcpath}/runtimes
     destroot.violate_mtree yes
+
+    post-destroot {
+        if {[variant_isset pstl]} {
+            foreach i [glob ${destroot}/usr/include/*pstl*] {
+                # move the ParellelSTL headers into the libc++ include dir so they're be found when
+                # that directory is added to the compiler's header search path. Upstream appear to
+                # be making this same merger.
+                file rename ${i} ${destroot}/usr/include/c++/v1
+            }
+        }
+    }
 
     test.run            yes
     test.dir            ${build.dir}
