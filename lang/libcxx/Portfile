@@ -205,6 +205,19 @@ post-patch {
                 file rename ${i} ${destroot}/usr/include/c++/v1
             }
         }
+        # be somewhat naughty: install system-wide links to the crucial OneTBB dependencies: without
+        # those, using ParallelSTL would require pointing the build to the port:onetbb resources
+        set otbpref ${prefix}/libexec/onetbb
+        foreach d [glob ${otbpref}/include/*] {
+            ln -s ${d} ${destroot}/usr/include/
+        }
+        foreach d [glob -dir ${otbpref}/lib/ *.so libtbb.so.12] {
+            ln -s ${d} ${destroot}/usr/lib/
+        }
+        xinstall -m 755 -d ${destroot}/usr/lib/pkgconfig/
+        foreach d [glob ${otbpref}/lib/pkgconfig/*] {
+            ln -s ${d} ${destroot}/usr/lib/pkgconfig/
+        }
     }
 
     test.run            yes
