@@ -2,23 +2,24 @@
 
 PortSystem  1.0
 PortGroup           muniversal 1.0
+PortGroup           LTO 1.0
 
 name                nspr
-version             4.17
+version             4.35
+revision            0
 categories          devel
 maintainers         nomaintainer
 license             {MPL-1.1 GPL-2+ LGPL-2.1+}
-platforms           darwin linux
 
 description         A platform-neutral API for system level and libc like functions.
-long_description    ${description}
+long_description    {*}${description}
 
-homepage            http://www.mozilla.org/projects/nspr
-master_sites        http://ftp.mozilla.org/pub/mozilla.org/nspr/releases/v${version}/src/ \
-                    ftp://ftp.mozilla.org/pub/mozilla.org/nspr/releases/v${version}/src/
+homepage            https://www.mozilla.org/projects/nspr
+master_sites        https://ftp.mozilla.org/pub/nspr/releases/v${version}/src/
 
-checksums           rmd160  9ab5741d361d8c381a08deb93c945e2bc4e5881c \
-                    sha256  590a0aea29412ae22d7728038c21ef2ab42646e48172a47d2e4bb782846d1095
+checksums           rmd160  4dee99094cf48c3247bd3cc34f9c9de745460bfc \
+                    sha256  7ea3297ea5969b5d25a5dd8d47f2443cda88e9ee746301f6e1e1426f8a6abc8f
+#                     size    1096974
 
 worksrcdir          ${worksrcdir}/nspr
 
@@ -32,9 +33,30 @@ post-patch {
 configure.args \
     --disable-debug \
     --enable-optimize='${configure.optflags}' \
-    --libdir=${prefix}/lib/nspr \
     --enable-64bit
 
+platform darwin 9 {
+    if {${build_arch} eq "ppc" || ${build_arch} eq "ppc64"} {
+    # We need to enable missing ppc64 atomics
+    post-extract {
+        copy ${worksrcpath}/pr/src/md/unix/os_Darwin_ppc.s ${worksrcpath}/pr/src/md/unix/os_Darwin_ppc64.s
+        }
+    patchfiles-append      patch-darwin-ppc64.diff
+    }
+}
+
+platform darwin 10 {
+    if {${build_arch} eq "ppc"} {
+    # Otherwise Intel flags are used on Rosetta: https://trac.macports.org/ticket/64900
+        configure.args-append --build=powerpc-apple-darwin${os.major}
+    }
+}
+
+if {(!${universal_possible} || ![variant_isset universal]) && ${configure.build_arch} in [list arm64 ppc64 x86_64]} {
+    configure.args-append --enable-64bit
+}
+
+# set merger_configure_args(arm64)  "--enable-64bit"
 # set merger_configure_args(ppc64)  "--enable-64bit"
 # set merger_configure_args(x86_64) "--enable-64bit"
 
@@ -49,18 +71,20 @@ variant debug description "build with debugging symbols" {
 }
 
 post-destroot {
-    file mkdir ${destroot}${prefix}/lib/pkgconfig
-    copy ${filespath}/nspr.pc ${destroot}${prefix}/lib/pkgconfig
-    reinplace "s|@@prefix@@|${prefix}|" ${destroot}${prefix}/lib/pkgconfig/nspr.pc
-    set mylibs [exec ${destroot}${prefix}/bin/nspr-config --libs]
-    set mycflags [exec ${destroot}${prefix}/bin/nspr-config --cflags]
-    set myversion [exec ${destroot}${prefix}/bin/nspr-config --version]
-    reinplace "s|@@FULL_NSPR_LIBS@@|${mylibs}|" ${destroot}${prefix}/lib/pkgconfig/nspr.pc
-    reinplace "s|@@FULL_NSPR_CFLAGS@@|${mycflags}|" ${destroot}${prefix}/lib/pkgconfig/nspr.pc
-    reinplace "s|@@NSPR_VERSION@@|${myversion}|" ${destroot}${prefix}/lib/pkgconfig/nspr.pc
+    if {![file exists ${destroot}${prefix}/lib/pkgconfig/nspr.pc]} {
+        file mkdir ${destroot}${prefix}/lib/pkgconfig
+        copy ${filespath}/nspr.pc ${destroot}${prefix}/lib/pkgconfig
+        reinplace "s|@@prefix@@|${prefix}|" ${destroot}${prefix}/lib/pkgconfig/nspr.pc
+        set mylibs [exec ${destroot}${prefix}/bin/nspr-config --libs]
+        set mycflags [exec ${destroot}${prefix}/bin/nspr-config --cflags]
+        set myversion [exec ${destroot}${prefix}/bin/nspr-config --version]
+        reinplace "s|@@FULL_NSPR_LIBS@@|${mylibs}|" ${destroot}${prefix}/lib/pkgconfig/nspr.pc
+        reinplace "s|@@FULL_NSPR_CFLAGS@@|${mycflags}|" ${destroot}${prefix}/lib/pkgconfig/nspr.pc
+        reinplace "s|@@NSPR_VERSION@@|${myversion}|" ${destroot}${prefix}/lib/pkgconfig/nspr.pc
+    }
 }
 
 livecheck.type      regex
 #livecheck.url   [lindex ${master_sites} 0]
-livecheck.url       http://ftp.mozilla.org/pub/mozilla.org/nspr/releases/
+livecheck.url       https://ftp.mozilla.org/pub/nspr/releases/
 livecheck.regex     "v(\\d+(?:\\.\\d+)*)"
