@@ -1,0 +1,11 @@
+--- nss/cmd/shlibsign/orig.sign.sh	2023-07-27 11:15:00.000000000 +0200
++++ nss/cmd/shlibsign/sign.sh	2023-08-11 13:47:45.602309318 +0200
+@@ -37,7 +37,7 @@
+     export LIBPATH
+     SHLIB_PATH=${1}/lib:${4}:$SHLIB_PATH
+     export SHLIB_PATH
+-    LD_LIBRARY_PATH=${1}/lib:${4}:$LD_LIBRARY_PATH
++    LD_LIBRARY_PATH=${4}:$LD_LIBRARY_PATH
+     export LD_LIBRARY_PATH
+     DYLD_LIBRARY_PATH=${1}/lib:${4}:$DYLD_LIBRARY_PATH
+     export DYLD_LIBRARY_PATH
