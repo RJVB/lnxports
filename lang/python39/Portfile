@@ -11,7 +11,7 @@ PortGroup LTO 1.0
 name                python39
 
 # Remember to keep py39-tkinter and py39-gdbm's versions sync'd with this
-version             3.9.9
+version             3.9.9 ; revision 1
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          lang
@@ -108,7 +108,7 @@ select.entries      [list python python-$pythonNoDot $pythonNoDot] \
 
 set framewpath ${frameworks_dir}/Python.framework
 set framewdir  ${framewpath}/Versions/${branch}
-set confdir config-${branch}
+set confdir config-${branch}-x86_64-linux-gnu
 
 platform darwin {
     set confdir config-${branch}-darwin
@@ -130,10 +130,12 @@ platform darwin {
         # (this becomes Python.framework/Versions/3.9/Python) which doesn't
         # work for dependents that incorrectly use this variable to find out
         # how to link against python (see ticket #15099); instead we mirror
-        # the behavior of `python-config --ldflags` here.
+        # the behavioor of `python-config --ldflags` here.
+        ## NB NB: this port (currently?) builds libpython${branch} WITHOUT the m suffix!
+        set libsuffix ""
         system -W ${buildlibdir} "awk -F : \
             \"/'LINKFORSHARED'/ {printf \\\"%s: '-L${framewdir}/lib/python${branch}/${confdir}\
-            -lpython${branch}m -ldl -framework CoreFoundation',\\n\\\", \\\$1; getline; next} {print}\"\
+            -lpython${branch}${libsuffix} -ldl -framework CoreFoundation',\\n\\\", \\\$1; getline; next} {print}\"\
             _sysconfigdata__linux_x86_64-linux-gnu.py > _sysconfigdata__linux_x86_64-linux-gnu.py.new"
 #         file rename -force ${buildlibdir}/_sysconfigdata__linux_x86_64-linux-gnu.py \
 #             ${buildlibdir}/_sysconfigdata__linux_x86_64-linux-gnu.py.orig
@@ -187,7 +189,7 @@ post-destroot {
             ln -s ${prefix}/bin/[file tail ${b}] ${destroot}${framewdir}/bin
         }
         system -W ${destroot}${prefix} "find lib -name \"*.pyc\" | xargs rm"
-        foreach b {lib/libpython3.so lib/pkgconfig/python3.pc share/man/man1/python3.1} {
+        foreach b {lib/libpython3.so lib/pkgconfig/python3.pc lib/pkgconfig/python3-embed.pc share/man/man1/python3.1} {
             file delete ${destroot}${prefix}/${b}
         }
     }
