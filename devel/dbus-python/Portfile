@@ -5,7 +5,7 @@ PortSystem      1.0
 name            dbus-python
 version         1.2.16
 
-set python_versions {27 35 36 37 38}
+set python_versions {27 35 36 37 38 39 310 311}
 
 # this default version should stay synchronized with python_get_default_version
 #    in the python PortGroup
@@ -52,7 +52,8 @@ foreach python_version ${python_versions} {
 
         distname        ${name}-${version}
 
-        depends_build   port:pkgconfig
+        depends_build   port:pkgconfig \
+                        port:gettext-dev
 
         depends_lib                               \
             path:bin/dbus-daemon:dbus             \
@@ -82,11 +83,14 @@ foreach python_version ${python_versions} {
             }
             configure.args-append --includedir=${includedir_base}${abiflags}
         }
-        configure.args-append LIBS="-L${prefix}/lib"
+        configure.args-append LIBS="-L${prefix}/lib -lintl"
 
 #         configure.pkg_config_path  ${python_prefix}/lib/pkgconfig
 
         configure.python    ${prefix}/bin/python${python_branch}
+#         if {${python_version} == 3.9} {
+#             configure.env "PYTHON_LIBS=-lpython3.9"
+#         }
 
         variant doc description {Enable documentation building} {}
         # ${python_version} and ${python_branch} do not have the right value inside variant block,
