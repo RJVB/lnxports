@@ -14,7 +14,7 @@ if {${os.platform} eq "linux"} {
 #     our own site-packages directory to the path.
     maintainers     gmail.com:rjvbertin
     version         [exec /usr/bin/python2.7 -c "import sys ; print '%d.%d.%d' %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro)"]
-    revision        2
+    revision        3
 } else {
     # Remember to keep py27-tkinter and py27-gdbm's versions sync'd with this
     version             2.7.10
@@ -37,6 +37,8 @@ homepage            http://www.python.org/
 
 if {${os.platform} eq "linux"} {
     PortGroup       python 1.0
+    python.version  27
+    python.add_dependencies no
     depends_run     port:python_select \
                     port:python2_select
     set pythonNoDot python[string map {. {}} $branch]
@@ -49,20 +51,23 @@ if {${os.platform} eq "linux"} {
     use_configure   no
     build           {}
     destroot {
+        xinstall -m 755 -d ${destroot}${python.prefix}/bin
         foreach p [list python${branch} python${major} python${branch}-config] {
             xinstall -m 755 ${filespath}/python-wrapper.sh ${destroot}${prefix}/bin/${p}
             reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/${p}
             reinplace "s|@SUFFIX@|${branch}|g" ${destroot}${prefix}/bin/${p}
             reinplace "s|@BRANCH@|${branch}|g" ${destroot}${prefix}/bin/${p}
+            ln -s ${prefix}/bin/${p} ${destroot}${python.prefix}/bin/
         }
         xinstall -m 755 -d ${destroot}${prefix}/lib/python${branch}/site-packages
         touch ${destroot}${prefix}/lib/python${branch}/site-packages/placeholder
-        xinstall -m 755 -d ${destroot}${python.prefix}/bin
         xinstall -m 755 -d ${destroot}${python.libdir}
         ln -s ../../../../../../../lib/python${branch}/site-packages ${destroot}${python.libdir}/site-packages
+        system "ls -l ${destroot}${python.libdir}"
         # for debuntu
         ln -s site-packages ${destroot}${python.libdir}/dist-packages
         ln -s site-packages ${destroot}${prefix}/lib/python${branch}/dist-packages
+        system "ls -l ${destroot}${python.libdir}"
     }
 } else {
 
