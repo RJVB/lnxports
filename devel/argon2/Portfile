@@ -5,7 +5,7 @@ PortGroup           github 1.0
 PortGroup           LTO 1.0
 
 github.setup        P-H-C phc-winner-argon2 20190702
-revision            1
+revision            2
 name                argon2
 categories          devel
 platforms           darwin
@@ -15,13 +15,13 @@ license             Apache-2
 description         Password-hashing implmention that won the P-H-C
 
 long_description \
-    Argon2 is a password-hashing function that summarizes the state of the \
+    Argon2 is a password-hashing function that summarises the state of the \
     art in the design of memory-hard functions and can be used to hash \
     passwords for credential storage, key derivation, or other applications.
 
 checksums           rmd160  05b78cfa2309a25b6fed447236f1f37f92732cee \
-                    sha256  3fa0b89e4db51141a071fae29387b08c23dc97813be04c2e15dcc1a9f6db2c00 \
-                    size    1505325
+                    sha256  3fa0b89e4db51141a071fae29387b08c23dc97813be04c2e15dcc1a9f6db2c00
+#                     size    1505325
 
 patchfiles          install-manpage.patch
 platform darwin {
@@ -36,13 +36,15 @@ build.args-append   OPTTEST=1
 build.env-append    CC=${configure.cc} \
                     "CFLAGS=${configure.cflags} [get_canonical_archflags cc]" \
                     "LDFLAGS=${configure.ldflags} [get_canonical_archflags ld]" \
+                    LIBRARY_REL=lib \
                     PREFIX=${prefix}
 destroot.destdir    PREFIX=${destroot}${prefix}
 destroot.args-append \
                     OPTTEST=1
 destroot.env-append CC=${configure.cc} \
                     "CFLAGS=${configure.cflags} [get_canonical_archflags cc]" \
-                    "LDFLAGS=${configure.ldflags} [get_canonical_archflags ld]"
+                    "LDFLAGS=${configure.ldflags} [get_canonical_archflags ld]" \
+                    LIBRARY_REL=lib
 
 test.run            yes
 test.args-append    OPTTEST=1
