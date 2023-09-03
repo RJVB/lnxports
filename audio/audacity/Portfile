@@ -142,9 +142,9 @@ distname            audacity-git
 set PPREFIX         3.2.5/
 
 platform darwin {
-    ##>> RJVB : set this to 15 (10.11) for upstream!
+    #>> RJVB ; set this to 15 for mainstream!
     set min_OS_for_wx32 13
-    ##<< RJVB
+    #<< RJVB
 }
 
 if {${os.platform} eq "darwin"} {
@@ -201,7 +201,7 @@ if {[variant_isset wxsystem]} {
 
 depends_build-append \
                     port:pkgconfig \
-                    port:rapidjson \
+                    port:rapidjson
 
 depends_lib-append  port:freetype \
                     path:lib/pkgconfig/harfbuzz.pc:harfbuzz \
@@ -444,11 +444,11 @@ if {${configure.cxx_stdlib} ne "" && [string match *clang* ${configure.cxx}]} {
                     -stdlib=${configure.cxx_stdlib}
 }
 
-platform darwin {
-    post-configure {
-        reinplace -q "s|compiler.libcxx=libstdc++|compiler.libcxx=libc++|g" ${build.dir}/.conan/profiles/default
-    }
-}
+# platform darwin {
+#     post-configure {
+#         reinplace -q "s|compiler.libcxx=libstdc++|compiler.libcxx=libc++|g" ${build.dir}/.conan/profiles/default
+#     }
+# }
 
 # with everything defined/declared as intended we can now
 # handle the post-patch step with its reinplace statements.
@@ -653,12 +653,12 @@ platform darwin {
         }
 
         post-configure {
-            if {![catch "registry_active ${subport}"]} {
+            if {![catch {registry_active ${subport}}]} {
                 ui_warn "${subport} will not be packaged (destrooted) if it is still active by that time"
             }
         }
         pre-destroot {
-            if {![catch "registry_active ${subport}"]} {
+            if {![catch {registry_active ${subport}}]} {
                 ui_error "${subport} cannot be packaged (destrooted): it is already active."
                 ui_error "Please forcibly deactivate the existing copy, e.g. by running:"
                 ui_error ""
