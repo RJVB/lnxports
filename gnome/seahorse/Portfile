@@ -42,7 +42,6 @@ depends_lib         path:lib/pkgconfig/gtk+-3.0.pc:gtk3 \
                     path:bin/vala:vala
 
 if {${os.platform} eq "darwin"} {
-    ui_warn bla
     depends_build-append \
                     port:itstool \
                     port:yelp-tools
@@ -69,12 +68,8 @@ configure.cflags-append \
 
 configure.args      --disable-sharing \
                     --disable-schemas-compile \
-                    --disable-silent-rules
-platform linux {
-    configure.args-append \
-                    --enable-pgp \
-                    --disable-scrollkeeper
-}
+                    --disable-silent-rules \
+                    --enable-pgp
 
 post-activate {
     system "${prefix}/bin/update-desktop-database -q ${prefix}/share/applications"
