@@ -40,7 +40,7 @@ distname            ${name}-git
 # To build a non-universal library for the host architecture,
 # simply use the --disable-mac-universal option with configure.
 # http://www.portaudio.com/trac/wiki/TutorialDir/Compile/MacintoshCoreAudio
-configure.args      --disable-mac-universal \
+configure.args      --enable-mac-universal=no \
                     --enable-cxx \
                     --enable-option-checking \
                     --without-alsa \
