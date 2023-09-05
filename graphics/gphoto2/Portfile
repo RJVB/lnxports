@@ -1,11 +1,16 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup           LTO 1.0
 
 name                gphoto2
-version             2.5.17
+version             2.5.28
+checksums           rmd160  bd5334059e2368fe48b7bddaa673f22adbd4d366 \
+                    sha256  2a648dcdf12da19e208255df4ebed3e7d2a02f905be4165f2443c984cf887375
+#                     size    797600
+
 categories          graphics
-platforms           darwin
+platforms           darwin linux
 maintainers         {ryandesign @ryandesign} openmaintainer
 license             LGPL-2.1+
 
@@ -18,9 +23,6 @@ homepage            http://www.gphoto.org/proj/gphoto2/
 master_sites        sourceforge:project/gphoto/gphoto/${version}
 use_bzip2           yes
 
-checksums           rmd160  54b545862952c4516a9ab09d23bf695a8c80f04e \
-                    sha256  aa571039240c68a053be710ca41645aed0239fa2f0b737b8ec767fef29e3544f
-
 depends_build       port:pkgconfig
 
 depends_lib         port:gettext \
@@ -28,7 +30,17 @@ depends_lib         port:gettext \
                     port:libexif \
                     port:libgphoto2 \
                     port:libiconv \
-                    port:libusb-compat
+                    port:libusb-compat \
+                    port:readline
+if {${os.platform} eq "darwin"} {
+    depends_lib-append \
+                    port:popt
+    configure.args-append \
+                    --without-cdk
+} else {
+    depends_build-append \
+                    port:gettext-dev
+}
 
 # configure.env       POPT_CFLAGS="-I${prefix}/include" \
 #                     POPT_LIBS="-L${prefix}/lib -lpopt"
@@ -39,19 +51,22 @@ pre-configure {
                     POPT_CFLAGS="${poptflags}" \
                     POPT_LIBS="${poptlibs}"
 }
-configure.env-append \
-                    LIBS="-L${prefix}/lib -lintl"
-build.env-append    LIBS="-L${prefix}/lib -lintl"
 
-configure.args      --disable-nls --without-aalib \
-                    --without-cdk \
+# configure.env-append \
+#                     LIBS="-L${prefix}/lib -lintl"
+# build.env-append    LIBS="-L${prefix}/lib -lintl"
+
+configure.args-append \
+                    --disable-nls \
+                    --without-aalib \
                     --disable-dependency-tracking \
+                    --with-libintl-prefix=${prefix} \
                     ac_cv_prog_AWK=/usr/bin/awk
 
-destroot.target     install-strip
+# destroot.target     install-strip
 post-destroot {
-    xinstall -m 755 -d ${destroot}${prefix}/share/doc/${name}
-    xinstall -m 644 -W ${worksrcpath} COPYING ChangeLog INSTALL NEWS README \
+    xinstall -m 0755 -d ${destroot}${prefix}/share/doc/${name}
+    xinstall -m 0644 -W ${worksrcpath} COPYING ChangeLog INSTALL NEWS README \
         TODO ${destroot}${prefix}/share/doc/${name}
 }
 
