@@ -1,11 +1,16 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup           LTO 1.0
 
 name                libgphoto2
-version             2.5.18
+version             2.5.31
+checksums           rmd160  8153d24c2d4cfe9e850eee21d7d3d11725c95f39 \
+                    sha256  4f81c34c0b812bee67afd5f144940fbcbe01a2055586a6a1fa2d0626024a545b
+#                     size    7888497
+
 categories          devel
-platforms           darwin
+platforms           darwin linux
 maintainers         {ryandesign @ryandesign} openmaintainer
 license             LGPL-2+
 
@@ -18,36 +23,61 @@ homepage            http://www.gphoto.org/proj/libgphoto2/
 master_sites        sourceforge:project/gphoto/libgphoto/${version}
 use_bzip2           yes
 
-checksums           rmd160  e2e87e0e8823d258290635ce7a88bf275261eb39 \
-                    sha256  5b17b89d7ca0ec35c72c94ac3701e87d49e52371f9509b8e5c08c913ae57a7ec
-
 depends_build       port:pkgconfig
 
-depends_lib         port:gettext \
-                    path:lib/libjpeg.la:jpeg \
-                    port:libiconv \
-                    port:libxml2 \
-                    port:libtool \
-                    port:libusb-compat \
+depends_lib         port:curl \
+                    path:bin/dbus-daemon:dbus \
+                    port:gettext \
+                    path:include/turbojpeg.h:libjpeg-turbo \
                     port:libexif \
+                    port:libiconv \
+                    port:libusb-compat \
+                    port:libxml2 \
                     port:libtool
+if {${os.platform} eq "darwin"} {
+    depends_lib-append \
+                    port:gd2
+} else {
+    # lazyness; gd2 taken from host
+    depends_build-append \
+                    port:gettext-dev
+}
 
-configure.env-append \
-                    LIBS="-L${prefix}/lib -lintl"
-build.env-append    LIBS="-L${prefix}/lib -lintl"
+patchfiles          static_assert.patch
+# configure.env-append \
+#                     LIBS="-L${prefix}/lib -lintl"
+# build.env-append    LIBS="-L${prefix}/lib -lintl"
 
 configure.args      --disable-nls \
                     --with-drivers=all \
                     --with-libexif=${prefix} \
-                    --disable-dependency-tracking \
-                    ac_cv_prog_AWK=/usr/bin/awk
+                    --with-libintl-prefix=${prefix} \
+                    ac_cv_prog_AWK=/usr/bin/awk \
+                    ac_cv_path_RSYNC=no
+
+# By default, upstream's configure script adds a number of strict compilation
+# options, which can cause build failures with some compiler versions. However,
+# said script also allows one to easily disable those, simply by specifying
+# CFLAGS to Make.
+#
+# As noted in 'configure.ac':
+#
+# >>> If, for some reason, you need to build without all these compiler
+# >>> warnings, run the build while setting CFLAGS to an empty string:
+# >>>   $ make all check CFLAGS=
+#
+# In our case, utilize our standard cflags. That prevents use of the default
+# warning-related options, along with adding anything necessary for MacPorts.
+
+build.args-append   CFLAGS="${configure.cflags} [get_canonical_archflags cc]"
 
 variant doxygen description {Use doxygen to generate API docs} {
-    depends_build-append    port:doxygen \
+    depends_build-append    path:bin/doxygen:doxygen \
                             path:bin/dot:graphviz
 }
 if {![variant_isset doxygen]} {
-    configure.args-append   ac_cv_path_DOXYGEN=false
+    configure.args-append   ac_cv_path_DOT=no \
+                            ac_cv_path_DOXYGEN=no
 }
 
 livecheck.regex     /${name}-(\[0-9.\]+)${extract.suffix}
