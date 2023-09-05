@@ -1,0 +1,24 @@
+diff --git libgphoto2_port/libgphoto2_port/Makefile.am libgphoto2_port/libgphoto2_port/new.Makefile.am
+index 1e211ba..af27b45 100644
+--- libgphoto2_port/libgphoto2_port/Makefile.am
++++ libgphoto2_port/libgphoto2_port/new.Makefile.am
+@@ -43,14 +43,14 @@ libgphoto2_port_la_LDFLAGS      += -no-undefined
+ # Yes, this is messy, but we are going to clean this up.
+ 
+ # EXTRA_DIST                      += libgphoto2_port.sym
+-EXTRA_DIST                      += libgphoto2_port.ver
+-if HAVE_ASM_SYMVER
+-libgphoto2_port_la_DEPENDENCIES += $(srcdir)/libgphoto2_port.ver
+-libgphoto2_port_la_LDFLAGS      += -Wl,--version-script=$(srcdir)/libgphoto2_port.ver
++# EXTRA_DIST                      += libgphoto2_port.ver
++# if HAVE_ASM_SYMVER
++# libgphoto2_port_la_DEPENDENCIES += $(srcdir)/libgphoto2_port.ver
++# libgphoto2_port_la_LDFLAGS      += -Wl,--version-script=$(srcdir)/libgphoto2_port.ver
+ # else
+ # libgphoto2_port_la_DEPENDENCIES += $(srcdir)/libgphoto2_port.sym
+ # libgphoto2_port_la_LDFLAGS      += -export-symbols $(srcdir)/libgphoto2_port.sym
+-endif
++# endif
+ 
+ libgphoto2_port_la_LDFLAGS      += -version-info @LIBGPHOTO2_PORT_VERSION_INFO@
+ 

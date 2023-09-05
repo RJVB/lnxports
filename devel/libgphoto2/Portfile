@@ -37,13 +37,17 @@ depends_lib         port:curl \
 if {${os.platform} eq "darwin"} {
     depends_lib-append \
                     port:gd2
+    patch.pre_args  -Np0
+    patchfiles-append \
+                    patch-no-versionscript.diff
+    use_autoreconf  [expr ![file exists ${worksrcpath}/config.log]]
 } else {
     # lazyness; gd2 taken from host
     depends_build-append \
                     port:gettext-dev
 }
 
-patchfiles          static_assert.patch
+patchfiles-append   static_assert.patch
 # configure.env-append \
 #                     LIBS="-L${prefix}/lib -lintl"
 # build.env-append    LIBS="-L${prefix}/lib -lintl"
