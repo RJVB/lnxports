@@ -15,7 +15,7 @@ platform darwin {
 
 name                mesa
 epoch               1
-version             21.0.1 ; revision 3
+version             21.0.1 ; revision 4
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT

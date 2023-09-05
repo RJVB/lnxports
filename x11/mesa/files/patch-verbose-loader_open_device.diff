@@ -1,8 +1,8 @@
 diff --git b/src/loader/orig.loader.c a/src/loader/loader.c
-index d64bc7c..c8d1ed8 100644
+index d64bc7c..48083ab 100644
 --- b/src/loader/orig.loader.c
 +++ a/src/loader/loader.c
-@@ -83,18 +83,25 @@ int
+@@ -83,18 +83,32 @@ int
  loader_open_device(const char *device_name)
  {
     int fd;
@@ -25,8 +25,15 @@ index d64bc7c..c8d1ed8 100644
     if (fd == -1 && errno == EACCES) {
 -      log_(_LOADER_WARNING, "failed to open %s: %s\n",
 -           device_name, strerror(errno));
-+      log_(_LOADER_WARNING, "loader_open_device() pid=%d failed to open %s: %s\n",
-+           getpid(), device_name, strerror(errno));
++	 char *error = strdup(strerror(errno));
++	 char *cwd = getcwd(NULL,0);
++	 if (!cwd) {
++		 cwd = strdup(strerror(errno));
++	 }
++      log_(_LOADER_WARNING, "loader_open_device() pid=%d (cwd=%s) failed to open %s: %s\n",
++           getpid(), cwd, device_name, error);
++	 if (error) free(error);
++	 if (cwd) free(cwd);
     }
     return fd;
  }
