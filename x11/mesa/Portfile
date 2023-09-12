@@ -15,7 +15,7 @@ platform darwin {
 
 name                mesa
 epoch               1
-version             21.0.1 ; revision 4
+version             21.0.1 ; revision 5
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -96,6 +96,7 @@ if {[string match *meson* ${configure.cmd}]} {
     }
     platform linux {
         depends_lib-append \
+                    port:libelf \
                     port:wayland \
                     port:vulkan-loader
         pre-configure {
@@ -122,6 +123,8 @@ if {[string match *meson* ${configure.cmd}]} {
                     -Dgallium-extra-hud=true \
                     -Dgallium-va=true \
                     -Dgallium-opencl=disabled \
+                    -Dopencl-spirv=false \
+                    -Dopencl-native=false \
                     -Dtools=all \
                     -Dglx-direct=true
         if {[string match *clang* ${configure.compiler}]} {
@@ -364,7 +367,7 @@ platform darwin {
                     ui_warning "+llvm64bit is to be implemented and currently ignored"
                 }
                 configure.args-append \
-                    -Dllvm=true
+                    -Dllvm=enabled
                 set PATH $env(PATH)
                 set env(PATH) ${prefix}/libexec/llvm-${ldv}/bin:${PATH}
 #                 configure.args-replace \
@@ -402,18 +405,36 @@ if {[variant_isset osmesa]} {
                     --enable-osmesa
     }
 }
-variant opencl description {enable OpenCL} {}
+
+variant opencl conflicts opencl_icd description {enable OpenCL (standalone variant)} {}
+variant opencl_icd conflicts opencl description {enable OpenCL (ICD variant: PREFERRED!)} {}
 if {[variant_isset opencl]} {
+    conflicts-append port:ocl-icd
     depends_build-append port:libclc
     if {[string match *meson* ${configure.cmd}]} {
         configure.args-replace \
                     -Dgallium-opencl=disabled \
                     -Dgallium-opencl=standalone
+#         configure.args-replace \
+#                     -Dopencl-spirv=false \
+#                     -Dopencl-spirv=true
+        configure.args-replace \
+                    -Dopencl-native=false \
+                    -Dopencl-native=true
     } else {
         configure.args-replace \
                     --disable-opencl \
                     --enable-opencl
     }
+} elseif {[variant_isset opencl_icd]} {
+    depends_build-append port:libclc
+    depends_lib-append   port:ocl-icd
+    configure.args-replace \
+                    -Dgallium-opencl=disabled \
+                    -Dgallium-opencl=icd
+    configure.args-replace \
+                    -Dopencl-native=false \
+                    -Dopencl-native=true
 }
 default_variants-append +osmesa
 
@@ -435,7 +456,7 @@ livecheck.regex {relnotes/([0-9.]+)\.html}
 
 
 if {[string match *meson* ${configure.cmd}]} {
-    meson.save_configure_cmd "log too"
+    meson.save_configure_cmd "install log"
 } else {
     configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
     pre-configure {
