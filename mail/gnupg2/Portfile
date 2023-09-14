@@ -28,7 +28,7 @@ checksums           rmd160  4e7f2b75d2aaaee0ea2afe982361460733e68eea \
                     sha256  34d70cd65b9c95f3f2f90a9f5c1e0b6a0fe039a8d685e2d66d69c33d1cbf62fb \
                     size    6537959
 
-platform darwin {
+if {${os.platform} eq "darwin"} {
     if {![variant_isset pinentry] && ![variant_isset pinentry_mac]} {
         # Automatically switch between pinentry and pinentry-mac, with pinentry-mac being
         # preferred.
@@ -48,6 +48,9 @@ platform darwin {
     if {${os.major} < 9} {
         patchfiles-append   patch-common_sysutils.c-fix-unsetenv-usage-on-10.4.diff
     }
+} else {
+    revision [expr ${revision} +1]
+    default_variants-append +pinentry
 }
 
 depends_build       port:pkgconfig
@@ -70,7 +73,7 @@ post-destroot {
 }
 
 variant pinentry conflicts pinentry_mac description {Handle user input via pinentry.} {
-    depends_lib-append      port:pinentry
+    depends_lib-append      path:${prefix}/bin/pinentry:pinentry
     configure.args-append   --with-pinentry-pgm=${prefix}/bin/pinentry
 }
 
