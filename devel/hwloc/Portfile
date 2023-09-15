@@ -58,8 +58,7 @@ variant opencl description {Enable OpenCL support - interesting for AMD & NVidia
 }
 
 variant gui description {Add graphical output capability} {
-    depends_lib-append      path:bin/openssl:openssl \
-                            path:lib/pkgconfig/cairo.pc:cairo \
+    depends_lib-append      path:lib/pkgconfig/cairo.pc:cairo \
                             port:xorg-libX11
     require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
     configure.args-replace  --without-x --with-x
