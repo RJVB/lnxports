@@ -1,0 +1,149 @@
+PortSystem      1.0
+PortGroup       github 1.0
+PortGroup       LTO 1.0
+PortGroup       cmake 1.1
+PortGroup       compiler_blacklist_versions 1.0
+
+platform darwin {
+    PortGroup   legacysupport 1.1
+    # for futimens:
+    legacysupport.newest_darwin_requires_legacy 13
+}
+
+github.setup    pocl pocl 3.1 v
+
+subport pocl-devel {}
+
+if {${subport} eq "${name}"} {
+    checksums   rmd160  502186ca43099a1e0315a765d184535781bb67b8 \
+                sha256  7128a885065091653931555db3d4cca36d8b836e349f147b25fbf7a11d22d19c
+#                 size    1929101
+} else {
+    github.setup pocl pocl bc9f4f63681f484db59ec54dec84df715926748e
+    version     3.1.99.43
+    fetch.type  git
+    distname    pocl-git
+}
+
+categories      science
+platforms       linux
+license         MIT
+maintainers     openmaintainer
+supported_archs x86_64 arm64
+description     Portable Computing Language
+long_description \
+                PoCL is being developed towards an efficient implementation \
+                of the OpenCL standard v3.0 which can be easily adapted for new targets. \
+                On Mac it will only leverage the CPU.
+
+patch.pre_args  -Np1
+patchfiles-append \
+                patch-detect-ndebug.diff
+if {${subport} ne "${name}"} {
+    patchfiles-append \
+                patch-add-example.diff
+}
+
+compiler.cxx_standard 2017
+
+compiler.blacklist *gcc* {clang < 602}
+foreach clv {3.3 3.4 3.5 3.7 5.0 6.0 7.0 18 19 20} {
+    compiler.blacklist-append macports-clang-${clv}
+}
+set supported_llvm_versions {8.0 9.0 10 11 12 13 14 15 16}
+set llvm_version {}
+
+foreach clv ${supported_llvm_versions} {
+    if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
+        compiler.whitelist-prepend macports-clang-${clv}
+    }
+    # prepend to the compiler fallback: this way the port
+    # will select the latest supported compiler from the
+    # selection that the user already has installed.
+    compiler.fallback-prepend macports-clang-${clv}
+    variant llvm${clv} description {build against LLVM ${clv}} {}
+    if {[variant_isset llvm${clv}]} {
+        set llvm_version ${clv}
+    }
+}
+set compiler_version [lindex [split ${configure.compiler} -] 2]
+if {${llvm_version} eq {} && [variant_exists llvm${compiler_version}]} {
+    default_variants +llvm${compiler_version}
+}
+
+foreach clv ${supported_llvm_versions} {
+    if {[variant_isset llvm${clv}]} {
+        # we link statically against the LLVM libs, so LLVM is a build dependency only
+        depends_build-append \
+                port:llvm-${clv} \
+                port:clang-${clv}
+        set llvm_version ${clv}
+    }
+}
+
+pre-configure {
+    if {${llvm_version} eq {}} {
+        ui_error "You need to select an LLVM variant or use a supported macports-clang compiler (${supported_llvm_versions})!"
+        return -code error "Please choose an LLVM version to use!"
+    }
+}
+
+if {${os.platform} eq "darwin"} {
+    depends_build-append \
+                port:cctools
+}
+
+set py_version  3.9
+depends_build-append \
+                port:python[join [split ${py_version} .] ""]
+
+# MacPorts doesn't have an OpenCL headers port, so we let pocl use its internal copy
+# (They will be installed to a port-specific location.)
+depends_lib-append \
+                port:hwloc \
+                path:lib/pkgconfig/OpenCL.pc:ocl-icd
+
+## TODO : figure out what the ASSERT tag in 
+## "OpenCL 3.0 PoCL 4.1-pre main-0-g0f3e041c  Apple, MacPorts+Asserts, RELOC, SPIR, LLVM 16.0.6, SLEEF, DISTRO, POCL_DEBUG" 
+## implies
+                
+# To my knowledge the PoCL libraries aren't meant to be linked by dependents so
+# we'll put them all in the default private libdir ($prefix/lib/pocl).
+configure.args-append \
+                -DPOCL_INSTALL_PUBLIC_HEADER_DIR=${prefix}/include/pocl \
+                -DPOCL_INSTALL_PUBLIC_LIBDIR=${prefix}/lib/pocl \
+                -DPOCL_INSTALL_PRIVATE_LIBDIR=${prefix}/lib/pocl \
+                -DPOCL_INSTALL_PKGCONFIG_DIR=${prefix}/lib/pkgconfig \
+                -DPOCL_INSTALL_ICD_VENDORDIR=${prefix}/etc/OpenCL/vendors \
+                -DWITH_LLVM_CONFIG=${prefix}/bin/llvm-config-mp-${llvm_version} \
+                -DSTATIC_LLVM=ON \
+                -DENABLE_LOADABLE_DRIVERS=ON \
+                -DENABLE_ALMAIF_DEVICE=ON \
+                -DKERNELLIB_HOST_CPU_VARIANTS=distro \
+                -DENABLE_TESTS=OFF \
+                -DENABLE_EXAMPLES=ON \
+                -DPYTHON_EXECUTABLE=/usr/bin/python2.7 \
+                -DPython3_EXECUTABLE=${prefix}/bin/python${py_version}
+
+cmake.install_rpath-append \
+                ${prefix}/lib/pocl
+
+if {[info proc cmake.save_configure_cmd] eq "cmake.save_configure_cmd"} {
+    cmake.save_configure_cmd "install log"
+}
+
+post-destroot {
+    if {${os.platform} eq "darwin"} {
+        # the build system is flawed in how it sets the library IDs; correct them post-hoc:
+        foreach L {libpocl-devices-basic.so libpocl-devices-pthread.so libpocl.2.dylib} {
+            system "install_name_tool -id ${prefix}/lib/pocl/${L} ${destroot}${prefix}/lib/pocl/${L}"
+            foreach D {libpocl-devices-basic.so libpocl-devices-pthread.so libpocl.2.dylib} {
+                if {${D} ne ${L}} {
+                    system "install_name_tool -change ${prefix}/lib/${D} ${prefix}/lib/pocl/${D} ${destroot}${prefix}/lib/pocl/${L}"
+                }
+            }
+        }
+    } else {
+        reinplace "s|Libs: |Libs: -Wl,-rpath,\$\{libdir\} |g" ${destroot}${prefix}/lib/pkgconfig/pocl.pc
+    }
+}

@@ -1,0 +1,1219 @@
+diff --git a/examples/CMakeLists.txt b/examples/CMakeLists.txt
+index 43e5e356..a80676e7 100644
+--- a/examples/CMakeLists.txt
++++ b/examples/CMakeLists.txt
+@@ -47,6 +47,7 @@ add_subdirectory("example1")
+ add_subdirectory("example2")
+ add_subdirectory("example2a")
+ add_subdirectory("matrix1")
++add_subdirectory("measure_overhead")
+ 
+ if(ENABLE_ALMAIF_DEVICE)
+   add_subdirectory("accel")
+diff --git a/examples/measure_overhead/CMakeLists.txt b/examples/measure_overhead/CMakeLists.txt
+new file mode 100644
+index 00000000..8056d7e2
+--- /dev/null
++++ b/examples/measure_overhead/CMakeLists.txt
+@@ -0,0 +1,40 @@
++#=============================================================================
++#   CMake build system files
++#
++#   Copyright (c) 2019 pocl developers
++#
++#   Permission is hereby granted, free of charge, to any person obtaining a copy
++#   of this software and associated documentation files (the "Software"), to deal
++#   in the Software without restriction, including without limitation the rights
++#   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++#   copies of the Software, and to permit persons to whom the Software is
++#   furnished to do so, subject to the following conditions:
++#
++#   The above copyright notice and this permission notice shall be included in
++#   all copies or substantial portions of the Software.
++#
++#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++#   THE SOFTWARE.
++#
++#=============================================================================
++
++add_compile_options(${OPENCL_CFLAGS})
++
++add_executable("measure_round_trip_overhead" measure_round_trip_overhead.cc common.cc)
++add_executable("measure_migration_overhead" measure_migration_overhead.cc common.cc)
++add_executable("measure_distributed_matmul" measure_distributed_matmul.cc common.cc)
++
++set(CXX_STANDARD_REQUIRED ON)
++set(CMAKE_CXX_EXTENSIONS OFF)
++set_property(TARGET measure_round_trip_overhead PROPERTY CXX_STANDARD 11)
++set_property(TARGET measure_migration_overhead PROPERTY CXX_STANDARD 11)
++set_property(TARGET measure_distributed_matmul PROPERTY CXX_STANDARD 11)
++
++target_link_libraries("measure_round_trip_overhead" ${POCLU_LINK_OPTIONS})
++target_link_libraries("measure_migration_overhead" ${POCLU_LINK_OPTIONS})
++target_link_libraries("measure_distributed_matmul" ${POCLU_LINK_OPTIONS})
+diff --git a/examples/measure_overhead/common.cc b/examples/measure_overhead/common.cc
+new file mode 100644
+index 00000000..0aaac31f
+--- /dev/null
++++ b/examples/measure_overhead/common.cc
+@@ -0,0 +1,55 @@
++/* Helper for printing statistics of a set of measurements
++
++   Copyright (c) 2019 pocl developers
++
++   Permission is hereby granted, free of charge, to any person obtaining a copy
++   of this software and associated documentation files (the "Software"), to deal
++   in the Software without restriction, including without limitation the rights
++   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++   copies of the Software, and to permit persons to whom the Software is
++   furnished to do so, subject to the following conditions:
++
++   The above copyright notice and this permission notice shall be included in
++   all copies or substantial portions of the Software.
++
++   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++   THE SOFTWARE.
++*/
++
++#include "common.hh"
++#include <algorithm>
++#include <iostream>
++
++void print_measurements(const std::string &title,
++                        const std::vector<double> &times, int indent) {
++  if (times.empty()) {
++    std::cout << "\t\tNo Data" << std::endl;
++    return;
++  }
++  double sum_time = 0;
++  double min_time = times[0];
++  double max_time = times[0];
++  for (double time : times) {
++    sum_time += time;
++    min_time = std::min(time, min_time);
++    max_time = std::max(time, max_time);
++  }
++  sum_time /= times.size();
++
++  std::vector<double> sorted_times(times);
++  std::sort(sorted_times.begin(), sorted_times.end());
++
++  std::string ind(indent, '\t');
++  std::cout << ind << title << std::endl
++            << ind << "\taverage: " << sum_time << " µs" << std::endl
++            << ind << "\tmin: " << min_time << " µs" << std::endl
++            << ind << "\tmax: " << max_time << " µs" << std::endl
++            << ind << "\t99th percentile: "
++            << sorted_times[sorted_times.size() * 99 / 100] << " µs"
++            << std::endl;
++}
+diff --git a/examples/measure_overhead/common.hh b/examples/measure_overhead/common.hh
+new file mode 100644
+index 00000000..667fbde4
+--- /dev/null
++++ b/examples/measure_overhead/common.hh
+@@ -0,0 +1,32 @@
++/* Helper for printing statistics of a set of measurements
++
++   Copyright (c) 2019 pocl developers
++
++   Permission is hereby granted, free of charge, to any person obtaining a copy
++   of this software and associated documentation files (the "Software"), to deal
++   in the Software without restriction, including without limitation the rights
++   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++   copies of the Software, and to permit persons to whom the Software is
++   furnished to do so, subject to the following conditions:
++
++   The above copyright notice and this permission notice shall be included in
++   all copies or substantial portions of the Software.
++
++   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++   THE SOFTWARE.
++*/
++
++#ifndef MEASURE_COMMON_HH
++#define MEASURE_COMMON_HH
++#include <string>
++#include <vector>
++
++void print_measurements(const std::string &title,
++                        const std::vector<double> &times, int indent = 0);
++
++#endif
+diff --git a/examples/measure_overhead/measure_distributed_matmul.cc b/examples/measure_overhead/measure_distributed_matmul.cc
+new file mode 100644
+index 00000000..c301d4fb
+--- /dev/null
++++ b/examples/measure_overhead/measure_distributed_matmul.cc
+@@ -0,0 +1,454 @@
++/* Distributed square matrix multiplication benchmark
++
++   Copyright (c) 2019 pocl developers
++
++   Permission is hereby granted, free of charge, to any person obtaining a copy
++   of this software and associated documentation files (the "Software"), to deal
++   in the Software without restriction, including without limitation the rights
++   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++   copies of the Software, and to permit persons to whom the Software is
++   furnished to do so, subject to the following conditions:
++
++   The above copyright notice and this permission notice shall be included in
++   all copies or substantial portions of the Software.
++
++   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++   THE SOFTWARE.
++*/
++
++#include "pocl_opencl.h"
++
++#define CL_HPP_ENABLE_EXCEPTIONS
++#define CL_HPP_MINIMUM_OPENCL_VERSION 120
++#define CL_HPP_TARGET_OPENCL_VERSION 120
++#include <CL/opencl.hpp>
++
++#include "common.hh"
++#include <algorithm>
++#include <chrono>
++#include <iomanip>
++#include <iostream>
++#include <random>
++#include <string>
++
++#define STRINGIFY(x) #x
++
++void print_help(const char *name) {
++  std::cerr << "Usage: " << name << " [-p platform_index] "
++            << "[-s sample_count] [-d matrix_size]" << std::endl
++            << "-p specifies which platform to use." << std::endl
++            << std::endl
++            << "\tshuffle (reassigns buffers randomly)" << std::endl
++            << "-s sets the number of samples measured." << std::endl
++            << "-d N sets the size of the matrix to NxN." << std::endl
++            << "-r prints the multiplication result." << std::endl;
++}
++
++void print_progress(int p, int total, int width = 80) {
++  std::string total_str = std::to_string(total);
++  std::string p_str = std::to_string(p);
++  int bar_width = width - total_str.size() * 2 - 4;
++
++  std::cerr << '\r';
++  if (bar_width > 1) {
++    int fill_width = bar_width * p / total;
++    std::cerr << "[";
++    for (int i = 0; i < bar_width; ++i) {
++      char c = ' ';
++      if (i < fill_width || p == total)
++        c = '=';
++      else if (i == fill_width)
++        c = '>';
++
++      std::cerr << c;
++    }
++    std::cerr << "] ";
++  }
++  std::cerr << std::setfill(' ') << std::setw(total_str.size()) << p_str << "/"
++            << total_str << std::flush;
++  if (p == total)
++    std::cerr << std::endl;
++}
++
++struct {
++  int platform_index = -1;
++  int sample_count = 1;
++  // This is the square root of the number of integers in the buffer, not bytes.
++  size_t matrix_size = 128;
++  int show_result = 0;
++} options;
++
++bool parse_args(char **argv) {
++  const char *name = *argv++;
++  while (*argv) {
++    const char *arg = *argv;
++    if (arg[0] == '-') {
++      if (arg[1] == '-') {
++        if (!strcmp(arg + 2, "help"))
++          goto fail;
++        else {
++          std::cerr << "Unknown long flag " << arg + 2 << std::endl;
++          goto fail;
++        }
++      } else if (arg[1] == 'p' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing platform index" << std::endl;
++          goto fail;
++        }
++        options.platform_index = std::stoi(*argv, nullptr);
++      } else if (arg[1] == 's' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing sample count" << std::endl;
++          goto fail;
++        }
++        options.sample_count = std::stoi(*argv);
++      } else if (arg[1] == 'd' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing matrix size" << std::endl;
++          goto fail;
++        }
++        options.matrix_size = std::stoull(*argv);
++      } else if (arg[1] == 'r' && arg[2] == 0) {
++        options.show_result = 1;
++      } else {
++        std::cerr << "Unknown flag " << arg + 1 << std::endl;
++        goto fail;
++      }
++    }
++    argv++;
++  }
++  return true;
++fail:
++  print_help(name);
++  return false;
++}
++
++struct testing_buffer {
++  cl::Buffer buffer;
++  cl::Event last_write_event;
++};
++
++struct partition {
++  uint64_t y;
++  uint64_t nrows;
++  uint64_t capacity;
++  std::vector<testing_buffer> buf;
++};
++
++void run_iteration(cl::Kernel &kern,
++                   std::vector<cl::CommandQueue> &command_queues,
++                   std::vector<std::vector<testing_buffer>> &buffers,
++                   std::vector<partition> &partitions,
++                   std::vector<std::vector<cl::Event>> &events_by_device,
++                   size_t iteration) {
++  for (size_t i = 0; i < partitions.size(); ++i) {
++    std::vector<cl::Event> deps{};
++    if (partitions[i].buf[iteration].last_write_event.get() != nullptr)
++      deps.push_back(std::move(partitions[i].buf[iteration].last_write_event));
++
++    cl::Event ker_ev;
++    kern.setArg(0, buffers[0][i].buffer);
++    kern.setArg(1, buffers[1][i].buffer);
++    kern.setArg(2, partitions[i].buf[iteration].buffer);
++    kern.setArg(4, partitions[i].y);
++    command_queues[iteration * partitions.size() + i].enqueueNDRangeKernel(
++        kern, cl::NDRange(0, partitions[i].y),
++        cl::NDRange(options.matrix_size, partitions[i].nrows), cl::NullRange,
++        (deps.size() > 0 ? &deps : nullptr), &ker_ev);
++    events_by_device[i].push_back(ker_ev);
++    partitions[i].buf[iteration].last_write_event = std::move(ker_ev);
++  }
++
++  for (size_t step = 1; step < partitions.size(); step *= 2)
++    for (size_t i = 0; i + step < partitions.size(); i += step * 2) {
++      cl::Event copy_ev;
++      std::vector<cl::Event> deps{};
++      deps.clear();
++      deps.push_back(partitions[i + step].buf[iteration].last_write_event);
++      deps.push_back(partitions[i].buf[iteration].last_write_event);
++      command_queues[iteration * partitions.size() + i].enqueueCopyBufferRect(
++          partitions[i + step].buf[iteration].buffer,
++          partitions[i].buf[iteration].buffer, {0, 0, 0},   /* src_origin */
++          {0, partitions[i + step].y - partitions[i].y, 0}, /* dst_origin */
++          {options.matrix_size * sizeof(float), partitions[i + step].capacity,
++           1},                                 /* region */
++          options.matrix_size * sizeof(float), /* src_row_pitch */
++          0,                                   /* src_slice_pitch */
++          options.matrix_size * sizeof(float), /* dst_row_pitch */
++          0,                                   /* dst_slice_pitch */
++          &deps, &copy_ev);
++      partitions[i].buf[iteration].last_write_event = std::move(copy_ev);
++    }
++}
++
++std::vector<size_t> calc_capacity(const std::vector<size_t> &sizes) {
++  std::vector<size_t> capacities(sizes);
++  for (size_t step = 1; step < sizes.size(); step *= 2)
++    for (size_t i = 0; i + step < sizes.size(); i += step * 2)
++      capacities[i] += capacities[i + step];
++  return capacities;
++}
++
++bool measure_platform(cl::Platform &platform, int index) {
++  try {
++    std::cout << "Platform " << index << ":" << std::endl
++              << "\tname: " << platform.getInfo<CL_PLATFORM_NAME>() << std::endl
++              << "\tversion: " << platform.getInfo<CL_PLATFORM_VERSION>()
++              << std::endl
++              << "\tvendor: " << platform.getInfo<CL_PLATFORM_VENDOR>()
++              << std::endl;
++
++    std::vector<cl::Device> devices;
++    platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
++    if (devices.empty()) {
++      std::cerr << "No devices in platform " << index << " !" << std::endl;
++      return false;
++    }
++
++    cl::Context ctx(devices);
++    std::vector<std::vector<testing_buffer>> buffers(2);
++
++    std::vector<cl::CommandQueue> command_queues(devices.size() *
++                                                 options.sample_count);
++    std::vector<std::vector<cl::Event>> events_by_device(devices.size());
++    for (size_t j = 0; j < options.sample_count; ++j) {
++      for (size_t i = 0; i < devices.size(); ++i) {
++        command_queues[j * devices.size() + i] = cl::CommandQueue(
++            ctx, devices[i],
++            cl::QueueProperties::Profiling | cl::QueueProperties::OutOfOrder);
++
++        if (!j) {
++          float pi = 3.14159;
++          buffers[0].push_back({cl::Buffer(ctx, CL_MEM_READ_ONLY,
++                                           sizeof(float) * options.matrix_size *
++                                               options.matrix_size,
++                                           nullptr),
++                                cl::Event()});
++          buffers[1].push_back({cl::Buffer(ctx, CL_MEM_READ_ONLY,
++                                           sizeof(float) * options.matrix_size *
++                                               options.matrix_size,
++                                           nullptr),
++                                cl::Event()});
++
++          events_by_device[i].reserve(options.sample_count);
++          command_queues[i].enqueueFillBuffer(
++              buffers[0][i].buffer, pi, 0,
++              sizeof(float) * options.matrix_size * options.matrix_size,
++              nullptr, nullptr);
++          command_queues[i].enqueueFillBuffer(
++              buffers[1][i].buffer, pi, 0,
++              sizeof(float) * options.matrix_size * options.matrix_size,
++              nullptr, nullptr);
++        }
++      }
++    }
++
++    cl::Program prog(
++        ctx,
++        STRINGIFY(
++            /*************************************************************************/
++            __kernel void partial_matrix_multiply(
++                __global const float *const a, __global const float *const b,
++                __global float *c, unsigned long dim, unsigned long start) {
++              size_t row = get_global_id(1);
++              size_t col = get_global_id(0);
++              size_t dst_row = row - start;
++
++              float tmp = 0.0f;
++              for (size_t i = 0; i < dim; ++i) {
++                tmp += a[row * dim + i] * b[i * dim + col];
++              }
++              c[dst_row * dim + col] = tmp;
++            }
++            /*************************************************************************/
++            ));
++
++    try {
++      prog.build(devices);
++    } catch (cl::Error &e) {
++      if (e.err() == CL_BUILD_PROGRAM_FAILURE) {
++        for (cl::Device dev : devices) {
++          // Check the build status
++          cl_build_status status =
++              prog.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(dev);
++          if (status != CL_BUILD_ERROR)
++            continue;
++
++          // Get the build log
++          std::string name = dev.getInfo<CL_DEVICE_NAME>();
++          std::string buildlog = prog.getBuildInfo<CL_PROGRAM_BUILD_LOG>(dev);
++          std::cerr << "Build log for " << name << ":" << std::endl
++                    << buildlog << std::endl;
++        }
++      } else {
++        throw e;
++      }
++    }
++    cl::Kernel kern(prog, "partial_matrix_multiply");
++    kern.setArg(3, options.matrix_size);
++
++    std::vector<partition> partitions;
++    if (options.matrix_size < devices.size())
++      std::cout << "Note: " << options.matrix_size
++                << "^2 matrix is too small, not all " << devices.size()
++                << " devices will be used" << std::endl;
++
++    size_t step = std::max(options.matrix_size / devices.size(), (size_t)1);
++    size_t overflow = options.matrix_size > devices.size()
++                          ? options.matrix_size % devices.size()
++                          : 0;
++
++    std::vector<size_t> offsets;
++    std::vector<size_t> sizes;
++    for (size_t i = 0, y = 0; y < options.matrix_size && i < devices.size();
++         ++i) {
++      size_t nrows = step + ((i < overflow) ? 1 : 0);
++      offsets.push_back(y);
++      sizes.push_back(nrows);
++      y += nrows;
++    }
++
++    std::vector<size_t> capacities = calc_capacity(sizes);
++
++    for (size_t i = 0; i < sizes.size(); ++i) {
++      std::vector<testing_buffer> v;
++      for (size_t j = 0; j < options.sample_count; ++j) {
++        cl::Buffer buf = cl::Buffer(
++            ctx, CL_MEM_READ_WRITE,
++            sizeof(float) * options.matrix_size * capacities[i], nullptr);
++        v.push_back({buf, cl::Event()});
++      }
++      partitions.push_back({offsets[i], sizes[i], capacities[i], v});
++    }
++
++    for (size_t iteration = 0; iteration < options.sample_count; ++iteration)
++      for (size_t step = 1; step < partitions.size(); step *= 2)
++        for (size_t i = 0; i + step < partitions.size(); i += step * 2) {
++          std::vector<cl::Memory> objs{};
++          objs.push_back(partitions[i + step].buf[iteration].buffer);
++          command_queues[iteration * partitions.size() + i]
++              .enqueueMigrateMemObjects(objs, 0);
++          command_queues[iteration * partitions.size() + i + step]
++              .enqueueMigrateMemObjects(objs, 0);
++        }
++
++    for (size_t i = 0; i < command_queues.size(); ++i) {
++      command_queues[i].finish();
++    }
++
++    // Print local measurements
++    std::vector<std::chrono::steady_clock::time_point> starts(
++        options.sample_count);
++    std::vector<double> times(options.sample_count);
++    for (int i = 0; i < options.sample_count; ++i) {
++      using namespace std::chrono;
++      starts[i] = steady_clock::now();
++      run_iteration(kern, command_queues, buffers, partitions, events_by_device,
++                    i);
++    }
++
++    for (int i = 0; i < options.sample_count; ++i) {
++      for (size_t j = 0; j < partitions.size(); ++j) {
++        command_queues[i * partitions.size() + j].finish();
++      }
++      using namespace std::chrono;
++      steady_clock::duration iter_duration = steady_clock::now() - starts[i];
++      times[i] =
++          duration_cast<duration<double, std::micro>>(iter_duration).count();
++    }
++
++    print_measurements("host-measured timing:", times, 2);
++
++    if (options.show_result) {
++      std::vector<float> result(options.matrix_size * options.matrix_size,
++                                -1.0f);
++      command_queues[0].enqueueReadBuffer(
++          partitions[0].buf[0].buffer, true, 0,
++          options.matrix_size * options.matrix_size * sizeof(float),
++          result.data());
++      std::cout << "Result: " << std::endl;
++      for (size_t i = 0; i < options.matrix_size; ++i) {
++        for (size_t j = 0; j < options.matrix_size; ++j) {
++          std::cout << result[i * options.matrix_size + j] << ",";
++        }
++        std::cout << std::endl;
++      }
++    }
++
++    // Print per-device info
++    std::vector<double> all_times;
++    for (size_t i = 0; i < devices.size(); ++i) {
++      std::cout << "\tDevice " << i << ":" << std::endl
++                << "\t\tname: " << devices[i].getInfo<CL_DEVICE_NAME>()
++                << std::endl
++                << "\t\tversion: " << devices[i].getInfo<CL_DEVICE_VERSION>()
++                << std::endl;
++
++      for (cl::CommandQueue &cq : command_queues)
++        cq.finish();
++      std::vector<double> device_times(options.sample_count);
++      for (int j = 0; j < events_by_device[i].size(); ++j) {
++        cl::Event &e = events_by_device[i][j];
++        if (e.get() == nullptr)
++          continue;
++        e.wait();
++        print_progress(j + 1, options.sample_count);
++        size_t ticks = e.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
++                       e.getProfilingInfo<CL_PROFILING_COMMAND_START>();
++        device_times[j] = double(ticks) / 1e3;
++        all_times.push_back(device_times[j]);
++      }
++
++      print_measurements("event timing:", device_times, 2);
++    }
++    std::cout << "\tOverall:" << std::endl;
++    print_measurements("event timing:", all_times, 2);
++
++  } catch (cl::Error &err) {
++    std::cerr << err.what() << " = " << err.err() << std::endl;
++    return false;
++  }
++  return true;
++}
++
++int main(int argc, char **argv) {
++  (void)argc;
++  if (!parse_args(argv))
++    return 1;
++
++  std::vector<cl::Platform> platforms;
++  if (cl::Platform::get(&platforms) != CL_SUCCESS) {
++    std::cerr << "Failed to enumerate OpenCL platforms!" << std::endl;
++    return 1;
++  }
++
++  if (platforms.size() == 0) {
++    std::cerr << "No OpenCL platforms found!" << std::endl;
++    return 1;
++  }
++
++  if (options.platform_index < 0) {
++    bool failed = true;
++    for (size_t i = 0; i < platforms.size(); ++i)
++      failed = measure_platform(platforms[i], i) && failed;
++    if (failed)
++      return 1;
++  } else if ((size_t)options.platform_index < platforms.size()) {
++    if (!measure_platform(platforms[options.platform_index],
++                          options.platform_index))
++      return 1;
++  } else {
++    std::cerr << platforms.size() << " platforms found, index "
++              << options.platform_index << " is out of range." << std::endl;
++    return 1;
++  }
++  return 0;
++}
+diff --git a/examples/measure_overhead/measure_migration_overhead.cc b/examples/measure_overhead/measure_migration_overhead.cc
+new file mode 100644
+index 00000000..ff39e78c
+--- /dev/null
++++ b/examples/measure_overhead/measure_migration_overhead.cc
+@@ -0,0 +1,330 @@
++/* Benchmark for measuring overhead of migrating a buffer between devices
++
++   Copyright (c) 2019 pocl developers
++
++   Permission is hereby granted, free of charge, to any person obtaining a copy
++   of this software and associated documentation files (the "Software"), to deal
++   in the Software without restriction, including without limitation the rights
++   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++   copies of the Software, and to permit persons to whom the Software is
++   furnished to do so, subject to the following conditions:
++
++   The above copyright notice and this permission notice shall be included in
++   all copies or substantial portions of the Software.
++
++   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++   THE SOFTWARE.
++*/
++
++#include "pocl_opencl.h"
++
++#define CL_HPP_ENABLE_EXCEPTIONS
++#define CL_HPP_MINIMUM_OPENCL_VERSION 120
++#define CL_HPP_TARGET_OPENCL_VERSION 120
++#include <CL/opencl.hpp>
++
++#include "common.hh"
++#include <algorithm>
++#include <chrono>
++#include <iomanip>
++#include <iostream>
++#include <random>
++#include <string>
++
++void print_help(const char *name) {
++  std::cerr << "Usage: " << name << " [-p platform_index] [-m mode] "
++            << "[-s sample_count] [-b buffer_size]" << std::endl
++            << "-p specifies which platform to use." << std::endl
++            << "-m specifies which mode is used. Available modes:" << std::endl
++            << "\trotate (default, rotates all buffers to the next device)"
++            << std::endl
++            << "\tshuffle (reassigns buffers randomly)" << std::endl
++            << "-s sets the number of samples measured." << std::endl
++            << "-b sets the size of the test buffer. "
++            << "This number is rounded up to the next multiple of "
++            << sizeof(int) << "." << std::endl;
++}
++
++void print_progress(int p, int total, int width = 80) {
++  std::string total_str = std::to_string(total);
++  std::string p_str = std::to_string(p);
++  int bar_width = width - total_str.size() * 2 - 4;
++
++  std::cerr << '\r';
++  if (bar_width > 1) {
++    int fill_width = bar_width * p / total;
++    std::cerr << "[";
++    for (int i = 0; i < bar_width; ++i) {
++      char c = ' ';
++      if (i < fill_width || p == total)
++        c = '=';
++      else if (i == fill_width)
++        c = '>';
++
++      std::cerr << c;
++    }
++    std::cerr << "] ";
++  }
++  std::cerr << std::setfill(' ') << std::setw(total_str.size()) << p_str << "/"
++            << total_str << std::flush;
++  if (p == total)
++    std::cerr << std::endl;
++}
++
++enum pattern_mode { MODE_ROTATE = 0, MODE_SHUFFLE };
++
++struct {
++  int platform_index = -1;
++  pattern_mode mode = MODE_SHUFFLE;
++  int sample_count = 1000;
++  int warmup_rounds = 10;
++  // This is the number of integers in the buffer, not bytes.
++  size_t buffer_size = 256;
++} options;
++
++bool parse_args(char **argv) {
++  const char *name = *argv++;
++  while (*argv) {
++    const char *arg = *argv;
++    if (arg[0] == '-') {
++      if (arg[1] == '-') {
++        if (!strcmp(arg + 2, "help"))
++          goto fail;
++        else {
++          std::cerr << "Unknown long flag " << arg + 2 << std::endl;
++          goto fail;
++        }
++      } else if (arg[1] == 'p' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing platform index" << std::endl;
++          goto fail;
++        }
++        options.platform_index = std::stoi(*argv, nullptr);
++      } else if (arg[1] == 'm' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing mode" << std::endl;
++          goto fail;
++        }
++
++        if (strcmp(*argv, "rotate") == 0)
++          options.mode = MODE_ROTATE;
++        else if (strcmp(*argv, "shuffle") == 0)
++          options.mode = MODE_SHUFFLE;
++        else {
++          std::cerr << "Unknown mode \"" << *argv << "\"" << std::endl;
++          goto fail;
++        }
++      } else if (arg[1] == 's' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing sample count" << std::endl;
++          goto fail;
++        }
++        options.sample_count = std::stoi(*argv);
++      } else if (arg[1] == 'b' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing buffer size" << std::endl;
++          goto fail;
++        }
++        options.buffer_size =
++            (std::stoull(*argv) + sizeof(int) - 1) / sizeof(int);
++      } else {
++        std::cerr << "Unknown flag " << arg + 1 << std::endl;
++        goto fail;
++      }
++    }
++    argv++;
++  }
++  return true;
++fail:
++  print_help(name);
++  return false;
++}
++
++struct testing_buffer {
++  cl::Buffer buffer;
++  cl::Event last_write_event;
++};
++
++void run_iteration(cl::Kernel &kern,
++                   std::vector<cl::CommandQueue> &command_queues,
++                   testing_buffer &buf,
++                   std::vector<std::vector<double>> &timings_by_device) {
++  std::vector<size_t> cq_idx;
++  for (size_t i = 0; i < command_queues.size(); ++i)
++    cq_idx.push_back(i);
++
++  // Update buffer order
++  static std::mt19937 rng;
++  switch (options.mode) {
++  case MODE_ROTATE:
++    // One iteration rotates through all devices in sequence already
++    break;
++  case MODE_SHUFFLE:
++    std::shuffle(cq_idx.begin(), cq_idx.end(), rng);
++    break;
++  }
++
++  for (size_t i : cq_idx) {
++    cl::CommandQueue &cq = command_queues[i];
++    std::vector<double> &timings = timings_by_device[i];
++
++    if (buf.last_write_event.get() != nullptr)
++      buf.last_write_event.wait();
++    cq.finish(); // just in case
++
++    auto start = std::chrono::steady_clock::now();
++    cq.enqueueMigrateMemObjects({buf.buffer}, 0);
++    cq.finish();
++    auto end = std::chrono::steady_clock::now();
++    timings.push_back(
++        std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(
++            end - start)
++            .count());
++
++    // uint32_t pre_kernel;
++    // cq.enqueueReadBuffer(buf.buffer, true, 0, sizeof(uint32_t), &pre_kernel);
++
++    kern.setArg(0, buf.buffer);
++    cq.enqueueNDRangeKernel(kern, cl::NullRange, cl::NDRange(1), cl::NullRange,
++                            nullptr, &buf.last_write_event);
++
++    // uint32_t post_kernel;
++    // std::vector<cl::Event> kern_event = {buf.last_write_event};
++    // cq.enqueueReadBuffer(buf.buffer, true, 0, sizeof(uint32_t), &post_kernel,
++    //                      &kern_event);
++    // std::cout << "PRE " << pre_kernel << " -> POST " << post_kernel
++    //           << std::endl;
++  }
++}
++
++bool measure_platform(cl::Platform &platform, int index) {
++  try {
++    std::cout << "Platform " << index << ":" << std::endl
++              << "\tname: " << platform.getInfo<CL_PLATFORM_NAME>() << std::endl
++              << "\tversion: " << platform.getInfo<CL_PLATFORM_VERSION>()
++              << std::endl
++              << "\tvendor: " << platform.getInfo<CL_PLATFORM_VENDOR>()
++              << std::endl;
++
++    std::vector<cl::Device> devices;
++    platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
++    if (devices.size() <= 1) {
++      std::cout << "\tOnly one device detected, cannot test buffer "
++                   "migration with this setup."
++                << std::endl;
++      return false;
++    }
++    cl::Context ctx(devices);
++
++    cl::Program prog(ctx, "__kernel void acc_kernel(__global uint* d)"
++                          "{ d[get_global_id(0)]++; }");
++    if (prog.build(devices) != CL_SUCCESS) {
++      for (cl::Device &d : devices) {
++        cl_build_status status = prog.getBuildInfo<CL_PROGRAM_BUILD_STATUS>(d);
++        if (status != CL_BUILD_ERROR)
++          continue;
++
++        std::string dev_name = d.getInfo<CL_DEVICE_NAME>();
++        std::string log = prog.getBuildInfo<CL_PROGRAM_BUILD_LOG>(d);
++        std::cerr << "Build error on " << dev_name << ": " << log << std::endl;
++      }
++      return false;
++    }
++    cl::Kernel kern(prog, "acc_kernel");
++
++    std::vector<cl::CommandQueue> command_queues(devices.size());
++    std::vector<uint32_t> init_val(options.buffer_size, 0);
++    testing_buffer buffer = {
++        cl::Buffer(ctx, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
++                   sizeof(uint32_t) * options.buffer_size, init_val.data())};
++    std::vector<std::vector<double>> timings_by_device(devices.size());
++    for (size_t i = 0; i < devices.size(); ++i) {
++      command_queues[i] = cl::CommandQueue(ctx, devices[i],
++                                           cl::QueueProperties::Profiling |
++                                               cl::QueueProperties::OutOfOrder);
++      timings_by_device[i].reserve(options.sample_count);
++    }
++    command_queues[command_queues.size() - 1].enqueueMigrateMemObjects(
++        {buffer.buffer}, 0);
++
++    // warm up
++    for (int i = 0; i < options.warmup_rounds; ++i)
++      run_iteration(kern, command_queues, buffer, timings_by_device);
++    for (int i = 0; i < timings_by_device.size(); ++i)
++      timings_by_device[i].clear();
++
++    for (int i = 0; i < options.sample_count; ++i)
++      run_iteration(kern, command_queues, buffer, timings_by_device);
++
++    // Print per-device info
++    std::vector<double> all_times;
++    for (size_t i = 0; i < devices.size(); ++i) {
++      std::cout << "\tDevice " << i << ":" << std::endl
++                << "\t\tname: " << devices[i].getInfo<CL_DEVICE_NAME>()
++                << std::endl
++                << "\t\tversion: " << devices[i].getInfo<CL_DEVICE_VERSION>()
++                << std::endl;
++
++      std::vector<double> device_times(options.sample_count);
++      for (int j = 0; j < options.sample_count; ++j) {
++        double t = timings_by_device[i][j];
++        device_times[j] = t;
++        all_times.push_back(t);
++      }
++
++      print_measurements("event timing:", device_times, 2);
++    }
++    std::cout << "\tOverall:" << std::endl;
++    print_measurements("event timing:", all_times, 2);
++
++    for (cl::CommandQueue &cq : command_queues)
++      cq.finish();
++  } catch (cl::Error &err) {
++    std::cerr << err.what() << std::endl;
++    return false;
++  }
++  return true;
++}
++
++int main(int argc, char **argv) {
++  (void)argc;
++  if (!parse_args(argv))
++    return 1;
++
++  std::vector<cl::Platform> platforms;
++  if (cl::Platform::get(&platforms) != CL_SUCCESS) {
++    std::cerr << "Failed to enumerate OpenCL platforms!" << std::endl;
++    return 1;
++  }
++
++  if (platforms.size() == 0) {
++    std::cerr << "No OpenCL platforms found!" << std::endl;
++    return 1;
++  }
++
++  if (options.platform_index < 0) {
++    bool failed = true;
++    for (size_t i = 0; i < platforms.size(); ++i)
++      failed = measure_platform(platforms[i], i) && failed;
++    if (failed)
++      return 1;
++  } else if ((size_t)options.platform_index < platforms.size()) {
++    if (!measure_platform(platforms[options.platform_index],
++                          options.platform_index))
++      return 1;
++  } else {
++    std::cerr << platforms.size() << " platforms found, index "
++              << options.platform_index << " is out of range." << std::endl;
++    return 1;
++  }
++  return 0;
++}
+diff --git a/examples/measure_overhead/measure_round_trip_overhead.cc b/examples/measure_overhead/measure_round_trip_overhead.cc
+new file mode 100644
+index 00000000..8a496f9a
+--- /dev/null
++++ b/examples/measure_overhead/measure_round_trip_overhead.cc
+@@ -0,0 +1,260 @@
++/* Benchmark for measuring the base overhead of ndrangekernel commands
++
++   Copyright (c) 2019 pocl developers
++
++   Permission is hereby granted, free of charge, to any person obtaining a copy
++   of this software and associated documentation files (the "Software"), to deal
++   in the Software without restriction, including without limitation the rights
++   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++   copies of the Software, and to permit persons to whom the Software is
++   furnished to do so, subject to the following conditions:
++
++   The above copyright notice and this permission notice shall be included in
++   all copies or substantial portions of the Software.
++
++   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
++   THE SOFTWARE.
++*/
++
++#include "pocl_opencl.h"
++
++#define CL_HPP_ENABLE_EXCEPTIONS
++#define CL_HPP_MINIMUM_OPENCL_VERSION 110
++#define CL_HPP_TARGET_OPENCL_VERSION 110
++#include <CL/opencl.hpp>
++
++#include "common.hh"
++#include <algorithm>
++#include <chrono>
++#include <iostream>
++#include <string>
++
++void print_help(const char *name) {
++  std::cerr << "Usage: " << name << " [-p platform_index] [-d device_index] "
++            << "[-s sample_count]" << std::endl
++            << "-p specifies which platform to use." << std::endl
++            << "-d specifies which device to use." << std::endl
++            << "-s sets the number of samples measured." << std::endl;
++}
++
++struct {
++  int platform_index = -1;
++  int device_index = -1;
++  int sample_count = 1000;
++} options;
++
++bool parse_args(char **argv) {
++  const char *name = *argv++;
++  while (*argv) {
++    const char *arg = *argv;
++    if (arg[0] == '-') {
++      if (arg[1] == '-') {
++        if (!strcmp(arg + 2, "help"))
++          goto fail;
++        else {
++          std::cerr << "Unknown long flag " << arg + 2 << std::endl;
++          goto fail;
++        }
++      } else if (arg[1] == 'p' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing platform index" << std::endl;
++          goto fail;
++        }
++        options.platform_index = std::stoi(*argv, nullptr);
++      } else if (arg[1] == 'd' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing device index" << std::endl;
++          goto fail;
++        }
++        options.device_index = std::stoi(*argv);
++      } else if (arg[1] == 's' && arg[2] == 0) {
++        argv++;
++        if (!*argv) {
++          std::cerr << "Missing sample count" << std::endl;
++          goto fail;
++        }
++        options.sample_count = std::stoi(*argv);
++      } else {
++        std::cerr << "Unknown flag " << arg + 1 << std::endl;
++        goto fail;
++      }
++    }
++    argv++;
++  }
++  if (options.device_index >= 0 && options.platform_index < 0)
++    options.platform_index = 0;
++  return true;
++fail:
++  print_help(name);
++  return false;
++}
++
++bool measure_round_trip_latency(cl::CommandQueue &cq, cl::Kernel &k) {
++  if (options.sample_count <= 0)
++    return true;
++
++  using namespace std::chrono;
++
++  struct measurement {
++    cl::Event e;
++    steady_clock::duration local_duration;
++  };
++  std::vector<measurement> runs(options.sample_count);
++
++  // Collect duration data.
++  for (int i = 0; i < options.sample_count; ++i) {
++    auto start = steady_clock::now();
++
++    cl_int err = cq.enqueueNDRangeKernel(k, cl::NullRange, cl::NDRange(1),
++                                         cl::NullRange, nullptr, &runs[i].e);
++    cq.finish();
++
++    auto end = steady_clock::now();
++
++    if (err) {
++      std::cerr << "\t\tKernel enqueue failed!" << std::endl;
++      return false;
++    }
++    runs[i].local_duration = end - start;
++  }
++
++  // Print local measurements
++  std::vector<double> times(options.sample_count);
++  for (int i = 0; i < options.sample_count; ++i)
++    times[i] =
++        duration_cast<duration<double, std::micro>>(runs[i].local_duration)
++            .count();
++  print_measurements("host-measured timing:", times, 2);
++
++  // Print measurements from event profiling
++  for (int i = 0; i < options.sample_count; ++i) {
++    size_t ticks = runs[i].e.getProfilingInfo<CL_PROFILING_COMMAND_END>() -
++                   runs[i].e.getProfilingInfo<CL_PROFILING_COMMAND_START>();
++    times[i] = double(ticks) / 1e3;
++  }
++  print_measurements("device-measured timing:", times, 2);
++
++  return true;
++}
++
++#define TESTMAGIC 31337
++bool measure_device(cl::Device &device, int index) {
++  try {
++    std::cout << "\tDevice " << index << ":" << std::endl
++              << "\t\tname: " << device.getInfo<CL_DEVICE_NAME>() << std::endl
++              << "\t\tversion: " << device.getInfo<CL_DEVICE_VERSION>()
++              << std::endl;
++    cl::Context ctx(device);
++    cl::CommandQueue cq(ctx, device,
++                        cl::QueueProperties::Profiling |
++                            cl::QueueProperties::OutOfOrder);
++
++    int zero = 0;
++    cl::Buffer output(ctx, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
++                      sizeof(int), &zero);
++
++    cl::Program prog(ctx, "__kernel void empty_kernel(int x, __global int "
++                          "*arr) { arr[get_global_id(0)] = x; }");
++    try {
++      prog.build();
++    } catch (cl::Error &err) {
++      std::string log = prog.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device);
++      std::cerr << "\t\tFailed to build kernel: " << log << std::endl;
++      return false;
++    }
++    cl::Kernel kern(prog, "empty_kernel");
++    kern.setArg(0, TESTMAGIC);
++    kern.setArg(1, output);
++    cl_int err = cq.enqueueNDRangeKernel(kern, cl::NullRange, cl::NDRange(1),
++                                         cl::NullRange, nullptr, nullptr);
++    cq.finish();
++
++    measure_round_trip_latency(cq, kern);
++    int result = 0;
++    cq.enqueueReadBuffer(output, true, 0, sizeof(int), &result);
++    if (result != TESTMAGIC) {
++      std::cerr << "buffer contained " << result << "instead of " << TESTMAGIC
++                << ". you had one job" << std::endl;
++      return false;
++    }
++
++  } catch (cl::Error &err) {
++    std::cerr << err.what() << std::endl;
++    return false;
++  }
++  return true;
++}
++
++bool measure_platform(cl::Platform &platform, int index) {
++  try {
++    std::cout << "Platform " << index << ":" << std::endl
++              << "\tname: " << platform.getInfo<CL_PLATFORM_NAME>() << std::endl
++              << "\tversion: " << platform.getInfo<CL_PLATFORM_VERSION>()
++              << std::endl
++              << "\tvendor: " << platform.getInfo<CL_PLATFORM_VENDOR>()
++              << std::endl;
++
++    std::vector<cl::Device> devices;
++    platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
++
++    if (options.device_index < 0) {
++      bool ret = true;
++      for (size_t i = 0; i < devices.size(); ++i)
++        ret = measure_device(devices[i], i) && ret;
++      return ret;
++    } else if ((size_t)options.device_index < devices.size()) {
++      return measure_device(devices[options.device_index],
++                            options.device_index);
++    } else {
++      std::cerr << "\t" << devices.size() << " devices found, index "
++                << options.device_index << " is out of range." << std::endl;
++      return false;
++    }
++  } catch (cl::Error &err) {
++    std::cerr << err.what() << std::endl;
++    return false;
++  }
++  return true;
++}
++
++int main(int argc, char **argv) {
++  (void)argc;
++  if (!parse_args(argv))
++    return 1;
++
++  std::vector<cl::Platform> platforms;
++  if (cl::Platform::get(&platforms) != CL_SUCCESS) {
++    std::cerr << "Failed to enumerate OpenCL platforms!" << std::endl;
++    return 1;
++  }
++
++  if (platforms.size() == 0) {
++    std::cerr << "No OpenCL platforms found!" << std::endl;
++    return 1;
++  }
++
++  if (options.platform_index < 0) {
++    bool failed = true;
++    for (size_t i = 0; i < platforms.size(); ++i)
++      failed = measure_platform(platforms[i], i) && failed;
++    if (failed)
++      return 1;
++  } else if ((size_t)options.platform_index < platforms.size()) {
++    if (!measure_platform(platforms[options.platform_index],
++                          options.platform_index))
++      return 1;
++  } else {
++    std::cerr << platforms.size() << " platforms found, index "
++              << options.platform_index << " is out of range." << std::endl;
++    return 1;
++  }
++  std::cout << "All good" << std::endl;
++  return 0;
++}
