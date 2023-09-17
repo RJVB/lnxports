@@ -48,9 +48,13 @@ set llvm_suffix -mp-${llvm_version}
 set llvm_short [lindex [split ${llvm_version} '.'] 0]
 
 if {${subport} eq "llvm-${llvm_version}"} {
+    revision [expr ${revision} +1]
     destroot {
         ln -s /usr/lib/llvm-${llvm_short} ${destroot}${prefix}/libexec/llvm-${llvm_version}
-        foreach bin [glob -nocomplain /usr/lib/llvm-${llvm_short}/bin/llvm*] {
+        foreach bin [glob -nocomplain /usr/lib/llvm-${llvm_short}/bin/llvm* \
+                /usr/lib/llvm-${llvm_short}/bin/opt \
+                /usr/lib/llvm-${llvm_short}/bin/llc \
+                /usr/lib/llvm-${llvm_short}/bin/lli] {
             set bname [file tail ${bin}]
             set bin_filename ${destroot}${prefix}/bin/${bname}${llvm_suffix}
 

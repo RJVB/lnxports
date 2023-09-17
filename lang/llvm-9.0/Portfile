@@ -45,6 +45,7 @@ set llvm_suffix -mp-${llvm_version}
 set llvm_short [lindex [split ${llvm_version} '.'] 0]
 
 if {${subport} eq "llvm-${llvm_version}"} {
+    revision        [expr ${revision} +1]
     master_sites    https://releases.llvm.org/9.0.0
     distname	      clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-14.04
     use_xz          yes
@@ -59,7 +60,11 @@ if {${subport} eq "llvm-${llvm_version}"} {
 	       system -W ${destroot}${prefix}/libexec/ "tar -xf ${distpath}/${distname}${extract.suffix}"
 	       file rename ${destroot}${prefix}/libexec/${distname} ${destroot}${prefix}/libexec/llvm-${llvm_version}
         }
-        foreach destbin [glob ${destroot}${prefix}/libexec/llvm-${llvm_version}/bin/llvm*] {
+        set dbindir ${destroot}${prefix}/libexec/llvm-${llvm_version}/bin
+        foreach destbin [glob ${dbindir}/llvm* \
+                ${dbindir}/opt \
+                ${dbindir}/llc \
+                ${dbindir}/lli] {
             set bin [string map "${destroot}/ /" ${destbin}]
             set bname [file tail ${bin}]
             set bin_filename ${destroot}${prefix}/bin/${bname}${llvm_suffix}
