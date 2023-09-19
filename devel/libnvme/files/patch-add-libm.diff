@@ -1,0 +1,22 @@
+diff --git a/meson.build b/meson.build
+index bdada646..0a85c42c 100644
+--- a/meson.build
++++ b/meson.build
+@@ -77,6 +77,8 @@ else
+ endif
+ conf.set('CONFIG_LIBHUGETLBFS', libhugetlbfs_dep.found(), description: 'Is libhugetlbfs available?')
+ 
++m_dep = cc.find_library('m', required : true)
++
+ # Set the nvme-cli version
+ conf.set('NVME_VERSION', '"' + meson.project_version() + '"')
+ 
+@@ -285,7 +287,7 @@ executable(
+   'nvme',
+   sources,
+   dependencies: [ libnvme_dep, libnvme_mi_dep, json_c_dep,
+-                  libhugetlbfs_dep ],
++                  libhugetlbfs_dep, m_dep],
+   link_args: '-ldl',
+   include_directories: incdir,
+   install: true,

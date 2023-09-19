@@ -1,0 +1,70 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       github 1.0
+PortGroup       LTO 1.0
+PortGroup       meson 1.0
+PortGroup       openssl 1.0
+
+name            libnvme
+subport nvme    {}
+
+if {${subport} eq "libnvme"} {
+    github.setup    linux-nvme libnvme 18b3316c502f229a5339d2c283510ec8008ec3b9
+    version         1.5.50
+    distname        ${name}-git
+
+    fetch.type      git
+
+    categories      devel
+    platforms       linux
+    license         LGPL2
+    maintainers     gmail.com:rjvbertin openmaintainer
+    description     C Library for NVM Express on Linux 
+    long_description \
+                    This is the libnvme development C library. libnvme provides type definitions for NVMe specification structures, enumerations, and bit fields, helper functions to construct, dispatch, and decode commands and payloads, and utilities to connect, scan, and manage nvme devices on a Linux system.
+
+    depends_lib-append\
+                    port:json-c \
+                    port:dbus
+
+    configure.args-append \
+                    -Dlibdbus=enabled \
+                    -Dpython=disabled
+
+    meson.save_configure_cmd "install log"
+} else {
+    github.setup    linux-nvme nvme-cli 9e532bbc0952b6689e0db4c6cce90be9b3f6d0d2
+    name            nvme
+    version         2.5.50
+    distname        ${name}-git
+
+    fetch.type      git
+
+    categories      sysutils
+    platforms       linux
+    license         LGPL2
+    maintainers     gmail.com:rjvbertin openmaintainer
+    description     NVMe management command line interface.
+    long_description \
+                    NVM-Express user space tooling for Linux.
+
+    depends_lib-append\
+                    port:json-c \
+                    port:systemd \
+                    port:libnvme
+
+    # way to go meson...
+    patchfiles-append \
+                    patch-add-libm.diff
+
+    configure.args-append \
+                    -Ddocs=man \
+                    -Dsystemctl=${prefix}/bin/systemctl
+
+    meson.save_configure_cmd "install log"
+
+    post-destroot {
+        file delete -force ${destroot}${prefix}/lib/dracut
+    }
+}
