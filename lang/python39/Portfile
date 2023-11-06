@@ -25,6 +25,8 @@ long_description    Python is an interpreted, interactive, object-oriented \
 homepage            https://www.python.org/
 master_sites        ${homepage}ftp/python/${version}/
 
+platforms           linux darwin
+
 distname            Python-${version}
 use_xz              yes
 checksums           md5 765576c3af57deb046819ecd57804bbb \
@@ -61,13 +63,14 @@ depends_run         port:python_select \
 
 # blacklist llvm-gcc-4.2 compiler known to produce bad code
 compiler.blacklist-append *llvm-gcc-4.2
-# sadly...
-# conflicts_build     ${subport} py39-setuptools
-configure.cppflags-delete -I${prefix}/include
+if {${os.platform} ne "darwin"} {
+    # to prevent `conflicts_build     ${subport} py39-setuptools` :
+    configure.cppflags-delete -I${prefix}/include
+}
 
 # ensurepip arg may be removed later, now conflicts with pip and setuptools
 # packages
-configure.args      --enable-shared \
+configure.args      [expr {${os.platform} eq "darwin" ? "--enable-framework=${frameworks_dir}" : "--enable-shared"}] \
                     --enable-ipv6 \
                     --enable-loadable-sqlite-extensions \
                     --with-computed-gotos \
@@ -86,6 +89,7 @@ use_parallel_build  yes
 
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|g" \
+      ${worksrcpath}/setup.py \
       ${worksrcpath}/Lib/cgi.py \
       ${worksrcpath}/Lib/ctypes/macholib/dyld.py
 
@@ -113,9 +117,10 @@ select.entries      [list python python-$pythonNoDot $pythonNoDot] \
 
 set framewpath ${frameworks_dir}/Python.framework
 set framewdir  ${framewpath}/Versions/${branch}
-set confdir config-${branch}-x86_64-linux-gnu
 
-platform darwin {
+if {${os.platform} eq "darwin"} {
+    set confdir config-${branch}-darwin
+
     post-configure {
         # poll() misbehaves on 10.8 and older
         # See https://trac.macports.org/ticket/18376
@@ -125,6 +130,8 @@ platform darwin {
             file mtime ${worksrcpath}/pyconfig.h $oldmtime
         }
     }
+} else {
+    set confdir config-${branch}-x86_64-linux-gnu
 }
 
 post-destroot {
@@ -191,6 +198,10 @@ post-destroot {
         foreach b {lib/libpython3.so lib/pkgconfig/python3.pc lib/pkgconfig/python3-embed.pc share/man/man1/python3.1} {
             file delete ${destroot}${prefix}/${b}
         }
+
+        reinplace "s|python3.9.1\$|python3.9.1.gz|g" \
+           ${destroot}${prefix}/etc/select/python/python39 \
+           ${destroot}${prefix}/etc/select/python3/python39
     }
 }
 
