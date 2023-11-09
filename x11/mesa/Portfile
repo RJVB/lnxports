@@ -15,7 +15,7 @@ platform darwin {
 
 name                mesa
 epoch               1
-version             21.0.1 ; revision 5
+version             21.0.1 ; revision 6
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -45,7 +45,9 @@ platform linux {
     }
 }
 
-depends_build       port:pkgconfig
+depends_build       port:pkgconfig \
+                    port:python39 \
+                    port:py39-mako
 platform darwin {
     depends_build-append \
                     port:flex \
@@ -79,9 +81,12 @@ patchfiles-append   patch-meson.diff \
                     patch-verbose-loader_open_device.diff
 
 if {[string match *meson* ${configure.cmd}]} {
+    post-patch {
+        reinplace "s|'python3'|'python3.9'|g" \
+                    ${worksrcpath}/meson.build
+    }
     platform darwin {
         patchfiles-append \
-                    patch-meson.diff \
                     patch-autoconf-c11.diff
         depends_build   port:cctools
 
