@@ -46,7 +46,8 @@ depends_lib         port:flac \
 
 depends_run-append  port:generaluser-soundfont
 depends_build-append \
-                    port:gettext-dev
+                    port:gettext-dev \
+                    port:ncurses-dev
 
 # https://trac.macports.org/ticket/36962
 platform darwin 8 {

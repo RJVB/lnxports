@@ -45,6 +45,7 @@ patchfiles          patch-setup.py.diff \
                     omit-local-site-packages.patch \
                     patch-xcode4bug.diff
 
+depends_build       port:ncurses-dev
 depends_lib         port:zlib path:lib/libssl.dylib:openssl \
                     port:sqlite3 port:ncurses \
                     port:bzip2 port:libedit port:gettext \

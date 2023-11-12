@@ -54,6 +54,8 @@ configure.args-append   --without-cvs \
 depends_lib             port:expat \
                         port:libiconv \
                         port:ncurses
+				
+depends_build-append    port:ncurses-dev
 
 test.run                yes
 test.target             check

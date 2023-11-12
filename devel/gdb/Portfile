@@ -55,6 +55,8 @@ depends_lib-append \
                 port:gettext \
                 port:zlib
 if {${os.platform} ne "darwin"} {
+    depends_build-append \
+                port:ncurses-dev
     configure.env-append \
                 LIBS="-L${prefix}/lib -lintl"
     build.env-append \

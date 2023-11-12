@@ -27,7 +27,8 @@ conflicts                   freeling
 patchfiles                  patch-hunspell.cxx.diff
 
 depends_lib                 port:gettext port:ncurses
-depends_build               port:gettext-dev
+depends_build               port:gettext-dev \
+                            port:ncurses-dev
 # port:readline
 
 configure.env-append        LIBS="-L${prefix}/lib -lintl"

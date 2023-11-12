@@ -36,7 +36,8 @@ depends_build               port:gettext \
                             port:pkgconfig \
                             port:python27
 platform linux {
-    depends_build-append    port:gettext-dev
+    depends_build-append    port:gettext-dev \
+                            port:ncurses-dev
     configure.env-append    LIBS=-lintl
 }
 

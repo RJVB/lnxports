@@ -59,6 +59,7 @@ use_parallel_build  yes
 # the configure script runs a program
 set merger_must_run_binaries yes
 
+depends_build   port:ncurses-dev
 depends_lib     port:ncurses
 
 # make certain that libreadline pulls in the curses support we request

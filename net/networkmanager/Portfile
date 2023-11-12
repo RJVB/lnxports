@@ -47,6 +47,7 @@ depends_lib-append  port:gettext \
 
 depends_build-append \
                     port:gettext-dev \
+                    port:ncurses-dev \
                     port:pkgconfig
 
 configure.args      --disable-ovs \
