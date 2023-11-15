@@ -2,6 +2,7 @@ PortSystem 1.0
 PortGroup       clang_dependency 1.0
 PortGroup       LTO 1.0
 PortGroup       devport 1.0
+PortGroup       save_configure_cmd 1.0
 
 name            ncurses
 categories      devel
@@ -26,7 +27,7 @@ if {${os.platform} eq "darwin" && ${os.major} < 11 && ${cxx_stdlib} eq "libc++"}
 
 # keep the ncurses5 checks in for easier syncing between the Linux and Mac versions of this port
 if {${subport} ne "${name}5"} {
-    version     6.4
+    version     6.4 ; revision 1
     checksums   rmd160 a8b6ef8fe778c87ffdd3e0f3199c156c47b8dc39 \
                 sha256 6931283d9ac87c5073f30b6290c4c75f21632bb4fc3603ac8100812bed248159
 
@@ -61,6 +62,7 @@ if {${os.platform} ne "darwin"} {
     configure.ldflags-delete \
                 -L${prefix}/lib
     configure.args-append \
+                --includedir=${prefix}/include/ncursesw \
                 --enable-rpath
 }
 
@@ -82,6 +84,8 @@ if {${os.platform} eq "darwin"} {
                 CXXLIBS=-stdlib=${configure.cxx_stdlib}
     }
 }
+
+configure.save_configure_cmd "install log"
 
 post-configure {
     # check that this doesn't start breaking anything with new versions
@@ -129,6 +133,10 @@ post-destroot {
         if {"${archflags}" ne ""} {
             reinplace "s|${archflags}||" ${destroot}${prefix}/bin/ncurses6-config
         }
+        # strip flags set by the LTO PG from the config utility:
+        reinplace "s|${lto_flags}||g" ${destroot}${prefix}/bin/ncurses6-config
+        reinplace "s|${LTO.cpuflags}||g" ${destroot}${prefix}/bin/ncurses6-config
+
         if {${os.platform} ne "darwin"} {
             ####################
             register_devport_standard_content
