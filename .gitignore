@@ -19,3 +19,5 @@ enable_latest
 _crud_
 graphics/fontconfig/files/ultimate
 .*.swp
+.git.bak
+.git.new
