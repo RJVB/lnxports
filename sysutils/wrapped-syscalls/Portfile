@@ -3,10 +3,11 @@
 PortSystem          1.0
 PortGroup           github 1.0
 set LTO.allow_ThinLTO no
+set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
 
-github.setup        RJVB wrapped-syscalls 63822c57dc74faa7d693dc7166b9738b258d8373
-version             1.0.0.4
+github.setup        RJVB wrapped-syscalls 61ca6a602670838d7c30a55673afd32d7642d407
+version             1.0.0.5
 fetch.type          git
 distname            wrapped-syscalls-git
 
@@ -27,7 +28,7 @@ depends_run-append  port:optlibs
 build.target
 build.post_args-append \
     "CC=${configure.cc}" \
-    "CFLAGS=\"${configure.cflags} ${configure.ldflags}\""
+    "CFLAGS=\"${configure.cflags} ${LTO.cpuflags} ${configure.ldflags}\""
 pre-build {
 	file delete -force ${worksrcpath}/libwrapped_syscalls.so
 }
