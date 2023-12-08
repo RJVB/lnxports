@@ -1,11 +1,15 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+
+set LTO.allow_ThinLTO no
 PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
 
 set basename        alsa
 name                ${basename}-lib
-version             1.2.9
+version             1.2.10
+set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          audio
 license             LGPL-2.1
 maintainers         gmail.com:rjvbertin
@@ -16,7 +20,7 @@ long_description    The Advanced Linux Sound Architecture (ALSA) provides audio 
                     functionality to the Linux operating system. ALSA has the following significant features:\n\
                     Efficient support for all types of audio interfaces, from consumer sound cards to professional \
                     multichannel audio interfaces.\n\
-                    Fully modularized sound drivers.\n\
+                    Fully modularised sound drivers.\n\
                     SMP and thread-safe design.\n\
                     User space library (alsa-lib) to simplify application programming and provide higher level functionality.
 homepage            https://alsa-project.org/
@@ -28,13 +32,16 @@ subport "${basename}-plugins" {}
 subport "${basename}-tools" {}
 subport "${basename}-utils" {}
 
+configure.save_configure_cmd "install log"
+
 switch ${subport} {
     alsa-lib {
         description     alsa-lib contains the user space library that developers compile ALSA applications against.
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/lib/
-        checksums       rmd160  da5512ed0361910170ca96f6cb5c8a39887db9df \
-                        sha256  dc9c643fdc4ccfd0572cc685858dd41e08afb583f30460b317e4188275f615b2
+        checksums       rmd160  1418f9df7f10ae102b97c2489d9dcf46fd8267cb \
+                        sha256  c86a45a846331b1b0aa6e6be100be2a7aef92efd405cf6bac7eef8174baa920e
+#                         size    1107007
 
         configure.args-append \
                         --disable-dependency-tracking \
@@ -45,17 +52,23 @@ switch ${subport} {
         configure.ldflags-delete -L${prefix}/lib
         post-destroot {
             file rename ${destroot}${prefix}/share/alsa/alsa.conf ${destroot}${prefix}/share/alsa/alsa.conf.stock
+            reinplace "s|/usr/etc/alsa|${prefix}/etc/alsa|g" ${destroot}${prefix}/share/alsa/alsa.conf.stock
+            reinplace "s|  ALSA library configuration file|  ALSA library v${branch}.x configuration file|g" ${destroot}${prefix}/share/alsa/alsa.conf.stock
         }
         post-activate {
             if {![file exists ${prefix}/share/alsa/alsa.conf]} {
                 xinstall -m 644 ${prefix}/share/alsa/alsa.conf.stock ${prefix}/share/alsa/alsa.conf
+            } elseif {[catch {exec grep -F v${branch}.x ${prefix}/share/alsa/alsa.conf}]} {
+                ui_warn "You may need to upgrade your ${prefix}/share/alsa/alsa.conf file"
+                notes-append "Please compare ${prefix}/share/alsa/alsa.conf with the .stock configuration \
+                        file in the same directory; functionality may not be complete with an old configuration!"
             }
         }
         test.run        yes
         test.target     check
     }
     alsa-plugins {
-        version         1.2.7.1
+        version         1.2.7.1 ; revision 1
         description     alsa-plugins contains plugins for various ALSA needs (e.g. Jack).
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/plugins/
