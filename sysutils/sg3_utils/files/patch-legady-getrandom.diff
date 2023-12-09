@@ -1,0 +1,25 @@
+diff --git a/src/sg_dd.c b/src/sg_dd.c
+index 4998bee3..08b8e713 100644
+--- a/src/sg_dd.c
++++ b/src/sg_dd.c
+@@ -68,7 +68,20 @@
+ #endif
+ 
+ #ifdef HAVE_GETRANDOM
++#ifdef HAVE_SYS_RANDOM_H
+ #include <sys/random.h>         /* for getrandom() system call */
++#else
++// Assume libc < 2.25 that lacks getrandom() so implement our own wrapper to the syscall:
++#include <linux/random.h>         /* for getrandom() system call */
++#include <sys/syscall.h>
++    /* Write LENGTH bytes of randomness starting at BUFFER.  Return 0 on
++       success and -1 on failure.  */
++    ssize_t
++    getrandom (void *buffer, size_t length, unsigned int flags)
++    {
++      return syscall(getrandom, buffer, length, flags);
++    }
++#endif
+ #endif
+ #include "sg_lib.h"
+ #include "sg_cmds_basic.h"

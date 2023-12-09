@@ -1,0 +1,59 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+
+github.setup        doug-gilbert sg3_utils 36cb179bf90f48c11353df1c0c6a95730e9bb7ef
+fetch.type          git
+version             1.48.43
+worksrcdir          ${name}-git
+distname            ${name}-git
+
+categories          sysutils
+platforms           linux
+
+maintainers         gmail.com:rjvbertin openmaintainer
+license             BSD
+homepage            http://sg.danny.cz/sg/sg3_utils.html
+
+description         utilities that send SCSI commands to device
+long_description    Utilities for devices using the SCSI command set. \
+                    Most OSes have SCSI pass-through interfaces that enable user space programs to \
+                    send SCSI commands to a device and fetch the response. With SCSI to ATA \
+                    Translation (SAT) many ATA disks now can process SCSI commands. Typically each \
+                    utility in this package implements one SCSI command. See the draft standards at \
+                    www.t10.org for SCSI command definitions plus SAT. ATA commands are defined in \
+                    the draft standards at www.t13.org . For a mapping between supported SCSI and \
+                    ATA commands and utility names in this package see the COVERAGE file.
+
+installs_libs       yes
+
+depends_build-append \
+                    port:autoconf \
+                    port:automake
+
+pre-configure {
+    if {![file exists ${worksrcpath}/configure]
+        || [file mtime ${worksrcpath}/configure.ac] > [file mtime ${worksrcpath}/configure]
+    } {
+        ui_msg "(Re)generating the configure script"
+        system -W ${worksrcpath} "./autoreconf.sg --verbose"
+    }
+}
+
+patch.pre_args      -Np1
+patchfiles-append   patch-legady-getrandom.diff
+
+configure.args-append \
+                    --disable-dependency-tracking \
+                    --disable-static
+
+configure.save_configure_cmd "install log"
+
+# configure.env-append \
+#                     "LIBS=-lintl"
+
+build.post_args-append  V=1
+
