@@ -39,7 +39,7 @@ pre-configure {
         || [file mtime ${worksrcpath}/configure.ac] > [file mtime ${worksrcpath}/configure]
     } {
         ui_msg "(Re)generating the configure script"
-        system -W ${worksrcpath} "./autoreconf.sg --verbose"
+        system -W ${worksrcpath} "./autogen.sh --verbose"
     }
 }
 
