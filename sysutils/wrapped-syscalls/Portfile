@@ -6,8 +6,8 @@ set LTO.allow_ThinLTO no
 set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
 
-github.setup        RJVB wrapped-syscalls 869c3092dd83d7ae5830c4be7a10c34bfeedc673
-version             1.0.0.7
+github.setup        RJVB wrapped-syscalls 770a12d6fe3bbcdd750e509fb69dd6c2095c0976
+version             1.0.0.9
 fetch.type          git
 distname            wrapped-syscalls-git
 
