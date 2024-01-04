@@ -8,13 +8,14 @@ legacysupport.newest_darwin_requires_legacy 13
 
 name                go
 epoch               2
-version             1.15
+version             1.17.13
 categories          lang
 platforms           darwin freebsd linux
 license             BSD
 maintainers         {ciserlohn @ci42} openmaintainer
 description         compiled, garbage-collected, concurrent programming \
                     language developed by Google Inc.
+
 long_description    \
     The Go programming language is an open source project to make programmers \
     more productive. Go is expressive, concise, clean, and efficient. Its \
@@ -31,11 +32,19 @@ master_sites        https://storage.googleapis.com/golang/
 distfiles           ${name}${version}.src.tar.gz
 worksrcdir          ${name}
 
-checksums           rmd160  c3854e2d4912723cf761d648e1380290c4ba8b60 \
-                    sha256  69438f7ed4f532154ffaf878f3dfd83747e7a00b70b3556eddabf7aaee28ac3a \
-                    size    23002901
+checksums           rmd160  6d8a13da5112ee67bb886eca0fec77ffaab27a5f \
+                    sha256  a1a48b23afb206f95e7bbaa9b898d965f90826f6f1d1fc0c1d784ada0cd300fd
+#                     size    22206518
 
-depends_build       port:go-1.4
+if {[file exists ${prefix}/bin/go]} {
+    set curver [exec ${prefix}/bin/go version]
+    long_description-append \
+                    \n! This port builds using the currently active \"${curver}\" as bootstrap compiler !
+    notes-append    "! This port was built using the currently active \"${curver}\" as bootstrap compiler !"
+} else {
+    depends_build   port:go-1.4
+    build.env       GOROOT_BOOTSTRAP=${prefix}/lib/go-1.4
+}
 
 set GOROOT          ${worksrcpath}
 set GOROOT_FINAL    ${prefix}/lib/${name}
@@ -60,7 +69,7 @@ build.dir           ${worksrcpath}/src
 build.cmd           ./make.bash
 build.target
 platform darwin {
-    build.env       GOROOT_BOOTSTRAP=${prefix}/lib/go-1.4 \
+    build.env-append \
                     GOROOT=${GOROOT} \
                     GOARCH=${GOARCH} \
                     GOOS=darwin \
@@ -68,7 +77,7 @@ platform darwin {
                     CC=${configure.cc}
 }
 platform linux {
-    build.env       GOROOT_BOOTSTRAP=${prefix}/lib/go-1.4 \
+    build.env-append \
                     GOROOT=${GOROOT} \
                     GOARCH=${GOARCH} \
                     GOOS=linux \
@@ -108,18 +117,23 @@ if {${os.platform} eq "darwin" && ${os.major} <= ${legacysupport.newest_darwin_r
 }
 
 use_parallel_build  no
+# parallel builds, since the build.cmd contains "make".
+pre-build {
+    build.jobs      -1
+}
 
 post-build {
     system "find ${worksrcpath} -type d -name .hg* -print0 | xargs -0 rm -rf"
     delete ${worksrcpath}/pkg/bootstrap
 }
 
+    set bin_suffix ""
 destroot {
 
     delete ${worksrcpath}/src/cmd/vendor/github.com/google/pprof/internal/binutils/testdata/malformed_macho
 
     set grfdir ${destroot}${GOROOT_FINAL}
-    set docdir ${destroot}${prefix}/share/doc/${name}
+    set docdir ${destroot}${prefix}/share/doc/${subport}
 
     xinstall -d ${grfdir}
     xinstall -d ${docdir}
@@ -132,17 +146,20 @@ destroot {
         system -W ${destroot}${prefix}/bin/ "ln -s ../lib/${name}/bin/$f ./$f"
     }
 
-    xinstall -m 644 -W ${worksrcpath} \
-        AUTHORS \
+    xinstall -m 0644 -W ${worksrcpath} \
         CONTRIBUTING.md \
-        CONTRIBUTORS \
         LICENSE \
         README.md \
         PATENTS \
+        SECURITY.md \
         VERSION \
         ${docdir}
 
     copy {*}[glob -directory ${worksrcpath}/doc *] ${docdir}
+
+    if { [ file exists ${worksrcpath}/go.env ] } {
+        copy ${worksrcpath}/go.env ${grfdir}/
+    }
 }
 
 if {${os.platform} eq "darwin" && ${os.major} < 11} {
@@ -153,6 +170,9 @@ if {${os.platform} eq "darwin" && ${os.major} < 11} {
     }
 }
 
+pre-install {
+    build.jobs 0
+}
 livecheck.type      regex
 livecheck.url       ${homepage}/dl/
 livecheck.regex     {go([0-9.]+)\.src\.tar\.gz}
