@@ -1,0 +1,57 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           clang_dependency 1.0
+PortGroup           save_configure_cmd 1.0
+
+name                libidn2
+version             2.3.4
+revision            1
+categories          mail
+license             {LGPL-2.1+ GPL-3+}
+description         GNU International Domain Name Library (current version 2)
+long_description    {*}${description}.\
+                    GNU Libidn2 is an implementation of the IDNA2008 + TR46 \
+                    specifications (RFC 5890, RFC 5891, RFC 5892, RFC 5893, TR 46). \
+                    Libidn2 is a standalone library, without any dependency on Libidn. \
+                    Libidn2 is believed to be a complete IDNA2008 / TR46 implementation.
+homepage            https://www.gnu.org/software/libidn/#libidn2
+platforms           darwin
+maintainers         {mps @Schamschula} openmaintainer
+master_sites        gnu:libidn
+
+checksums           rmd160  521696759a3865bf146a3f97286621eb60ac4967 \
+                    sha256  93caba72b4e051d1f8d4f5a076ab63c99b77faee019b72b9783b267986dbb45f \
+                    size    2083823
+
+depends_build       port:gettext \
+                    port:pkgconfig
+
+depends_lib         port:gettext-runtime \
+                    port:libiconv \
+                    port:libunistring
+
+configure.checks.implicit_function_declaration.whitelist-append strchr
+
+configure.save_configure_cmd "install log"
+
+configure.args      --disable-silent-rules
+
+patchfiles          patch-configure.diff
+
+if {${os.platform} eq "darwin" && ${os.major} < 10} {
+    depends_build-append port:cctools
+    configure.env-append NM=${prefix}/bin/nm
+    configure.args-append lt_cv_path_NM=${prefix}/bin/nm
+}
+
+platform linux {
+    # if we build with clang the "rpath wizard" will add `-R${prefix}` which
+    # breaks the building of dependents with GCC.
+    configure.args-append --disable-rpath
+}
+
+test.run            yes
+test.target         check
+
+livecheck.distname  ${name}
