@@ -554,15 +554,17 @@ variant nonfree description {enable nonfree code, libraries and binaries will no
     }
 }
 
-variant rav1e description {Enable codec rav1e} {
-    configure.args-append \
-                    --enable-librav1e
-    depends_lib-append \
-                    port:rav1e
-}
+platform darwin {
+    variant rav1e description {Enable codec rav1e} {
+        configure.args-append \
+                        --enable-librav1e
+        depends_lib-append \
+                        port:rav1e
+    }
 
-if {![variant_isset rav1e]} {
-    notes-append "Support for rav1e now disabled by default; enable via +rav1e"
+    if {![variant_isset rav1e]} {
+        notes-append "Support for rav1e now disabled by default; enable via +rav1e"
+    }
 }
 
 variant debug description {build with additional debug info but otherwise optimised as usual} {}
@@ -617,6 +619,11 @@ This build of ${name} includes no GPLed or nonfree code and is therefore license
 }
 
 # variant gcc description {bogus variant to label a build done with GCC} {}
+
+variant novulkan description {Disable support for Vulkan-accelerated decoding (for lesser hardware)} {
+    configure.args-append \
+                    --disable-vulkan
+}
 
 livecheck.type      regex
 livecheck.url       ${master_sites}
