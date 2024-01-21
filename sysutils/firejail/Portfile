@@ -1,0 +1,82 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+set LTO.allow_ThinLTO no
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+
+github.setup        netblue30 firejail 07a0c4c8caacb891c30d8eb8d95e56980ac150ae
+version             0.9.72.936
+fetch.type          git
+
+subport firetools {}
+
+if {${subport} eq "firejail"} {
+    description     Linux namespaces and seccomp-bpf sandbox
+    long_description \
+                    Firejail is a SUID sandbox program that reduces the risk of security breaches \
+                    by restricting the running environment of untrusted applications using Linux \
+                    namespaces, seccomp-bpf and Linux capabilities. It allows a process and all its \
+                    descendants to have their own private view of the globally shared kernel resources, \
+                    such as the network stack, process table, mount table. Firejail can work in a SELinux \
+                    or AppArmor environment, and it is integrated with Linux Control Groups. \
+                    \
+                    Written in C with virtually no dependencies, the software runs on any Linux computer \
+                    with a 3.x kernel version or newer. It can sandbox any type of processes: servers, \
+                    graphical applications, and even user login sessions. The software includes sandbox \
+                    profiles for a number of more common Linux programs, such as Mozilla Firefox, Chromium, \
+                    VLC, Transmission etc.
+} else {
+    PortGroup       qt5 1.0
+    description     Firejail GUI
+    long_description \
+                    Firetools is the graphical user interface of Firejail security sandbox. It provides a \
+                    sandbox launcher integrated with the system tray, sandbox editing, management and statistics.
+    pre-fetch {
+        ui_error    "Not yet implemented"
+        return -code error "Work in progress"
+    }
+}
+
+categories          sysutils
+platforms           linux
+license             GPL-2.0
+
+maintainers         gmail.com:rjvbertin openmaintainer
+
+distname            ${name}-git
+
+configure.save_configure_cmd "install log"
+
+if {${subport} eq "firejail"} {
+    configure.args-append \
+                    --enable-busybox-workaround \
+                    --enable-contrib-install
+    variant selinux description {Build SELinux support} {
+        configure.args-append \
+                    --enable-selinux
+    }
+    variant apparmor description {Build AppArmor support} {
+        configure.args-append \
+                    --enable-apparmor
+    }
+
+    post-destroot {
+        if {[variant_isset apparmor]} {
+            xinstall -m 755 -d ${destroot}/etc
+            file rename ${destroot}${prefix}/etc/apparmor.d ${destroot}/etc/apparmor.d
+            destroot.violate_mtree yes
+        }
+        file rename ${destroot}${prefix}/etc/firejail/firejail.config \
+            ${destroot}${prefix}/etc/firejail/firejail.config.default
+    }
+
+    post-activate {
+        if {![file exists ${prefix}/etc/firejail/firejail.config]} {
+            xinstall -m 644 ${prefix}/etc/firejail/firejail.config.default \
+                ${prefix}/etc/firejail/firejail.config
+        }
+    }
+} else {
+}
