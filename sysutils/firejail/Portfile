@@ -33,10 +33,12 @@ if {${subport} eq "firejail"} {
     long_description \
                     Firetools is the graphical user interface of Firejail security sandbox. It provides a \
                     sandbox launcher integrated with the system tray, sandbox editing, management and statistics.
-    pre-fetch {
-        ui_error    "Not yet implemented"
-        return -code error "Work in progress"
-    }
+    github.setup        netblue30 firetools 07a0c4c8caacb891c30d8eb8d95e56980ac150ae
+    version         0.9.72.4
+    depends_run-append \
+                    port:firejail
+    qt5.depends_component \
+                    qtsvg
 }
 
 categories          sysutils
@@ -45,7 +47,7 @@ license             GPL-2.0
 
 maintainers         gmail.com:rjvbertin openmaintainer
 
-distname            ${name}-git
+distname            ${subport}-git
 
 configure.save_configure_cmd "install log"
 
@@ -79,4 +81,6 @@ if {${subport} eq "firejail"} {
         }
     }
 } else {
+    configure.args-append \
+                    --with-qmake=${qt_qmake_cmd}
 }
