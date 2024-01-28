@@ -1,5 +1,5 @@
 diff --git src/help.cpp src/help.cpp
-index de4dc41..766de60 100644
+index de4dc41..7a2cc7e 100644
 --- src/help.cpp
 +++ src/help.cpp
 @@ -166,7 +166,7 @@ QString formatOptionsPlain(
@@ -40,7 +40,7 @@ index de4dc41..766de60 100644
  
        // Output option name.
        oss << "<td width=\"30%\"><tt>";
-@@ -208,17 +208,17 @@ QString formatOptionsQml(
+@@ -208,18 +208,18 @@ QString formatOptionsQml(
        if ( options[ii]._has_arg ) {
           oss << " &lt;arg&gt;";
        }
@@ -60,10 +60,12 @@ index de4dc41..766de60 100644
 +      oss << "</tr>" << endl << endl;
     }
 -   oss << "</table>" << Qt::endl << Qt::endl;
+-   oss << Qt::flush;
 +   oss << "</table>" << endl << endl;
-    oss << Qt::flush;
++   oss << flush;
     
     return outs;
+ }
 @@ -393,84 +393,84 @@ QString XxHelp::getUsage( int helpMask, bool plain )
     if ( plain ) {
        QTextStream oss( &usage, QIODevice::WriteOnly | QIODevice::Append );
@@ -200,6 +202,122 @@ index de4dc41..766de60 100644
     }
     QDialog* box = new XxManPageDialog( parent, docstr );
     return box;
+diff --git src/app.cpp src/app.cpp
+index 34ab60a..0573083 100644
+--- src/app.cpp
++++ src/app.cpp
+@@ -2122,7 +2122,7 @@ bool XxApp::processDiff()
+       catch ( const XxError& ex ) {
+          QString str;
+          QTextStream oss( &str );
+-         oss << "Error processing single file:" << ex.getMsg() << Qt::endl;
++         oss << "Error processing single file:" << ex.getMsg() << endl;
+          outputDiffErrors( str );
+          _returnValue = builder->getStatus();
+          return false;
+@@ -2193,7 +2193,7 @@ bool XxApp::processDiff()
+       catch ( const XxError& ex ) {
+          QString str;
+          QTextStream oss( &str );
+-         oss << "Error unmerging file:" << ex.getMsg() << Qt::endl;
++         oss << "Error unmerging file:" << ex.getMsg() << endl;
+          outputDiffErrors( str );
+          _returnValue = builder->getStatus();
+          return false;
+@@ -2225,10 +2225,10 @@ bool XxApp::processDiff()
+             QTextStream oss( &str );
+             oss << "Error executing \""
+                 << _resources->getCommand( CMD_DIFF_FILES_2 )
+-                << "\" command, could not build diffs:" << Qt::endl
+-                << ex.getMsg() << Qt::endl
+-                << "Maybe try --text option." << Qt::endl
+-                << Qt::endl;
++                << "\" command, could not build diffs:" << endl
++                << ex.getMsg() << endl
++                << "Maybe try --text option." << endl
++                << endl;
+             outputDiffErrors( str );
+             _returnValue = builder->getStatus();
+             return false;
+@@ -2255,10 +2255,10 @@ bool XxApp::processDiff()
+             QTextStream oss( &str );
+             oss << "Error executing \""
+                 << _resources->getCommand( CMD_DIFF_FILES_3 )
+-                << "\" command, could not build diffs:" << Qt::endl
+-                << ex.getMsg() << Qt::endl
+-                << "Maybe try --text option." << Qt::endl
+-                << Qt::endl;
++                << "\" command, could not build diffs:" << endl
++                << ex.getMsg() << endl
++                << "Maybe try --text option." << endl
++                << endl;
+             outputDiffErrors( str );
+             _returnValue = builder->getStatus();
+             return false;
+@@ -2308,8 +2308,8 @@ bool XxApp::processDiff()
+          QTextStream oss( &str );
+          oss << "Error executing \""
+              << dirdiff_command.constData()
+-             << "\" command, could not build diffs:" << Qt::endl
+-             << ex.getMsg() << Qt::endl;
++             << "\" command, could not build diffs:" << endl
++             << ex.getMsg() << endl;
+          outputDiffErrors( str );
+          _returnValue = builder->getStatus();
+          return false;
+@@ -2674,12 +2674,13 @@ bool XxApp::saveMergedToFile(
+       // Save to the file.
+       {
+          QTextStream osstream( &outfile );
+-         // Assume latin-1; it won't hurt. Maybe make this an option later.
++         // Assume UTF8; it won't hurt. Maybe make this an option later.
+ #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+-         osstream.setEncoding(QStringConverter::Latin1);
++         osstream.setEncoding(QStringConverter::Utf8);
+ #else
+-         osstream.setCodec( "ISO-8859-1" );
++         osstream.setCodec( "UTF-8" );
+ #endif
++         osstream.setAutoDetectUnicode(true);
+          _diffs->save( getResources(), osstream, getBuffers(),
+                        useConditionals, removeEmptyConditionals,
+                        conditionals );
+@@ -2731,7 +2732,7 @@ void XxApp::editFile( const QString& filename, const int bufIdx )
+          QTextStream oss( &text );
+          oss << "There has been an error spawning the editor ("
+              << executable << "): "
+-             << _editProc[bufIdx]->errorString() << Qt::endl;
++             << _editProc[bufIdx]->errorString() << endl;
+       }
+       new XxSuicideMessageBox(
+          _mainWindow, "Error.", text, QMessageBox::Warning
+@@ -2807,7 +2808,7 @@ void XxApp::openFile( const XxFno no )
+       else {
+          QString str;
+          QTextStream oss( &str );
+-         oss << "Error: could not open file." << Qt::endl;
++         oss << "Error: could not open file." << endl;
+          outputDiffErrors( str );
+       }
+    }
+@@ -3137,7 +3138,7 @@ bool XxApp::validateNeedToSave( uint no ) const
+       QString text;
+       {
+          QTextStream oss( &text );
+-         oss << "The selections are all on this file." << Qt::endl
++         oss << "The selections are all on this file." << endl
+              << "Save anyway?";
+       }
+ 
+@@ -3584,7 +3585,7 @@ void XxApp::diffFilesAtCursor()
+          {
+             QTextStream oss( &text );
+             oss << "There has been an error spawning xxdiff: "
+-                << xxdiffProc.errorString() << Qt::endl;
++                << xxdiffProc.errorString() << endl;
+          }
+          new XxSuicideMessageBox(
+             _mainWindow, "Error.", text, QMessageBox::Warning
 diff --git src/cmdline.cpp src/cmdline.cpp
 index 40f535a..364f47e 100644
 --- src/cmdline.cpp
@@ -675,105 +793,60 @@ index 8f0db96..25deacf 100644
     XX_LOCAL_TRACE( "Errors: " << _errors );
  
     XX_LOCAL_TRACE( "Left: " << outFileLeft );
-diff --git src/app.cpp src/app.cpp
-index 34ab60a..0573083 100644
---- src/app.cpp
-+++ src/app.cpp
-@@ -2122,7 +2122,7 @@ bool XxApp::processDiff()
-       catch ( const XxError& ex ) {
-          QString str;
-          QTextStream oss( &str );
--         oss << "Error processing single file:" << ex.getMsg() << Qt::endl;
-+         oss << "Error processing single file:" << ex.getMsg() << endl;
-          outputDiffErrors( str );
-          _returnValue = builder->getStatus();
-          return false;
-@@ -2193,7 +2193,7 @@ bool XxApp::processDiff()
-       catch ( const XxError& ex ) {
-          QString str;
-          QTextStream oss( &str );
--         oss << "Error unmerging file:" << ex.getMsg() << Qt::endl;
-+         oss << "Error unmerging file:" << ex.getMsg() << endl;
-          outputDiffErrors( str );
-          _returnValue = builder->getStatus();
-          return false;
-@@ -2225,10 +2225,10 @@ bool XxApp::processDiff()
-             QTextStream oss( &str );
-             oss << "Error executing \""
-                 << _resources->getCommand( CMD_DIFF_FILES_2 )
--                << "\" command, could not build diffs:" << Qt::endl
--                << ex.getMsg() << Qt::endl
--                << "Maybe try --text option." << Qt::endl
--                << Qt::endl;
-+                << "\" command, could not build diffs:" << endl
-+                << ex.getMsg() << endl
-+                << "Maybe try --text option." << endl
-+                << endl;
-             outputDiffErrors( str );
-             _returnValue = builder->getStatus();
-             return false;
-@@ -2255,10 +2255,10 @@ bool XxApp::processDiff()
-             QTextStream oss( &str );
-             oss << "Error executing \""
-                 << _resources->getCommand( CMD_DIFF_FILES_3 )
--                << "\" command, could not build diffs:" << Qt::endl
--                << ex.getMsg() << Qt::endl
--                << "Maybe try --text option." << Qt::endl
--                << Qt::endl;
-+                << "\" command, could not build diffs:" << endl
-+                << ex.getMsg() << endl
-+                << "Maybe try --text option." << endl
-+                << endl;
-             outputDiffErrors( str );
-             _returnValue = builder->getStatus();
-             return false;
-@@ -2308,8 +2308,8 @@ bool XxApp::processDiff()
-          QTextStream oss( &str );
-          oss << "Error executing \""
-              << dirdiff_command.constData()
--             << "\" command, could not build diffs:" << Qt::endl
--             << ex.getMsg() << Qt::endl;
-+             << "\" command, could not build diffs:" << endl
-+             << ex.getMsg() << endl;
-          outputDiffErrors( str );
-          _returnValue = builder->getStatus();
-          return false;
-@@ -2731,7 +2732,7 @@ void XxApp::editFile( const QString& filename, const int bufIdx )
-          QTextStream oss( &text );
-          oss << "There has been an error spawning the editor ("
-              << executable << "): "
--             << _editProc[bufIdx]->errorString() << Qt::endl;
-+             << _editProc[bufIdx]->errorString() << endl;
-       }
-       new XxSuicideMessageBox(
-          _mainWindow, "Error.", text, QMessageBox::Warning
-@@ -2807,7 +2808,7 @@ void XxApp::openFile( const XxFno no )
-       else {
-          QString str;
-          QTextStream oss( &str );
--         oss << "Error: could not open file." << Qt::endl;
-+         oss << "Error: could not open file." << endl;
-          outputDiffErrors( str );
+diff --git src/diffs.cpp src/diffs.cpp
+index feae905..c23e9bf 100644
+--- src/diffs.cpp
++++ src/diffs.cpp
+@@ -60,7 +60,7 @@ int outputLine(
+ 
+       //os << QString::fromLocal8Bit(text, len);
+       os << QByteArray(text, len);
+-      os << Qt::endl;
++      os << endl;
+       return 1;
+    }
+    return 0;
+@@ -977,7 +977,7 @@ void XxDiffs::saveChunk(
+ #else
+          oss.setCodec( "ISO-8859-1" );
+ #endif
+-         oss << cond << Qt::endl;
++         oss << cond << endl;
+ 
+          int nbOutlines = 0;
+          for ( uint iii = unselBegin; iii < unselEnd; ++iii ) {
+@@ -995,12 +995,12 @@ void XxDiffs::saveChunk(
+          } else {
+             ++state;
+          }
+-         oss << '\0' << Qt::flush; // end string and flush
++         oss << '\0' << flush; // end string and flush
+          os << static_cast<const char*>( line );
        }
     }
-@@ -3137,7 +3138,7 @@ bool XxApp::validateNeedToSave( uint no ) const
-       QString text;
-       {
-          QTextStream oss( &text );
--         oss << "The selections are all on this file." << Qt::endl
-+         oss << "The selections are all on this file." << endl
-              << "Save anyway?";
-       }
  
-@@ -3584,7 +3585,7 @@ void XxApp::diffFilesAtCursor()
-          {
-             QTextStream oss( &text );
-             oss << "There has been an error spawning xxdiff: "
--                << xxdiffProc.errorString() << Qt::endl;
-+                << xxdiffProc.errorString() << endl;
+-   os << tags[END] << Qt::endl;
++   os << tags[END] << endl;
+ }
+ 
+ //------------------------------------------------------------------------------
+@@ -1033,14 +1033,14 @@ bool XxDiffs::saveSelectedOnly(
+ 
+             os << ( no == 0 ? '<' : '>' ) << fline << ": ";
+             os << QString::fromLocal8Bit(text, len);
+-            os << Qt::endl;
++            os << endl;
+ 
+             some = true;
+             prevOut = true;
           }
-          new XxSuicideMessageBox(
-             _mainWindow, "Error.", text, QMessageBox::Warning
+       }
+       else if ( prevOut == true ) {
+-         os << Qt::endl;
++         os << endl;
+          prevOut = false;
+       }
+    }
 diff --git src/resParser.cpp src/resParser.cpp
 index 9913a71..f06ca65 100644
 --- src/resParser.cpp
@@ -1535,261 +1608,3 @@ index 9913a71..f06ca65 100644
     return resref;
  }
  
-diff --git src/diffs.cpp src/diffs.cpp
-index feae905..c23e9bf 100644
---- src/diffs.cpp
-+++ src/diffs.cpp
-@@ -60,7 +60,7 @@ int outputLine(
- 
-       //os << QString::fromLocal8Bit(text, len);
-       os << QByteArray(text, len);
--      os << Qt::endl;
-+      os << endl;
-       return 1;
-    }
-    return 0;
-@@ -977,7 +977,7 @@ void XxDiffs::saveChunk(
- #else
-          oss.setCodec( "ISO-8859-1" );
- #endif
--         oss << cond << Qt::endl;
-+         oss << cond << endl;
- 
-          int nbOutlines = 0;
-          for ( uint iii = unselBegin; iii < unselEnd; ++iii ) {
-@@ -995,12 +995,12 @@ void XxDiffs::saveChunk(
-          } else {
-             ++state;
-          }
--         oss << '\0' << Qt::flush; // end string and flush
-+         oss << '\0' << flush; // end string and flush
-          os << static_cast<const char*>( line );
-       }
-    }
- 
--   os << tags[END] << Qt::endl;
-+   os << tags[END] << endl;
- }
- 
- //------------------------------------------------------------------------------
-@@ -1033,14 +1033,14 @@ bool XxDiffs::saveSelectedOnly(
- 
-             os << ( no == 0 ? '<' : '>' ) << fline << ": ";
-             os << QString::fromLocal8Bit(text, len);
--            os << Qt::endl;
-+            os << endl;
- 
-             some = true;
-             prevOut = true;
-          }
-       }
-       else if ( prevOut == true ) {
--         os << Qt::endl;
-+         os << endl;
-          prevOut = false;
-       }
-    }
-diff --git src/help.cpp src/help.cpp
-index de4dc41..7a2cc7e 100644
---- src/help.cpp
-+++ src/help.cpp
-@@ -166,7 +166,7 @@ QString formatOptionsPlain(
-             XX_ASSERT( ( startw + word.length() + 1 ) < width ); 
- 
-             if ( ( cch + word.length() + 1 ) >= width ) {
--               oss << Qt::endl;
-+               oss << endl;
-                for ( unsigned int iii = 0; iii < startw; ++iii ) { oss << " "; }
-                cch = startw;
-             }
-@@ -174,13 +174,13 @@ QString formatOptionsPlain(
-             cch += word.length() + 1;
-          }
-       }
--      oss << Qt::endl;
-+      oss << endl;
- 
-       // Add an extra line between the options, there are so much that it will
-       // make it clearer.
--      oss << Qt::endl;
-+      oss << endl;
-    }
--   oss << Qt::endl;
-+   oss << endl;
-    return outs;
- }
- 
-@@ -195,9 +195,9 @@ QString formatOptionsQml(
-    QString outs;
-    QTextStream oss( &outs );
- 
--   oss << "<table cellpadding=5 width=\"100%\">" << Qt::endl << Qt::endl;
-+   oss << "<table cellpadding=5 width=\"100%\">" << endl << endl;
-    for ( int ii = 0; ii < nbOptions; ++ii ) {
--      oss << "<tr>" << Qt::endl;
-+      oss << "<tr>" << endl;
- 
-       // Output option name.
-       oss << "<td width=\"30%\"><tt>";
-@@ -208,18 +208,18 @@ QString formatOptionsQml(
-       if ( options[ii]._has_arg ) {
-          oss << " &lt;arg&gt;";
-       }
--      oss << "</tt></td>" << Qt::endl;
-+      oss << "</tt></td>" << endl;
- 
- 
-       // Output formatted help.
--      oss << "<td align=left>" << Qt::endl;
--      oss << options[ii]._help << Qt::endl;
--      oss << "</td>" << Qt::endl;
-+      oss << "<td align=left>" << endl;
-+      oss << options[ii]._help << endl;
-+      oss << "</td>" << endl;
- 
--      oss << "</tr>" << Qt::endl << Qt::endl;
-+      oss << "</tr>" << endl << endl;
-    }
--   oss << "</table>" << Qt::endl << Qt::endl;
--   oss << Qt::flush;
-+   oss << "</table>" << endl << endl;
-+   oss << flush;
-    
-    return outs;
- }
-@@ -393,84 +393,84 @@ QString XxHelp::getUsage( int helpMask, bool plain )
-    if ( plain ) {
-       QTextStream oss( &usage, QIODevice::WriteOnly | QIODevice::Append );
-       oss << "Usage: "
--          << "xxdiff [OPTIONS] file1 file2 [file3]" << Qt::endl
--          << Qt::endl
-+          << "xxdiff [OPTIONS] file1 file2 [file3]" << endl
-+          << endl
-           << "A graphical file and directories comparison and merge tool."
--          << Qt::endl << Qt::endl;
-+          << endl << endl;
- 
-       if ( helpMask & (1 << XxCmdline::OPT_GENERIC) ) {
--         oss << "Generic options:" << Qt::endl;
-+         oss << "Generic options:" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_GENERIC, nbOptions );
-          oss << formatOptionsPlain( options, nbOptions );
-       }
- 
-       if ( helpMask & (1 << XxCmdline::OPT_QT) ) {
--         oss << "Qt options:" << Qt::endl;
-+         oss << "Qt options:" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_QT, nbOptions );
-          oss << formatOptionsPlain( options, nbOptions );
-       }
- 
-       if ( helpMask & (1 << XxCmdline::OPT_DIFF) ) {
--         oss << "GNU diff options (2-files only):" << Qt::endl;
-+         oss << "GNU diff options (2-files only):" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_DIFF, nbOptions );
-          oss << formatOptionsPlain( options, nbOptions );
--         oss << Qt::endl;
-+         oss << endl;
-       }
- 
-       if ( helpMask & (1 << XxCmdline::OPT_XXDIFF) ) {
--         oss << "Options:" << Qt::endl;
-+         oss << "Options:" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_XXDIFF, nbOptions );
-          oss << formatOptionsPlain( options, nbOptions );
-       }
- 
-       if ( helpMask & (1 << XxCmdline::OPT_DISPLAY) ) {
--         oss << "Display Options:" << Qt::endl;
-+         oss << "Display Options:" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_DISPLAY, nbOptions );
-          oss << formatOptionsPlain( options, nbOptions );
-       }
- 
--      oss << "Any one specified file can be `-' for stdin." << Qt::endl
-+      oss << "Any one specified file can be `-' for stdin." << endl
-           << "Filenames can be either 2 directories, 2 files or 3 files."
--          << Qt::endl;
-+          << endl;
-    }
-    else {
-       QTextStream oss( &usage, QIODevice::WriteOnly | QIODevice::Append );
-       if ( helpMask & (1 << XxCmdline::OPT_GENERIC) ) {
--         oss << "<h4>Generic options</h4>" << Qt::endl;
-+         oss << "<h4>Generic options</h4>" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_GENERIC, nbOptions );
-          oss << formatOptionsQml( options, nbOptions );
-       }
- 
-       if ( helpMask & (1 << XxCmdline::OPT_QT) ) {
--         oss << "<h4>Qt options</h4>" << Qt::endl;
-+         oss << "<h4>Qt options</h4>" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_QT, nbOptions );
-          oss << formatOptionsQml( options, nbOptions );
-       }
- 
-       if ( helpMask & (1 << XxCmdline::OPT_DIFF) ) {
--         oss << "<h4>GNU diff options (2-files only)</h4>" << Qt::endl;
-+         oss << "<h4>GNU diff options (2-files only)</h4>" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_DIFF, nbOptions );
-          oss << formatOptionsQml( options, nbOptions );
--         oss << Qt::endl;
-+         oss << endl;
-       }
- 
-       if ( helpMask & (1 << XxCmdline::OPT_XXDIFF) ) {
--         oss << "<h4>Options</h4>" << Qt::endl;
-+         oss << "<h4>Options</h4>" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_XXDIFF, nbOptions );
-          oss << formatOptionsQml( options, nbOptions );
-       }
- 
-       if ( helpMask & (1 << XxCmdline::OPT_DISPLAY) ) {
--         oss << "<h4>Display Options</h4>" << Qt::endl;
-+         oss << "<h4>Display Options</h4>" << endl;
-          options =
-             XxCmdline::getOptionList( XxCmdline::OPT_DISPLAY, nbOptions );
-          oss << formatOptionsQml( options, nbOptions );
-@@ -565,13 +565,13 @@ QDialog* XxHelp::getAboutDialog( QWidget* parent )
-    
-    QString text;
-    QTextStream oss( &text );
--   oss << xx_name << Qt::endl 
--       << Qt::endl
--       << xx_description << Qt::endl
--       << Qt::endl
--       << "Author: Martin Blais <blais@furius.ca>" << Qt::endl
--       << xx_homepage << Qt::endl
--       << "Version: " << getVersion() << Qt::endl;
-+   oss << xx_name << endl 
-+       << endl
-+       << xx_description << endl
-+       << endl
-+       << "Author: Martin Blais <blais@furius.ca>" << endl
-+       << xx_homepage << endl
-+       << "Version: " << getVersion() << endl;
- 
-    QDialog* box = new XxAboutDialog( parent, text );
- 
-@@ -587,9 +587,9 @@ QDialog* XxHelp::getManPageDialog( QWidget* parent )
-    QString docstr;
-    {
-       QTextStream oss( &docstr );
--      oss << "<qt title=\"xxdiff documentation\">" << Qt::endl
--          << getManual() << Qt::endl
--          << "</qt" << Qt::endl;
-+      oss << "<qt title=\"xxdiff documentation\">" << endl
-+          << getManual() << endl
-+          << "</qt" << endl;
-    }
-    QDialog* box = new XxManPageDialog( parent, docstr );
-    return box;
