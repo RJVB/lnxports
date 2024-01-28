@@ -7,9 +7,12 @@ PortGroup           qmake5 1.0
 #PortGroup           LTO 1.0
 variant LTO description {build with Link Time Optimisation} {}
 
-name                xxdiff
-# the current xxdiff version is 5.0b1, which we approach numerically with 4.9.90
-version             4.9.90.10
+PortGroup           github 1.0
+PortGroup           compress_workdir 1.0
+
+github.setup        blais xxdiff 604300ea9875611726ba885fb14f872b964df579
+# after `git tag v5.1 -m "release 5.1" cfc62755a6aae23f64512c2b3acc921d15a13535`
+version             5.1.5
 categories          devel
 license             GPL-2+
 platforms           darwin
@@ -21,39 +24,24 @@ long_description    xxdiff is a graphical browser for viewing the \
                     It is inspired by the venerable SGI xdiff utility
 
 homepage            http://furius.ca/xxdiff/
+conflicts           "${name}-qt5"
 
+distname            ${name}-git
 
-# subport ${name}-qt5 {}
+depends_build-append \
+                    port:bison \
+                    port:flex
 
-if {${subport} ne "${name}-qt5"} {
+patchfiles-append   patch-xxdiffpro.diff \
+                    patch-Makefile-extra.diff
 
-    fetch.type          hg
-    hg.url              https://bitbucket.org/blais/xxdiff
-    hg.tag              5e5f885dfc43
-    distname            ${name}-5.0
-    worksrcdir          ${distname}
-
-    patchfiles-append   patch-xxdiffpro.diff \
-                        patch-Makefile-extra.diff
-    conflicts           "${name}-qt5"
-}
-# else {
-#     PortGroup           github 1.0
-#     github.setup        RJVB xxdiff4qt5 u4.0.1
-#     fetch.type          git
-#     git.branch          694686f061809e5418fdbddb9fb095681d94b658
-#     version             4.0.1.7
-#     worksrcdir          ${name}-4.0
-#     distname            ${name}-4.0
-# 
-#     conflicts           ${name}
-# 
-#     patchfiles-append   qt5/patch-xxdiffpro-opts.diff
-# }
+compiler.cxx_standard 2017
 
 patchfiles-append   patch-no-helvetica.diff
 # save files as UTF-8 (or UTF-16)
 patchfiles-append   patch-output-utf8.diff
+
+patchfiles-append   patch-allow-older-qt5.diff
 
 set worksrcpath     ${workpath}/${worksrcdir}
 # xxdiff has a buildsystem that invokes qmake via a special Makefile
@@ -109,6 +97,7 @@ post-configure {
     file delete ${configure.dir}/resParser_yacc.cpp ${configure.dir}/resParser_yacc.h
     # now generate the actual headerfiles before anything else
     system "cd ${configure.dir} ; ${build.cmd} resParser_lex.h resParser_yacc.h"
+    reinplace "s|register | |g" ${configure.dir}/resParser_lex.cpp
 }
 
 destroot {
