@@ -265,23 +265,6 @@ index 34ab60a..0573083 100644
           outputDiffErrors( str );
           _returnValue = builder->getStatus();
           return false;
-@@ -2674,12 +2674,13 @@ bool XxApp::saveMergedToFile(
-       // Save to the file.
-       {
-          QTextStream osstream( &outfile );
--         // Assume latin-1; it won't hurt. Maybe make this an option later.
-+         // Assume UTF8; it won't hurt. Maybe make this an option later.
- #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
--         osstream.setEncoding(QStringConverter::Latin1);
-+         osstream.setEncoding(QStringConverter::Utf8);
- #else
--         osstream.setCodec( "ISO-8859-1" );
-+         osstream.setCodec( "UTF-8" );
- #endif
-+         osstream.setAutoDetectUnicode(true);
-          _diffs->save( getResources(), osstream, getBuffers(),
-                        useConditionals, removeEmptyConditionals,
-                        conditionals );
 @@ -2731,7 +2732,7 @@ void XxApp::editFile( const QString& filename, const int bufIdx )
           QTextStream oss( &text );
           oss << "There has been an error spawning the editor ("
