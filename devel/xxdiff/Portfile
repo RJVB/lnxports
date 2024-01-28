@@ -1,7 +1,11 @@
 # -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+# handle our own since we don't call qmake directly:
+set qt5.no_LTO_variant yes
 PortGroup           qmake5 1.0
+#PortGroup           LTO 1.0
+variant LTO description {build with Link Time Optimisation} {}
 
 name                xxdiff
 # the current xxdiff version is 5.0b1, which we approach numerically with 4.9.90
@@ -57,8 +61,20 @@ configure.pre_args  -f ${worksrcpath}/src/Makefile.bootstrap \
                      MAKEDIR=${worksrcpath}/src
 configure.dir       ${workpath}/build
 configure.cmd       make
-configure.pre_args-append \
+if {[variant_exists LTO] && [variant_isset LTO]} {
+    configure.pre_args-append \
+                    QMAKE=${qt_qmake_cmd} QMAKEOPTS="-spec ${qt_qmake_spec} -config ltcg"
+} else {
+    configure.pre_args-append \
                     QMAKE=${qt_qmake_cmd} QMAKEOPTS="-spec ${qt_qmake_spec}"
+}
+configure.args
+set LTO.configure_option ""
+pre-configure {
+    # somehow a `-config ltcg` still slips in (that make won't grok) so we get rid of it "just in time":
+    configure.args-delete \
+                    -config ltcg
+}
 set qt5.add_spec    no
 build.dir           ${configure.dir}
 
