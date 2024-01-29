@@ -3,12 +3,19 @@
 PortSystem          1.0
 PortGroup           xcodeversion 1.0
 PortGroup           muniversal 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+PortGroup           preserve_runtime_libraries 1.0
 
 name                tiff
-version             4.0.7
+version             4.6.0
+checksums           rmd160  9b116d5959bc9784862df819aa0a45c8e3d10177 \
+                    sha256  88b3979e6d5c7e32b50d7ec72fb15af724f6ab2cbf7e10880c360a77e4b5d99a
+#                     size    3584534
+
 categories          graphics
-platforms           darwin
-maintainers         ryandesign openmaintainer
+platforms           darwin linux
+maintainers         {ryandesign @ryandesign} openmaintainer
 license             BSD
 
 description         Library and tools for dealing with Tag Image File Format
@@ -26,102 +33,83 @@ long_description    \
     There is also considerable support for some of the more     \
     esoteric portions of the 6.0 TIFF spec.
 
-homepage            http://simplesystems.org/libtiff/
-master_sites        http://download.osgeo.org/libtiff/ \
-                    ftp://ftp.remotesensing.org/pub/libtiff/ \
-                    http://dl.maptools.org/dl/libtiff/ \
+homepage            https://libtiff.gitlab.io/libtiff/
+master_sites        https://download.osgeo.org/libtiff/ \
                     freebsd
 
-checksums           rmd160  582e19c31e7f29d9ed36995dcad7ad68802cbadb \
-                    sha256  9f43a2cfb9589e5cecaa66e16bf87f814c945f22df7ba600d63aac4632c4f019
-
-depends_lib         path:include/turbojpeg.h:libjpeg-turbo \
+depends_lib-append  port:lerc \
+                    port:libdeflate \
+                    path:include/turbojpeg.h:libjpeg-turbo \
                     port:xz \
-                    port:zlib
+                    port:zlib \
+                    port:zstd
 
 test.run            yes
 test.target         check
 
-post-patch {
-    if {${subport} eq "${name}"} {
-        ui_msg "--->  Regenerating configure scripts"
-        system -W ${configure.dir} "autoreconf -fvi"
-    }
-}
-# use_autoreconf      yes
-# autoreconf.args     -fvi
-
-# first patch fixes two problems
-#     have typedefs be consistent with OSX headers (see http://trac.macports.org/ticket/41280)
-#     prevent configure script from assuming that if we don't want X11, then we don't want OpenGL either
-# prevent configure script from finding X11 OpenGL (e.g. mesa & freeglut)
-patchfiles          patch-configure.ac.diff \
-                    patch-acinclude.m4.diff
-
+compiler.c_standard 1999
 
 configure.args      --disable-jbig \
+                    --disable-webp \
                     --with-x=no \
                     --with-docdir=${prefix}/share/doc/${name} \
                     --with-jpeg-include-dir=${prefix}/include \
                     --with-jpeg-lib-dir=${prefix}/lib \
+                    --with-lerc-include-dir=${prefix}/include \
+                    --with-lerc-lib-dir=${prefix}/lib \
+                    --with-libdeflate-include-dir=${prefix}/include \
+                    --with-libdeflate-lib-dir=${prefix}/lib \
                     --with-lzma-include-dir=${prefix}/include \
                     --with-lzma-lib-dir=${prefix}/lib \
                     --with-zlib-include-dir=${prefix}/include \
-                    --with-zlib-lib-dir=${prefix}/lib
-
-use_parallel_build  yes
-
-minimum_xcodeversions {9 3.1}
-
-# tools/tiffgt.c incorrectly uses HAVE_APPLE_OPENGL_FRAMEWORK rather than HAVE_OPENGL_GL_H
-# see http://bugzilla.maptools.org/show_bug.cgi?id=2363
-platform darwin {
-    configure.cppflags-append \
-                    -DHAVE_APPLE_OPENGL_FRAMEWORK
-}
+                    --with-zlib-lib-dir=${prefix}/lib \
+                    --with-zstd-include-dir=${prefix}/include \
+                    --with-zstd-lib-dir=${prefix}/lib
 platform linux {
+    # the --with-x option appears to have disappeared, but let's
+    # play ball with the mainstream Portfile which pretends it hasn't.
     configure.args-replace \
                     --with-x=no \
                     --with-x=yes
 }
+
+use_parallel_build  yes
+
+minimum_xcodeversions {9 3.1}
 
 set merger_dont_diff ${prefix}/include/tiffconf.h
 
 variant jbig description {Enable JBIG support} {
     depends_lib-append      port:jbigkit
     configure.args-replace  --disable-jbig --enable-jbig
+    configure.args-append   --with-jbig-include-dir=${prefix}/include \
+                            --with-jbig-lib-dir=${prefix}/lib
 }
 
-####################
-PortGroup devport 1.0
-####################
+platform linux {
+    # courtesy for host distrib. software which may need/want
+    # to use a different libtiff:
+    ####################
+    PortGroup devport 1.0
+    ####################
 
-create_devport port:${name}
+    create_devport port:${name}
+}
 
 post-destroot {
     if {${subport} eq "${name}"} {
-#         foreach h [glob -nocomplain ${destroot}${prefix}/include/*] {
-#             devport_content-append [string map [list ${destroot} ""] ${h}]
-#         }
-#         foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.a] {
-#             devport_content-append [string map [list ${destroot} ""] ${h}]
-#         }
-#         foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.la] {
-#             devport_content-append [string map [list ${destroot} ""] ${h}]
-#         }
-#         foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*\[a-zA-Z\].so] {
-#             devport_content-append [string map [list ${destroot} ""] ${h}]
-#         }
-#         foreach h [glob -nocomplain ${destroot}${prefix}/lib/pkgconfig/*] {
-#             devport_content-append [string map [list ${destroot} ""] ${h}]
-#         }
-        register_devport_standard_content
-        devport_content-append ${prefix}/share/doc/tiff/html
-        devport_content-append ${prefix}/share/man/man3
-        create_devport_content_archive
+        if {[variant_isset preserve_runtime_libraries]} {
+            preserve_libraries ${prefix}/lib "libtiff.*.dylib libtiffxx.*.dylib libtiff.so.* libtiffxx.so.*"
+        }
+        platform linux {
+            register_devport_standard_content
+            devport_content-append ${prefix}/share/doc/tiff/manual
+            devport_content-append ${prefix}/share/man/man3
+            create_devport_content_archive
+        }
     }
 }
 
 livecheck.type  regex
-livecheck.url   http://download.osgeo.org/libtiff/
+livecheck.url   [lindex ${master_sites} 0]
 livecheck.regex "${name}-(\\d+(?:\\.\\d+)*)${extract.suffix}"
