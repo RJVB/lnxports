@@ -1,15 +1,16 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem      1.0
-PortGroup       active_variants 1.1
+# PortGroup       active_variants 1.1
+PortGroup       save_configure_cmd 1.0
 
 name            claws-mail
-version         3.16.0
-revision        1
+version         3.17.6
+revision        5
 categories      mail news
 platforms       darwin
 license         GPL-3+
-maintainers     {pmetzger @pmetzger} openmaintainer
+maintainers     nomaintainer
 
 description     A lightweight and very featureful GTK+ based e-mail and news client
 
@@ -23,32 +24,57 @@ long_description Currently, many features are supported in Claws Mail \
 homepage        http://www.claws-mail.org/
 master_sites    ${homepage}releases/
 
-checksums           rmd160  2a1f1e29e1d2d12a674cda42189292ef98f97492 \
-                    sha256  c212133d3d962129d8c7995c1c7d973faef2a8914481c0c74578217bf4c897ab
+checksums       rmd160  ed3e465c3a5f56a5fde21328b4694136d0ec2a84 \
+                sha256  15e4c4344b0c0781d9bb99c71e69dc2d98b8a65c3ce7dde7de1c3f9001c705e8
+#                 size    6400692
 
 use_xz          yes
 
-pre-configure {
-    use_autoreconf  [expr ![file exists ${worksrcpath}/config.log]]
-}
-autoreconf.args -fvi
+## autoreconf leads to a libtool version clash, so we skip that.
+# pre-configure {
+#     use_autoreconf  [expr ![file exists ${worksrcpath}/config.log]]
+# }
+# autoreconf.args -fvi
+
 depends_build-append    port:pkgconfig
 
-depends_lib     port:gpgme \
-                port:gnutls \
+depends_lib     \
                 port:libetpan \
+                port:gpgme \
+                path:lib/pkgconfig/gnutls.pc:gnutls \
                 port:libgcrypt \
                 port:libarchive \
-                port:librsvg \
                 path:lib/pkgconfig/libical.pc:libical \
-                port:poppler
+                path:lib/pkgconfig/librsvg-2.0.pc:librsvg \
+                path:lib/pkgconfig/poppler.pc:poppler \
+                port:ghostscript
+
+
+if {${os.platform} eq "darwin" && ${os.version} < 12} {
+    # the ld on older systems doesn't understand the -export_dynamic flag
+    # see https://trac.macports.org/ticket/57673
+    patchfiles  patch-claws-mail-no-export-dynamic-on-older-ld-versions.diff
+}
+
+# as of 3.17.4 litehtml_viewer plugin requires C++11
+compiler.cxx_standard \
+                2011
 
 # # claws uses gdk/gdkx.h, which is not installed by gtk2 +quartz.
 # require_active_variants \
 #                 gtk2 x11
+# override faulty check for C++ compiler
+configure.env-append \
+                REAL_CXX=${configure.cxx}
+
+configure.save_configure_cmd "install log"
 
 configure.args  --enable-manual \
                 --enable-ipv6 \
                 --enable-crash-dialog
 
+variant fancy description {Build fancy plugin using deprecated webkit-gtk-1.0} {
+    configure.args-delete \
+                --disable-fancy-plugin
+}
 livecheck.regex ${name}-(\[0-9.\]+)${extract.suffix}
