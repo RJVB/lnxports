@@ -3,10 +3,10 @@
 PortSystem      1.0
 # PortGroup       active_variants 1.1
 PortGroup       save_configure_cmd 1.0
+PortGroup       LTO 1.0
 
 name            claws-mail
-version         3.17.6
-revision        5
+version         4.2.0
 categories      mail news
 platforms       darwin
 license         GPL-3+
@@ -24,9 +24,10 @@ long_description Currently, many features are supported in Claws Mail \
 homepage        http://www.claws-mail.org/
 master_sites    ${homepage}releases/
 
-checksums       rmd160  ed3e465c3a5f56a5fde21328b4694136d0ec2a84 \
-                sha256  15e4c4344b0c0781d9bb99c71e69dc2d98b8a65c3ce7dde7de1c3f9001c705e8
-#                 size    6400692
+checksums       rmd160  dd78607d9894d961528ddd6b72fa869278fc2400 \
+                sha256  7c8ab1732d74197df06d61a6b7ebc7c580ecf6e92eb1ef6ae5b0107533f1af07
+#                 size    6674872
+
 
 use_xz          yes
 
@@ -38,7 +39,8 @@ use_xz          yes
 
 depends_build-append    port:pkgconfig
 
-depends_lib     \
+depends_lib     port:gtk3 \
+                port:libcanberra \
                 port:libetpan \
                 port:gpgme \
                 path:lib/pkgconfig/gnutls.pc:gnutls \
@@ -62,7 +64,7 @@ compiler.cxx_standard \
 
 # # claws uses gdk/gdkx.h, which is not installed by gtk2 +quartz.
 # require_active_variants \
-#                 gtk2 x11
+#                 gtk3 x11
 # override faulty check for C++ compiler
 configure.env-append \
                 REAL_CXX=${configure.cxx}
@@ -70,6 +72,7 @@ configure.env-append \
 configure.save_configure_cmd "install log"
 
 configure.args  --enable-manual \
+                --disable-dbus \
                 --enable-ipv6 \
                 --enable-crash-dialog
 
