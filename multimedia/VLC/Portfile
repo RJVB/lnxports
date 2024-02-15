@@ -48,7 +48,7 @@ if {${subport} eq ${name}} {
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.12 ; revision 3
+version             3.0.12 ; revision 4
 license             GPL-2
 
 platforms           darwin
@@ -80,9 +80,16 @@ configure.pre_args-replace \
                     --prefix=${vlcprefix}
 configure.args-append \
                     --bindir=${prefix}/bin
+
 ### not to be committed in the mainstream port ###
 langselect_dirs_dir-append \
                     ${destroot}${vlcprefix}/share/locale
+
+# use rlibtool instead of libtool: speeds up the build by approx. 25% and half the kernel CPU time
+depends_build-append \
+                    port:slibtool
+build.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
+destroot.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
 ##################################################
 
 platform darwin {
@@ -533,7 +540,7 @@ platform darwin {
     }
 
     post-destroot {
-        file delete {*}[glob ${destroot}${vlcprefix}/lib/vlc/plugins/*/*.la]
+        catch {file delete -force {*}[glob -nocomplain ${destroot}${vlcprefix}/lib/vlc/plugins/*/*.la]}
 
         if {[variant_isset quartz]} {
             if {${subport} ne "lib${name}"} {
@@ -591,7 +598,7 @@ platform linux {
         file mkdir "${worksrcpath}/contrib/lib"
     }
     post-destroot {
-        file delete {*}[glob ${destroot}${vlcprefix}/lib/vlc/plugins/*/*.la]
+        catch {file delete -force {*}[glob -nocomplain ${destroot}${vlcprefix}/lib/vlc/plugins/*/*.la]}
         xinstall -m 755 -d ${destroot}${prefix}/share/kde4/apps/solid
         file rename ${destroot}/usr/share/kde4/apps/solid/actions ${destroot}${prefix}/share/kde4/apps/solid/
         foreach d [glob -nocomplain ${destroot}${prefix}/share/kde4/apps/solid/*.desktop] {
