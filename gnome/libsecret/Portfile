@@ -32,14 +32,15 @@ checksums       rmd160  47cec59cb1f669accd27f2a9ed55d73421fe6899 \
 depends_build   port:pkgconfig \
                 port:docbook-xsl-nons \
                 port:libxslt \
-                port:gsed \
-                port:gettext-dev
+                port:gsed
 
 depends_lib     path:lib/pkgconfig/glib-2.0.pc:glib2 \
                 port:libgcrypt \
                 port:gettext
 
 if {${os.platform} ne "darwin"} {
+    depends_build-append \
+                port:gettext-dev
     configure.env-append \
                 "LIBS=-L${prefix}/lib -lintl"
     configure.args-append \
