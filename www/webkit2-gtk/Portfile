@@ -14,10 +14,10 @@ platform darwin {
 }
 
 compiler.cxx_standard 2017
-platform darwin {
-    cmake.generator Ninja
-}
-cmake.save_configure_cmd "log too"
+
+cmake.generator     Ninja
+
+cmake.save_configure_cmd "install log"
 build.pre_args-prepend -k 0
 
 # ensure pre-compiled headers and the possible use of ccache can co-exist
@@ -27,8 +27,7 @@ build.env-append    "CCACHE_SLOPPINESS=pch_defines,time_macros"
 
 name                webkit2-gtk
 conflicts           webkit2-gtk-devel
-version             2.28.2
-revision            1
+version             2.28.2 ; revision 7
 
 description         Apple's WebKit2 HTML rendering library for GTK+3
 long_description    ${description}
@@ -48,103 +47,76 @@ checksums           rmd160  a626f58cf30b6dd1ef8a63c165ce85770c4da675 \
                     sha256  b9d23525cfd8d22c37b5d964a9fe9a8ce7583042a2f8d3922e71e6bbc68c30bd
 #                     size    21427772
 
-if {${os.platform} eq "darwin"} {
-    revision        [expr ${revision} + 1]
-    depends_build-append \
+depends_build-append \
                     port:gperf \
-                    port:gtk-doc \
+                    port:perl5 \
                     port:pkgconfig \
-                    port:python27 \
-                    port:py27-simplejson
+                    port:python27
 
-#                     port:gstreamer1-gst-plugins-bad
-    depends_lib-append  port:atk \
-                    port:at-spi2-atk \
+depends_lib-append  port:atk \
                     port:bison \
                     path:lib/pkgconfig/cairo.pc:cairo \
                     port:flex \
-                    port:fontconfig \
                     port:freetype \
-                    port:enchant2 \
-                    port:geoclue2 \
                     path:lib/pkgconfig/glib-2.0.pc:glib2 \
-                    port:gobject-introspection \
+                    path:lib/pkgconfig/gobject-introspection-1.0.pc:gobject-introspection \
                     port:gstreamer1 \
                     port:gstreamer1-gst-plugins-base \
                     port:gstreamer1-gst-plugins-good \
-                    port:gtk3 \
-                    port:harfbuzz-icu \
-                    port:hyphen \
-                    port:icu \
+                    path:lib/pkgconfig/gtk+-3.0.pc:gtk3 \
+                    path:lib/pkgconfig/harfbuzz-icu.pc:harfbuzz-icu \
+                    path:lib/pkgconfig/icu-uc.pc:icu \
+                    path:include/turbojpeg.h:libjpeg-turbo \
                     port:libnotify \
                     port:libpng \
                     port:libsecret \
-                    port:libsoup \
+                    path:lib/pkgconfig/libsoup-2.4.pc:libsoup \
                     port:libxml2 \
                     port:libxslt \
                     port:sqlite3 \
                     port:webp \
                     port:woff2 \
-                    port:zlib \
-                    port:jemalloc
-} else {
-    revision        [expr ${revision} + 2]
-    depends_build-append \
-                    port:gperf \
-                    port:pkgconfig \
-                    port:python27
-
-    depends_lib-append  port:atk \
-                    port:bison \
-                    port:freetype \
-                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
-                    port:gobject-introspection \
-                    port:gstreamer1 \
-                    port:gstreamer1-gst-plugins-base \
-                    port:gstreamer1-gst-plugins-good \
-                    port:gtk3 \
-                    port:harfbuzz-icu \
-                    port:icu \
-                    port:libnotify \
-                    port:libpng \
-                    port:libsecret \
-                    port:libsoup \
-                    port:libxml2 \
-                    port:libxslt \
-                    port:sqlite3 \
-                    port:webp \
                     port:zlib
-#     configure.ldflags-append \
-#                     -lintl
+platform darwin {
+    depends_build-append \
+                    port:gtk-doc \
+                    port:py27-simplejson
+
+#                     port:gstreamer1-gst-plugins-bad
+    depends_lib-append \
+                    port:at-spi2-atk \
+                    port:fontconfig \
+                    port:geoclue2 \
+                    port:enchant2 \
+                    port:hyphen
 }
 
-# 1. add missing JavaScriptCore include directory used only on Apple webkit builds
-# 2. don't copy the ICU includes into the source tree
-# 3. add missing WebCore include directory used only on Apple webkit builds
-# 4. add a missing Apple-only header found in the WebKit project
-# 5. change some int64_t to gint64 to stop typedef errors in gstreamer
-patchfiles-append   patch-webkit2gtk-macports.diff
 
 platform darwin {
+    # 1. add missing JavaScriptCore include directory used only on Apple webkit builds
+    # 2. don't copy the ICU includes into the source tree
+    # 3. add missing WebCore include directory used only on Apple webkit builds
+    # 4. add a missing Apple-only header found in the WebKit project
+    # 5. change some int64_t to gint64 to stop typedef errors in gstreamer
+    patchfiles-append   patch-webkit2gtk-macports.diff
+
     # and a few more for webkit2-gtk-2.27.2
     patchfiles-append   patch-webkit2gtk-272-macports.diff
 
     # and a few more for 282
     patchfiles-append   patch-webkit2gtk-2282-unprotected-egl-changes.diff
-}
 
-# os log is only available on newer systems.
-patchfiles-append       patch-webkit2gtk-2282-os-log-availability.diff
+    # os log is only available on newer systems.
+    patchfiles-append   patch-webkit2gtk-2282-os-log-availability.diff
 
-# enable Netscape plugin architecture on macOS
-# or can be explicitly disabled with the following addition if preferred
-# configure.args-append -DENABLE_NETSCAPE_PLUGIN_API=OFF
-patchfiles-append       patch-enable-plugin-architecture-unix.diff
+    # enable Netscape plugin architecture on macOS
+    # or can be explicitly disabled with the following addition if preferred
+    # configure.args-append -DENABLE_NETSCAPE_PLUGIN_API=OFF
+    patchfiles-append    patch-enable-plugin-architecture-unix.diff
 
-# add a link library to WebCore. I am not sure this is still needed; builds and
-# runs without this patch.
-platform darwin {
-    patchfiles-append   patch-bundle-link-webcore.diff
+    # add a link library to WebCore. I am not sure this is still needed; builds and
+    # runs without this patch.
+    patchfiles-append    patch-bundle-link-webcore.diff
 
     # Fix incompatibility with XCode 12:
     # https://bugs.webkit.org/show_bug.cgi?id=207871
@@ -152,23 +124,42 @@ platform darwin {
                         patch-darwin.diff
 }
 
+# Fix build errors due to -WWc++11-narrowing
+# https://bugs.webkit.org/show_bug.cgi?id=211193
+patchfiles-append    patch-bool_narrowed.diff
+
+platform darwin {
+    # Explicitly specify installed dylib paths to g-ir-compile
+    # Fixes dlopen errors in apps using webkit2gtk introspection
+    patchfiles-append    patch-webkit2gtk-specify-installed-dylibs.diff
+}
+
+# Backport https://github.com/WebKit/WebKit/commit/b83958928838b8a997c12a8de06f89377df0a903
+patchfiles-append    patch-icu-68-true-false.diff
+
+# Reduce compilation warnings
+configure.cppflags-append \
+    -Wno-deprecated-declarations
+
 # it is preferred to use the WebKit built in bmalloc if it builds on a given os.
 # it has improved security features, but not all systems can build it at present.
-
 configure.args-append \
     -DPORT=GTK \
     -DENABLE_INTROSPECTION=ON \
     -DENABLE_MINIBROWSER=OFF \
     -DENABLE_VIDEO=ON \
+    -DUSE_SYSTEM_MALLOC=OFF \
+    -DPERL_EXECUTABLE=${prefix}/bin/perl5 \
     -DENABLE_ACCELERATED_2D_CANVAS=ON \
     -DENABLE_ASYNC_SCROLLING=ON \
-    -DENABLE_WEBGL2=ON \
-    -DUSE_SYSTEM_MALLOC=OFF
+    -DENABLE_WEBGL2=ON
 platform linux {
     configure.args-append \
         -DUSE_WPE_RENDERER=OFF \
         -DENABLE_BUBBLEWRAP_SANDBOX=OFF \
         -DUSE_LD_LLD=OFF -DUSE_LD_GOLD=OFF
+    # Clear LIBRARY_PATH
+    compiler.library_path
 }
 
 pre-configure {
@@ -185,7 +176,10 @@ if {![variant_isset quartz]} {
 default_variants-append +minibrowser
 
 variant quartz conflicts x11 {
-    require_active_variants port:gtk3 quartz
+    require_active_variants path:lib/pkgconfig/gtk+-3.0.pc:gtk3 quartz
+
+    # TODO: restrict this patch to just Big Sur?
+    patchfiles-append patch-Source_WebKit_Platform_IPC_Connection.cpp.diff
 
     configure.args-append \
         -DENABLE_QUARTZ_TARGET=ON \
@@ -243,7 +237,7 @@ if {${os.platform} eq "darwin" && ${os.major} <= 16} {
     patchfiles-append       patch-ramsize.diff
 
     # Source/WTF/wtf/unix/CPUTimeUnix.cpp : add back a previous Darwin compat version
-     patchfiles-append      patch-source-wtf-wtf-unix-cputimeunix-cpp-darwin-version-restore.diff
+    patchfiles-append       patch-source-wtf-wtf-unix-cputimeunix-cpp-darwin-version-restore.diff
 
     # some Darwin versions don't have MAP_JIT; only use it if available
     patchfiles-append       patch-source-wtf-wtf-osallocatorposix-cpp-map-jit.diff
@@ -283,8 +277,17 @@ if {${os.platform} eq "darwin" && ${os.major} <= 16} {
 
     # add dep for newer ruby and spec this for build
     # https://trac.macports.org/ticket/52016
-    depends_build-append    port:ruby23
-    configure.args-append   -DRUBY_EXECUTABLE=${prefix}/bin/ruby2.3
+    set rubydepend          port:ruby25
+    set rubyexec            ${prefix}/bin/ruby2.5
+    foreach r {2.7 2.6 2.5 2.4 2.3} {
+        if {[file exists ${prefix}/bin/ruby${r}]} {
+            set rubydepend  port:ruby[string map {. {}} ${r}]
+            set rubyexec    ${prefix}/bin/ruby${r}
+            break
+        }
+    }
+    depends_build-append    ${rubydepend}
+    configure.args-append   -DRUBY_EXECUTABLE=${rubyexec}
 
     # fix missing PRId64 definitions on systems
     # that don't define __STDC_FORMAT_MACROS by default
@@ -300,6 +303,17 @@ if {${os.platform} eq "darwin" && ${os.major} <= 16} {
         configure.cxxflags-append -D_GLIBCXX_USE_C99_MATH_TR1=1
         configure.cxxflags-append -include ${filespath}/snowmath.h
     }
+}
+
+# RJVB
+patchfiles-append   prefer-pthread.patch \
+                    patch-webcore-webgl2.diff \
+                    patch-DateInstance-nullptr-deref.diff \
+                    patch-IPC-failure-message.diff \
+                    patch-cmake-summary.diff
+platform linux {
+    patchfiles-append \
+                    patch-reduce-mem-overheads-linux.diff
 }
 
 notes-append "
