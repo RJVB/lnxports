@@ -26,6 +26,8 @@ use_xz              yes
 # 3.34.1 and later need glib-2 >= 2.61.2
 # Dependency gio-2.0 found: NO found '2.58.3' but need: '>= 2.61.2'
 
+# latest commit that works with wk2-gtk 2.28.2 : 2a4397224e907c20ad6c289978123d3e90ac1b25 (https://gitlab.gnome.org/GNOME/epiphany.git)
+
 checksums           rmd160  8a567db68746c9094ae8632cb256e216b7a9484d \
                     sha256  1097f840e958279b795e5e7c314978362b840b8ce0b2d35b8ef0d7232b9c7b68
 #                     size    5262484
