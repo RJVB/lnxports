@@ -3,6 +3,8 @@
 PortSystem          1.0
 PortGroup           conflicts_build 1.0
 PortGroup           gobject_introspection 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
 
 # https://bugzilla.gnome.org/show_bug.cgi?id=636134
 PortGroup           muniversal 1.0
@@ -10,7 +12,7 @@ PortGroup           muniversal 1.0
 name                gstreamer1
 set my_name         gstreamer
 # please only commit stable updates (even numbered releases)
-version             1.14.1
+version             1.16.2 ; revision 1
 description         GStreamer is a library for constructing graphs of media-handling components.
 long_description    The applications it supports range from simple Ogg/Vorbis playback, audio/video \
                     streaming to complex audio (mixing) and video (non-linear editing) processing.
@@ -25,43 +27,57 @@ master_sites        https://gstreamer.freedesktop.org/src/${my_name}/
 
 use_xz              yes
 
-checksums           rmd160  f68defcd57f8514cde98e26c13dc039b14368b1c \
-                    sha256  28d82b0d261544a9bf85b429399929e4986eb00efcf1ce16cc71d269a4c3186c \
-                    size    3252440
+checksums           rmd160  9964bdddc98008a967b165e84011267bfce0252d \
+                    sha256  e3f044246783fd685439647373fa13ba14f7ab0b346eadd06437092f8419e94e
+#                     size    3328600
 
-# depends_build       port:gzip \
-#                     port:m4 \
-#                     path:bin/perl:perl5 \
-#                     port:pkgconfig
-# 
-# depends_lib         port:bison \
-#                     port:flex \
-#                     port:gettext \
-#                     path:lib/pkgconfig/glib-2.0.pc:glib2 \
-#                     port:gtk3 \
-#                     port:libxml2
-depends_build       path:bin/perl:perl5 \
+depends_build       port:gzip \
+                    port:m4 \
+                    path:bin/perl:perl5 \
                     port:pkgconfig
+if {${os.platform} eq "darwin"} {
+    depends_build-append \
+                    port:gtk-doc
+} else {
+    depends_build-append \
+                    port:gettext-dev
+}
 
-depends_lib         port:gettext \
+depends_lib         port:bison \
+                    port:flex \
+                    port:gettext \
                     path:lib/pkgconfig/glib-2.0.pc:glib2 \
-                    port:gtk3 \
                     port:libxml2
 
-gobject_introspection no
+gobject_introspection yes
 
 conflicts_build     check
 
-patchfiles          patch-gstreamer1-darwin-numcpufix-sysctl.diff
+platform darwin {
+    patchfiles      patch-gstreamer1-darwin-numcpufix-sysctl.diff \
+                    patch-gst-gst-c-tiger-no-procpidpath.diff
+}
+
+platform darwin 8 {
+    # Tiger uses a newer gmake. gmake >= 4.3 causes errors in this build #60721
+    # this patch can probably be used always, but is presently needed on Tiger only
+    patchfiles-append patch-gstreamer1-newer-gmake.diff
+}
 
 # global_symbol_pipe gets set to "" on Leopard
-pre-configure {
-    use_autoreconf  [expr ![file exists ${worksrcpath}/config.log]]
-}
+use_autoreconf      yes
 autoreconf.args     -fvi
 
+pre-configure {
+    if {[file exists ${worksrcpath}/config.log]} {
+        use_autoreconf no
+    }
+}
+
+configure.save_configure_cmd "install log"
+
 configure.env-append    PERL_PATH=${prefix}/bin/perl
-configure.env-append    LIBS="-L${prefix}/lib -lintl"
+# configure.env-append    LIBS="-L${prefix}/lib -lintl"
 configure.cflags-append -funroll-loops -fstrict-aliasing -fno-common
 
 if {[string match "*gcc-4.2" ${configure.compiler}]} {
@@ -69,10 +85,20 @@ if {[string match "*gcc-4.2" ${configure.compiler}]} {
 }
 
 configure.args-append \
+                    --disable-examples \
                     --disable-fatal-warnings \
-                    --disable-silent-rules
+                    --disable-silent-rules \
+                    --without-dw \
+                    --without-unwind
+platform linux {
+    configure.args-append \
+                    --with-libintl-prefix=${prefix}
+}
 
-if {[variant_isset universal]} {
+if {![info exists universal_possible]} {
+    set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
+}
+if {${universal_possible} && [variant_isset universal]} {
     set merger_host(x86_64) x86_64-apple-${os.platform}${os.major}
     set merger_host(i386) i686-apple-${os.platform}${os.major}
     set merger_configure_args(x86_64) --build=x86_64-apple-${os.platform}${os.major}
@@ -89,16 +115,8 @@ if {[variant_isset universal]} {
     }
 }
 
-# in version 1.14.0 some functionality moved here from bad
-# deactivate the old port before activating the new one
-pre-activate {
-    if {![catch {set installed [lindex [registry_active gstreamer1-gst-plugins-bad] 0]}]} {
-        set _version [lindex $installed 1]
-        if {[vercmp $_version 1.14.0] < 0} {
-            registry_deactivate_composite gstreamer1-gst-plugins-bad "" [list ports_nodepcheck 1]
-        }
-    }
-}
+test.run            yes
+test.target         check
 
 livecheck.type      regex
 livecheck.url       ${master_sites}
