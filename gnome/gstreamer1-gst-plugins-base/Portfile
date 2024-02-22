@@ -3,6 +3,9 @@
 PortSystem          1.0
 PortGroup           gobject_introspection 1.0
 PortGroup           compiler_blacklist_versions 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+PortGroup           locale_select 1.0
 
 # https://bugzilla.gnome.org/show_bug.cgi?id=636134
 # PortGroup           muniversal 1.0
@@ -10,8 +13,7 @@ PortGroup           compiler_blacklist_versions 1.0
 name                gstreamer1-gst-plugins-base
 set my_name         gst-plugins-base
 # please only commit stable updates (even numbered releases)
-version             1.14.1
-revision            5
+version             1.16.2 ; revision 2
 description         This is gst-plugins, a set of plug-ins for GStreamer.
 long_description    ${description}
 maintainers         nomaintainer
@@ -25,52 +27,58 @@ distname            ${my_name}-${version}
 
 use_xz              yes
 
-checksums           rmd160  459cd94a0bae76ed1ac216ae3f8069896903e69e \
-                    sha256  1026c7c3082d825d9b5d034c1a6dd8a4ebab60eb3738b0a0afde4ad2dc0b0db5 \
-                    size    3689184
+checksums           rmd160  7013e114ed94abe195ae4669a029ea5493015152 \
+                    sha256  b13e73e2fe74a4166552f9577c3dcb24bed077021b9c7fa600d910ec6987816a
+#                     size    3939868
 
 depends_build       port:pkgconfig
-# depends_lib         port:gstreamer1 \
-#                     port:graphene \
-#                     port:libopus \
-#                     port:orc \
-#                     path:lib/pkgconfig/pango.pc:pango \
-#                     port:zlib
+if {${os.platform} eq "darwin"} {
+    depends_build-append \
+                    port:gtk-doc
+} else {
+    depends_build-append \
+                    port:gettext-dev
+}
+
 depends_lib         port:gstreamer1 \
+                    path:include/turbojpeg.h:libjpeg-turbo \
+                    port:libpng \
                     port:libopus \
+                    port:orc \
                     path:lib/pkgconfig/pango.pc:pango \
                     port:zlib \
                     port:gettext
+platform darwin {
+    depends_lib-append \
+                    port:graphene
+}
 
-gobject_introspection no
+gobject_introspection yes
 
+use_autoreconf      yes
+autoreconf.args     -fvi
 pre-configure {
     use_autoreconf  [expr ![file exists ${worksrcpath}/config.log]]
 }
-autoreconf.args     -fvi
 
-# patchfiles          patch-allow-MESA-GL-on-macOS.diff
-# patchfiles-append   patch-bsd_source.diff
+platform darwin {
+    patchfiles      patch-allow-MESA-GL-on-macOS.diff
+}
+
+platform darwin 8 {
+    # Tiger uses a newer gmake. gmake >= 4.3 causes errors in this build #60721
+    # this patch can probably be used always, but is presently needed on Tiger only
+    patchfiles-append patch-gstreamer1-gst-plugins-base-newer-gmake.diff
+}
+
+platform linux {
+    patchfiles-append \
+                    patch-linuxports-s6_addr32.diff
+}
+
+configure.save_configure_cmd "install log"
 
 # Embedded systems are not our primary target, so disable OpenGL|ES support.
-# configure.args-append \
-#                     --disable-fatal-warnings \
-#                     --disable-silent-rules \
-#                     --disable-examples \
-#                     --disable-libvisual \
-#                     --disable-alsa \
-#                     --disable-cdparanoia \
-#                     --disable-glx \
-#                     --disable-ogg \
-#                     --disable-vorbis \
-#                     --disable-theora \
-#                     --disable-ivorbis \
-#                     --disable-x \
-#                     --disable-xvideo \
-#                     --disable-cocoa \
-#                     --disable-opengl \
-#                     --disable-gles2 \
-#                     --disable-xshm
 configure.args-append \
                     --disable-fatal-warnings \
                     --disable-silent-rules \
@@ -82,16 +90,18 @@ configure.args-append \
                     --disable-ivorbis \
                     --disable-x \
                     --disable-xvideo \
-                    --disable-cocoa \
                     --disable-opengl \
                     --disable-gles2 \
                     --disable-xshm
 
 #gstbasetextoverlay.c:1511: error: 'for' loop initial declaration used outside C99 mode
-# but must use GNU C99!
-configure.cflags-append -std=gnu99
-
-configure.env-append    LIBS="-L${prefix}/lib -lintl"
+configure.cflags-append -std=c99
+platform linux {
+    configure.cppflags-append \
+                    -D_POSIX_C_SOURCE=200809L
+    configure.args-append \
+                    --with-libintl-prefix=${prefix}
+}
 
 #gst-libs/gst/gl/gstgldebug.h:28: error: redefinition of typedef ‘GstGLAsyncDebug’
 compiler.blacklist-append *gcc-3.* *gcc-4.* {clang < 212}
@@ -105,12 +115,12 @@ platform darwin {
     }
 }
 
-variant x11 conflicts cocoa {
-#     depends_lib-append \
-#                     port:mesa \
-#                     port:xorg-libX11 \
-#                     port:xorg-libXext \
-#                     port:xorg-libXv
+variant x11 {
+    depends_lib-append \
+                    port:mesa \
+                    port:xorg-libX11 \
+                    port:xorg-libXext \
+                    port:xorg-libXv
 
     configure.args-replace  --disable-x \
                             --enable-x \
@@ -126,37 +136,32 @@ variant x11 conflicts cocoa {
                             --enable-gles2
 }
 
-# variant cocoa conflicts universal x11 description {Add support for the OpenGL Cocoa backend. Only supported for pure x86_64 builds.} {
-#     if {${build_arch} ne "x86_64"} {
-#         ui_error "The variant cocoa is not supported on architectures other than x86_64"
-#         error "Cocoa output only supported on x86_64 architecture"
-#     }
-# 
-#     if {${os.major} < 13} {
-#         ui_error "The variant cocoa is not supported on platforms older than 10.9"
-#         error "Platform too old to support Cocoa output"
-#     }
-# 
-#     configure.args-replace  --disable-cocoa \
-#                             --enable-cocoa \
-#                             --disable-opengl \
-#                             --enable-opengl
-# }
+# Prefer X11 implementation.
+default_variants +x11
 
-# base has variant_set, but no variant_unset, so emulate it.
-global variations
-# Prefer x11 variant, only enable cocoa by default if supported.
-# We disable the other conflicting variant explicitly for a smooth upgrade path.
-if {${os.major} >= 13 && ![variant_isset universal] && ![variant_isset x11] && ${build_arch} eq "x86_64"} {
-    default_variants +cocoa
+if {![info exists universal_possible]} {
+    set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
+}
 
-    default_variants -x11
-    set variations(x11) -
-} else {
-    default_variants +x11
-
-    default_variants -cocoa
-    set variations(cocoa) -
+# Cocoa-GL
+# Only enable on OS X 10.9 or later, if the x11 variant is not enabled.
+# Requires ARC (automatic reference counting, a clang feature enabled by
+# -fobjc-arc), which was not supported when targeting the legacy fragile
+# Objective-C runtime used on 32-bit x86 until Xcode 7.3 / clang 3.9
+# (https://llvm.org/viewvc/llvm-project?view=revision&revision=250955).
+# If building universal or for i386 then ensure that a sufficiently recent
+# version of clang is used, since the Xcode clang may be too old.
+platform macosx {
+    configure.args-append       --disable-cocoa
+    if {![variant_isset x11] && ${os.major} >= 13} {
+        if {(${universal_possible} && [variant_isset universal]) || ${build_arch} eq "i386"} {
+            compiler.blacklist-append *gcc* {macports-clang-3.[0-8]} {clang < 703}
+        }
+        configure.args-replace  --disable-cocoa \
+                                --enable-cocoa \
+                                --disable-opengl \
+                                --enable-opengl
+    }
 }
 
 variant ogg description {Build with support for libogg, libvorbis, libtheora} {
@@ -187,18 +192,18 @@ variant cdparanoia description {Enable (currently broken) cdparanoia plugin} {
 #-fgcse (from -O2) causes build failures, but -O2 -fno-gcse doesn't seem to work
 if {[string match "*gcc-4.2" ${configure.compiler}]} {
     lappend merger_configure_cflags(i386) -O1 -fexpensive-optimizations
-    if {![variant_isset universal] && ${build_arch} eq "i386"} {
+    if {(!${universal_possible} || ![variant_isset universal]) && ${build_arch} eq "i386"} {
         configure.cflags-delete -O2
         configure.cflags-append -O1 -fexpensive-optimizations
     }
 }
 
-if {[variant_isset universal]} {
+if {${universal_possible} && [variant_isset universal]} {
     set merger_host(x86_64) x86_64-apple-${os.platform}${os.major}
     set merger_host(i386) i686-apple-${os.platform}${os.major}
     set merger_configure_args(x86_64) --build=x86_64-apple-${os.platform}${os.major}
     set merger_configure_args(i386) --build=i686-apple-${os.platform}${os.major}
-} else {
+} elseif {${os.platform} eq "darwin"} {
     if {${build_arch} eq "i386"} {
         configure.args-append \
             --host=i686-apple-${os.platform}${os.major} \
@@ -210,16 +215,18 @@ if {[variant_isset universal]} {
     }
 }
 
-# in version 1.14.0 some functionality moved here from bad
-# deactivate the old port before activating the new one
 pre-activate {
+    # gstvideoaggregator was provied by gstreamer1-gst-plugins-bad in 1.14 but in 1.16.1 is now provided by gstreamer1-gst-plugins-base
     if {![catch {set installed [lindex [registry_active gstreamer1-gst-plugins-bad] 0]}]} {
         set _version [lindex $installed 1]
-        if {[vercmp $_version 1.14.0] < 0} {
+        if {[vercmp $_version 1.15] < 0} {
             registry_deactivate_composite gstreamer1-gst-plugins-bad "" [list ports_nodepcheck 1]
         }
     }
 }
+
+test.run            yes
+test.target         check
 
 livecheck.type      regex
 livecheck.name      ${my_name}
