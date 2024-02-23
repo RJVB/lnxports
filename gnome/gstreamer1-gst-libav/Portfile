@@ -6,11 +6,18 @@ PortSystem          1.0
 PortGroup           muniversal 1.0
 
 PortGroup           compiler_blacklist_versions 1.0
+platform linux {
+    # prevent error about libav*.a not having being ranlib'ed
+    set LTO.disable_LTO 1
+}
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+PortGroup           locale_select 1.0
 
 name                gstreamer1-gst-libav
 set my_name         gst-libav
 # please only commit stable updates (even numbered releases)
-version             1.14.1
+version             1.16.2
 description         This is gst-libav, a set of plug-ins for GStreamer.
 long_description    ${description}
 maintainers         nomaintainer
@@ -22,16 +29,23 @@ master_sites        https://gstreamer.freedesktop.org/src/${my_name}/
 distname            ${my_name}-${version}
 use_xz              yes
 
-checksums           rmd160  f75dd6d412d746feff85b6b6f469cc783f5694e9 \
-                    sha256  eff80a02d2f2fb9f34b67e9a26e9954d3218c7aa18e863f2a47805fa7066029d \
-                    size    9031916
+checksums           rmd160  fb8bdd29adba833ea8f2c9e618828ffdf19b82c8 \
+                    sha256  c724f612700c15a933c7356fbeabb0bb9571fb5538f8b1b54d4d2d94188deef2
+#                     size    9466288
 
-# depends_build       port:pkgconfig \
-#                     port:yasm
-depends_build       port:pkgconfig
-
-depends_lib         port:gstreamer1-gst-plugins-base \
+depends_build       port:nasm \
+                    port:pkgconfig
+if {${os.platform} eq "darwin"} {
+    depends_build-append \
+                    port:gtk-doc
+} else {
+    depends_build-append \
+                    port:gettext-dev
+    depends_lib-append \
                     port:gettext
+}
+
+depends_lib-append  port:gstreamer1-gst-plugins-base
 
 # This will cause the installed ffmpeg headers to be used, remove it.
 configure.cppflags-delete -I${prefix}/include
@@ -44,13 +58,16 @@ if {[lsearch [get_canonical_archs] i386] != -1} {
     compiler.blacklist-append gcc-4.2 apple-gcc-4.2 llvm-gcc-4.2 macports-llvm-gcc-4.2
 }
 
-configure.env-append    LIBS="-L${prefix}/lib -lintl"
+# configure.env-append    LIBS="-L${prefix}/lib -lintl"
 
 configure.args-append \
                     --disable-fatal-warnings \
                     --disable-silent-rules
 
-if {[variant_isset universal]} {
+if {![info exists universal_possible]} {
+    set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
+}
+if {${universal_possible} && [variant_isset universal]} {
     set merger_host(x86_64) x86_64-apple-${os.platform}${os.major}
     set merger_host(i386) i686-apple-${os.platform}${os.major}
     set merger_host(ppc64) powerpc64-apple-${os.platform}${os.major}
@@ -63,16 +80,20 @@ if {[variant_isset universal]} {
     configure.args-append \
         --host=i686-apple-${os.platform}${os.major} \
         --build=i686-apple-${os.platform}${os.major}
-} else {
+} elseif {${os.platform} eq "darwin"} {
     configure.args-append \
         --host=${os.arch}-apple-${os.platform}${os.major} \
         --build=${os.arch}-apple-${os.platform}${os.major}
 }
 
+use_autoreconf  yes
+autoreconf.args -fvi
+
 pre-configure {
     use_autoreconf  [expr ![file exists ${worksrcpath}/config.log]]
 }
-autoreconf.args -fvi
+
+configure.save_configure_cmd "install log"
 
 #
 # embedded ffmpeg code requires gmake 3.81 to build properly
