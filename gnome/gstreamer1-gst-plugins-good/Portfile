@@ -5,13 +5,14 @@ PortSystem          1.0
 # https://bugzilla.gnome.org/show_bug.cgi?id=636134
 PortGroup           muniversal 1.0
 PortGroup           active_variants 1.1
-PortGroup           compiler_blacklist_versions 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+PortGroup           locale_select 1.0
 
 name                gstreamer1-gst-plugins-good
 set my_name         gst-plugins-good
 # please only commit stable updates (even numbered releases)
-version             1.14.1
-revision            1
+version             1.16.2 ; revision 2
 description         A set of good-quality plug-ins for GStreamer under GStreamer's preferred \
                     license, LGPL.
 long_description    GStreamer Good Plug-ins is a set of plug-ins that GStreamer's developers \
@@ -27,41 +28,36 @@ master_sites        https://gstreamer.freedesktop.org/src/${my_name}/
 use_xz              yes
 distname            ${my_name}-${version}
 
-checksums           rmd160  c48451bcb816113945dcd0ab0f0b022017a91275 \
-                    sha256  34ec062ddb766a32377532e039781f4a16fbc3e8b449e642605bacab26a99172 \
-                    size    3776168
+checksums           rmd160  a666f33406af18f9a6aafc70948c9ac24699e50f \
+                    sha256  40bb3bafda25c0b739c8fc36e48380fccf61c4d3f83747e97ac3f9b0171b1319
+#                    size    3897172
 
 depends_build       port:pkgconfig
 
-# depends_lib         port:gstreamer1-gst-plugins-base \
-#                     port:aalib \
-#                     path:lib/pkgconfig/cairo.pc:cairo \
-#                     port:flac \
-#                     port:gdk-pixbuf2 \
-#                     path:include/turbojpeg.h:libjpeg-turbo \
-#                     port:lame \
-#                     path:lib/libcaca.dylib:libcaca \
-#                     port:libdv \
-#                     port:libpng \
-#                     port:libshout2 \
-#                     port:libsoup \
-#                     path:lib/libspeex.dylib:speex \
-#                     port:libvpx \
-#                     port:mpg123 \
-#                     port:orc \
-#                     port:taglib \
-#                     port:twolame \
-#                     port:wavpack
 depends_lib         port:gstreamer1-gst-plugins-base \
+                    path:lib/pkgconfig/cairo.pc:cairo \
                     port:flac \
                     port:gdk-pixbuf2 \
                     path:include/turbojpeg.h:libjpeg-turbo \
+                    port:lame \
                     port:libpng \
+                    port:libsoup \
                     path:lib/libspeex.dylib:speex \
                     port:libvpx \
-                    port:taglib
+                    port:mpg123 \
+                    port:orc \
+                    port:taglib \
+                    port:twolame \
+                    port:wavpack
+platform darwin {
+    depends_lib-append \
+                    port:aalib \
+                    port:libshout2 \
+                    path:lib/libcaca.dylib:libcaca \
+                    port:libdv
+}
 
-configure.env-append    LIBS="-L${prefix}/lib -lintl"
+# configure.env-append    LIBS="-L${prefix}/lib -lintl"
 
 platform darwin {
     if {${os.major} < 11} {
@@ -75,10 +71,14 @@ post-patch {
     reinplace "/^MMX_FILES/s|=.*|=|"       ${worksrcpath}/gst/goom/Makefile.am
 }
 
+use_autoreconf      yes
+autoreconf.args     -fvi
+
 pre-configure {
     use_autoreconf  [expr ![file exists ${worksrcpath}/config.log]]
 }
-autoreconf.args     -fvi
+
+configure.save_configure_cmd "install log"
 
 configure.args-append \
                     --disable-fatal-warnings \
@@ -90,6 +90,10 @@ configure.args-append \
                     --disable-pulse \
                     --disable-qt \
                     --disable-x
+platform linux {
+    configure.args-append \
+                    --with-libintl-prefix=${prefix}
+}
 
 configure.env-append    "HAVE_CXX=yes"
 
@@ -105,18 +109,11 @@ platform darwin {
     }
 }
 
-variant gtk3 requires x11 description {Enable GTK3 X11/GL windowing elements} {
+variant gtk3 description {Enable GTK3 windowing elements} {
     depends_lib-append      port:gtk3
     configure.args-replace  --disable-gtk3 \
                             --enable-gtk3
 }
-
-# gtk3 elements require gtk3 +x11
-
-if {[variant_isset gtk3]} {
-    require_active_variants gtk3 x11
-}
-default_variants-append     +gtk3
 
 variant jack description {Enable Jack plugin} {
     depends_lib-append      port:jack
@@ -125,7 +122,7 @@ variant jack description {Enable Jack plugin} {
 }
 
 variant pulseaudio description {Enable PulseAudio plugin} {
-#     depends_lib-append      port:pulseaudio
+    depends_lib-append      port:pulseaudio
     configure.args-replace  --disable-pulse \
                             --enable-pulse
 }
@@ -146,25 +143,29 @@ default_variants    +pulseaudio +x11
 variant qt description {Enable QT5 windowing elements } {}
 if {[variant_isset qt]} {
     PortGroup               qt5 1.0
-    PortGroup               cxx11 1.1
 
     qt5.depends_component   qtdeclarative \
                             qtmacextras
 
+    patchfiles-append       patch-qt-no-volatile.patch
     configure.args-replace  --disable-qt \
                             --enable-qt
 
     # avoid:
     #    ${prefix}/libexec/qt5/include/QtCore/qcompilerdetection.h:562:6: error: Qt requires a C++11 compiler and yours does not seem to be that.
+    compiler.cxx_standard   2011
     configure.cxxflags-append -std=c++11
 }
 
-if {[variant_isset universal]} {
+if {![info exists universal_possible]} {
+    set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
+}
+if {${universal_possible} && [variant_isset universal]} {
     set merger_host(x86_64) x86_64-apple-${os.platform}${os.major}
     set merger_host(i386) i686-apple-${os.platform}${os.major}
     set merger_configure_args(x86_64) --build=x86_64-apple-${os.platform}${os.major}
     set merger_configure_args(i386) --build=i686-apple-${os.platform}${os.major}
-} else {
+} elseif {${os.platform} eq "darwin"} {
     if {${build_arch} eq "i386"} {
         configure.args-append \
             --host=i686-apple-${os.platform}${os.major} \
@@ -177,28 +178,10 @@ if {[variant_isset universal]} {
 }
 
 # SSE register return with SSE disabled
-# <rdar://problem/9694837> - Fixed in XCode 4.2 (clang 211.10.1)
+# <rdar://problem/9694837> - Fixed in Xcode 4.2 (clang 211.10.1)
 # blacklist compilers that don't support C11 typedef redefinition
-# gstflvmux.h:73: error: redefinition of typedef âGstFlvMuxPadClassâ
-compiler.blacklist  *gcc-3.* *gcc-4.* {clang < 300}
-
-# in version 1.14.0 some functionality moved here from bad and ugly
-# deactivate the old ports before activating the new one
-pre-activate {
-    if {![catch {set installed [lindex [registry_active gstreamer1-gst-plugins-bad] 0]}]} {
-        set _version [lindex $installed 1]
-        if {[vercmp $_version 1.14.0] < 0} {
-            registry_deactivate_composite gstreamer1-gst-plugins-bad "" [list ports_nodepcheck 1]
-        }
-    }
-
-    if {![catch {set installed [lindex [registry_active gstreamer1-gst-plugins-ugly] 0]}]} {
-        set _version [lindex $installed 1]
-        if {[vercmp $_version 1.14.0] < 0} {
-            registry_deactivate_composite gstreamer1-gst-plugins-ugly "" [list ports_nodepcheck 1]
-        }
-    }
-}
+# gstflvmux.h:73: error: redefinition of typedef ‘GstFlvMuxPadClass’
+compiler.c_standard 2011
 
 livecheck.type      regex
 livecheck.url       ${master_sites}
