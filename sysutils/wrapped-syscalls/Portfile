@@ -6,8 +6,8 @@ set LTO.allow_ThinLTO no
 set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
 
-github.setup        RJVB wrapped-syscalls 770a12d6fe3bbcdd750e509fb69dd6c2095c0976
-version             1.0.0.9
+github.setup        RJVB wrapped-syscalls b7d80ed8f0df9d5a26abc95fcf28e02cd543f97c
+version             1.0.0.10
 fetch.type          git
 distname            wrapped-syscalls-git
 
@@ -23,7 +23,9 @@ maintainers         gmail.com:rjvbertin openmaintainer
 use_configure       no
 installs_libs       yes
 
-depends_run-append  port:optlibs
+if {${os.platform} ne "darwin"} {
+    depends_run-append port:optlibs
+}
 
 build.target
 build.post_args-append \
