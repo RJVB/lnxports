@@ -231,7 +231,8 @@ if {${subport} eq "llvm-${llvm_version}"} {
     }
     platform linux {
         depends_build-append \
-                        port:binutils
+                        port:binutils \
+                        port:binutils-dev
         # this makes certain (?) that LLVMgold.so gets build:
         configure.args-append \
             -DLLVM_BINUTILS_INCDIR=${prefix}/include
