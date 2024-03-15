@@ -22,8 +22,7 @@ long_description    {*}${description}, including front ends for \
                     C, C++, Objective-C, Objective-C++ and Fortran.
 
 # Remember to reset all revision increments below to 0 on new versions
-version             13.2.0
-revision            4
+version             13.2.0 ; revision 5
 
 set libgccname      lib${name}
 subport             ${libgccname} { revision [ expr ${revision} + 0 ] }
@@ -196,13 +195,15 @@ platform darwin {
 if { ${os.platform} eq "darwin" } {
     # Patch generated from https://github.com/iains/gcc-13-branch
     # git diff --no-prefix releases/gcc-13.1.0 gcc-13.1-darwin-r0
-    patchfiles-append      patch-darwin-gcc-${version}.diff
+    patchfiles-append       patch-darwin-gcc-${version}.diff
     # Do not abort if 'system' headers in /opt/local/include/gcc are missing
-    patchfiles-append      darwin/patch-disable-sys-header-missing-abort.diff
+    patchfiles-append       darwin/patch-disable-sys-header-missing-abort.diff
     # GCC fixinc work-around for sys/ucred.h on OSX10.14.4 no longer seems to work ???
     if { ${os.major} == 18 } {
-        patchfiles-append  darwin/patch-OSX10.14-ucred-atomic-define.diff
+        patchfiles-append   darwin/patch-OSX10.14-ucred-atomic-define.diff
     }
+} else {
+    patchfiles-append   patch-linux-gcc-configure.diff
 }
 
 # Since GCC 7.4.0, during configure, it detects features supported by target-as.
@@ -424,7 +425,7 @@ if {${os.platform} eq "darwin"} {
     # gcc cannot build if these are active
     conflicts_build-append libunwind-headers binutils gdb
 } else {
-    conflicts_build-append libunwind-dev binutils-dev gdb
+    conflicts_build-append libunwind-dev binutils-dev gdb gettext-dev
 }
 
 # Find dylibs at a given location
@@ -651,11 +652,12 @@ if { ${subport} ne ${libcxxname} } {
         # Ensure all dylibs in destroot have our extra rpath added ..
         # https://trac.macports.org/ticket/65503
         if {${subport} eq ${name}} {
+            ui_warn "Port ${subport} rpath massaging not handled yet"
         } else {
             set nrpath "${prefix}/lib:${mp_extra_rpath}"
             foreach dlib [ exec find ${destroot}${prefix} -name "*.so" ] {
                 ui_debug "Ensuring DYLIB '${dlib}' has RPATH '${mp_extra_rpath}'"
-                #catch {system "patchelf --set-rpath ${nrpath} ${dlib}"}
+                catch {system "patchelf --set-rpath ${nrpath} ${dlib}"}
             }
         }
     }
