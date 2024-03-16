@@ -1,0 +1,66 @@
+diff --git gcc/orig.configure gcc/configure
+index dfbe287..ec17a78 100755
+--- gcc/orig.configure
++++ gcc/configure
+@@ -11958,7 +11958,8 @@ ac_fn_cxx_check_decl "$LINENO" "strstr(const char*,const char*)" "$as_ac_Symbol"
+ if eval test \"x\$"$as_ac_Symbol"\" = x"yes"; then :
+   ac_have_decl=1
+ else
+-  ac_have_decl=0
++# we know we do have basename!
++  ac_have_decl=1
+ fi
+ 
+ cat >>confdefs.h <<_ACEOF
+@@ -11966,6 +11967,7 @@ cat >>confdefs.h <<_ACEOF
+ _ACEOF
+ 
+ 
++set -x
+ for ac_func in getenv atol atoll asprintf sbrk abort atof getcwd getwd \
+ 	madvise stpcpy strnlen strsignal strverscmp \
+ 	strtol strtoul strtoll strtoull setenv unsetenv \
+@@ -12000,6 +12002,11 @@ if ac_fn_cxx_try_compile "$LINENO"; then :
+   eval "gcc_cv_have_decl_$ac_func=yes"
+ else
+   eval "gcc_cv_have_decl_$ac_func=no"
++  now=`date +%T`
++  cp -pv conftest.cpp "${ac_func}-conftest.cpp.failed-${now}"
++  if [ -r conftest.err ] ;then
++	  cp -pv conftest.err "${ac_func}-conftest.err-${now}"
++  fi
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+ fi
+@@ -12019,7 +12026,7 @@ _ACEOF
+ fi
+ 
+ done
+-
++set +x
+ 
+ for ac_func in getrlimit setrlimit getrusage
+ do
+@@ -12152,7 +12159,9 @@ if ac_fn_cxx_try_compile "$LINENO"; then :
+ 
+ else
+ 
+-$as_echo "#define rlim_t long" >>confdefs.h
++#$as_echo "#define rlim_t long" >>confdefs.h
++# we know we have rlim_t but if not we should use a typedef
++$as_echo "//typedef long rlim_t;" >>confdefs.h
+ 
+ fi
+ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+@@ -18663,7 +18672,10 @@ if test "$GCC" = yes; then
+   # Ok, now we have the path, separated by spaces, we can step through it
+   # and add multilib dir if necessary.
+   lt_tmp_lt_search_path_spec=
+-  lt_multi_os_dir=`$CC $CPPFLAGS $CFLAGS $LDFLAGS -print-multi-os-directory 2>/dev/null`
++  $CC --version | grep '^gcc'
++  if [ $? = 0 ] ;then
++    lt_multi_os_dir=`$CC $CPPFLAGS $CFLAGS $LDFLAGS -print-multi-os-directory 2>/dev/null`
++  fi
+   for lt_sys_path in $lt_search_path_spec; do
+     if test -d "$lt_sys_path/$lt_multi_os_dir"; then
+       lt_tmp_lt_search_path_spec="$lt_tmp_lt_search_path_spec $lt_sys_path/$lt_multi_os_dir"

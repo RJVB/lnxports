@@ -1,0 +1,27 @@
+diff --git gcc/orig.gcc.cc gcc/gcc.cc
+index bd2b90c..d93dd8c 100644
+--- gcc/orig.gcc.cc
++++ gcc/gcc.cc
+@@ -1170,7 +1170,9 @@ proper position among the other output files.  */
+     %(mflib) " STACK_SPLIT_SPEC "\
+     %{fprofile-arcs|fprofile-generate*|coverage:-lgcov} " SANITIZER_SPEC " \
+     %{!nostdlib:%{!r:%{!nodefaultlibs:%(link_ssp) %(link_gcc_c_sequence)}}}\
+-    %{!nostdlib:%{!r:%{!nostartfiles:%E}}} %{T*}  \n%(post_link) }}}}}}"
++    %{!nostdlib:%{!r:%{!nostartfiles:%E}}} %{T*} \
++    %{!r:%{!nostdlib:%{!nodefaultrpaths: -rpath @MP_EXTRA_RPATH@ }}} \
++    \n%(post_link) }}}}}}"
+ #endif
+ 
+ #ifndef LINK_LIBGCC_SPEC
+@@ -4839,6 +4841,11 @@ process_command (unsigned int decoded_options_count,
+     }
+ 
+   temp = env.get (LIBRARY_PATH_ENV);
++  // pretend LIBRARY_PATH contains MP's @MP_EXTRA_RPATH@ (if it doesn't)
++  if (!temp || !strstr(temp, "@MP_EXTRA_RPATH@")) {
++	 add_prefix (&startfile_prefixes, "@MP_EXTRA_RPATH@", NULL,
++		  PREFIX_PRIORITY_LAST, 0, 1);
++  }
+   if (temp && *cross_compile == '0')
+     {
+       const char *startp, *endp;
