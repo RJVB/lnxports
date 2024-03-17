@@ -525,11 +525,18 @@ if {${subport} eq ${name}} {
             }
         }
 
+        # the MacPorts activation process breaks hardlinks on Linux; avoid that
+        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/x86_64-pc-linux-gnu-c++-mp-12
+        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/g++-mp-12
+        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/c++-mp-12
+        ln -sf x86_64-pc-linux-gnu-gcc-12.3.0 ${destroot}${prefix}/bin/gcc-mp-12
+        foreach b {gcc-ar gcc-nm gcc-ranlib gfortran} {
+            ln -sf x86_64-pc-linux-gnu-${b}-mp-12 ${destroot}${prefix}/bin/${b}-mp-12
+        }
     }
 
     select.group        gcc
     select.file         ${filespath}/mp-${name}
-
 }
 
 if { ${subport} ne ${libcxxname} } {
