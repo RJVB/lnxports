@@ -413,6 +413,12 @@ destroot.env-append V=1
 
 post-destroot {
 
+    if {![variant_isset static]} {
+        foreach a [glob -nocomplain ${destroot}${port_prefix}/lib/*.a] {
+            file delete ${a}
+        }
+    }
+
     set fflibs {avcodec avdevice avfilter avformat avutil postproc swresample swscale}
     set pattern ""
     foreach comp ${fflibs} {
@@ -618,13 +624,76 @@ This build of ${name} includes no GPLed or nonfree code and is therefore license
 "
 }
 
-# variant gcc description {bogus variant to label a build done with GCC} {}
+variant gcc description {placeholder variant to label a build with GCC} {
+    pre-configure {
+        ui_warn "The +gcc variant is only a label; you need to select a GCC compiler yourself via configure.compiler!"
+    }
+}
 
 variant novulkan description {Disable support for Vulkan-accelerated decoding (for lesser hardware)} {
     configure.args-append \
                     --disable-vulkan
 }
 
+variant static description {install the static libraries} {}
+default_variants-append +static
+
 livecheck.type      regex
 livecheck.url       ${master_sites}
 livecheck.regex     "${my_name}-(\\d+(?:\\.\\d+)*)${extract.suffix}"
+
+return 0
+###
+## on bola (N3150)
+## built +LTO+cpucompat+gpl2+gpl3+nonfree+novulkan+opencl+preserve_runtime_libraries+x11(westmere) with clang-8 -O3 :
+#> time ffmpeg6 -i bbb_sunflower_1080p_60fps_normal.mp4 -t 120 -benchmark -f null -
+#frame= 7198 fps=162 q=-0.0 Lsize=N/A time=00:01:59.98 bitrate=N/A speed=2.69x
+#bench: utime=165.272s stime=2.805s rtime=44.521s
+#bench: maxrss=161932kB
+#165.655 user_cpu 2.871 kernel_cpu 0:44.91 total_time 375.2%CPU {162332M 0F 44350R 117219I 0O 156143w 151063c}
+#
+#> time ffmpeg6 -hwaccel vaapi -i bbb_sunflower_1080p_60fps_normal.mp4 -t 120 -benchmark -f null -
+#frame= 7198 fps= 90 q=-0.0 Lsize=N/A time=00:01:59.98 bitrate=N/A speed= 1.5x    
+#bench: utime=44.162s stime=21.688s rtime=79.793s
+#bench: maxrss=170136kB
+#44.502 user_cpu 21.787 kernel_cpu 1:20.20 total_time 82.6%CPU {170136M 62F 3162303R 118150I 0O 159748w 50958c}
+#
+#> time ffmpeg6 -i VP9+opus -t 180 -benchmark -f null -
+#frame= 5400 fps=419 q=-0.0 Lsize=N/A time=00:02:59.98 bitrate=N/A speed=  14x
+#bench: utime=44.157s stime=1.496s rtime=12.891s
+#bench: maxrss=40732kB
+#44.436 user_cpu 1.550 kernel_cpu 0:13.20 total_time 348.3%CPU {41332M 0F 6939R 33588I 0O 103572w 75469c}
+#
+## built +use_lld+LTO+cpucompat+gpl2+gpl3+nonfree+novulkan+opencl+preserve_runtime_libraries+x11(westmere) with clang-12 -O3 (build+destroot took 6242.338 user_cpu 207.402 kernel_cpu 56:11.20 total_time 191.3%CPU) :
+#> time ffmpeg6 -i bbb_sunflower_1080p_60fps_normal.mp4 -t 120 -benchmark -f null -
+#frame= 7198 fps=155 q=-0.0 Lsize=N/A time=00:01:59.98 bitrate=N/A speed=2.59x
+#bench: utime=165.773s stime=2.683s rtime=46.358s
+#bench: maxrss=162040kB
+#166.154 user_cpu 2.749 kernel_cpu 0:46.76 total_time 361.1%CPU {162432M 0F 44467R 198115I 0O 158794w 169414c}
+#
+#> time ffmpeg6 -hwaccel vaapi -i bbb_sunflower_1080p_60fps_normal.mp4 -t 120 -benchmark -f null -
+#frame= 7198 fps= 88 q=-0.0 Lsize=N/A time=00:01:59.98 bitrate=N/A speed=1.47x
+#bench: utime=43.647s stime=22.378s rtime=81.842s
+#bench: maxrss=172556kB
+#44.022 user_cpu 22.454 kernel_cpu 1:22.25 total_time 80.8%CPU {172556M 0F 3654911R 117222I 0O 160900w 54580c}
+#
+## built +gcc+LTO+cpucompat+gpl2+gpl3+nonfree+novulkan+opencl+preserve_runtime_libraries+x11(westmere) with gcc-12 -O3 (build+destroot took 4693.446 user_cpu 229.725 kernel_cpu 54:09.65 total_time 151.4%CPU) :
+#> time ffmpeg6 -i bbb_sunflower_1080p_60fps_normal.mp4 -t 120 -benchmark -f null -
+#frame= 7198 fps=165 q=-0.0 Lsize=N/A time=00:01:59.98 bitrate=N/A speed=2.75x
+#bench: utime=163.316s stime=2.720s rtime=43.698s
+#bench: maxrss=162256kB
+#163.711 user_cpu 2.802 kernel_cpu 0:44.11 total_time 377.4%CPU {162652M 0F 44523R 117219I 0O 150633w 143380c}
+#
+#> time ffmpeg6 -i VP9+opus -t 180 -benchmark -f null -
+#frame= 5400 fps=434 q=-0.0 Lsize=N/A time=00:02:59.98 bitrate=N/A speed=14.5x
+#bench: utime=43.439s stime=1.210s rtime=12.446s
+#bench: maxrss=40476kB
+#43.769 user_cpu 1.257 kernel_cpu 0:12.79 total_time 351.9%CPU {41116M 0F 6960R 37428I 0O 104115w 75585c}
+#
+#> time ffmpeg6 -hwaccel vaapi -i bbb_sunflower_1080p_60fps_normal.mp4 -t 120 -benchmark -f null -
+#frame= 7198 fps= 92 q=-0.0 Lsize=N/A time=00:01:59.98 bitrate=N/A speed=1.53x
+#bench: utime=44.846s stime=22.644s rtime=78.549s
+#bench: maxrss=169628kB
+#45.214 user_cpu 22.701 kernel_cpu 1:18.95 total_time 86.0%CPU {169628M 64F 3150815R 117478I 0O 161001w 46185c}
+#
+
