@@ -73,6 +73,9 @@ PortGroup           devport 1.0
 create_devport port:${name}
 
 if {${subport} eq "${name}-dev"} {
+    foreach v {av1 opencl x11 ffvp9 libdc1394 librtmp jack gpl2 gpl3 nonfree debug gcc static} {
+        variant ${v} description "placeholder variant for the devport" {}
+    }
     # ffmpeg-dev doesn't care about anything that follows,
     # return here to avoid having to add more subport checks.
     return
@@ -133,6 +136,10 @@ patchfiles-append   patch-issue-9439-non-b-frame-encoding.diff
 # https://trac.macports.org/ticket/67327
 # Fixed via upstream commit: 031f1561cd286596cdb374da32f8aa816ce3b135
 patchfiles-append   patch-libavcodec-libsvtav1-ten_bit_format.diff
+
+# see https://www.linuxquestions.org/questions/slackware-14/regression-on-current-with-ffmpeg-4175727691/
+# and the patchfile header
+patchfiles-append   patch-mathops_h.diff
 
 # enable auto configure of asm optimizations
 # requires Xcode 3.1 or better on Leopard
@@ -306,6 +313,12 @@ post-extract {
 }
 
 post-destroot {
+
+    if {![variant_isset static]} {
+        foreach a [glob -nocomplain ${destroot}${prefix}/lib/*.a] {
+            file delete ${a}
+        }
+    }
 
     set fflibs {avcodec avdevice avfilter avformat avresample avutil postproc swresample swscale}
     set pattern ""
@@ -532,6 +545,15 @@ This build of ${name} includes no GPLed or nonfree code\
 and is therefore licensed under LGPL v2.1 or later.
 "
 }
+
+variant gcc description {placeholder variant to label a build with GCC} {
+    pre-configure {
+        ui_warn "The +gcc variant is only a label; you need to select a GCC compiler yourself via configure.compiler!"
+    }
+}
+
+variant static description {install the static libraries} {}
+default_variants-append +static
 
 livecheck.type      regex
 livecheck.url       ${master_sites}
