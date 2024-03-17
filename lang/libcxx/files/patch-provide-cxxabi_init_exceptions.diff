@@ -1,0 +1,63 @@
+diff --git a/libcxx/cmake/Modules/orig.HandleLibCXXABI.cmake b/libcxx/cmake/Modules/HandleLibCXXABI.cmake
+index 5a8a4a2..64e856e 100644
+--- a/libcxx/cmake/Modules/orig.HandleLibCXXABI.cmake
++++ b/libcxx/cmake/Modules/HandleLibCXXABI.cmake
+@@ -88,7 +88,7 @@ if ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libstdc++" OR
+     "${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libsupc++")
+   set(_LIBSUPCXX_INCLUDE_FILES
+     cxxabi.h bits/c++config.h bits/os_defines.h bits/cpu_defines.h
+-    bits/cxxabi_tweaks.h bits/cxxabi_forced.h
++    bits/cxxabi_tweaks.h bits/cxxabi_forced.h bits/cxxabi_init_exception.h
+     )
+   if ("${LIBCXX_CXX_ABI_LIBNAME}" STREQUAL "libstdc++")
+     set(_LIBSUPCXX_DEFINES "-DLIBSTDCXX")
+diff --git a/libcxx/include/orig.__config_site.in b/libcxx/include/__config_site.in
+index e202d92..9216e16 100644
+--- a/libcxx/include/orig.__config_site.in
++++ b/libcxx/include/__config_site.in
+@@ -36,6 +36,10 @@
+ #cmakedefine _LIBCPP_HAS_NO_LOCALIZATION
+ #cmakedefine _LIBCPP_HAS_NO_INCOMPLETE_FORMAT
+ #cmakedefine _LIBCPP_HAS_NO_INCOMPLETE_RANGES
++// RJVB : https://discourse.llvm.org/t/libc-compiled-with-libstdc-abi-and-cxxabi-h-std-typeinfo/56553
++// has to be defined and I don't feel like figuring out how to achieve that through the buildsystem
++// so we're just hard-coding it.
++#define _LIBCPP_ABI_GLIBCXX
+ 
+ @_LIBCPP_ABI_DEFINES@
+ 
+diff --git a/libcxx/include/orig.typeinfo b/libcxx/include/typeinfo
+index 6026038..1649bd6 100644
+--- a/libcxx/include/orig.typeinfo
++++ b/libcxx/include/typeinfo
+@@ -75,6 +75,14 @@ public:
+ #include <vcruntime_typeinfo.h>
+ #else
+ 
++// RJVB : https://discourse.llvm.org/t/libc-compiled-with-libstdc-abi-and-cxxabi-h-std-typeinfo/56553
++#if defined(_LIBCPP_ABI_GLIBCXX)
++namespace __cxxabiv1
++{
++    class __class_type_info;
++}
++#endif
++
+ namespace std  // purposefully not using versioning namespace
+ {
+ 
+@@ -339,6 +347,15 @@ public:
+     _LIBCPP_INLINE_VISIBILITY
+     bool operator!=(const type_info& __arg) const _NOEXCEPT
+     { return !operator==(__arg); }
++
++// RJVB : https://discourse.llvm.org/t/libc-compiled-with-libstdc-abi-and-cxxabi-h-std-typeinfo/56553
++#if defined(_LIBCPP_ABI_GLIBCXX)
++    virtual bool __is_pointer_p() const;
++    virtual bool __is_function_p() const;
++    virtual bool __do_catch(const type_info*, void**, unsigned) const;
++    virtual bool __do_upcast(const __cxxabiv1::__class_type_info*,
++void**) const;
++#endif
+ };
+ #endif // defined(_LIBCPP_ABI_MICROSOFT)
+ 
