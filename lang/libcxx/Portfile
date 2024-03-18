@@ -236,3 +236,14 @@ post-patch {
     }
 
 }
+
+variant buildwith description {Label the install with the compiler used} {}
+if {[variant_isset buildwith]} {
+	set usedCompiler [string map {"-" "_"} [file tail ${configure.cc}]]
+	variant ${usedCompiler} requires buildwith description "placeholder variant to record the compiler used" {
+		pre-configure {
+			ui_warn "This is just a placeholder variant"
+		}
+	}
+	default_variants-append +${usedCompiler}
+}
