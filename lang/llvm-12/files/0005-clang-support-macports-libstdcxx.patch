@@ -4,13 +4,12 @@ Date: Mon, 17 May 2021 21:28:40 -0700
 Subject: [PATCH 05/24] clang: support macports-libstdcxx
 
 requires reinplace of search paths
----
+===
  clang/include/clang/Driver/ToolChain.h        |  3 +-
  clang/include/clang/Lex/HeaderSearchOptions.h |  3 ++
  clang/lib/Driver/ToolChain.cpp                |  3 ++
  clang/lib/Driver/ToolChains/Darwin.cpp        | 40 ++++++++++++++-----
  clang/lib/Driver/ToolChains/Hexagon.cpp       |  2 +
- clang/lib/Frontend/CompilerInvocation.cpp.rej | 21 ++++++++++
  clang/lib/Frontend/InitHeaderSearch.cpp       |  2 +-
  7 files changed, 63 insertions(+), 11 deletions(-)
  create mode 100644 clang/lib/Frontend/CompilerInvocation.cpp.rej
@@ -43,10 +42,8 @@ index 42f3cff8c57a..97a01793c12c 100644
    /// Whether header search information should be output as for -v.
    unsigned Verbose : 1;
  
-diff --git a/clang/lib/Driver/ToolChain.cpp b/clang/lib/Driver/ToolChain.cpp
-index b2ddef141a75..6160843b6885 100644
---- a/clang/lib/Driver/ToolChain.cpp
-+++ b/clang/lib/Driver/ToolChain.cpp
+diff --git b/clang/lib/Driver/orig.ToolChain.cpp a/clang/lib/Driver/ToolChain.cpp
++++ a/clang/lib/Driver/ToolChain.cpp
 @@ -926,6 +926,8 @@ ToolChain::CXXStdlibType ToolChain::GetCXXStdlibType(const ArgList &Args) const{
      return ToolChain::CST_Libcxx;
    else if (LibName == "libstdc++")
@@ -56,14 +53,19 @@ index b2ddef141a75..6160843b6885 100644
    else if (LibName == "platform")
      return GetDefaultCXXStdlibType();
  
-@@ -1017,6 +1019,7 @@ void ToolChain::AddCXXStdlibLibArgs(const ArgList &Args,
-     break;
- 
+@@ -1019,6 +1021,12 @@ void ToolChain::AddCXXStdlibLibArgs(const ArgList &Args,
    case ToolChain::CST_Libstdcxx:
-+  case ToolChain::CST_MacPortsLibstdcxx:
      CmdArgs.push_back("-lstdc++");
      break;
++  case ToolChain::CST_MacPortsLibstdcxx:
++    CmdArgs.push_back("-rpath");
++    CmdArgs.push_back("@@MACPORTS_GCC_LIB_DIR@@");
++    CmdArgs.push_back("-L@@MACPORTS_GCC_LIB_DIR@@");
++    CmdArgs.push_back("-lstdc++");
++    break;
    }
+ }
+ 
 diff --git a/clang/lib/Driver/ToolChains/Darwin.cpp b/clang/lib/Driver/ToolChains/Darwin.cpp
 index eb7bd4aec898..daa8e520e404 100644
 --- a/clang/lib/Driver/ToolChains/Darwin.cpp
@@ -144,6 +146,22 @@ index eb7bd4aec898..daa8e520e404 100644
      // Unfortunately, -lstdc++ doesn't always exist in the standard search path;
      // it was previously found in the gcc lib dir. However, for all the Darwin
      // platforms we care about it was -lstdc++.6, so we search for that
+diff --git b/clang/lib/Driver/ToolChains/orig.Gnu.cpp a/clang/lib/Driver/ToolChains/Gnu.cpp
+index 1d8a3cd..2ce4016 100644
+--- b/clang/lib/Driver/ToolChains/orig.Gnu.cpp
++++ a/clang/lib/Driver/ToolChains/Gnu.cpp
+@@ -2921,6 +2921,11 @@ void Generic_GCC::AddClangCXXStdlibIncludeArgs(const ArgList &DriverArgs,
+   case ToolChain::CST_Libstdcxx:
+     addLibStdCxxIncludePaths(DriverArgs, CC1Args);
+     break;
++  case ToolChain::CST_MacPortsLibstdcxx:
++    addSystemInclude(DriverArgs, CC1Args, "@@MACPORTS_GCC_INCLUDE_DIR@@");
++    addSystemInclude(DriverArgs, CC1Args, "@@MACPORTS_GCC_INCLUDE_DIR@@/@@MACPORTS_HOST_NAME@@");
++    addSystemInclude(DriverArgs, CC1Args, "@@MACPORTS_GCC_INCLUDE_DIR@@/backward");
++    break;
+   }
+ }
+ 
 diff --git a/clang/lib/Driver/ToolChains/Hexagon.cpp b/clang/lib/Driver/ToolChains/Hexagon.cpp
 index fb54f73bcd4c..0260a32096af 100644
 --- a/clang/lib/Driver/ToolChains/Hexagon.cpp
@@ -157,33 +175,6 @@ index fb54f73bcd4c..0260a32096af 100644
    if (Value != "libstdc++" && Value != "libc++")
      getDriver().Diag(diag::err_drv_invalid_stdlib_name) << A->getAsString(Args);
  
-diff --git a/clang/lib/Frontend/CompilerInvocation.cpp.rej b/clang/lib/Frontend/CompilerInvocation.cpp.rej
-new file mode 100644
-index 000000000000..227618c333c4
---- /dev/null
-+++ b/clang/lib/Frontend/CompilerInvocation.cpp.rej
-@@ -0,0 +1,21 @@
-+***************
-+*** 2939,2946 ****
-+  #include "clang/Driver/Options.inc"
-+  #undef HEADER_SEARCH_OPTION_WITH_MARSHALLING
-+  
-+-   if (const Arg *A = Args.getLastArg(OPT_stdlib_EQ))
-+      Opts.UseLibcxx = (strcmp(A->getValue(), "libc++") == 0);
-+  
-+    // Canonicalize -fmodules-cache-path before storing it.
-+    SmallString<128> P(Args.getLastArgValue(OPT_fmodules_cache_path));
-+--- 2939,2948 ----
-+  #include "clang/Driver/Options.inc"
-+  #undef HEADER_SEARCH_OPTION_WITH_MARSHALLING
-+  
-++   if (const Arg *A = Args.getLastArg(OPT_stdlib_EQ)) {
-+      Opts.UseLibcxx = (strcmp(A->getValue(), "libc++") == 0);
-++     Opts.UseMacPortsLibstdcxx = (strcmp(A->getValue(), "macports-libstdc++") == 0);
-++   }
-+  
-+    // Canonicalize -fmodules-cache-path before storing it.
-+    SmallString<128> P(Args.getLastArgValue(OPT_fmodules_cache_path));
 diff --git a/clang/lib/Frontend/InitHeaderSearch.cpp b/clang/lib/Frontend/InitHeaderSearch.cpp
 index bc31445d6d08..abc3750edec0 100644
 --- a/clang/lib/Frontend/InitHeaderSearch.cpp
@@ -200,3 +191,5 @@ index bc31445d6d08..abc3750edec0 100644
 -- 
 2.21.1 (Apple Git-122.3)
 
+index b2ddef1..a5da15a 100644
+--- b/clang/lib/Driver/orig.ToolChain.cpp

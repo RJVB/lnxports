@@ -149,7 +149,7 @@ platform darwin {
 }
 
 patch.dir ${workpath}/${distname}
-patch.pre_args  -p1
+patch.pre_args  -Np1
 
 patchfiles-append \
     0001-MacPorts-only-clang-use-MP-omp-locations.patch \
@@ -297,7 +297,9 @@ if {${subport} eq "clang-${llvm_version}"} {
         -DLLVM_BUILD_RUNTIME=ON
     platform linux {
         if {[file exists ${filespath}/find_abi_headers.sh]} {
-            set abi_header_dirs [exec ${filespath}/find_abi_headers.sh ${configure.cxx}]
+            # find the system C++ ABI headers so we don't have to depend on an older
+            # MacPorts compiler if that's what we're using for the build:
+            set abi_header_dirs [exec ${filespath}/find_abi_headers.sh /usr/bin/c++]
             pre-configure {
                 ui_info "abi_header_dirs=${abi_header_dirs}"
             }
@@ -611,67 +613,72 @@ if {${subport} eq "clang-${llvm_version}"} {
                 patchfiles-append 0018-10.6-and-less-clang-default-to-libc-on-all-darwin-sy.patch
             }
             default_variants-append +defaultlibcxx
-        }
+        } 
+    }
 
-        variant libstdcxx description {-stdlib=macports-libstdc++ searches for MacPorts libstdc++} {
+    variant libstdcxx description {-stdlib=macports-libstdc++ builds against MacPorts libstdc++ from port:libgcc1x} {
 
-            patchfiles-append 0005-clang-support-macports-libstdcxx.patch
+        patchfiles-append 0005-clang-support-macports-libstdcxx.patch
 
-            post-patch {
-                reinplace "s|@@MACPORTS_GCC_INCLUDE_DIR@@|${prefix}/include/gcc/c++|g" \
-                    ${patch.dir}/clang/lib/Frontend/InitHeaderSearch.cpp \
-                    ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
-                reinplace "s|@@MACPORTS_HOST_NAME@@|${build_arch}-apple-darwin${os.major}|g" \
-                    ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
-                reinplace "s|@@MACPORTS_libstdc++@@|${prefix}/lib/libgcc/libstdc++.6.dylib|g" \
-                    ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
+        post-patch {
+            reinplace "s|@@MACPORTS_GCC_INCLUDE_DIR@@|${prefix}/include/gcc/c++|g" \
+                ${patch.dir}/clang/lib/Frontend/InitHeaderSearch.cpp \
+                ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp \
+                ${patch.dir}/clang/lib/Driver/ToolChains/Gnu.cpp
+            reinplace "s|@@MACPORTS_HOST_NAME@@|${build_arch}-apple-darwin${os.major}|g" \
+                ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
+            reinplace "s|@@MACPORTS_HOST_NAME@@|${build_arch}-pc-linux-gnu|g" \
+                ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
+            reinplace "s|@@MACPORTS_libstdc++@@|${prefix}/lib/libgcc/libstdc++.6.dylib|g" \
+                ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
+            reinplace "s|@@MACPORTS_GCC_LIB_DIR@@|${prefix}/lib/libgcc|g" \
+                ${patch.dir}/clang/lib/Driver/ToolChain.cpp
 
-                # GCC was built for ${build_arch}-apple-darwin${os.major}
-                # if GCC was also built universal, it has an extra include directory
-                # if ${build_arch} is 32-bit, there is an extra 64-bit subdirectory
-                # if ${build_arch} is 64-bit, there is an extra 32-bit subdirectory
-                # MacPorts GCC can not compile across platforms
-                switch ${build_arch} {
-                    x86_64 {
-                        set gcc_subdirectory_ppc    ""
-                        set gcc_subdirectory_ppc64  "ppc64"
-                        set gcc_subdirectory_i386   "i386"
-                        set gcc_subdirectory_x86_64 ""
-                    }
-                    i386 {
-                        set gcc_subdirectory_ppc    ""
-                        set gcc_subdirectory_ppc64  "ppc64"
-                        set gcc_subdirectory_i386   ""
-                        set gcc_subdirectory_x86_64 "x86_64"
-                    }
-                    ppc64 {
-                        set gcc_subdirectory_ppc    "ppc"
-                        set gcc_subdirectory_ppc64  ""
-                        set gcc_subdirectory_i386   ""
-                        set gcc_subdirectory_x86_64 "x86_64"
-                    }
-                    ppc {
-                        set gcc_subdirectory_ppc    ""
-                        set gcc_subdirectory_ppc64  "ppc64"
-                        set gcc_subdirectory_i386   ""
-                        set gcc_subdirectory_x86_64 "x86_64"
-                    }
+            # GCC was built for ${build_arch}-apple-darwin${os.major}
+            # if GCC was also built universal, it has an extra include directory
+            # if ${build_arch} is 32-bit, there is an extra 64-bit subdirectory
+            # if ${build_arch} is 64-bit, there is an extra 32-bit subdirectory
+            # MacPorts GCC can not compile across platforms
+            switch ${build_arch} {
+                x86_64 {
+                    set gcc_subdirectory_ppc    ""
+                    set gcc_subdirectory_ppc64  "ppc64"
+                    set gcc_subdirectory_i386   "i386"
+                    set gcc_subdirectory_x86_64 ""
                 }
-
-                reinplace "s|@@MACPORTS_GCC_SUBDIRECTORY_x86_64@@|${gcc_subdirectory_x86_64}|g" \
-                    ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
-                reinplace "s|@@MACPORTS_GCC_SUBDIRECTORY_i386@@|${gcc_subdirectory_i386}|g" \
-                    ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
-                reinplace "s|@@MACPORTS_GCC_SUBDIRECTORY_ppc64@@|${gcc_subdirectory_ppc64}|g" \
-                    ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
-                reinplace "s|@@MACPORTS_GCC_SUBDIRECTORY_ppc@@|${gcc_subdirectory_ppc}|g" \
-                    ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
+                i386 {
+                    set gcc_subdirectory_ppc    ""
+                    set gcc_subdirectory_ppc64  "ppc64"
+                    set gcc_subdirectory_i386   ""
+                    set gcc_subdirectory_x86_64 "x86_64"
+                }
+                ppc64 {
+                    set gcc_subdirectory_ppc    "ppc"
+                    set gcc_subdirectory_ppc64  ""
+                    set gcc_subdirectory_i386   ""
+                    set gcc_subdirectory_x86_64 "x86_64"
+                }
+                ppc {
+                    set gcc_subdirectory_ppc    ""
+                    set gcc_subdirectory_ppc64  "ppc64"
+                    set gcc_subdirectory_i386   ""
+                    set gcc_subdirectory_x86_64 "x86_64"
+                }
             }
+
+            reinplace "s|@@MACPORTS_GCC_SUBDIRECTORY_x86_64@@|${gcc_subdirectory_x86_64}|g" \
+                ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
+            reinplace "s|@@MACPORTS_GCC_SUBDIRECTORY_i386@@|${gcc_subdirectory_i386}|g" \
+                ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
+            reinplace "s|@@MACPORTS_GCC_SUBDIRECTORY_ppc64@@|${gcc_subdirectory_ppc64}|g" \
+                ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
+            reinplace "s|@@MACPORTS_GCC_SUBDIRECTORY_ppc@@|${gcc_subdirectory_ppc}|g" \
+                ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
         }
-        # at present, only the non-arm archs can use this variant
-        if {${build_arch} in "x86_64 i386 ppc64 ppc"} {
-#             default_variants-append +libstdcxx
-        }
+    }
+    # at present, only the non-arm archs can use this variant
+    if {${build_arch} in "x86_64 i386 ppc64 ppc"} {
+        default_variants-append +libstdcxx
     }
 }
 
