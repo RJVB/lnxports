@@ -2,10 +2,14 @@
 
 PortSystem          1.0
 PortGroup           muniversal 1.0
-PortGroup           xcodeversion 1.0
+#PortGroup           xcodeversion 1.0
+set LTO.configure_option --enable-lto
+PortGroup           LTO 1.0
+PortGroup           preserve_runtime_libraries 1.0
+PortGroup           save_configure_cmd 1.0
 
 name                x264
-version             20161201
+version             20191217
 categories          multimedia
 license             GPL-2+
 platforms           darwin
@@ -16,25 +20,29 @@ long_description    x264 is a free library for encoding H264/AVC video streams. 
                     Chen (vfw/nasm), Justin Clay(vfw), Måns Rullgård and Loren \
                     Merritt from scratch. It is released under the terms of the \
                     GPL license.
-homepage            http://www.videolan.org/x264.html
-master_sites        http://ftp.videolan.org/pub/videolan/x264/snapshots/
+homepage            https://www.videolan.org/x264.html
+master_sites        https://download.videolan.org/pub/videolan/x264/snapshots/
 
 dist_subdir         x264
 distname            ${name}-snapshot-${version}-2245-stable
 
 use_bzip2           yes
 
-checksums           rmd160  70a31b194db1c053ed5461e1ec8c241fb67f4874 \
-                    sha256  4b9be132e5c593431a11679a7883864e4e5ee90661b97bdd23412fb93dee6750
+checksums           rmd160  6a204dfd1d56faf2d9c0ff2b90642507112f291d \
+                    sha256  b2495c8f2930167d470994b1ce02b0f4bfb24b3317ba36ba7f112e9809264160
+#                     size    770169
 
-minimum_xcodeversions {9 3.1}
+# minimum_xcodeversions {9 3.1}
 
-# depends_build       port:yasm
+depends_build       port:nasm
 
-configure.args      --enable-pic \
+
+configure.save_configure_cmd "install log"
+
+configure.args-append \
+                    --enable-pic \
                     --enable-shared \
                     --enable-static \
-                    --enable-lto \
                     --disable-avs \
                     --disable-swscale \
                     --disable-lavf \
@@ -42,31 +50,31 @@ configure.args      --enable-pic \
                     --disable-gpac \
                     --disable-lsmash
 
-platform linux {
-    if {[string match *clang* ${configure.cc}]} {
-        configure.args-replace \
-                    --enable-lto \
-                    --disable-lto
-    }
-}
+#platform linux {
+#    if {[string match *clang* ${configure.cc}]} {
+#        configure.args-replace \
+#                    --enable-lto \
+#                    --disable-lto
+#    }
+#}
 
 # as of this build (148) asm optimizations are believed to work with x86_64 Snow Leopard and up
+# as of build 148 asm optimizations are believed to work with x86_64 Snow Leopard and up
 # please file a ticket if you have evidence to the contrary
 # i386 clang build issues remain which break i386 build when asm optimizations are enabled
 # assert configure option --disable-asm for all i386 builds
 # see https://mailman.videolan.org/pipermail/x264-devel/2014-February/010371.html, #42672.
-
-if {${os.platform} eq "darwin" && ${build_arch} ne "" && ![variant_isset universal]} {
-    if {${build_arch} eq "i386"} {
+if {${os.platform} eq "darwin" && ${configure.build_arch} ne "" && (!${universal_possible} || ![variant_isset universal])} {
+    if {${configure.build_arch} eq "i386"} {
         configure.args-append   --host=i686-apple-darwin${os.major} \
                                 --disable-asm
     } else {
-        configure.args-append   --host=${build_arch}-apple-darwin${os.major}
+        configure.args-append   --host=${configure.build_arch}-apple-darwin${os.major}
     }
     configure.ldflags-append {*}${configure.cc_archflags}
 }
 
-foreach arch ${universal_archs} {
+foreach arch ${configure.universal_archs} {
     if {${arch} eq "i386"} {
         set merger_configure_args(${arch}) "--host=i686-apple-darwin${os.major} --disable-asm"
     } else {
@@ -78,28 +86,38 @@ configure.universal_args-delete --disable-dependency-tracking
 
 platform darwin 8 {
     # https://trac.macports.org/ticket/24893
-    if {${build_arch} eq "i386" && ![variant_isset universal]} {
+    if {${configure.build_arch} eq "i386" && (!${universal_possible} || ![variant_isset universal])} {
         configure.cflags-append -msse2
     }
     set merger_configure_cflags(i386) -msse2
+
+    depends_build-append port:gmake
+    build.cmd            gmake
 }
 
 # sets its own optflags
 configure.optflags
 configure.cflags-append -I. -fno-common
+if {[string match "*clang*" ${configure.compiler}]} {
+    configure.cflag-append -read_only_relocs suppress
+}
 
 destroot.args       DIR_INSTALL=${destroot}${prefix}
 
 build.target        default
 
-post-patch {
-    if {[string match "*clang*" ${configure.compiler}]} {
-        reinplace "s|-falign-loops=16||g" ${worksrcpath}/configure
-    }
-}
+#post-patch {
+#    if {[string match "*clang*" ${configure.compiler}]} {
+#        reinplace "s|-falign-loops=16||g" ${worksrcpath}/configure
+#    }
+#}
 
 variant high10 description {Set output bit depth to 10 instead of default 8} {
     configure.args-append --bit-depth=10
+}
+
+post-destroot {
+    preserve_libraries ${prefix}/lib "libx264.*.dylib libx264.so.*"
 }
 
 livecheck.type      none
