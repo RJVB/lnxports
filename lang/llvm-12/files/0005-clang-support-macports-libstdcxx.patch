@@ -60,8 +60,8 @@ diff --git b/clang/lib/Driver/orig.ToolChain.cpp a/clang/lib/Driver/ToolChain.cp
 +  case ToolChain::CST_MacPortsLibstdcxx:
 +    CmdArgs.push_back("-rpath");
 +    CmdArgs.push_back("@@MACPORTS_GCC_LIB_DIR@@");
-+    CmdArgs.push_back("-L@@MACPORTS_GCC_LIB_DIR@@");
-+    CmdArgs.push_back("-lstdc++");
++    CmdArgs.push_back("@@MACPORTS_GCC_LIB_DIR@@/libstdc++.so"); // full path to runtime so we're certain we get the right one
++    // CmdArgs.push_back("-lstdc++"); // this is too unpredictable
 +    break;
    }
  }
