@@ -1,3 +1,5 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
 PortSystem              1.0
 PortGroup               compiler_blacklist_versions 1.0
 set LTO.allow_ThinLTO no
@@ -66,9 +68,9 @@ if {[string match *clang++-mp-* ${configure.cxx}]} {
             }
         }
     }
-} else {
+} elseif {![string match macports-gcc* ${configure.compiler}]} {
     pre-configure {
-        ui_error "This port needs to be built with a clang compiler from MacPorts (>= 8.0)"
+        ui_error "This port needs to be built with a gcc or clang compiler from MacPorts (clang >= 8.0)"
         return -code error "install a MacPorts clang compiler or invoke the install with `configure.compiler=macports-clang-XY`"
     }
 }
@@ -112,23 +114,30 @@ if {${os.platform} eq "linux"} {
     patchfiles-append \
         patch-provide-cxxabi_init_exceptions.diff
 
-if {${os.platform} eq "darwin" && ${os.major} < 12} {
-    # On OSX10.7 and older revert call to add_security_warnings as fails with
-    #   add_security_warnings Function invoked with incorrect arguments
-    post-patch {
-        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
-            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
-            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
-    }
+    # make the +benchmark_mpstdlibcxx variant possible:
+    patchfiles-append \
+        patch-benchmark_mplibstdcxx.diff
 
-    # On OSX10.7 and older revert call to add_security_warnings as fails with
-    #   add_security_warnings Function invoked with incorrect arguments
-    post-patch {
-        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
-            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
-            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
-    }
-}
+#if {${os.platform} eq "darwin" && ${os.major} < 12} {
+#    # On OSX10.7 and older revert call to add_security_warnings as fails with
+#    #   add_security_warnings Function invoked with incorrect arguments
+#    post-patch {
+#        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
+#            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
+#            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+#    }
+#
+#    # On OSX10.7 and older revert call to add_security_warnings as fails with
+#    #   add_security_warnings Function invoked with incorrect arguments
+#    post-patch {
+#        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
+#            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
+#            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+#    }
+#}
+
+# allow building with compilers that don't support -nostdlib++ (like GCC 12)
+patchfiles-append patch-allow-builds-with-gcc.diff
 
 # make some space, but only after the patching so it's easier to share
 # patchfiles with the main llvm ports.
@@ -188,10 +197,14 @@ post-patch {
                         ${prefix}/libexec/onetbb/lib
     }
 
-    variant benchmark_libcxx description {build the benchmark against libc++} {
+    variant benchmark_libcxx conflicts benchmark_mplibstdcxx description {build the benchmark against libc++ (no need to install with this variant!)} {
         configure.args-replace \
                         -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++ \
                         -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libc++
+    }
+    variant benchmark_mplibstdcxx conflicts benchmark_libcxx description {build the benchmark against macports-libstdc++ (no need to install with this variant!)} {
+        configure.args-append \
+                        -DLIBCXX_BENCHMARK_NATIVE_STDLIB_FROM_MACPORTS=ON
     }
     variant static_abi description {link the ABI library (libstdc++) statically} {
         configure.args-append \
@@ -204,7 +217,7 @@ post-patch {
     post-destroot {
         if {[variant_isset pstl]} {
             foreach i [glob ${destroot}/usr/include/*pstl*] {
-                # move the ParellelSTL headers into the libc++ include dir so they're be found when
+                # move the ParellelSTL headers into the libc++ include dir so they're found when
                 # that directory is added to the compiler's header search path. Upstream appear to
                 # be making this same merger.
                 file rename ${i} ${destroot}/usr/include/c++/v1
