@@ -20,7 +20,7 @@ platform darwin {
 name                    libcxx
 epoch                   1
 set llvm_version        13
-version                 13.0.1 ; revision 1
+version                 13.0.1 ; revision 2
 categories              lang
 platforms               darwin
 license                 MIT NCSA
@@ -76,6 +76,28 @@ if {[string match *clang++-mp-* ${configure.cxx}]} {
 }
 
 variant pstl description "Build libc++ with ParallelSTL support (TBB backend)" {}
+variant static_abi description {link the ABI library (libstdc++) statically} {}
+
+variant builtwith description {Label the install with the compiler used} {}
+if {[variant_isset builtwith]} {
+	set usedCompiler [string map {"-" "_"} [file tail ${configure.cc}]]
+	variant ${usedCompiler} requires builtwith description "placeholder variant to record the compiler used" {
+		pre-configure {
+			ui_warn "This is just a placeholder variant"
+		}
+	}
+	default_variants-append +${usedCompiler}
+}
+
+if {${name} eq "libcxx"} {
+    PortGroup           devport 1.0
+    create_devport      port:${name}
+}
+
+if {![is_mainport]} {
+    # nothing else to be done
+    return
+}
 
 if {${os.platform} eq "linux"} {
     worksrcdir          ${distname}
@@ -206,7 +228,8 @@ post-patch {
         configure.args-append \
                         -DLIBCXX_BENCHMARK_NATIVE_STDLIB_FROM_MACPORTS=ON
     }
-    variant static_abi description {link the ABI library (libstdc++) statically} {
+
+    if {[variant_isset static_abi]} {
         configure.args-append \
                         -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON
     }
@@ -236,6 +259,14 @@ post-patch {
         foreach d [glob ${otbpref}/lib/pkgconfig/*] {
             ln -s ${d} ${destroot}/usr/lib/pkgconfig/
         }
+
+        # there is probably no standard content at all...
+        register_devport_standard_content
+        append_to_devport_standard_content ${cmake.install_prefix}/include
+        append_to_devport_standard_content ${cmake.install_prefix}/lib/*.so
+        append_to_devport_standard_content ${cmake.install_prefix}/lib/*.a
+        append_to_devport_standard_content ${cmake.install_prefix}/lib/cmake
+        create_devport_content_archive
     }
 
     test.run            yes
@@ -248,15 +279,4 @@ post-patch {
             time ./algorithms.native.out --benchmark_repetitions=1 --benchmark_filter='_262144$'"
     }
 
-}
-
-variant builtwith description {Label the install with the compiler used} {}
-if {[variant_isset builtwith]} {
-	set usedCompiler [string map {"-" "_"} [file tail ${configure.cc}]]
-	variant ${usedCompiler} requires builtwith description "placeholder variant to record the compiler used" {
-		pre-configure {
-			ui_warn "This is just a placeholder variant"
-		}
-	}
-	default_variants-append +${usedCompiler}
 }

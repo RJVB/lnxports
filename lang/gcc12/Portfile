@@ -352,7 +352,8 @@ if { ${subport} ne ${libcxxname} } {
     if {[variant_exists libcxx] && [variant_isset libcxx]} {
         if {${subport} eq ${name}} {
             depends_build-append \
-                port:libcxx
+                port:libcxx \
+                port:libcxx-dev
             if {${os.platform} eq "darwin"} {
                 depends_run-append \
                     port:${libcxxname}
@@ -360,7 +361,8 @@ if { ${subport} ne ${libcxxname} } {
                 require_active_variants libcxx-dev macports_libcxx
             } else {
                 depends_run-append \
-                    port:libcxx
+                    port:libcxx \
+                    port:libcxx-dev
             }
         }
         patchfiles-append \
