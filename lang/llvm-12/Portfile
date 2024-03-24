@@ -52,7 +52,9 @@ subport                 lldb-${llvm_version} {
 dist_subdir             llvm
 set suffix              mp-${llvm_version}
 set sub_prefix          ${prefix}/libexec/llvm-${llvm_version}
-worksrcdir              ${worksrcdir}/llvm
+if {${subport} ne "lldb-${llvm_version}" || ![info exists lldb_standalone_build]} {
+    worksrcdir          ${worksrcdir}/llvm
+}
 
 # hand-tweaked, approximately c++ standard 2017
 compiler.blacklist      *gcc* {clang < 1001} macports-clang-3.*
@@ -416,7 +418,7 @@ if {${subport} eq "lldb-${llvm_version}"} {
 
     depends_lib-append  port:libedit port:libffi port:ncurses path:lib/libxar.dylib:xar port:zlib
     depends_lib-append  port:llvm-${llvm_version} port:clang-${llvm_version}
-    depends_build-append port:swig-python port:doxygen
+    depends_build-append bin:swig3.0:swig-python port:doxygen
 
     if {${os.platform} eq "darwin" && ${os.major} <= 15} {
     # see Note 1 below
@@ -435,33 +437,24 @@ if {${subport} eq "lldb-${llvm_version}"} {
     configure.args-append \
         -DLLDB_CODESIGN_IDENTITY=- \
         -DLLDB_ENABLE_LUA=OFF
-    # RJVB
-    if {[string match *clang-mp* ${configure.cc}]} {
-        configure.args-append \
-            -DCMAKE_ASM-ATT_COMPILER=[string map {"clang-" "llvm-as-"} ${configure.cc}]
-    }
     # for the standalone build:
     if {[info exists lldb_standalone_build]} {
         configure.args-append \
             -DLLVM_CONFIG=${sub_prefix}/bin/llvm-config \
             -DLLVM_DIR=${sub_prefix}/lib/cmake/llvm
-        configure.post_args \
-            ../${worksrcdir}/tools/lldb
     }
 
-    set worksrcpath ${workpath}/${distname}/lldb
+    set worksrcpath ${worksrcpath}/lldb
 
-    post-destroot {
-        xinstall -m 755 -d ${destroot}${prefix}/share/doc/lldb-${llvm_version}
-        xinstall -m 644 ${worksrcpath}/tools/lldb/docs/code-signing.txt ${destroot}${prefix}/share/doc/lldb-${llvm_version}/
-    }
-    post-activate {
-        if {[codesign ${sub_prefix}/bin/debugserver lldb_codesign] ne 0} {
-            ui_msg "Please follow the instructions at  https://lldb.llvm.org/resources/build.html#code-signing-on-macos and then codesign lldb-server with:"
-            if {${os.major} >= 13} {
-                ui_msg "   sudo codesign --force --deep --preserve-metadata=identifier,entitlements,resource-rules,requirements,flags,team-identifier --sign <identity> ${sub_prefix}/bin/lldb-server"
-            } else {
-               ui_msg "   sudo codesign --force --deep --preserve-metadata=identifier,entitlements,resource-rules,requirements --sign <identity> ${sub_prefix}/bin/lldb-server"
+    platform darwin {
+        post-activate {
+            if {[codesign ${sub_prefix}/bin/debugserver lldb_codesign] ne 0} {
+                ui_msg "Please follow the instructions at  https://lldb.llvm.org/resources/build.html#code-signing-on-macos and then codesign lldb-server with:"
+                if {${os.major} >= 13} {
+                    ui_msg "   sudo codesign --force --deep --preserve-metadata=identifier,entitlements,resource-rules,requirements,flags,team-identifier --sign <identity> ${sub_prefix}/bin/lldb-server"
+                } else {
+                   ui_msg "   sudo codesign --force --deep --preserve-metadata=identifier,entitlements,resource-rules,requirements --sign <identity> ${sub_prefix}/bin/lldb-server"
+                }
             }
         }
     }
@@ -581,10 +574,12 @@ post-destroot {
     }
     
     if {${subport} eq "lldb-${llvm_version}"} {
-        delete ${destroot}${prefix}/bin/debugserver-${suffix}
-        if {${os.platform} eq "darwin" && [info exists lldb_standalone_build]} {
-            system "otool -L ${destroot}${sub_prefix}/lib/liblldb.${version}.dylib"
-            system "install_name_tool -id @rpath/liblldb.${version}.dylib ${destroot}${sub_prefix}/lib/liblldb.${version}.dylib"
+        if {${os.platform} eq "darwin"} {
+            delete ${destroot}${prefix}/bin/debugserver-${suffix}
+            if {[info exists lldb_standalone_build]} {
+                system "otool -L ${destroot}${sub_prefix}/lib/liblldb.${version}.dylib"
+                system "install_name_tool -id @rpath/liblldb.${version}.dylib ${destroot}${sub_prefix}/lib/liblldb.${version}.dylib"
+            }
         }
     }
 }
