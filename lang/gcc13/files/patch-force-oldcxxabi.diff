@@ -1,0 +1,13 @@
+diff --git c++/x86_64-pc-linux-gnu/bits/orig.c++config.h c++/x86_64-pc-linux-gnu/bits/c++config.h
+index 5676bcf..988847d 100644
+--- c++/x86_64-pc-linux-gnu/bits/orig.c++config.h
++++ c++/x86_64-pc-linux-gnu/bits/c++config.h
+@@ -332,7 +332,7 @@ namespace std
+ #endif
+ 
+ #ifndef _GLIBCXX_USE_CXX11_ABI
+-# define _GLIBCXX_USE_CXX11_ABI 1
++# define _GLIBCXX_USE_CXX11_ABI 0
+ #endif
+ 
+ #if _GLIBCXX_USE_CXX11_ABI
