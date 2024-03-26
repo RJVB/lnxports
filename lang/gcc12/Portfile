@@ -431,7 +431,7 @@ if {${os.platform} eq "darwin"} {
     # gcc cannot build if these are active
     conflicts_build-append libunwind-headers binutils gdb
 } else {
-#     conflicts_build-append libunwind-dev binutils-dev gdb gettext-dev
+    conflicts_build-append libunwind-dev binutils-dev gdb gettext-dev
 }
 
 # Find dylibs at a given location
