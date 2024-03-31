@@ -7,6 +7,10 @@ PortGroup       locale_select 1.0
 set LTO.disable_LTO yes
 PortGroup       LTO 1.0
 PortGroup       save_configure_cmd 1.0
+platform darwin {
+    PortGroup   compress_workdir 1.0
+    PortGroup   code_sign 1.0
+}
 
 name            gdb
 version         13.2
@@ -70,12 +74,12 @@ if {${os.platform} eq "darwin"} {
                 gettext-dev
     depends_build-append \
                 port:ncurses-dev
-    # we install a certain number of files also installed by port:binutils.
-    # Avoid existential problems: delete our copy and require binutils so
-    # everything is complete.
-    depends_run-append \
-                port:binutils
 }
+# we install a certain number of files also installed by port:binutils.
+# Avoid existential problems: delete our copy and require binutils so
+# everything is complete.
+depends_run-append \
+                port:binutils
 
 # Older Apple clang versions segfault, c.f., https://trac.macports.org/ticket/56883
 compiler.blacklist      {clang < 601}
@@ -117,12 +121,14 @@ pre-configure {
 build.dir ${configure.dir}
 
 post-destroot {
-    if {${os.platform} eq "darwin" && ${os.major} < 12} {
-        system "chgrp procmod ${destroot}${prefix}/bin/ggdb*"
-        system "chmod g+s ${destroot}${prefix}/bin/ggdb*"
-    }
+    if {${os.platform} eq "darwin"} {
+        if {${os.major} < 12} {
+            system "chgrp procmod ${destroot}${prefix}/bin/ggdb*"
+            system "chmod g+s ${destroot}${prefix}/bin/ggdb*"
+        } else {
+            codesign ${destroot}${prefix}/bin/ggdb lldb_codesign
+        }
 
-    platform darwin {
         foreach info [glob -tails -directory ${destroot}${prefix}/share/info g*] {
             move ${destroot}${prefix}/share/info/${info} ${destroot}${prefix}/share/info/g${info}
         }
@@ -132,7 +138,6 @@ post-destroot {
             ln -s ${prefix}/bin/${binary} ${destroot}${prefix}/libexec/gnubin/[string range $binary 1 end]
         }
     }
-
     # remove items already installed by port:binutils
     file delete -force ${destroot}${prefix}/share/locale
     file delete -force ${destroot}${prefix}/share/info/bfd.info
@@ -149,8 +154,9 @@ post-destroot {
     file delete -force ${destroot}${prefix}/lib/libbfd.la
     file delete -force ${destroot}${prefix}/lib/libbfd.a
     file delete -force {*}[glob -directory ${destroot}${prefix}/include/ *.h]
+
     # make a lot of space:
-    foreach r [glob ${destroot}${prefix}/bin/run-*] {
+    foreach r [glob -nocomplain ${destroot}${prefix}/bin/run-*] {
         set a [lindex [split [file tail ${r}] "-"] 1]
         switch ${a} {
             aarch64 -
@@ -192,12 +198,22 @@ variant multiarch description {Support all target architectures} {
 }
 
 if {${os.platform} eq "darwin" && ${os.major} >= 12} {
-    notes "
-You will need to codesign ${prefix}/bin/ggdb
-
-See https://sourceware.org/gdb/wiki/BuildingOnDarwin#Giving_gdb_permission_to_control_other_processes
-for more information.
-"
+#     notes "
+# You will need to codesign ${prefix}/bin/ggdb
+# 
+# See https://sourceware.org/gdb/wiki/BuildingOnDarwin#Giving_gdb_permission_to_control_other_processes
+# for more information.
+# "
+    post-activate {
+        if {[codesign ${prefix}/bin/ggdb lldb_codesign] ne 0} {
+            ui_msg "Please follow the instructions at https://sourceware.org/gdb/wiki/BuildingOnDarwin#Giving_gdb_permission_to_control_other_processes and then codesign ggdb with:"
+            if {${os.major} >= 13} {
+                ui_msg "   sudo codesign --force --deep --preserve-metadata=identifier,entitlements,resource-rules,requirements,flags,team-identifier --sign <identity> ${prefix}/bin/ggdb"
+            } else {
+                ui_msg "   sudo codesign --force --deep --preserve-metadata=identifier,entitlements,resource-rules,requirements --sign <identity> ${prefix}/bin/ggdb"
+            }
+        }
+    }
 }
 
 
