@@ -31,8 +31,11 @@ master_sites        gnu:binutils
 use_xz              yes
 
 depends_build-append \
-                    port:gettext \
+                    port:gettext
+platform linux {
+    depends_build-append \
                     port:gettext-dev
+}
 
 # Enforce systems nm on 10.10 and earlier,
 # See: https://trac.macports.org/ticket/65621
@@ -56,9 +59,10 @@ configure.args      --enable-option-checking \
                     --enable-year2038 \
                     --disable-werror \
                     --enable-libssp \
-                    --with-isl=${prefix}
+                    --with-isl=${prefix} \
+                    --enable-lto \
+                    --enable-compressed-debug-sections=all
 
-if {${os.platform} eq "linux"} {
     ###############################
     PortGroup       devport 1.0
     create_devport  port:${name}
@@ -71,11 +75,10 @@ if {${os.platform} eq "linux"} {
 
     conflicts_build "${name}-dev"
 
+if {${os.platform} eq "linux"} {
     configure.args-append \
-                    --enable-lto \
                     --enable-objc-gc \
-                    --enable-host-shared \
-                    --enable-compressed-debug-sections=all
+                    --enable-host-shared
     # --enable-shared is no longer available but the `enable_shared` variable still consulted in configure
     configure.env-append \
                     "enable_shared=yes" \
@@ -111,8 +114,8 @@ platform darwin {
 
 universal_variant   no
 
-platform linux {
-    post-destroot {
+post-destroot {
+    platform linux {
         set archdir "${prefix}/${build_arch}-pc-linux-gnu"
         # the MacPorts install/activation process breaks hard symlinks
         file delete ${destroot}${archdir}/bin/ld.bfd
@@ -124,9 +127,11 @@ platform linux {
                 ln -s ${archdir}/bin/${b} ${destroot}${prefix}/bin/
             }
         }
+    }
 
-        register_devport_standard_content
-        create_devport_content_archive
+    register_devport_standard_content
+    create_devport_content_archive
+    platform linux {
         # now preserve the shared libraries installed by previous version(s) of the port.
         # These aren't versioned so devport left them alone in those versions because they
         # were regular files. Preserving them turns them into symlinks and devport would
