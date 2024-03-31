@@ -1,15 +1,15 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem      1.0
-PortGroup       compiler_blacklist_versions 1.0
 PortGroup       muniversal 1.0
-platform darwin {
-    PortGroup   cxx11 1.1
-}
+PortGroup       compiler_blacklist_versions 1.0
 PortGroup       locale_select 1.0
+set LTO.disable_LTO yes
+PortGroup       LTO 1.0
+PortGroup       save_configure_cmd 1.0
 
 name            gdb
-version         8.1
+version         13.2
 categories      devel
 license         GPL-3+
 maintainers     nomaintainer
@@ -36,31 +36,40 @@ supported_archs x86_64 i386
 
 master_sites    gnu
 
-checksums       rmd160  71bbfb22a924f5aa88af7ba8ed11f763a8666ad1 \
-                sha256  e54a2322da050e4b00785370a282b9b8f0b25861ec7cfbbce0115e253eea910e \
-                size    37334207
+checksums       rmd160  ef57e9d16e34b6820791edaf3b4ec9c992cfaa3a \
+                sha256  7ead13d9e19fa0c57bb19104e1a5f67eefa9fc79f2e6360de491e8fddeda1e30 \
+                size    40251050
+
+
+# fix test for makeinfo version in libctf
+patchfiles      patch-gdb-libctf-makeinfo-test.diff
+
+# Ventura+ do not have makeinfo in the system
+depends_build   bin:makeinfo:texinfo
 
 # these dependencies are listed under depends_lib rather than depends_build
 # because gdb will link with libraries they provide if installed.
 # there may be more. See variable host_libs in configure.ac.
-# port:guile should also be a dependency, but currently does not build universally. (#48767)
+# guile should also be a dependency, but currently does not build universally. (#48767)
 
 platform darwin {
     depends_lib port:boehmgc
 }
 depends_lib-append \
                 port:expat \
+                port:gmp \
                 port:libiconv \
                 port:ncurses \
-                port:gettext \
                 port:zlib
-if {${os.platform} ne "darwin"} {
+if {${os.platform} eq "darwin"} {
+    depends_lib-append \
+                port:gettext-runtime
+} else {
+    PortGroup   conflicts_build 1.0
+    conflicts_build-append \
+                gettext-dev
     depends_build-append \
                 port:ncurses-dev
-    configure.env-append \
-                LIBS="-L${prefix}/lib -lintl"
-    build.env-append \
-                LIBS="-L${prefix}/lib -lintl"
     # we install a certain number of files also installed by port:binutils.
     # Avoid existential problems: delete our copy and require binutils so
     # everything is complete.
@@ -68,28 +77,44 @@ if {${os.platform} ne "darwin"} {
                 port:binutils
 }
 
-# clang 600.0.57 is known to segfault when building this
-compiler.blacklist {clang >= 600 < 601}
+# Older Apple clang versions segfault, c.f., https://trac.macports.org/ticket/56883
+compiler.blacklist      {clang < 601}
+compiler.thread_local_storage \
+                        yes
 
+# Needs C++11; halfway redundant due to the blacklist above, but make sure selected
+# compiler supports the standard - getting rid of old Apple GCC versions and the like?
+compiler.cxx_standard   2011
+configure.save_configure_cmd "install log"
+
+configure.dir ${workpath}/build
+configure.cmd ${worksrcpath}/configure
 configure.args \
     --with-docdir=${prefix}/share/doc \
     --without-python \
-    --disable-werror
+    --disable-werror \
+    --enable-year2038 \
+    --enable-lto \
+    --enable-host-shared
 
 platform darwin {
     configure.args-append \
         --without-guile \
         --program-prefix=g
+
+    # build an x86_64 binary as gdb arm binaries are not yet supported.
+    configure.args-append --build=aarch64-apple-${os.platform}${os.major} \
+                          --host=x86_64-apple-${os.platform}${os.major}
+
+    # prevent make[2]: x86_64-apple-darwin22-ar: No such file or directory
+    configure.env-append  AR=ar
 }
-if {${os.platform} ne "darwin"} {
-    configure.args-append \
-        --enable-compressed-debug-sections=all \
-        --enable-plugins \
-        --enable-tui \
-        --disable-gdbtk \
-        --enable-rpath \
-        --enable-lto
+
+pre-configure {
+    file mkdir ${configure.dir}
 }
+
+build.dir ${configure.dir}
 
 post-destroot {
     if {${os.platform} eq "darwin" && ${os.major} < 12} {
@@ -98,25 +123,50 @@ post-destroot {
     }
 
     platform darwin {
-        xinstall -m 755 -d ${destroot}${prefix}/libexec/gnubin
         foreach info [glob -tails -directory ${destroot}${prefix}/share/info g*] {
             move ${destroot}${prefix}/share/info/${info} ${destroot}${prefix}/share/info/g${info}
         }
+
+        xinstall -m 755 -d ${destroot}${prefix}/libexec/gnubin
         foreach binary [glob -tails -directory ${destroot}${prefix}/bin g*] {
             ln -s ${prefix}/bin/${binary} ${destroot}${prefix}/libexec/gnubin/[string range $binary 1 end]
         }
     }
+
     # remove items already installed by port:binutils
     file delete -force ${destroot}${prefix}/share/locale
     file delete -force ${destroot}${prefix}/share/info/bfd.info
+    file delete -force ${destroot}${prefix}/share/info/sframe-spec.info
+    file delete -force ${destroot}${prefix}/share/info/ctf-spec.info
+    file delete -force ${destroot}${prefix}/lib/libsframe.la
+    file delete -force ${destroot}${prefix}/lib/libsframe.a
+    file delete -force ${destroot}${prefix}/lib/libctf.la
+    file delete -force ${destroot}${prefix}/lib/libctf.a
+    file delete -force ${destroot}${prefix}/lib/libctf-nobfd.la
+    file delete -force ${destroot}${prefix}/lib/libctf-nobfd.a
     file delete -force ${destroot}${prefix}/lib/libopcodes.la
     file delete -force ${destroot}${prefix}/lib/libopcodes.a
     file delete -force ${destroot}${prefix}/lib/libbfd.la
     file delete -force ${destroot}${prefix}/lib/libbfd.a
     file delete -force {*}[glob -directory ${destroot}${prefix}/include/ *.h]
+    # make a lot of space:
+    foreach r [glob ${destroot}${prefix}/bin/run-*] {
+        set a [lindex [split [file tail ${r}] "-"] 1]
+        switch ${a} {
+            aarch64 -
+            arm -
+            ppc {
+                ui_debug "preserving ${r}"
+            }
+            default {
+                file delete ${r}
+                file delete -force ${destroot}${prefix}/lib/libsim-${a}.a
+            }
+        }
+    }
 }
 
-set pythons_suffixes {27 35 36}
+set pythons_suffixes {27 35 36 37 38 39 310 311}
 
 set pythons_ports {}
 foreach s ${pythons_suffixes} {
@@ -125,7 +175,7 @@ foreach s ${pythons_suffixes} {
 
 foreach s ${pythons_suffixes} {
     set p python${s}
-    set v [string index ${s} 0].[string index ${s} 1]
+    set v [string index ${s} 0].[string range ${s} 1 end]
     set i [lsearch -exact ${pythons_ports} ${p}]
     set c [lreplace ${pythons_ports} ${i} ${i}]
     variant ${p} description "Build GDB with Python ${v} Scripting" conflicts {*}${c} "
@@ -137,6 +187,7 @@ foreach s ${pythons_suffixes} {
 }
 
 variant multiarch description {Support all target architectures} {
+    patchfiles-append        patch-elf-bfd.h.diff
     configure.args-append    --enable-targets=all
 }
 
@@ -151,5 +202,5 @@ for more information.
 
 
 livecheck.type  regex
-livecheck.url   http://ftp.gnu.org/gnu/gdb/
+livecheck.url   https://ftp.gnu.org/gnu/gdb/
 livecheck.regex gdb-(\\d+(?:\\.\\d+)+)\\.tar
