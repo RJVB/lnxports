@@ -14,6 +14,9 @@ platform darwin {
 
 name            gdb
 version         13.2
+platform darwin {
+    revision [expr ${revision} +1]
+}
 categories      devel
 license         GPL-3+
 maintainers     nomaintainer
@@ -41,12 +44,17 @@ supported_archs x86_64 i386
 master_sites    gnu
 
 checksums       rmd160  ef57e9d16e34b6820791edaf3b4ec9c992cfaa3a \
-                sha256  7ead13d9e19fa0c57bb19104e1a5f67eefa9fc79f2e6360de491e8fddeda1e30 \
-                size    40251050
-
+                sha256  7ead13d9e19fa0c57bb19104e1a5f67eefa9fc79f2e6360de491e8fddeda1e30
+#                 size    40251050
 
 # fix test for makeinfo version in libctf
 patchfiles      patch-gdb-libctf-makeinfo-test.diff
+
+# On darwin, only print warnings about missing or unreadable object files in build directories
+# when gdb is set to verbose mode (set verbose on). We know that we don't have Apple's
+# build directories available locally, for instance.
+patchfiles-append \
+                patch-symfile-warnings-only-when-verbose.diff
 
 # Ventura+ do not have makeinfo in the system
 depends_build   bin:makeinfo:texinfo
@@ -119,6 +127,7 @@ pre-configure {
 }
 
 build.dir ${configure.dir}
+build.args-append V=1 VERBOSE=1
 
 post-destroot {
     if {${os.platform} eq "darwin"} {
@@ -195,6 +204,14 @@ foreach s ${pythons_suffixes} {
 variant multiarch description {Support all target architectures} {
     patchfiles-append        patch-elf-bfd.h.diff
     configure.args-append    --enable-targets=all
+}
+
+pre-install {
+    # don't install python cache files created if and when test runs have been done from the destroot dir
+    file delete -force ${destroot}${prefix}/share/gdb/python/gdb/__pycache__
+    foreach d [glob -nocomplain ${destroot}${prefix}/share/gdb/python/gdb/*/__pycache__] {
+        file delete -force ${d}
+    }
 }
 
 if {${os.platform} eq "darwin" && ${os.major} >= 12} {
