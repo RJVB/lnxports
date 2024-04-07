@@ -13,7 +13,7 @@ PortGroup           meson 1.0
 name                pulseaudio
 version             16.99.1
 platform linux {
-    revision        0
+    revision        1
 }
 license             LGPL-2.1+ MIT BSD
 categories          audio
@@ -99,8 +99,8 @@ platform darwin {
 # C.f. https://bugs.freedesktop.org/show_bug.cgi?id=62987
 # and posts on the mailing list.
 patchfiles          patch-src_modules_macosx_module_coreaudio_device.c-respect-PA_NAME_MAX.diff \
-                    patch-src_daemon_default.pa.in-skip-consolekit-and-systemdlogin.diff \
-                    patch-pa_binary.diff
+                    patch-src_daemon_default.pa.in-skip-consolekit-and-systemdlogin.diff
+# patchfiles-append   patch-pa_binary.diff
 
 platform linux {
     patchfiles-append \
