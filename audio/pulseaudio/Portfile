@@ -13,7 +13,7 @@ PortGroup           meson 1.0
 name                pulseaudio
 version             16.99.1
 platform linux {
-    revision        1
+    revision        2
 }
 license             LGPL-2.1+ MIT BSD
 categories          audio
@@ -150,7 +150,7 @@ if {${os.platform} eq "darwin"} {
                     --enable-adrian-aec
 } else {
     depends_lib-append \
-                    port:gstreamer1-gst-plugins-base
+                     port:gstreamer1-gst-plugins-base
     configure.args  -Dsoxr=enabled \
                     -Dspeex=enabled \
                     -Dtests=false \
@@ -160,7 +160,9 @@ if {${os.platform} eq "darwin"} {
                     -Dorc=enabled \
                     -Dadrian-aec=true \
                     -Dgstreamer=enabled \
-                    -Dipv6=true
+                    -Dipv6=true \
+                    -Dopenssl=disabled \
+                    -Davahi=disabled
 }
 configure.args-append \
                     -Dbashcompletiondir=${prefix}/share/bash-completion/completions
@@ -196,12 +198,18 @@ variant jack conflicts minimal description {Enable Jack support} {
 }
 
 variant openssl conflicts minimal description {Enable OpenSSL (& Airtunes) support } {
-    configure.args-delete   -Dopenssl -Davahi
-    depends_lib-append      port:openssl
-    platform darwin {
+    configure.args-replace \
+                    -Dopenssl=disabled \
+                    -Dopenssl=enabled
+    platform linux {
+        configure.args-replace \
+                    -Davahi=disabled \
+                    -Davahi=enabled
         depends_lib-append \
-                            port:avahi
+                    bin:avahi-daemon:avahi
     }
+    depends_lib-append \
+                    port:openssl
 }
 
 variant gconf conflicts minimal description {Enable GConf and GSettings support } {
