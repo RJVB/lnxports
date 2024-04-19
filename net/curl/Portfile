@@ -6,10 +6,10 @@ PortGroup                       clang_dependency 1.0
 # Increase the revision of p5-www-curl whenever the version of curl gets updated.
 
 name                            curl
-version                         8.0.1
-checksums                       rmd160  8652368b89aec0056b799844e70128ebe4938c83 \
-                                sha256  0a381cd82f4d00a9a334438b8ca239afea5bfefcfa9a1025f2bf118e79e0b5f0
-#                                 size    2575544
+version                         8.7.1
+checksums                       rmd160  9744fc15c2e9f903a845f960ba3f32acd3aaadca \
+                                sha256  6fea2aac6a4610fbd0400afb0bcddbe7258a64c63f1f68e5855ebc0c659710cd \
+                                size    2707016
 
 categories                      net www
 platforms                       darwin freebsd
@@ -38,7 +38,7 @@ if {${name} eq ${subport}} {
 
     #revision                    0
 
-    depends_build               port:pkgconfig
+    depends_build               path:bin/pkg-config:pkgconfig
 
     depends_lib                 port:brotli \
                                 port:libidn2 \
@@ -59,6 +59,8 @@ if {${name} eq ${subport}} {
                                 --without-libssh2 \
                                 --without-mbedtls \
                                 --without-nghttp2 \
+                                --without-nghttp3 \
+                                --without-ngtcp2 \
                                 --without-nss \
                                 --without-openssl \
                                 --without-ssl \
@@ -105,6 +107,7 @@ if {${name} eq ${subport}} {
 
     test.run                    yes
     test.target                 test-full
+    test.args                   -j${build.jobs} TFLAGS=-j${build.jobs}
 
     global merger_dont_diff
     set merger_dont_diff "${prefix}/include/curl/curlbuild.h"
@@ -120,30 +123,51 @@ if {${name} eq ${subport}} {
             RELEASE-NOTES \
             ${destroot}${docdir}
         xinstall -m 0644 -W ${worksrcpath}/docs \
+            ALTSVC.md \
             BINDINGS.md \
+            BUFREF.md \
             BUGS.md \
+            CIPHERS.md \
             CODE_OF_CONDUCT.md \
             CODE_STYLE.md \
+            CONNECTION-FILTERS.md \
             CONTRIBUTE.md \
+            CURL-DISABLE.md \
+            DEPRECATE.md \
+            DYNBUF.md \
             FAQ \
             FEATURES.md \
             GOVERNANCE.md \
             HELP-US.md \
             HISTORY.md \
+            HSTS.md \
             HTTP-COOKIES.md \
-            HTTP2.md \
             INTERNALS.md \
             KNOWN_BUGS \
             MAIL-ETIQUETTE \
+            PARALLEL-TRANSFERS.md \
             ROADMAP.md \
-            SECURITY-PROCESS.md \
+            SECURITY-ADVISORY.md \
             SSL-PROBLEMS.md \
             SSLCERTS.md \
             THANKS \
             TODO \
             TheArtOfHttpScripting.md \
+            URL-SYNTAX.md \
             VERSIONS.md \
+            WEBSOCKET.md \
+            VULN-DISCLOSURE-POLICY.md \
             ${destroot}${docdir}
+        if {[variant_isset http2]} {
+            xinstall -m 0644 -W ${worksrcpath}/docs \
+                HTTP2.md \
+                ${destroot}${docdir}
+        }
+        if {[variant_isset http3]} {
+            xinstall -m 0644 -W ${worksrcpath}/docs \
+                HTTP3.md \
+                ${destroot}${docdir}
+        }
         xinstall -m 0644 ${worksrcpath}/docs/libcurl/libcurl.m4 \
             ${destroot}${prefix}/share/aclocal/
     }
@@ -210,6 +234,13 @@ if {${name} eq ${subport}} {
         default_variants-append +http2
     }
 
+    variant http3 requires gnutls description {Support HTTP/3 with nghttp3 and ngtcp2} {
+        depends_lib-append      port:nghttp3 \
+                                port:ngtcp2
+        configure.args-replace  --without-nghttp3 --with-nghttp3=${prefix} \
+                                --without-ngtcp2 --with-ngtcp2=${prefix}
+    }
+
     variant openldap description {Support performing Lightweight Directory Access Protocol queries with OpenLDAP} {
         depends_lib-append      path:lib/libldap.dylib:openldap
         configure.args-replace  --disable-ldap --enable-ldap
@@ -227,8 +258,8 @@ if {${name} eq ${subport}} {
     }
 
     variant ssl conflicts darwinssl gnutls mbedtls wolfssl description {Allow secure connections using OpenSSL} {
-        PortGroup               openssl 1.0
-        depends_lib-append      path:share/curl/curl-ca-bundle.crt:curl-ca-bundle
+        depends_lib-append      path:lib/libssl.dylib:openssl \
+                                path:share/curl/curl-ca-bundle.crt:curl-ca-bundle
         configure.args-delete   --without-ssl
         configure.args-replace  --without-openssl --with-openssl
         configure.args-append   --with-ca-bundle=${prefix}/share/curl/curl-ca-bundle.crt
@@ -236,6 +267,13 @@ if {${name} eq ${subport}} {
 
     if {![variant_isset darwinssl] && ![variant_isset gnutls] && ![variant_isset mbedtls] && ![variant_isset wolfssl]} {
         default_variants-append +ssl
+    }
+
+    if {[variant_isset darwinssl] || [variant_isset mbedtls]} {
+        notes-append {
+            The selected TLS library does not support TLS 1.3; you may want to\
+            use one that does by choosing the +ssl, +gnutls, or +wolfssl variant.
+        }
     }
 
     livecheck.type              regex
@@ -273,11 +311,11 @@ subport curl-ca-bundle {
 
     # The approximate time (in seconds since the epoch) when the port maintainer
     # updated the certdata.txt file in this port. (The output of "date +%s".)
-    set certdata_updated        1676938725
+    set certdata_updated        1711566911
     # The upstream commit in which certdata.txt was last updated.
-    set certdata_commit         fc546cbeb1cc7a486bc5147bcff3a879374cf213
+    set certdata_commit         bfb3a675d0569b740fe865ad6d2ac70f22163e98
     # The date (in YYYYMMDD format) that commit was pushed.
-    set certdata_date           20221204
+    set certdata_date           20240215
     set certdata_file           certdata.txt
     # Using tar.bz2 would be preferable because it's smaller but upstream has
     # disabled the creation of all but zip archives:
@@ -298,9 +336,9 @@ subport curl-ca-bundle {
     distfiles-append            ${certdata_distfile}:certdata
 
     checksums-append            ${certdata_distfile} \
-                                rmd160  70914b37764956f1ccd907871b4f58d0ee126b23 \
-                                sha256  56b3095fb443163031bb4941e4e13dd1c703e96172218eb2a0dadb6d22dfe75b \
-                                size    271958
+                                rmd160  3194caff79a4773853d478e84287ed7f36e80485 \
+                                sha256  3e7d59004501c3fa85cd504544edc23c7544766a783f14bc3c5fa6216ea58abf \
+                                size    284455
 
     extract.only                ${curl_distfile}
     extract.post_args-append    ${worksrcdir}/Makefile \
