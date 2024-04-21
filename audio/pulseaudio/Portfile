@@ -11,10 +11,7 @@ PortGroup           LTO 1.0
 PortGroup           meson 1.0
 
 name                pulseaudio
-version             16.99.1
-platform linux {
-    revision        2
-}
+version             17.0
 license             LGPL-2.1+ MIT BSD
 categories          audio
 maintainers         {ionic @Ionic} openmaintainer
@@ -33,9 +30,10 @@ master_sites        https://www.freedesktop.org/software/${name}/releases/
 
 use_xz              yes
 
-checksums           rmd160  ba3abfb362f22f52dedfdb34ed33c2ba3e1b478e \
-                    sha256  dbb89a4c4a5f30f03b2c8c95de864ad53f7a40d4fdee29063f966cf66cfa800a
-#                     size    1565020
+checksums           rmd160  091da3b1d4d7e4ef464cfc53969995d408985bae \
+                    sha256  053794d6671a3e397d849e478a80b82a63cb9d8ca296bd35b73317bb5ceb87b5
+#                     size    1566556
+
 
 set perl_branch     5
 
@@ -46,14 +44,6 @@ depends_build       port:pkgconfig \
                     port:libtool \
                     port:gettext \
                     port:p${perl_branch}-xml-parser
-platform linux {
-    depends_lib-append \
-                    port:bluez
-    depends_build-append \
-                    port:gettext-dev
-    configure.ldflags-append \
-                    "-L${prefix}/lib -lintl"
-}
 
 if {${os.platform} eq "darwin"} {
     depends_lib     port:libiconv \
@@ -76,6 +66,12 @@ if {${os.platform} eq "darwin"} {
                     port:fftw-3 \
                     path:lib/libspeexdsp.so:speexDSP \
                     port:soxr
+    depends_lib-append \
+                    port:bluez
+    depends_build-append \
+                    port:gettext-dev
+    configure.ldflags-append \
+                    "-L${prefix}/lib -lintl"
 }
 
 # configure falls back to libatomic_ops as last resort
@@ -100,19 +96,18 @@ platform darwin {
 # and posts on the mailing list.
 patchfiles          patch-src_modules_macosx_module_coreaudio_device.c-respect-PA_NAME_MAX.diff \
                     patch-src_daemon_default.pa.in-skip-consolekit-and-systemdlogin.diff
-# patchfiles-append   patch-pa_binary.diff
-
-platform linux {
-    patchfiles-append \
-                    patch-old-jack.diff
-}
-
-platform darwin {
-    # Blacklist compilers that do not support C11.
-    compiler.blacklist  {*gcc-3*} {*gcc-4.[0-8]} {clang < 300} cc
-}
 
 if {${os.platform} eq "darwin"} {
+    # soversions from 13.99.1 Linux:
+    # libpulse-mainloop-glib.so.0.0.5
+    # libpulse-simple.so.0.1.1
+    # libpulse.so.0.21.2
+    patchfiles-append \
+                    patch-modules-extension.diff
+
+    # Blacklist compilers that do not support C11.
+    compiler.blacklist  {*gcc-3*} {*gcc-4.[0-8]} {clang < 300} cc
+
     pre-configure {
         ui_error "Not completed yet"
         return -code error "Port not yet ported to Darwin"
@@ -191,13 +186,19 @@ variant x11 conflicts minimal {
 variant jack conflicts minimal description {Enable Jack support} {
     configure.args-delete  -Djack-disabled
     configure.args-append   -Djack=enabled
-    platform darwin {
-        # depend on the distro-version on Linux for now
+    if {${os.platform} eq "darwin"} {
         depends_lib-append  port:jack
+    } else {
+        # depend on the distro-version on Linux for now
+        depends_lib-append  bin:jack_test:jack
+        # accept the older system version
+        patchfiles-append \
+                    patch-old-jack.diff
     }
 }
 
 variant openssl conflicts minimal description {Enable OpenSSL (& Airtunes) support } {
+    PortGroup       openssl 1.0
     configure.args-replace \
                     -Dopenssl=disabled \
                     -Dopenssl=enabled
@@ -208,8 +209,6 @@ variant openssl conflicts minimal description {Enable OpenSSL (& Airtunes) suppo
         depends_lib-append \
                     bin:avahi-daemon:avahi
     }
-    depends_lib-append \
-                    port:openssl
 }
 
 variant gconf conflicts minimal description {Enable GConf and GSettings support } {
