@@ -3,10 +3,13 @@
 PortSystem      1.0
 PortGroup       muniversal 1.0
 PortGroup       compiler_blacklist_versions 1.0
-# PortGroup       mpi 1.0
-# PortGroup       xcode_workaround 1.0
+platform darwin {
+    PortGroup   mpi 1.0
+    PortGroup   xcode_workaround 1.0
+}
 PortGroup       LTO 1.0
 PortGroup       locale_select 1.0
+PortGroup       save_configure_cmd 1.0
 
 name            fftw-3
 version         3.3.10
@@ -48,10 +51,12 @@ long_description \
     improvements relative to 2.x, but is not backwardly \
     compatible.
 
-# compilers.setup default_fortran
+platform darwin {
+    compilers.setup default_fortran
 
-# see https://trac.macports.org/ticket/59678
-# xcode_workaround.fixed_xcode_version 11.2
+    # see https://trac.macports.org/ticket/59678
+    xcode_workaround.fixed_xcode_version 11.2
+}
 
 variant openmp description {Add OpenMP support} {
     configure.args-append --enable-openmp
@@ -82,17 +87,28 @@ variant pfft_patches description {Apply patches recommended for use as dependenc
 
 # don't change configure.cc, etc. since we'll take care of that manually with
 # MPICC env var
-# mpi.setup
+platform darwin {
+    mpi.setup
+}
 
 # blacklist older versions of clang which do not handle the --enable-avx option (#41622, #41673)
 compiler.blacklist-append {clang <= 211.10.1} gcc-4.2
 # see https://trac.macports.org/ticket/60145
 compiler.blacklist-append *gcc-3.* *gcc-4.*
 
+configure.save_configure_cmd "install log"
+
 configure.args \
     --enable-threads \
-    --enable-fortran \
     --enable-shared
+
+if {${os.platform} eq "darwin"} {
+    configure.args-append \
+        --disable-fortran
+} else {
+    configure.args-append \
+        --enable-fortran
+}
 
 configure.optflags -O3
 
@@ -102,7 +118,6 @@ configure.cflags-append \
     -fstrict-aliasing
 
 pre-configure {
-    global merger_configure_args
     if { [info procs avx_compiler_isset] ne "" && [avx_compiler_isset] == 1 } {
         array set merger_configure_args {
             arm64  ""
@@ -128,9 +143,9 @@ test.target  check
 use_parallel_build yes
 
 platform darwin {
-  if {${os.major} < 10} {
-    configure.args-append --with-our-malloc
-  }
+    if {${os.major} < 10} {
+        configure.args-append --with-our-malloc
+    }
 }
 
 subport fftw-3-single {
@@ -139,7 +154,6 @@ subport fftw-3-single {
     depends_lib port:fftw-3
 
     pre-configure {
-        global merger_configure_args
         if { [info procs avx_compiler_isset] ne "" && [avx_compiler_isset] == 1 } {
             array set merger_configure_args {
                 arm64  "--enable-neon"
@@ -185,13 +199,13 @@ subport fftw-3-single {
         file delete ${destroot}${prefix}/share/info/fftw3.info-4
         file delete ${destroot}${prefix}/share/info/fftw3.info-5
 
-	   platform darwin {
-        if {[mpi_variant_isset]} {
-          file delete ${destroot}${prefix}/include/fftw3-mpi.f03
-          file delete ${destroot}${prefix}/include/fftw3-mpi.h
-          file delete ${destroot}${prefix}/include/fftw3l-mpi.f03
-        }
-	   }
+	    platform darwin {
+            if {[mpi_variant_isset]} {
+                file delete ${destroot}${prefix}/include/fftw3-mpi.f03
+                file delete ${destroot}${prefix}/include/fftw3-mpi.h
+                file delete ${destroot}${prefix}/include/fftw3l-mpi.f03
+            }
+	    }
     }
 }
 
@@ -201,7 +215,6 @@ subport fftw-3-long {
     depends_lib port:fftw-3
 
     pre-configure {
-        global merger_configure_args
         array set merger_configure_args {
             arm64  ""
             ppc    ""
@@ -226,13 +239,13 @@ subport fftw-3-long {
         file delete ${destroot}${prefix}/share/info/fftw3.info-4
         file delete ${destroot}${prefix}/share/info/fftw3.info-5
 
-	   platform darwin {
-        if {[mpi_variant_isset]} {
-          file delete ${destroot}${prefix}/include/fftw3-mpi.f03
-          file delete ${destroot}${prefix}/include/fftw3-mpi.h
-          file delete ${destroot}${prefix}/include/fftw3l-mpi.f03
-        }
-	   }
+	    platform darwin {
+            if {[mpi_variant_isset]} {
+                file delete ${destroot}${prefix}/include/fftw3-mpi.f03
+                file delete ${destroot}${prefix}/include/fftw3-mpi.h
+                file delete ${destroot}${prefix}/include/fftw3l-mpi.f03
+            }
+	    }
     }
 }
 
@@ -254,19 +267,19 @@ if {${os.arch} eq "i386"} {
 
 if {[fortran_variant_isset]} {
     configure.args-delete --disable-fortran
+    configure.args-append --enable-fortran
 }
 }
 
 # this is put at the bottom to run last (after the sub-ports have done their own
 # logic)
 pre-configure {
-    global merger_configure_args
     platform darwin {
-    if {[mpi_variant_isset]} {
-        # MPIRUN is needed for test phase
-        configure.env           MPICC=${mpi.cc} MPIRUN=${mpi.exec}
-        configure.args-append   --enable-mpi
-    }
+        if {[mpi_variant_isset]} {
+            # MPIRUN is needed for test phase
+            configure.env           MPICC=${mpi.cc} MPIRUN=${mpi.exec}
+            configure.args-append   --enable-mpi
+        }
     }
 
     if {![variant_exists universal] || ![variant_isset universal]} {
