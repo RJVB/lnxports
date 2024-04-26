@@ -64,6 +64,13 @@ subport ${name}-qt5 {
     qt5.depends_component \
                         qttools
 
+    if {[string match *clang* ${configure.compiler}]} {
+        if {${LTO::mp_compiler_version} >= 16} {
+            # prevent a number of obscure warnings being treated as errors:
+            configure.cxxflags-append \
+                        -Wno-error=enum-constexpr-conversion
+        }
+    }
     configure.args-append   -DAPPLE_SUPPRESS_X11_WARNING=ON
 
     set LPH libphonon4qt5
@@ -72,10 +79,10 @@ subport ${name}-qt5 {
         if {[variant_isset demos]} {
             set demos_dest_dir ${destroot}${prefix}/share/examples/phonon4qt5
             xinstall -m 775 -d ${demos_dest_dir}
-            copy ${workpath}/build/demos/simpleplayer/simpleplayer ${demos_dest_dir}
-            copy ${workpath}/build/demos/metadatareader/metadatareader ${demos_dest_dir}
-            copy ${workpath}/build/demos/phota/phota ${demos_dest_dir}
-            copy ${workpath}/build/demos/simplecapture/simplecapture ${demos_dest_dir}
+            copy ${workpath}/build/bin/simpleplayer ${demos_dest_dir}
+            copy ${workpath}/build/bin/metadatareader ${demos_dest_dir}
+            copy ${workpath}/build/bin/phota ${demos_dest_dir}
+            copy ${workpath}/build/bin/simplecapture ${demos_dest_dir}
         }
 
     }
