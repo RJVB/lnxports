@@ -191,9 +191,6 @@ variant tools description {Install the example and test utilities to ${prefix}/l
         xinstall -m 755 -d ${utildir}
         # avoid installing any .dSYM directories that might have been created
         if {${use_cmake}} {
-            if {${os.platform} eq "darwin"} {
-                ui_warn "Check existence of libportaudio.2.dylib!"
-            }
             if {[variant_exists pulse64] && [variant_isset pulse64]} {
                 xinstall -m 755 {*}[glob -type f ${build.dir}-${build_arch}/test/pa*] ${utildir}
                 xinstall -m 755 {*}[glob -type f ${build.dir}-${build_arch}/examples/pa*] ${utildir}
