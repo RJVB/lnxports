@@ -2,7 +2,13 @@
 
 PortSystem          1.0
 PortGroup           github 1.0
-# PortGroup           cmake 1.1
+if {${os.platform} eq "linux"} {
+    PortGroup       cmake 1.1
+    set use_cmake   yes
+} else {
+    PortGroup       save_configure_cmd 1.0
+    set use_cmake   no
+}
 PortGroup           LTO 1.0
 
 name                portaudio
@@ -23,11 +29,10 @@ long_description    PortAudio is a free, cross platform, open-source, audio I/O 
 
 homepage            http://www.portaudio.com/
 
-# next commit aa053464eb261337c2c763f2a3df1e5ef8f4797e drop 10.5 support
-github.setup        Portaudio portaudio b323e01523520a78c71fbbbb4262b0f3e4ab3f49
+github.setup        Portaudio portaudio db778cfe67f4343feb7132e903a9cdf668f5cfad
 # version             20210401-[string range ${github.version} 0 7]
 # RC(1) = 99; RC2 = 999 etc.
-version             19.7.0.999.123
+version             19.7.0.999.152
 epoch               230518
 fetch.type          git
 distname            ${name}-git
@@ -40,30 +45,45 @@ distname            ${name}-git
 # To build a non-universal library for the host architecture,
 # simply use the --disable-mac-universal option with configure.
 # http://www.portaudio.com/trac/wiki/TutorialDir/Compile/MacintoshCoreAudio
-configure.args      --enable-mac-universal=no \
+if {${use_cmake}} {
+    # TODO: The cmake buildsystem makes libportaudiocpp a standalone subproject; add a subport for it.
+    cmake.save_configure_cmd "install log"
+    configure.args-append \
+                    -DPA_BUILD_SHARED_LIBS=ON \
+                    -DPA_USE_ALSA=OFF \
+                    -DPA_USE_JACK=OFF \
+                    -DPA_USE_COREAUDIO=ON \
+                    -DPA_USE_OSS=OFF \
+                    -DPA_USE_DS=OFF \
+                    -DPA_USE_PULSEAUDIO=OFF
+} else {
+    configure.save_configure_cmd "install log"
+    configure.args  --enable-mac-universal=no \
                     --enable-cxx \
                     --enable-option-checking \
                     --without-alsa \
                     --without-jack \
                     --without-oss \
                     --without-asihpi \
-                    --without-winapi
-# cmake.save_configure_cmd "log too"
-# configure.args-append \
-#                     -DPA_USE_ALSA=OFF \
-#                     -DPA_USE_JACK=OFF \
-#                     -DPA_USE_COREAUDIO=ON \
-#                     -DPA_USE_DS=OFF
+                    --without-winapi \
+                    --without-pulseaudio
+}
 
 platform linux {
-    configure.args-delete \
+    if {${use_cmake}} {
+        configure.args-replace \
+                    -DPA_USE_ALSA=OFF \
+                    -DPA_USE_ALSA=ON
+        configure.args-replace \
+                    -DPA_USE_COREAUDIO=ON \
+                    -DPA_USE_COREAUDIO=OFF
+    } else {
+        configure.args-delete \
                     --without-asihpi
-    configure.args-replace \
+        configure.args-replace \
                     --without-alsa \
                     --with-alsa
-#     configure.args-replace \
-#                     -DPA_USE_ALSA=OFF \
-#                     -DPA_USE_ALSA=ON
+    }
 }
 
 # use_parallel_build  no
@@ -87,28 +107,58 @@ post-configure {
     }
 }
         
+variant pulse description {Enable PulseAudio support} {
+    depends_lib-append \
+                    port:pulseaudio
+    if {${use_cmake}} {
+        configure.args-replace \
+                    -DPA_USE_PULSEAUDIO=OFF \
+                    -DPA_USE_PULSEAUDIO=ON
+    } else {
+        configure.args-replace \
+                    --without-pulseaudio \
+                    --with-pulseaudio
+    }
+}
+
 variant jack description {Enable JACK support} {
-#     configure.args-replace \
-#                     -DPA_USE_JACK=OFF \
-#                     -DPA_USE_JACK=ON
-    platform darwin {
+    if {${os.platform} eq "darwin"} {
         depends_lib-append \
                     port:jack
+    } else {
+        depends_lib-append \
+                    bin:jack_test:jack
     }
-    configure.args-replace \
+    if {${use_cmake}} {
+        configure.args-replace \
+                    -DPA_USE_JACK=OFF \
+                    -DPA_USE_JACK=ON
+    } else {
+        configure.args-replace \
                     --without-jack \
                     --with-jack
+    }
 }
 
 variant tools description {Install the example and test utilities to ${prefix}/libexec/${name}} {
-#     configure.args-append \
-#                     -DPA_BUILD_TESTS=ON \
-#                     -DPA_BUILD_EXAMPLES=ON
+    if {${use_cmake}} {
+        configure.args-append \
+                    -DPA_BUILD_TESTS=ON \
+                    -DPA_BUILD_EXAMPLES=ON
+    }
     post-destroot {
         set utildir ${destroot}${prefix}/libexec/${name}
         xinstall -m 755 -d ${utildir}
         # avoid installing any .dSYM directories that might have been created
-        xinstall -m 755 {*}[glob -type f ${build.dir}/bin/.libs/pa*] ${utildir}
+        if {${use_cmake}} {
+            if {${os.platform} eq "darwin"} {
+                ui_warn "Check existence of libportaudio.2.dylib!"
+            }
+            xinstall -m 755 {*}[glob -type f ${build.dir}/test/pa*] ${utildir}
+            xinstall -m 755 {*}[glob -type f ${build.dir}/examples/pa*] ${utildir}
+        } else {
+            xinstall -m 755 {*}[glob -type f ${build.dir}/bin/.libs/pa*] ${utildir}
+        }
     }
 }
 
