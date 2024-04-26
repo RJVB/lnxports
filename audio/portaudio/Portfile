@@ -2,13 +2,13 @@
 
 PortSystem          1.0
 PortGroup           github 1.0
-if {${os.platform} eq "linux"} {
+# if {${os.platform} eq "linux"} {
     PortGroup       cmake 1.1
     set use_cmake   yes
-} else {
-    PortGroup       save_configure_cmd 1.0
-    set use_cmake   no
-}
+# } else {
+#     PortGroup       save_configure_cmd 1.0
+#     set use_cmake   no
+# }
 PortGroup           LTO 1.0
 
 name                portaudio
@@ -40,6 +40,12 @@ distname            ${name}-git
 #                     sha256  d29bbe2b5a6f9447571e738a65c09239da61e73eae7d3b6ffd7cb7a32b2a8709 \
 #                     size    1463021
 # revision            0
+
+if {${os.platform} eq "darwin" && ${os.major} >= 18} {
+    configure.universal_archs i386 x86_64 arm64
+} else {
+    configure.universal_archs i386 x86_64
+}
 
 # By default, PortAudio is built as a universal binary.
 # To build a non-universal library for the host architecture,
@@ -92,6 +98,10 @@ patchfiles          patch-ltmain.sh.diff \
                     patch-src__common__pa_types.h.diff \
                     patch-audacity-portmixer.diff
 
+# patch the CMake file so that it generates the main dylib with the same compatibility_version
+# as the configure script does (3.0.0 currently). And allow using PulseAudio on all platforms.
+patchfiles-append   patch-cmake-darwin.diff
+
 pre-configure {
     use_autoreconf [expr ![file exists ${worksrcpath}/config.log]]
     autoreconf.args -fvi
@@ -107,7 +117,17 @@ post-configure {
     }
 }
         
-variant pulse description {Enable PulseAudio support} {
+if {${os.platform} eq "darwin"} {
+    variant pulse conflicts pulse64 description {Enable PulseAudio support} {}
+
+    # "clever" hack that makes it possible to have PulseAudio support in universal builds but only in
+    # the slice corresponding to the native architecture. Thus PulseAudio and all its dependents don't
+    # need to be installed +universal too.
+    variant pulse64 conflicts pulse requires universal description {Hack: enable PulseAudio support in +universal builds but only in the native arch. slice. Non-universal builds can use the +pulse variant.} {}
+} else {
+    variant pulse description {Enable PulseAudio support} {}
+}
+if {[variant_isset pulse]} {
     depends_lib-append \
                     port:pulseaudio
     if {${use_cmake}} {
@@ -118,6 +138,26 @@ variant pulse description {Enable PulseAudio support} {
         configure.args-replace \
                     --without-pulseaudio \
                     --with-pulseaudio
+    }
+}
+
+if {[variant_exists pulse64] && [variant_isset pulse64]} {
+    PortGroup muniversal 1.0
+    depends_lib-append \
+                        port:pulseaudio
+    depends_skip_archcheck-append \
+                        pulseaudio
+    if {${use_cmake}} {
+        configure.args-delete \
+                        -DPA_USE_PULSEAUDIO=OFF
+        set merger_configure_args(${build_arch}) \
+                        -DPA_USE_PULSEAUDIO=ON
+        } else {
+            configure.args-delete \
+                        --without-pulseaudio
+        set merger_configure_args(${build_arch}) \
+                        --with-pulseaudio
+# TODO: post-build hack for portaudio-2.0.pc?
     }
 }
 
@@ -154,8 +194,13 @@ variant tools description {Install the example and test utilities to ${prefix}/l
             if {${os.platform} eq "darwin"} {
                 ui_warn "Check existence of libportaudio.2.dylib!"
             }
-            xinstall -m 755 {*}[glob -type f ${build.dir}/test/pa*] ${utildir}
-            xinstall -m 755 {*}[glob -type f ${build.dir}/examples/pa*] ${utildir}
+            if {[variant_exists pulse64] && [variant_isset pulse64]} {
+                xinstall -m 755 {*}[glob -type f ${build.dir}-${build_arch}/test/pa*] ${utildir}
+                xinstall -m 755 {*}[glob -type f ${build.dir}-${build_arch}/examples/pa*] ${utildir}
+            } else {
+                xinstall -m 755 {*}[glob -type f ${build.dir}/test/pa*] ${utildir}
+                xinstall -m 755 {*}[glob -type f ${build.dir}/examples/pa*] ${utildir}
+            }
         } else {
             xinstall -m 755 {*}[glob -type f ${build.dir}/bin/.libs/pa*] ${utildir}
         }
