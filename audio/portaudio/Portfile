@@ -32,7 +32,7 @@ homepage            http://www.portaudio.com/
 github.setup        Portaudio portaudio db778cfe67f4343feb7132e903a9cdf668f5cfad
 # version             20210401-[string range ${github.version} 0 7]
 # RC(1) = 99; RC2 = 999 etc.
-version             19.7.0.999.152
+version             19.7.0.999.152 ; revision 1
 epoch               230518
 fetch.type          git
 distname            ${name}-git
@@ -97,6 +97,9 @@ platform linux {
 patchfiles          patch-ltmain.sh.diff \
                     patch-src__common__pa_types.h.diff \
                     patch-audacity-portmixer.diff
+# don't bail when a subset (>=1) of the "host APIs" (devices) fail to initialise
+# but just provide access to whatever APIs do work.
+patchfiles-append   patch-allow-individual-initapi-errors.diff
 
 # patch the CMake file so that it generates the main dylib with the same compatibility_version
 # as the configure script does (3.0.0 currently). And allow using PulseAudio on all platforms.

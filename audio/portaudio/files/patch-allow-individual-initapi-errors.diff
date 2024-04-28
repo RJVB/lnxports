@@ -1,0 +1,92 @@
+diff --git src/common/pa_front.c src/common/pa_front.c
+index 9f81f26..aad1917 100644
+--- src/common/pa_front.c
++++ src/common/pa_front.c
+@@ -222,47 +222,58 @@ static PaError InitializeHostApis( void )
+         PA_DEBUG(( "before paHostApiInitializers[%d].\n",i));
+ 
+         result = paHostApiInitializers[i]( &hostApis_[hostApisCount_], hostApisCount_ );
+-        if( result != paNoError )
+-            goto error;
++        if( result == paNoError ) {
+ 
+-        PA_DEBUG(( "after paHostApiInitializers[%d].\n",i));
++            PA_DEBUG(( "after paHostApiInitializers[%d].\n",i));
+ 
+-        if( hostApis_[hostApisCount_] )
+-        {
+-            PaUtilHostApiRepresentation* hostApi = hostApis_[hostApisCount_];
+-            assert( hostApi->info.defaultInputDevice < hostApi->info.deviceCount );
+-            assert( hostApi->info.defaultOutputDevice < hostApi->info.deviceCount );
+-
+-            /* the first successfully initialized host API with a default input *or*
+-               output device is used as the default host API.
+-            */
+-            if( (defaultHostApiIndex_ == -1) &&
+-                    ( hostApi->info.defaultInputDevice != paNoDevice
+-                        || hostApi->info.defaultOutputDevice != paNoDevice ) )
++            if( hostApis_[hostApisCount_] )
+             {
+-                defaultHostApiIndex_ = hostApisCount_;
+-            }
++                PaUtilHostApiRepresentation* hostApi = hostApis_[hostApisCount_];
++                assert( hostApi->info.defaultInputDevice < hostApi->info.deviceCount );
++                assert( hostApi->info.defaultOutputDevice < hostApi->info.deviceCount );
++
++                /* the first successfully initialized host API with a default input *or*
++                   output device is used as the default host API.
++                */
++                if( (defaultHostApiIndex_ == -1) &&
++                        ( hostApi->info.defaultInputDevice != paNoDevice
++                            || hostApi->info.defaultOutputDevice != paNoDevice ) )
++                {
++                    defaultHostApiIndex_ = hostApisCount_;
++                }
+ 
+-            hostApi->privatePaFrontInfo.baseDeviceIndex = baseDeviceIndex;
++                hostApi->privatePaFrontInfo.baseDeviceIndex = baseDeviceIndex;
+ 
+-            if( hostApi->info.defaultInputDevice != paNoDevice )
+-                hostApi->info.defaultInputDevice += baseDeviceIndex;
++                if( hostApi->info.defaultInputDevice != paNoDevice )
++                    hostApi->info.defaultInputDevice += baseDeviceIndex;
+ 
+-            if( hostApi->info.defaultOutputDevice != paNoDevice )
+-                hostApi->info.defaultOutputDevice += baseDeviceIndex;
++                if( hostApi->info.defaultOutputDevice != paNoDevice )
++                    hostApi->info.defaultOutputDevice += baseDeviceIndex;
+ 
+-            baseDeviceIndex += hostApi->info.deviceCount;
+-            deviceCount_ += hostApi->info.deviceCount;
++                baseDeviceIndex += hostApi->info.deviceCount;
++                deviceCount_ += hostApi->info.deviceCount;
+ 
+-            ++hostApisCount_;
++                ++hostApisCount_;
++            }
++        }
++        else
++        {
++            PA_DEBUG(( "paHostApiInitializers[%d] failed.\n",i));
+         }
+     }
+ 
+-    /* if no host APIs have devices, the default host API is the first initialized host API */
+-    if( defaultHostApiIndex_ == -1 )
+-        defaultHostApiIndex_ = 0;
++    if( hostApisCount_ )
++    {
++        /* if no host APIs have devices, the default host API is the first initialized host API */
++        if( defaultHostApiIndex_ == -1 )
++            defaultHostApiIndex_ = 0;
+ 
+-    return result;
++        return paNoError;
++    }
++    else
++    {
++        PA_DEBUG(( "All paHostApiInitializers failed!\n",i));
++    }
+ 
+ error:
+     TerminateHostApis();
