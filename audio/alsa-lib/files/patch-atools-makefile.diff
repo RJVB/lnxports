@@ -1,11 +1,15 @@
---- orig.Makefile	2017-11-14 09:06:03.000000000 +0100
-+++ Makefile	2018-01-21 14:35:52.966878301 +0100
-@@ -2,18 +2,17 @@
+diff --git orig.Makefile Makefile
+index 1b3d4ab..b9245a9 100644
+--- orig.Makefile
++++ Makefile
+@@ -1,19 +1,18 @@
+ VERSION = 1.2.11
  TOP = .
  SUBDIRS = as10k1 envy24control hdsploader hdspconf hdspmixer \
- 	  mixartloader pcxhrloader rmedigicontrol sb16_csp seq sscape_ctl \
+-	  mixartloader pcxhrloader rmedigicontrol sb16_csp seq sscape_ctl \
 -	  us428control usx2yloader vxloader echomixer ld10k1 qlo10k1 \
 -	  hwmixvolume hdajackretask hda-verb hdajacksensetest
++	  mixartloader pcxhrloader rmedigicontrol sb16_csp sbiload sscape_ctl \
 +	  us428control usx2yloader vxloader echomixer ld10k1 \
 +	  hdajackretask hda-verb hdajacksensetest
  
@@ -23,7 +27,7 @@
  	  cd $(TOP)/$$i; echo $(TOP)/$$i; \
  	  if [ -x ./configure ]; then \
  	    ./configure $(CONFIGURE_ARGS) || exit 1; \
-@@ -44,4 +43,4 @@
+@@ -44,4 +43,4 @@ alsa-dist:
  
  clean:
  	rm -rf *~ distdir

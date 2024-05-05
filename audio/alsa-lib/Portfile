@@ -3,12 +3,13 @@
 PortSystem          1.0
 
 set LTO.allow_ThinLTO no
+set LTO.gcc_lto_jobs  auto
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 
 set basename        alsa
 name                ${basename}-lib
-version             1.2.10
+version             1.2.11
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          audio
 license             LGPL-2.1
@@ -26,7 +27,11 @@ long_description    The Advanced Linux Sound Architecture (ALSA) provides audio 
 homepage            https://alsa-project.org/
 platforms           linux
 
-depends_build       port:pkgconfig
+depends_build       port:pkgconfig \
+                    bin:gmake:gmake
+
+# to have the GNU make jobserver:
+build.cmd           gmake
 
 subport "${basename}-plugins" {}
 subport "${basename}-tools" {}
@@ -39,9 +44,9 @@ switch ${subport} {
         description     alsa-lib contains the user space library that developers compile ALSA applications against.
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/lib/
-        checksums       rmd160  1418f9df7f10ae102b97c2489d9dcf46fd8267cb \
-                        sha256  c86a45a846331b1b0aa6e6be100be2a7aef92efd405cf6bac7eef8174baa920e
-#                         size    1107007
+        checksums       rmd160  08d9212c883d75f2fabe36886ca00590919733fa \
+                        sha256  9f3f2f69b995f9ad37359072fbc69a3a88bfba081fc83e9be30e14662795bb4d
+#                         size    1107150
 
         configure.args-append \
                         --disable-dependency-tracking \
@@ -68,7 +73,7 @@ switch ${subport} {
         test.target     check
     }
     alsa-plugins {
-        version         1.2.7.1 ; revision 1
+        version         1.2.7.1 ; revision 2
         description     alsa-plugins contains plugins for various ALSA needs (e.g. Jack).
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/plugins/
@@ -83,43 +88,62 @@ switch ${subport} {
                         --disable-dependency-tracking
     }
     alsa-tools {
-        version         1.2.5
         description     alsa-tools contains various more obscure tools and loaders.
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/tools/
         distname        ${subport}-${version}
-        checksums       rmd160  8deba028478907d97ec7f51b4c5b971fa9a7f0ba \
-                        sha256  35a71027a01f4d7de4722e223520e940de68b3c570b6c671691567ae28f9893e
+        checksums       rmd160  ba9f1c38e909ed9c542f505a5dbf3a367745eb8b \
+                        sha256  0915c9634a502fd3655ca9c574d259bc9e79983d91d45aeacff6f3c00f8ae3e9
+#                         size    1882262
+
+        post-extract {
+            # remove an extra indirection that causes our --prefix to get lost:
+            file rename ${worksrcpath}/seq/sbiload ${worksrcpath}/sbiload
+        }
 
         depends_lib     port:${basename}-lib
         depends_run     port:${basename}-plugins
         patchfiles-append \
-                        patch-atools-makefile.diff
+                        patch-atools-makefile.diff \
+                        patch-atools-hdajackretask.diff \
+                        patch-atools-opl3dir-location.diff
+        post-patch {
+            reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/sbiload/sbiload.c
+        }
 
         configure.env   "CONFIGURE_ARGS=${configure.pre_args} --disable-dependency-tracking"
-        configure.cmd   make
+        configure.cmd   ${build.cmd}
         configure.pre_args
         configure.args  -w configure
         configure.post_args-append -j${build.jobs}
 
+        # it seems that the entire build is done in the configure step, and doing
+        # an actual build is only asking for trouble...
+        build {}
+
         post-destroot {
             file rename ${destroot}/etc ${destroot}${prefix}/etc
-            file rename ${destroot}/usr/local/share/sounds ${destroot}${prefix}/share/sounds
-            file rename ${destroot}/usr/local/bin/sbiload ${destroot}${prefix}/bin/sbiload
+            if {[file exists ${destroot}/usr/local/share/sounds]} {
+                file rename ${destroot}/usr/local/share/sounds ${destroot}${prefix}/share/sounds
+            }
+            if {[file exists ${destroot}/usr/local/bin/sbiload]} {
+                file rename ${destroot}/usr/local/bin/sbiload ${destroot}${prefix}/bin/sbiload
+            }
         }
     }
     alsa-utils {
-        # PortGroup       conflicts_configure 1.0
         PortGroup       locale_select 1.0
         description     alsa-utils contains various generic ALSA command line tools, \
                         such as amixer, aplay, alsaconf, etc.
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/utils/
         distname        ${subport}-${version}
-        checksums       rmd160  1409944c38f8557d826444223f7331bd50200558 \
-                        sha256  e7623d4525595f92e11ce25ee9a97f2040a14c6e4dcd027aa96e06cbce7817bd
+        checksums       rmd160  78a65cfdb8a59901d554d9631bd1a4108f4aa321 \
+                        sha256  9ac6ca3a883f151e568dcf979b8d2e5cbecc51b819bb0e6bb8a2e9b34cc428a7
+#                         size    1627148
 
-#         conflicts_configure gettext-dev
+        depends_build-append \
+                        port:gettext-dev
         depends_lib     port:${basename}-lib \
                         port:gettext
         depends_run     port:${basename}-plugins

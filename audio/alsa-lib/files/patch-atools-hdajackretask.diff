@@ -1,0 +1,21 @@
+diff --git hdajackretask/orig.apply-changes.c hdajackretask/apply-changes.c
+index 0d558f7..d81deb0 100644
+--- hdajackretask/orig.apply-changes.c
++++ hdajackretask/apply-changes.c
+@@ -214,7 +214,7 @@ static gboolean restore_soundserver(struct soundserver* state, GError** err)
+ {
+     gboolean ok = FALSE;
+     switch (state->type) {
+-        case PULSEAUDIO:
++        case PULSEAUDIO: {
+             gchar* clientconf = get_pulseaudio_client_conf();
+             if (state->was_killed && g_unlink(clientconf) != 0) {
+                 g_set_error(err, quark(), 0, "%s", g_strerror(errno));
+@@ -224,6 +224,7 @@ static gboolean restore_soundserver(struct soundserver* state, GError** err)
+             g_free(clientconf);
+             ok = TRUE;
+             break;
++	   }
+         case PIPEWIRE:
+             if (state->was_killed)
+                 ok = call_systemctl(state->user, "start", "wireplumber.service", err);

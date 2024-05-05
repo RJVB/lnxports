@@ -1,0 +1,13 @@
+diff --git sbiload/orig.sbiload.c sbiload/sbiload.c
+index 2315974..0736dfa 100644
+--- sbiload/orig.sbiload.c
++++ sbiload/sbiload.c
+@@ -94,7 +94,7 @@ static snd_hwdep_t *handle;
+ static int iface;
+ 
+ #ifndef PATCHDIR
+-#define PATCHDIR "/usr/share/sounds/opl3"
++#define PATCHDIR "@PREFIX@/share/sounds/opl3"
+ #endif
+ 
+ static char *patchdir = PATCHDIR;
