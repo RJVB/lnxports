@@ -14,7 +14,9 @@ PortGroup       save_configure_cmd 1.0
 name            fftw-3
 version         3.3.10
 
-ui_info ${configure.compiler}
+pre-configure {
+    ui_info ${configure.compiler}
+}
 
 checksums       rmd160  067dd44017c42bf7f702ee66ea4f8c309624134d \
                 sha256  56c932549852cddcfafdab3820b0200c7742675be92179e59e6215b340e26467 
@@ -250,25 +252,25 @@ subport fftw-3-long {
 }
 
 if {[info procs fortran_variant_isset] ne ""} {
-if {${os.arch} eq "i386"} {
-    lappend merger_configure_args(arm64)   "--disable-fortran"
-    lappend merger_configure_args(ppc)     "--disable-fortran"
-    lappend merger_configure_args(ppc64)   "--disable-fortran"
-} elseif {${os.arch} eq "powerpc"} {
-    lappend merger_configure_args(arm64)   "--disable-fortran"
-    lappend merger_configure_args(i386)    "--disable-fortran"
-    lappend merger_configure_args(x86_64)  "--disable-fortran"
-} else {
-    lappend merger_configure_args(ppc)     "--disable-fortran"
-    lappend merger_configure_args(ppc64)   "--disable-fortran"
-    lappend merger_configure_args(i386)    "--disable-fortran"
-    lappend merger_configure_args(x86_64)  "--disable-fortran"
-}
+    if {${os.arch} eq "i386"} {
+        lappend merger_configure_args(arm64)   "--disable-fortran"
+        lappend merger_configure_args(ppc)     "--disable-fortran"
+        lappend merger_configure_args(ppc64)   "--disable-fortran"
+    } elseif {${os.arch} eq "powerpc"} {
+        lappend merger_configure_args(arm64)   "--disable-fortran"
+        lappend merger_configure_args(i386)    "--disable-fortran"
+        lappend merger_configure_args(x86_64)  "--disable-fortran"
+    } else {
+        lappend merger_configure_args(ppc)     "--disable-fortran"
+        lappend merger_configure_args(ppc64)   "--disable-fortran"
+        lappend merger_configure_args(i386)    "--disable-fortran"
+        lappend merger_configure_args(x86_64)  "--disable-fortran"
+    }
 
-if {[fortran_variant_isset]} {
-    configure.args-delete --disable-fortran
-    configure.args-append --enable-fortran
-}
+    if {[fortran_variant_isset]} {
+        configure.args-delete --disable-fortran
+        configure.args-append --enable-fortran
+    }
 }
 
 # this is put at the bottom to run last (after the sub-ports have done their own
