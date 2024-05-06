@@ -46,11 +46,11 @@ if {${subport} eq ${name}} {
     long_description ${long_description} \
         This port provides the release of FLTK, typically updated a few times a year.
 
-    github.setup    fltk fltk 1.3.8 release-
-    checksums       rmd160  6fd56dce18d56e10c0cfbc133a76d9559edf788c \
-                    sha256  41d11d83fcbb7431d290ec2a02b2d1044349410202fb9cde4b63d7cc614ea2d9
-#                     size    5165067
-    revision        2
+    github.setup    fltk fltk 1.3.9 release-
+    checksums       rmd160  031992413cc1381bee45fae324767d958fc96676 \
+                    sha256  5986cf5849d9c12dc07d7894051524bdaa81f97c175e830fdc66cc8545b1e8df
+#                     size    5405526
+
 
     # overload the github livecheck regex to look for versions that
     # are just numbers and '.', no letters (e.g., "3.7.3_rc2").
@@ -103,6 +103,9 @@ platform darwin {
         }
     }
 }
+
+depends_build   port:gmake
+build.cmd       gmake
 
 depends_lib     path:include/turbojpeg.h:libjpeg-turbo \
                 port:libpng \
@@ -170,11 +173,6 @@ platform darwin {
     }
 }
 
-# configure.args  --enable-shared \
-#                 --disable-localjpeg \
-#                 --disable-localzlib \
-#                 --disable-localpng
-
 cmake.save_configure_cmd "install log"
 
 configure.args-append \
@@ -212,8 +210,6 @@ if {[variant_exists x11] && [variant_isset x11]} {
     post-patch {
         reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/screen_xywh.cxx
     }
-#     configure.args-append \
-#                 --enable-x11
     configure.args-append \
                 -DOPTION_APPLE_X11=ON
 } else {
@@ -225,8 +221,6 @@ if {[variant_isset cairo]} {
                 -DOPTION_CAIRO=ON \
                 -DOPTION_CAIROEXT=ON
 }
-
-# destroot.target install install-desktop
 
 platform darwin {
     post-destroot {
@@ -245,8 +239,10 @@ post-destroot {
     # remove the CMake directory as it causes things to work too differently
     file delete -force ${destroot}${prefix}/share/fltk
     # strip flags set by the LTO PG from the config utility:
-    if {${lto_flags} ne ""} {
-        reinplace "s|${lto_flags}||g" ${destroot}${prefix}/bin/fltk-config
+    if {${LTO.ltoflags} ne ""} {
+        foreach a ${LTO.ltoflags} {
+            reinplace "s|${a}[ ]*||g" ${destroot}${prefix}/bin/fltk-config
+        }
     }
     if {${LTO.cpuflags} ne ""} {
         reinplace "s|${LTO.cpuflags}||g" ${destroot}${prefix}/bin/fltk-config
