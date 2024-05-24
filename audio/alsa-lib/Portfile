@@ -73,7 +73,7 @@ switch ${subport} {
         test.target     check
     }
     alsa-plugins {
-        version         1.2.7.1 ; revision 2
+        version         1.2.7.1 ; revision 3
         description     alsa-plugins contains plugins for various ALSA needs (e.g. Jack).
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/plugins/
@@ -81,11 +81,20 @@ switch ${subport} {
         checksums       rmd160  2bcb01e76245cdf6b20ed6a7f8c0bcc95ec5b5db \
                         sha256  8c337814954bb7c167456733a6046142a2931f12eccba3ec2a4ae618a3432511
 
+        depends_build-append \
+                        port:patchelf
         depends_lib     port:${basename}-lib \
                         port:ffmpeg \
                         port:libsamplerate
         configure.args-append \
                         --disable-dependency-tracking
+        post-destroot {
+            # some plugins have an indirect dependency on the DRI3 library from port:xorg-libxcb
+            # Make certain that (=our) library is picked up and not a copy from the host
+            foreach p {libasound_module_pcm_a52.so libasound_module_rate_lavrate_faster.so} {
+                system -W ${destroot}${prefix} "patchelf --add-needed ${prefix}/lib/libxcb-dri3.so.0 lib/alsa-lib/${p}"
+            }
+        }
     }
     alsa-tools {
         description     alsa-tools contains various more obscure tools and loaders.
