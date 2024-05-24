@@ -1,0 +1,204 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+# PortGroup           active_variants 1.1
+# PortGroup           compiler_blacklist_versions 1.0
+PortGroup           locale_select 1.0
+PortGroup           LTO 1.0
+PortGroup           meson 1.0
+PortGroup           gitlab 1.0
+PortGroup           openssl 1.0
+
+gitlab.setup        pipewire pipewire 1.1.81
+
+license             MIT
+categories          audio
+maintainers         openmaintainer
+platforms           linux
+description         Multimedia processing graphs: greatly improved handling of audio and video under Linux
+
+long_description    PipeWire is a project that aims to improve the handling of audio and video under Linux greatly. \
+                    It provides a low-latency, graph-based processing engine on top of audio and video devices that \
+                    can be used to support the use cases currently handled by both PulseAudio and JACK. \
+\
+    Capture and playback of audio and video with minimal latency.\n\
+    Real-time multimedia processing on audio and video.\n\
+    Multiprocess architecture to let applications share multimedia content.\n\
+    Seamless support for PulseAudio, JACK, ALSA, and GStreamer applications.\n\
+    Sandboxed applications support. 
+
+homepage            https://www.pipewire.org
+
+use_bzip2           yes
+
+checksums           rmd160  ad1398c66b15c8bf3f5000ef51aac606124253e6 \
+                    sha256  71b5f102b4a77cc5505f4a3af84a817f3f97ab70a83627eb96c8b84ee7fe463a
+#                     size    1798812
+
+
+set perl_branch     5
+
+depends_build-append \
+                    port:gettext \
+                    path:bin/pkg-config:pkgconfig \
+                    port:doxygen \
+                    port:gobject-introspection \
+                    port:openal-soft
+depends_test-append port:openal-soft
+
+depends_lib-append  port:alsa-lib \
+                    port:avahi \
+                    port:dbus \
+                    port:ffmpeg \
+                    port:gettext-runtime \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    port:gstreamer1-gst-plugins-base \
+                    port:libcanberra \
+                    port:libiconv \
+                    port:libopus \
+                    port:libsndfile \
+                    port:libtool \
+                    port:libusb \
+                    port:readline \
+                    port:systemd
+
+if {${os.platform} ne "darwin"} {
+#     depends_lib-append \
+#                     port:bluez
+    depends_build-append \
+                    port:gettext-dev
+    configure.ldflags-append \
+                    "-L${prefix}/lib"
+}
+
+patchfiles-append   patch-memfd_create.diff
+
+set meson_config    ${workpath}/meson_config.ini
+
+configure.args-append \
+                    --native-file ${meson_config}
+
+post-patch {
+    set fp [open ${meson_config} w]
+    puts ${fp} {[binaries]}
+    puts ${fp} "perl='${prefix}/bin/perl5'"
+    # use the python interpreter also used by meson.
+    puts ${fp} "python='[string range [exec head -1 ${configure.cmd}] 2 end]'"
+    close ${fp}
+}
+
+compiler.c_standard 2011
+
+# check for the presence of the C11 concurrency support library
+if {![file exists /usr/include/threads.h]} {
+    depends_build-append \
+                    port:C11emu
+    # C11 TLS functions are used in a single file only so we
+    # can make do with the headerfile-only compatibility library.
+    configure.cflags-append \
+                    -I${prefix}/include/c11emu/header_only
+    configure.cxxflags-append \
+                    -I${prefix}/include/c11emu/header_only
+}
+
+configure.args-append \
+                    -Dman=enabled \
+                    -Dtests=disabled \
+                    -Ddbus=enabled \
+                    -Dudev=enabled \
+                    -Dgstreamer=enabled \
+                    -Dsystemd=disabled \
+                    -Dselinux=disabled \
+                    -Dpipewire-alsa=enabled \
+                    -Dalsa=enabled \
+                    -Dpipewire-jack=disabled \
+                    -Djack=disabled \
+                    -Dffmpeg=enabled \
+                    -Dpw-cat-ffmpeg=enabled \
+                    -Dsdl2=disabled \
+                    -Davahi=enabled \
+                    -Dlibpulse=enabled \
+                    -Dgsettings-pulse-schema=enabled \
+                    -Dlibusb=enabled \
+                    -Dx11=disabled \
+                    -Dlibcanberra=enabled \
+                    -Dreadline=enabled \
+                    -Dgsettings=disabled \
+                    -Dopus=enabled \
+                    -Dvulkan=disabled \
+                    -Dbluez5=disabled
+# don't expect CLOCK_TAI
+configure.args-append \
+                    -Davb=disabled
+
+configure.ldflags-append \
+                    -lintl
+
+configure.cflags-append \
+                    -fdiagnostics-color=never
+configure.cxxflags-append \
+                    -fdiagnostics-color=never
+
+meson.save_configure_cmd "install log"
+
+test.run            no
+test.target         check
+
+
+variant x11 conflicts minimal {
+    configure.args-replace  -Dx11=disabled \
+                            -Dx11=enabled
+    depends_lib-append      port:xorg-libX11 \
+                            port:xorg-libxcb
+}
+
+variant jack conflicts minimal description {Enable Jack support.} {
+    configure.args-replace  -Djack=disabled \
+                            -Djack=enabled
+    configure.args-replace  -Dpipewire-jack=disabled \
+                            -Dpipewire-jack=enabled
+    # depend on the distro-version on Linux for now
+    depends_lib-append  bin:jack_test:jack
+    configure.args-append   -Dlibjack-path=/usr/lib/x86_64-linux-gnu/jack
+}
+
+variant gsettings conflicts minimal description {Enable GSettings support } {
+    configure.args-replace  -Dgsettings=disabled \
+                            -Dgsettings=enabled
+    depends_lib-append      port:gconf
+}
+
+variant tests description {Enable testing.} {
+    configure.args-replace  -Dtests=disabled \
+                            -Dtests=enabled
+    test.run                yes
+}
+
+default_variants            +x11
+
+build.pre_args-append       -k 0
+
+destroot.violate_mtree      yes
+
+post-destroot {
+    foreach d {pipewire wireplumber} {
+        foreach f [glob ${destroot}${prefix}/share/${d}/*.conf] {
+            file rename ${f} ${f}.sample
+        }
+    }
+    xinstall -m 755 -d ${destroot}${prefix}/lib/udev/rules.d
+    file rename ${destroot}/usr/lib/udev/rules.d/90-pipewire-alsa.rules  ${destroot}${prefix}/lib/udev/rules.d/
+    xinstall -m 755 -d ${destroot}/lib/udev/rules.d
+    ln -s ${prefix}/lib/udev/rules.d/90-pipewire-alsa.rules ${destroot}/lib/udev/rules.d/
+}
+
+post-activate {
+    foreach d {pipewire wireplumber} {
+        foreach f {client.conf pipewire.conf pipewire-pulse.conf wireplumber.conf} {
+            if {![file exists ${prefix}/share/${d}/${f}] && [file exists ${prefix}/share/${d}/${f}.conf]} {
+                file copy ${prefix}/share/${d}/${f}.sample ${prefix}/share/${d}/${f}
+            }
+        }
+    }
+}
+
