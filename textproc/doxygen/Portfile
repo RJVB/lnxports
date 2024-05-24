@@ -2,13 +2,24 @@
 
 PortSystem              1.0
 PortGroup               cmake 1.1
-PortGroup 		    conflicts_build 1.0
+PortGroup               conflicts_build 1.0
+PortGroup               LTO 1.0
 
 name                    doxygen
-version                 1.8.14
+conflicts               doxygen-devel
+set my_name             doxygen
+
+# please don't update doxygen without first checking the build status of doxygen-devel
+version                 1.9.8
+revision                0
+epoch                   2
+checksums               rmd160  28b49414adeaea5579436c32aa89a923680508f7 \
+                        sha256  05e3d228e8384b5f3af9c8fd6246d22804acb731a3a24ce285c8986ed7e14f62
+#                         size    8087770
+
 categories              textproc devel
-maintainers             css openmaintainer
 license                 GPL-2
+maintainers             nomaintainer
 description             Documentation system for several programming languages
 long_description        It can generate an on-line documentation browser \
                         (in HTML) and/or an off-line reference manual \
@@ -27,38 +38,61 @@ long_description        It can generate an on-line documentation browser \
                         of include dependency graphs, inheritance \
                         diagrams, and collaboration diagrams, which are \
                         all generated automatically.
+homepage                https://www.doxygen.nl
 
-platforms               darwin
-
-homepage                http://www.doxygen.org/
-master_sites            http://ftp.stack.nl/pub/users/dimitri/ \
-                        ftp://ftp.stack.nl/pub/users/dimitri/
+master_sites            ${homepage}/files
+distname                ${my_name}-${version}
+dist_subdir             ${my_name}
 distfiles               ${distname}.src${extract.suffix}
 
-checksums               ${distname}.src${extract.suffix} \
-                        rmd160  e8d806ff3efa4e7e954209d466f2d81b258bdbbf \
-                        sha256  d1757e02755ef6f56fd45f1f4398598b920381948d6fcfa58f5ca6aa56f59d4d \
-                        size    4877980
+set py_ver              3.7
+set py_ver_nodot        [string map {. {}} ${py_ver}]
+configure.python        ${prefix}/bin/python${py_ver}
 
 installs_libs           no
+license_noconflict      perl5 python${py_ver_nodot}
+# 59037
+conflicts_build         libmd
 
-depends_build-append    bin:perl:perl5 \
-                        bin:python2.7:python27 
-#                         port:flex \
-#                         port:bison
-license_noconflict      perl5 python27
+platform darwin {
+    patchfiles-append   patch-src-portable_c.c.diff
+}
+patchfiles-append       patch-CMakeLists.txt.diff
+patchfiles-append       patch-longtabu.diff
 
-depends_lib             port:libpng
+# https://trac.macports.org/ticket/68581
+patchfiles-append       patch-pthread_threadid_np.diff
+
+depends_build-append \
+                        port:bison \
+                        port:flex \
+                        path:bin/perl:perl5 \
+                        port:python${py_ver_nodot}
+
+
 conflicts_build-append  libiconv-dev
+compiler.cxx_standard   2017
+# error: no matching constructor for initialization of 'value_type'
+# (aka 'pair<const std::__1::basic_string<char>, DotFilePatcher>')
+compiler.blacklist-append \
+                        {clang < 900}
 
+compiler.thread_local_storage yes
 configure.cflags-append -pthread
 configure.cxxflags-append -pthread
-#patchfiles              patch-src-portable_c.c.diff 
-patchfiles              patch-CMakeLists.txt.diff
+
+cmake.save_configure_cmd "install log"
 
 # see #50342
-configure.args-append -DPython_ADDITIONAL_VERSIONS=2.7 \
-                      -DICONV_DIR=${prefix}/lib
+configure.args-append \
+                        -DPython_ADDITIONAL_VERSIONS=${py_ver}
+# see #59552
+if {${os.platform} eq "darwin" && ${os.major} < 13} {
+    depends_build-append \
+                        path:bin/git:git
+    configure.args-append \
+                        -DGIT_EXECUTABLE=${prefix}/bin/git
+}
 
 # cmake PortGroup sets arch flags
 # duplicate archflags can cause problems
@@ -103,60 +137,59 @@ post-extract {
     delete ${worksrcpath}/src/vhdlparser.h
 }
 
-if {[string match *clang* ${configure.cxx}]} {
-    variant libcxx description {highly experimental option to build against libc++. \
-            Requires using clang and an independently provided libc++ installation.} {
-        configure.cxx_stdlib \
-                        libc++
-    }
-}
 set cxx_stdlibflags {}
-
-if {[string match *clang* ${configure.cxx}]} {
+if {[string match *clang* ${configure.cxx}] && ${configure.cxx_stdlib} ne ""} {
     set cxx_stdlibflags -stdlib=${configure.cxx_stdlib}
 }
 
 # build fails out of source :/
 # cmake.out_of_source     no
+test.run                yes
 
-destroot.args           INSTALL=${prefix} \
+destroot.args \
+                        INSTALL=${prefix} \
                         DOCDIR=${prefix}/share/doc/doxygen \
                         MAN1DIR=share/man/man1
 
 variant docs description {Include the doxygen HTML and PDF documentation} {
-    configure.args-append   -Dbuild_doc=YES \
-                            -EPSTOPDF=${prefix}/bin/epstopdf
+    depends_build-append \
+                        path:bin/gs:ghostscript \
+                        path:bin/dot:graphviz \
+                        port:texlive \
+                        port:texlive-latex-extra
 
-    depends_build-append    path:bin/dot:graphviz \
-                            bin:gs:ghostscript \
-                            port:texlive \
-                            port:texlive-latex-extra
+    configure.args-append \
+                        -Dbuild_doc=YES \
+                        -DEPSTOPDF=${prefix}/bin/epstopdf
 
-    build.target-append     docs
-    use_parallel_build      no
+    build.target-append docs
+    use_parallel_build  no
 }
-
-variant wizard requires qt4 description {Compatibility variant} {}
 
 variant qt4 conflicts qt5 description {Include the GUI wizard based on Qt4} {
     # use the Qt4 PortGroup, which provides a bunch of variables
     # and defines for how Qt4 was installed
-    PortGroup qt4 1.0
+    PortGroup           qt4 1.0
 
     # tell configure to make the wizard app
-    configure.args-append   -Dbuild_wizard=YES -Dforce_qt4=YES
+    configure.args-append \
+                        -Dbuild_wizard=YES \
+                        -Dforce_qt4=YES
 }
 
 variant qt5 conflicts qt4 description {Include the GUI wizard based on Qt5} {
     # use the Qt5 PortGroup, which provides a bunch of variables
     # and defines for how Qt5 was installed
-    PortGroup qt5 1.0
+    PortGroup           qt5 1.0
 
     # tell configure to make the wizard app
-    configure.args-append   -Dbuild_wizard=ON
+    configure.args-append \
+                        -Dbuild_wizard=ON \
+                        -Dforce_qt=Qt5
     configure.ldflags-append -Wl,-rpath=${qt_libs_dir}
 }
 
 livecheck.type          regex
-livecheck.url           http://www.stack.nl/~dimitri/doxygen/download.html
+livecheck.name          ${my_name}
+livecheck.url           ${homepage}/download.html
 livecheck.regex         {latest version of doxygen is (\d+(?:\.\d+)*)}
