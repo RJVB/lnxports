@@ -142,7 +142,7 @@ configure.cxxflags-append \
 meson.save_configure_cmd "install log"
 
 test.run            no
-test.target         check
+test.target         test
 
 
 variant x11 conflicts minimal {
@@ -194,9 +194,19 @@ post-destroot {
 
 post-activate {
     foreach d {pipewire wireplumber} {
-        foreach f {client.conf pipewire.conf pipewire-pulse.conf wireplumber.conf} {
-            if {![file exists ${prefix}/share/${d}/${f}] && [file exists ${prefix}/share/${d}/${f}.conf]} {
-                file copy ${prefix}/share/${d}/${f}.sample ${prefix}/share/${d}/${f}
+        foreach f [glob -nocomplain ${prefix}/share/${d}/*.conf.sample] {
+            set g [string map {".conf.sample" ".conf"} [file tail ${f}]]
+            if {![file exists ${prefix}/etc/${d}/${g}]} {
+                xinstall -m 755 -d ${prefix}/etc/${d}
+                file copy ${f} ${prefix}/etc/${d}/${g}
+                ui_msg "Copied ${f} to ${prefix}/etc/${d}/${g}"
+            }
+        }
+        foreach f [glob -nocomplain ${prefix}/share/${d}/*.conf.avail] {
+            set g [string map {".conf.avail" ".conf.d"} [file tail ${f}]]
+            if {![file exists ${prefix}/etc/${d}/${g}]} {
+                xinstall -m 755 -d ${prefix}/etc/${d}/${g}
+                ui_msg "You can copy relevant files from ${f} to ${prefix}/etc/${d}/${g}"
             }
         }
     }
