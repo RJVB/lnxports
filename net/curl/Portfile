@@ -32,7 +32,12 @@ set curl_distfile               ${distfiles}
 distfiles                       ${curl_distfile}:curl
 checksums-prepend               ${curl_distfile}
 
-if {${name} eq ${subport}} {
+subport MacPorts-libcurl {
+    description                 libcurl built for use by MacPorts itself
+    long_description            {*}${description}
+}
+
+if {${name} eq ${subport} || ${subport} eq "MacPorts-libcurl"} {
     PortGroup                   muniversal 1.0
     PortGroup                   LTO 1.0
     PortGroup                   save_configure_cmd 1.0
@@ -117,6 +122,42 @@ if {${name} eq ${subport}} {
 
     global merger_dont_diff
     set merger_dont_diff "${prefix}/include/curl/curlbuild.h"
+
+    ###
+    ### NB no code that should not apply to port:MacPorts-libcurl above this line
+    ###
+    if {${subport} eq "MacPorts-libcurl"} {
+        PortGroup               conflicts_build 1.0
+        depends_lib-append      port:libressl-co \
+                                path:share/curl/curl-ca-bundle.crt:curl-ca-bundle
+        configure.args-delete   --without-ssl
+        configure.args-replace  --without-openssl --with-openssl
+        configure.args-append   --with-ca-bundle=${prefix}/share/curl/curl-ca-bundle.crt
+
+        configure.pkg_config_path-prepend \
+                                ${prefix}/libexec/libressl/lib/pkgconfig
+        depends_build-delete    port:pkgconfig
+        depends_build-append    port:pkgconfig \
+                                port:cctools
+        conflicts_build         openssl-dev
+        set thePrefix           ${prefix}/libexec/macports/lib/pextlib1.0
+        configure.pre_args      --prefix=${thePrefix}
+        destroot {
+            xinstall -m 755 -d ${destroot}${thePrefix}
+            if {${os.platform} eq "darwin"} {
+                xinstall -m 755 ${worksrcpath}/lib/.libs/libcurl.4.dylib \
+                                ${destroot}${thePrefix}/libcurl-mp.dylib
+                system -W ${destroot} "install_name_tool -id ${thePrefix}/libcurl-mp.dylib ${thePrefix}/libcurl-mp.dylib"
+            } else {
+                xinstall -m 755 ${worksrcpath}/lib/.libs/libcurl.so.4.8.0 \
+                                ${destroot}${thePrefix}/libcurl-mp.so
+            }
+        }
+        return
+    }
+    ###
+    ### NB no code that is also relevant to port:MacPorts-libcurl below this line
+    ###
 
     post-destroot {
         set docdir ${prefix}/share/doc/${name}
