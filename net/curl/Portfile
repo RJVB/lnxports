@@ -35,6 +35,7 @@ checksums-prepend               ${curl_distfile}
 if {${name} eq ${subport}} {
     PortGroup                   muniversal 1.0
     PortGroup                   LTO 1.0
+    PortGroup                   save_configure_cmd 1.0
 
     #revision                    0
 
@@ -49,6 +50,8 @@ if {${name} eq ${subport}} {
     # Prevent curl-config from telling curl's dependents that they have to
     # link with all of curl's dependencies as well.
     patchfiles                  configure.patch
+
+    configure.save_configure_cmd "install log"
 
     configure.args              --disable-silent-rules \
                                 --enable-ipv6 \
@@ -75,11 +78,14 @@ if {${name} eq ${subport}} {
                                 --with-zstd \
                                 ac_cv_prog_AWK=/usr/bin/awk
 
-    configure.cflags-append     -mmacosx-version-min=${macosx_deployment_target}
+    platform darwin {
+        configure.cflags-append -mmacosx-version-min=${macosx_deployment_target}
+    }
 
     configure.checks.implicit_function_declaration.whitelist-append strchr
 
-    configure.env               PKG_CONFIG_PATH=${prefix}
+## WHY???
+#     configure.env               PKG_CONFIG_PATH=${prefix}
 
     if {${os.platform} eq "darwin" && ${os.major} < 10} {
         depends_build-append    port:cctools
@@ -263,6 +269,17 @@ if {${name} eq ${subport}} {
         configure.args-delete   --without-ssl
         configure.args-replace  --without-openssl --with-openssl
         configure.args-append   --with-ca-bundle=${prefix}/share/curl/curl-ca-bundle.crt
+    }
+
+    variant libre requires ssl description {Use the LibreSSL instead of OpenSSL} {
+        PortGroup               conflicts_build 1.0
+        depends_lib-replace     path:lib/libssl.dylib:openssl \
+                                port:libressl-co
+        configure.pkg_config_path-prepend \
+                                ${prefix}/libexec/libressl/lib/pkgconfig
+        depends_build-delete    port:pkgconfig
+        depends_build-append    port:pkgconfig
+        conflicts_build         openssl-dev
     }
 
     if {![variant_isset darwinssl] && ![variant_isset gnutls] && ![variant_isset mbedtls] && ![variant_isset wolfssl]} {
