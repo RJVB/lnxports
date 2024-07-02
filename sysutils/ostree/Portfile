@@ -1,0 +1,95 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           gobject_introspection 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+
+github.setup        ostreedev ostree 9b977e28283a2273650579cf7ef20dd435d8e087
+fetch.type          git
+version             2024.6.30
+distname            ${name}-git
+
+categories          devel
+platforms           linux
+maintainers         nomaintainer
+license             GPL2
+
+description         Operating system and container binary deployment and upgrades
+long_description \
+    libostree is both a shared library and suite of command line tools that combines \
+    a "git-like" model for committing and downloading bootable filesystem trees, along \
+    with a layer for deploying them and managing the bootloader configuration.
+
+post-fetch {
+    system -W ${worksrcpath} "git submodule update --init"
+}
+
+use_autoreconf  yes
+pre-configure {
+    autoreconf.cmd  ./autogen.sh
+    autoreconf.env  NOCONFIGURE=1
+    if {[file exists ${worksrcpath}/configure] && [file exists ${worksrcpath}/config.log]} {
+        use_autoreconf no
+    } elseif {![file exists ${worksrcpath}/build-aux/ltmain.sh]} {
+        # this should be done by autogen.sh but somehow it isn't?!
+        file copy ${prefix}/share/libtool/build-aux/ltmain.sh \
+                    ${worksrcpath}/build-aux/ltmain.sh
+    }
+}
+
+# autoreconf needs pkgconfig
+depends_build-append \
+                    port:pkgconfig \
+                    port:libxslt \
+                    port:bison
+
+depends_lib-append  port:gpgme \
+                    port:libassuan \
+                    port:libgpg-error \
+                    port:xz \
+                    port:zlib \
+                    port:libarchive \
+                    port:avahi \
+                    port:libsoup \
+                    port:glib2 \
+                    port:util-linux \
+                    port:libsodium
+
+patchfiles-append   patch-missing-statx.diff
+
+configure.env-append \
+                    BASH_COMPLETIONSDIR=${prefix}/share/bash-completion
+
+configure.save_configure_cmd "install log"
+configure.args      --disable-maintainer-mode \
+                    --disable-dependency-tracking \
+                    --disable-gtk-doc-html \
+                    --without-selinux \
+                    --without-libsystemd \
+                    --with-soup3 \
+                    --with-ed25519-libsodium \
+                    --without-curl
+
+variant ir description {enable GObject introspection} {}
+if {[variant_isset ir]} {
+    gobject_introspection yes
+} else {
+    gobject_introspection no
+}
+
+variant soup2 description {use libsoup2 instead of libsoup3} {}
+if {[variant_isset soup2]} {
+    configure.args-replace \
+                    --with-soup3 \
+                    --without-soup3
+    configure.args-append \
+                    --with-soup
+    depends_lib-replace \
+                    port:libsoup \
+                    port:libsoup-2.4
+}
+
+test.run        yes
+test.target     check
