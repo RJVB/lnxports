@@ -13,7 +13,8 @@ aqua/qt5-mac-angel
 PortIndex*
 work
 PortIndex*
-.kate-swp
+*.kate-swp
+.*.kate-swp
 enable_latest
 .AppleDouble
 _crud_
@@ -22,3 +23,4 @@ graphics/fontconfig/files/ultimate
 .*.swo
 .git.bak
 .git.new
+_resources/port1.0/group/devport_db.tcl
