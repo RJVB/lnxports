@@ -17,9 +17,9 @@
 #
 # python.consistent_destroot: set consistent environment values in build and destroot phases
 #
-# python.pep517: build using PEP517 (default is "no")
+# python.pep517: build using PEP517 (default is "yes" for Python 3.7+)
 # python.pep517_backend: specify the backend to use; one of "setuptools" (default),
-#   "flit", "hatch", "poetry", or "maturin"
+#   "flit", "hatch", "poetry", "maturin", "meson", or "pdm"
 #
 # python.test_framework: specify the test framework to use; one of "pytest" (default),
 #   "nose", "unittest", or <empty string>
@@ -80,7 +80,7 @@ proc python_get_version {} {
 
 proc python_get_default_version {} {
     global python.versions
-    set def_v 37
+    set def_v 312
     if {[info exists python.versions]} {
         if {${def_v} in ${python.versions}} {
             return ${def_v}
@@ -126,6 +126,7 @@ proc python_set_versions {option action args} {
             unset python.version
             patch {}
             build {}
+            build.cmd   true
             destroot {
                 system "echo $name is a stub port > ${destroot}${prefix}/share/doc/${name}/README"
             }
@@ -225,9 +226,9 @@ proc python_set_versions {option action args} {
             }
         }
         pre-destroot {
-            set pycflags ""
-            set pycxxflags ""
-            set pyobjcflags ""
+#             set pycflags ""
+#             set pycxxflags ""
+#             set pyobjcflags ""
             if {!${python.pep517} && ${python.consistent_destroot}} {
                 foreach var {pycflags pycxxflags pyf77flags pyf90flags pyfcflags pyobjcflags pyldflags} {
                     set $var [list]
@@ -363,7 +364,7 @@ default destroot.cmd    {[python_get_defaults destroot_cmd]}
 default destroot.destdir {[python_get_defaults destroot_destdir]}
 default destroot.target {[python_get_defaults destroot_target]}
 
-default python.pep517   {[expr {[info exists python.version] && ${python.version} >= 311}]}
+default python.pep517   {[expr {[info exists python.version] && ${python.version} >= 37}]}
 default python.pep517_backend   setuptools
 
 default python.test_framework   pytest
@@ -417,6 +418,14 @@ proc python_add_dependencies {} {
                         depends_build-append    port:py${python.version}-maturin \
                                                 port:py${python.version}-setuptools-rust
                     }
+                    meson {
+                        depends_build-delete    port:py${python.version}-meson-python
+                        depends_build-append    port:py${python.version}-meson-python
+                    }
+                    pdm {
+                        depends_build-delete    port:py${python.version}-pdm-backend
+                        depends_build-append    port:py${python.version}-pdm-backend
+                    }
                     default {}
                 }
             }
@@ -428,7 +437,10 @@ proc python_add_dependencies {} {
                     }
                     nose {
                         depends_test-delete    port:py${python.version}-nose
-                        depends_test-append    port:py${python.version}-nose
+                        if {${python.version} < 312} {
+                            depends_test-append \
+                                                port:py${python.version}-nose
+                        }
                     }
                     default {}
                 }
