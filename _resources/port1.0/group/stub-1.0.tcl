@@ -63,6 +63,7 @@ proc stub::setup_stub_linux {} {
     }
 
     distfiles
+    fetch.type          standard
     patchfiles
     use_configure       no
     build {}
