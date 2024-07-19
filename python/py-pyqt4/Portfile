@@ -267,6 +267,8 @@ if {${name} ne ${subport}} {
                 delete ${destroot}${python.pkgd}/PyQt4/uic/port_v3
             }
         }
+        catch {system "${python.bin} ${python.libdir}/compileall.py ${destroot}${prefix}"}
+        catch {system "${python.bin} -O ${python.libdir}/compileall.py ${destroot}${prefix}"}
     }
 
     variant debug description "Build debug libraries" {
