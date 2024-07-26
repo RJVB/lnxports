@@ -26,8 +26,7 @@ name                ffmpeg6
 set my_name         ffmpeg
 
 # Please increase the revision of mpv whenever ffmpeg's version is updated.
-version             6.1.1
-# revision            0
+version             6.1.1 ; revision 1
 # epoch               0
 
 license             LGPL-2.1+
@@ -107,6 +106,11 @@ depends_lib-append \
                     port:zimg \
                     port:zlib \
                     port:zvbi
+
+platform linux {
+    depend_lib-append \
+                    port:libva
+}
 
 patchfiles-append   patch-libavcodec-audiotoolboxenc.c.diff
 patchfiles-append   patch-avutil-builtin-available.diff
