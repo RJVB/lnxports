@@ -11,7 +11,7 @@ name                librsvg
 # version 2.42.3 requires unstable cairo >= 1.15.4
 # no upgrade until this is resolved
 # https://gitlab.gnome.org/GNOME/librsvg/issues/217
-version             2.48.12
+version             2.48.12 ; revision 1
 license             {GPL-2+ LGPL-2+}
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          graphics gnome
@@ -85,6 +85,14 @@ platform darwin {
     gobject_introspection yes
 }
 
+if {[tbool configure.ccache]} {
+    # Enable sccache for rust caching
+    depends_build-append port:sccache
+    set ::env(RUSTC_WRAPPER) ${prefix}/bin/sccache
+    set ::env(SCCACHE_CACHE_SIZE) 2G
+    set ::env(SCCACHE_DIR) [string map {".ccache" ".sccache"} ${ccache_dir}]
+}
+
 configure.save_configure_cmd "install log"
 if {[vercmp ${version} "2.57.0"] < 0} {
     configure.args  --enable-vala=yes \
@@ -102,7 +110,7 @@ if {[vercmp ${version} "2.57.0"] < 0} {
         post-configure {
             xinstall -m 755 -d ${worksrcpath}/target/release
             xinstall -m 755 -d ${worksrcpath}/target/x86_64-unknown-linux-gnu/release
-            ln -s ${worksrcpath}/target/x86_64-unknown-linux-gnu/release/librsvg_c_api.a \
+            ln -sf ${worksrcpath}/target/x86_64-unknown-linux-gnu/release/librsvg_c_api.a \
                 ${worksrcpath}/target/release/
         }
     }
@@ -134,6 +142,11 @@ post-destroot {
     set badfile ${prefix}/lib/gdk-pixbuf-2.0/2.10.0/loaders/libpixbufloader-svg.a
     if {[file exists ${destroot}${badfile}]} {
         file delete ${destroot}${badfile}
+    }
+    # the static library can become huge with unasked-for debug info
+    if {[lsearch [split ${configure.cflags} " "] "-g"] < 0} {
+        # strip the debug info that wasn't requested
+        system "strip --strip-debug ${destroot}${prefix}/lib/librsvg-2.a"
     }
 }
 
