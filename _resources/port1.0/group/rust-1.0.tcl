@@ -33,7 +33,9 @@
 #    baz    author/baz  branch  abcdef12345678...commit...abcdef12345678  fedcba654321...
 #
 
-PortGroup   muniversal          1.1
+platform darwin {
+    PortGroup   muniversal      1.1
+}
 PortGroup   compiler_wrapper    1.0
 # ideally, we would like to add the openssl PG, however
 #     its use of `option_proc` makes changing the default value of `openssl.branch` difficult, and
@@ -120,6 +122,9 @@ rename      portconfigure::should_add_stdlib  portconfigure::should_add_stdlib_r
 rename      portconfigure::should_add_cxx_abi portconfigure::should_add_cxx_abi_real
 proc        portconfigure::should_add_stdlib  {} {return no}
 proc        portconfigure::should_add_cxx_abi {} {return no}
+pre-configure {
+    ui_debug "rust-1.0 PG overloaded the should_add_stdlib & should_add_cxx_abi procedures!"
+}
 
 # enforce same compiler settings as used by rust
 default     compiler.cxx_standard           2017
@@ -796,10 +801,8 @@ proc rust::get_sdkroot {sdk_version} {
 }
 
 # Is build caching enabled ?
-# WIP for now ...
-if {[tbool configure.ccache]} {
+if {[tbool configure.ccache] && [file exists ${prefix}/bin/sccache]} {
     # Enable sccache for rust caching
-    depends_build-append port:sccache
     rust::append_envs    RUSTC_WRAPPER=${prefix}/bin/sccache
     rust::append_envs    SCCACHE_CACHE_SIZE=2G
     rust::append_envs    SCCACHE_DIR=[string map {".ccache" ".sccache"} ${ccache_dir}]
