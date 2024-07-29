@@ -52,7 +52,7 @@ depends_run         port:python[join [split ${pyversion} "."] ""]
 # rust fails to build on 10.9 and earlier
 # https://trac.macports.org/ticket/56321
 
-if {${os.platform} eq "darwin" && ${os.major} < 14} {
+if {${os.platform} eq "darwin" && ${os.major} < 13} {
     # revert to latest pre-cargo version
     version         2.40.20
     epoch           1
@@ -85,9 +85,8 @@ platform darwin {
     gobject_introspection yes
 }
 
-if {[tbool configure.ccache]} {
+if {[tbool configure.ccache] && [file exists ${prefix}/bin/sccache]} {
     # Enable sccache for rust caching
-    depends_build-append port:sccache
     set ::env(RUSTC_WRAPPER) ${prefix}/bin/sccache
     set ::env(SCCACHE_CACHE_SIZE) 2G
     set ::env(SCCACHE_DIR) [string map {".ccache" ".sccache"} ${ccache_dir}]
@@ -109,8 +108,16 @@ if {[vercmp ${version} "2.57.0"] < 0} {
     if {[info exists distro] && (${distro} eq "Ubuntu" || ${distro} eq "Debian")} {
         post-configure {
             xinstall -m 755 -d ${worksrcpath}/target/release
-            xinstall -m 755 -d ${worksrcpath}/target/x86_64-unknown-linux-gnu/release
-            ln -sf ${worksrcpath}/target/x86_64-unknown-linux-gnu/release/librsvg_c_api.a \
+            xinstall -m 755 -d ${worksrcpath}/target/${build_arch}-unknown-linux-gnu/release
+            ln -sf ${worksrcpath}/target/${build_arch}-unknown-linux-gnu/release/librsvg_c_api.a \
+                ${worksrcpath}/target/release/
+        }
+    } elseif {${os.platform} eq "darwin"} {
+        configure.ldflags-append    -lobjc
+        post-configure {
+            xinstall -m 755 -d ${worksrcpath}/target/release
+            xinstall -m 755 -d ${worksrcpath}/target/${build_arch}-apple-darwin/release
+            ln -sf ${worksrcpath}/target/${build_arch}-apple-darwin/release/librsvg_c_api.a \
                 ${worksrcpath}/target/release/
         }
     }
