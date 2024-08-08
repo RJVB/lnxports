@@ -1,3 +1,5 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
 PortSystem      1.0
 PortGroup       github 1.0
 PortGroup       locale_select 1.0
@@ -25,12 +27,16 @@ categories      audio
 platforms       macosx linux
 license         GPL-2
 maintainers     gmail.com:rjvbertin openmaintainer
-description     Software KVM switch
-long_description Barrier is software that mimics the functionality of a KVM switch, which historically \
-                would allow you to use a single keyboard and mouse to control multiple computers by \
-                turning a dial on a box to switch the machine you're controlling at any given moment. \
-                Barrier does this in software, allowing you to tell it which machine to control by moving \
-                your mouse to the edge of the screen, or by using a keypress to switch focus to a different system.
+description     a Linux/FreeBSD DAAP (iTunes), MPD (Music Player Daemon) and RSP (Roku) media server
+long_description \
+                forked-daapd is a Linux/FreeBSD DAAP (iTunes), MPD (Music Player Daemon) and \
+                RSP (Roku) media server. \
+                It supports AirPlay devices/speakers, Apple Remote (and compatibles), \
+                MPD clients, Chromecast, network streaming, internet radio, Spotify and LastFM. \
+                It does not support streaming video by AirPlay nor Chromecast. \
+                DAAP stands for Digital Audio Access Protocol which is the protocol used \
+                by iTunes and friends to share/stream media libraries over the network. \
+                forked-daapd is a complete rewrite of mt-daapd (Firefly Media Server).
 
 depends_build-append \
                 port:pkgconfig
