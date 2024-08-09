@@ -117,7 +117,7 @@ depends_lib-append \
                     port:zlib
 
 platform linux {
-    depend_lib-append \
+    depends_lib-append \
                     port:libva
 }
 

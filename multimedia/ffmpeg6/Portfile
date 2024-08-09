@@ -108,7 +108,7 @@ depends_lib-append \
                     port:zvbi
 
 platform linux {
-    depend_lib-append \
+    depends_lib-append \
                     port:libva
 }
 
