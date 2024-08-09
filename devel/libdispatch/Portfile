@@ -35,5 +35,7 @@ long_description \
 configure.args-append \
                 -DCMAKE_STRIP:PATH=/bin/echo
 
-cmake.save_configure_cmd "log too"
+cmake.save_configure_cmd "install log"
+
+test.run		yes
 
