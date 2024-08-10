@@ -3,7 +3,7 @@
 
 PortSystem              1.0
 PortGroup               compiler_blacklist_versions 1.0
-PortGroup               muniversal 1.0
+PortGroup               save_configure_cmd  1.0
 
 name                    gettext
 epoch                   2
@@ -129,6 +129,8 @@ foreach p ${stubports} {
         destroot.keepdirs ${destroot}${prefix}/share/gettext
     }
 }
+
+configure.save_configure_cmd "install log"
 
 livecheck.type          regex
 livecheck.url           http://ftp.gnu.org/gnu/gettext/?C=M&O=D
