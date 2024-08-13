@@ -65,6 +65,7 @@ proc stub::setup_stub_linux {} {
     distfiles
     fetch.type          standard
     patchfiles
+    use_autoreconf      no
     use_configure       no
     build {}
     # RJVB : run our bit of code in the destroot because "base"
