@@ -3,11 +3,12 @@
 
 PortSystem              1.0
 PortGroup               compiler_blacklist_versions 1.0
+PortGroup               LTO  1.0
 PortGroup               save_configure_cmd  1.0
 
 name                    gettext
 epoch                   2
-version                 0.22.5
+version                 0.22.5 ; revision 1
 categories              devel
 maintainers             ryandesign
 # libs are LGPL and executables are GPL
@@ -42,7 +43,8 @@ configure.args-append   ac_cv_path_GMSGFMT=: \
                         --with-included-libxml \
                         --without-emacs \
                         --with-included-glib \
-                        --with-included-libcroco
+                        --with-included-libcroco \
+                        --disable-acl
 
 # Don't use possibly installed cvs or git to create the autopoint archive
 # because the archives they create for each architecture under muniversal
@@ -60,6 +62,17 @@ depends_lib             port:libiconv \
 				
 depends_build-append    port:ncurses-dev
 
+# a build with rlibtool is has 50% less overhead than a standard build with the libtool script
+# but it doesn't generate .la files . References to these will be found in the .la files of
+# enough dependents that I do not want to drop them, because our own build already fails when
+# port:acl-dev is active and refers to libintl.la in its libacl.la file.
+#
+# This was fixed by adding the --disable-acl configure argument
+#
+# NB: the missing .la file only concerns libintl and was no issue with gettext 0.19.8.1
+# (= the previous version of this port) so I didn't discover the problem when upgrading
+# the port...
+
 test.run                yes
 test.target             check
 
@@ -69,6 +82,8 @@ PortGroup devport 1.0
 
 create_devport port:${name}
 
+destroot.delete_la_files no
+
 if {${subport} eq "${name}"} {
     post-destroot {
         if {[file exists ${destroot}${prefix}/lib/charset.alias]} {
@@ -76,6 +91,12 @@ if {${subport} eq "${name}"} {
         }
         if {[file exists ${destroot}${prefix}/share/locale/locale.alias]} {
             delete ${destroot}${prefix}/share/locale/locale.alias
+        }
+        if {![file exists ${destroot}${prefix}/lib/libintl.la]} {
+            ui_debug "Installing the missing libintl.la file!"
+            xinstall -m 644 ${worksrcpath}/gettext-runtime/intl/libintl.la \
+                ${destroot}${prefix}/lib/libintl.la
+            reinplace "s|installed=no|installed=yes|g" ${destroot}${prefix}/lib/libintl.la
         }
         xinstall -m 644 -W ${worksrcpath} \
             AUTHORS \
