@@ -7,22 +7,22 @@ PortGroup               save_configure_cmd  1.0
 
 name                    gettext
 epoch                   2
-version                 0.19.8.1
+version                 0.22.5
 categories              devel
 maintainers             ryandesign
 # libs are LGPL and executables are GPL
 license                 {LGPL-2.1+ GPL-3+}
-homepage                http://www.gnu.org/software/gettext/
+homepage                https://www.gnu.org/software/gettext/
 master_sites            gnu
 platforms               darwin freebsd linux
 use_parallel_build      yes
 
-description             GNU internationalization (i18n) and localization (l10n) library
+description             GNU internationalisation (i18n) and localisation (l10n) library
 
 long_description        ${name} is the ${description}, used for writing multilingual programs.
 
-checksums               rmd160  29a5f29d186fe2aece5c450fd1a743b819c02c5b \
-                        sha256  ff942af0e438ced4a8b0ea4b0b6e0d6d657157c5e2364de57baa279c1c125c43
+checksums               rmd160  ca4af263902a8e419a399639a6e77fb40307ffdc \
+                        sha256  ec1705b1e969b83a9f073144ec806151db88127f5e40fe5a94cb6c8fa48996a0
 
 # https://trac.macports.org/ticket/31167
 compiler.blacklist-append   {clang < 211.10.1}
@@ -30,18 +30,19 @@ compiler.blacklist-append   {clang < 211.10.1}
 # gcc doesn't like this option:
 # configure.cppflags      -no-cpp-precomp
 
-configure.args          ac_cv_prog_AWK=/usr/bin/awk \
-                        ac_cv_path_GREP=/usr/bin/grep \
-                        ac_cv_path_SED=/usr/bin/sed \
+configure.args-append   ac_cv_path_GMSGFMT=: \
+                        ac_cv_path_MSGFMT=: \
+                        ac_cv_path_MSGMERGE=: \
+                        ac_cv_path_XGETTEXT=: \
                         --disable-csharp \
-                        --disable-native-java \
-                        --disable-openmp \
-                        --without-emacs \
+                        --disable-java \
                         --with-included-gettext \
-                        --with-included-glib \
-                        --with-included-libcroco \
+                        --disable-openmp \
                         --with-included-libunistring \
-                        --with-included-libxml
+                        --with-included-libxml \
+                        --without-emacs \
+                        --with-included-glib \
+                        --with-included-libcroco
 
 # Don't use possibly installed cvs or git to create the autopoint archive
 # because the archives they create for each architecture under muniversal
@@ -51,8 +52,10 @@ configure.args-append   --without-cvs \
                         --without-git \
                         --without-xz
 
-depends_lib             port:expat \
-                        port:libiconv \
+# https://trac.macports.org/wiki/WimplicitFunctionDeclaration#strchr
+configure.checks.implicit_function_declaration.whitelist-append strchr
+
+depends_lib             port:libiconv \
                         port:ncurses
 				
 depends_build-append    port:ncurses-dev
@@ -86,25 +89,13 @@ if {${subport} eq "${name}"} {
             THANKS \
             ${destroot}${prefix}/share/doc/${name}
         if {${subport} eq "${name}"} {
-#             foreach h [glob -nocomplain ${destroot}${prefix}/include/*.h] {
-#                 devport_content-append [string map [list ${destroot} ""] ${h}]
-#             }
-#             foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.a] {
-#                 devport_content-append [string map [list ${destroot} ""] ${h}]
-#             }
-#             foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*.la] {
-#                 devport_content-append [string map [list ${destroot} ""] ${h}]
-#             }
-#             foreach h [glob -nocomplain ${destroot}${prefix}/lib/lib*\[a-zA-Z\].so] {
-#                 devport_content-append [string map [list ${destroot} ""] ${h}]
-#             }
             register_devport_standard_content
             create_devport_content_archive
         }
     }
 }
 
-set stubports {libasprintf libtextstyle gettext-runtime gettext-tools-libs}
+set stubports {libasprintf libtextstyle libasprintf-dev libtextstyle-dev gettext-runtime gettext-tools-libs}
 
 foreach p ${stubports} {
     subport ${p} {
@@ -113,7 +104,15 @@ foreach p ${stubports} {
         depends_fetch
         depends_build
         depends_run
-        depends_lib     port:gettext
+        switch ${p} {
+            "libasprintf-dev" -
+            "libtextstyle-dev" {
+                depends_lib port:gettext-dev
+            }
+            default {
+                depends_lib port:gettext
+            }
+        }
         installs_libs   no
         supported_archs noarch
         distfiles
