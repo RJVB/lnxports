@@ -28,6 +28,8 @@ checksums               rmd160  ca4af263902a8e419a399639a6e77fb40307ffdc \
 # https://trac.macports.org/ticket/31167
 compiler.blacklist-append   {clang < 211.10.1}
 
+patchfiles-append 		patch-dont-delete-libintl.la.diff
+
 # gcc doesn't like this option:
 # configure.cppflags      -no-cpp-precomp
 
@@ -80,9 +82,9 @@ test.target             check
 PortGroup devport 1.0
 ####################
 
-create_devport port:${name}
-
 destroot.delete_la_files no
+
+create_devport port:${name}
 
 if {${subport} eq "${name}"} {
     post-destroot {
@@ -93,7 +95,7 @@ if {${subport} eq "${name}"} {
             delete ${destroot}${prefix}/share/locale/locale.alias
         }
         if {![file exists ${destroot}${prefix}/lib/libintl.la]} {
-            ui_debug "Installing the missing libintl.la file!"
+            ui_warn "Installing the missing libintl.la file!"
             xinstall -m 644 ${worksrcpath}/gettext-runtime/intl/libintl.la \
                 ${destroot}${prefix}/lib/libintl.la
             reinplace "s|installed=no|installed=yes|g" ${destroot}${prefix}/lib/libintl.la

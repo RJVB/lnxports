@@ -1,0 +1,38 @@
+diff --git gettext-runtime/intl/orig.Makefile.am gettext-runtime/intl/Makefile.am
+index 2bed67b..30c9a47 100644
+--- gettext-runtime/intl/orig.Makefile.am
++++ gettext-runtime/intl/Makefile.am
+@@ -462,13 +462,7 @@ install-exec-local: install-exec-libintl
+ install-exec-libintl: libintl.la
+ 	$(mkdir_p) $(DESTDIR)$(libdir)
+ 	$(LIBTOOL) --mode=install \
+-	  $(INSTALL_DATA) libintl.la $(DESTDIR)$(libdir)/libintl.la; \
+-	if test "@RELOCATABLE@" = yes; then \
+-	  dependencies=`sed -n -e 's,^dependency_libs=\(.*\),\1,p' < $(DESTDIR)$(libdir)/libintl.la | sed -e "s,^',," -e "s,'\$$,,"`; \
+-	  if test -n "$$dependencies"; then \
+-	    rm -f $(DESTDIR)$(libdir)/libintl.la; \
+-	  fi; \
+-	fi
++	  $(INSTALL_DATA) libintl.la $(DESTDIR)$(libdir)/libintl.la;
+ 
+ installdirs-local: installdirs-libintl
+ installdirs-libintl:
+diff --git gettext-runtime/intl/orig.Makefile.in gettext-runtime/intl/Makefile.in
+index 2d24479..6eb2dfa 100644
+--- gettext-runtime/intl/orig.Makefile.in
++++ gettext-runtime/intl/Makefile.in
+@@ -2652,13 +2652,7 @@ intl-compat.lo:      ../config.h $(srcdir)/gettextP.h libgnuintl.h $(srcdir)/gmo
+ @USE_INCLUDED_LIBINTL_TRUE@install-exec-libintl: libintl.la
+ @USE_INCLUDED_LIBINTL_TRUE@	$(mkdir_p) $(DESTDIR)$(libdir)
+ @USE_INCLUDED_LIBINTL_TRUE@	$(LIBTOOL) --mode=install \
+-@USE_INCLUDED_LIBINTL_TRUE@	  $(INSTALL_DATA) libintl.la $(DESTDIR)$(libdir)/libintl.la; \
+-@USE_INCLUDED_LIBINTL_TRUE@	if test "@RELOCATABLE@" = yes; then \
+-@USE_INCLUDED_LIBINTL_TRUE@	  dependencies=`sed -n -e 's,^dependency_libs=\(.*\),\1,p' < $(DESTDIR)$(libdir)/libintl.la | sed -e "s,^',," -e "s,'\$$,,"`; \
+-@USE_INCLUDED_LIBINTL_TRUE@	  if test -n "$$dependencies"; then \
+-@USE_INCLUDED_LIBINTL_TRUE@	    rm -f $(DESTDIR)$(libdir)/libintl.la; \
+-@USE_INCLUDED_LIBINTL_TRUE@	  fi; \
+-@USE_INCLUDED_LIBINTL_TRUE@	fi
++@USE_INCLUDED_LIBINTL_TRUE@	  $(INSTALL_DATA) libintl.la $(DESTDIR)$(libdir)/libintl.la;
+ 
+ @USE_INCLUDED_LIBINTL_TRUE@installdirs-local: installdirs-libintl
+ @USE_INCLUDED_LIBINTL_TRUE@installdirs-libintl:
