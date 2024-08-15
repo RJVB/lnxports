@@ -31,21 +31,23 @@ long_description \
     conversion.
 
 ####################
-PortGroup devport 1.0
+if {${os.platform} ne "darwin"} {
+    PortGroup devport 1.0
 
-create_devport port:${name}
+    create_devport port:${name}
 
-post-destroot {
-    if {${subport} eq "${name}"} {
-        register_devport_standard_content
-        create_devport_content_archive
+    post-destroot {
+        if {${subport} eq "${name}"} {
+            register_devport_standard_content
+            create_devport_content_archive
+        }
     }
-}
 
-if {${subport} eq "${name}-dev"} {
-    # libiconv-dev doesn't care about anything that follows,
-    # return here to avoid having to add more subport checks.
-    return
+    if {${subport} eq "${name}-dev"} {
+        # libiconv-dev doesn't care about anything that follows,
+        # return here to avoid having to add more subport checks.
+        return
+    }
 }
 ####################
 
