@@ -1,22 +1,19 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem 1.0
-platform darwin {
-    PortGroup       cxx11 1.1
-}
 
 name                qscintilla
 
-version             2.10.3
-checksums           rmd160 78e3d54c9caeaff371f233a1abfc87949fd8a0de \
-                    sha256 d2657a68e7699d37209ff97db965de7c67884d99b33066d0ba457e6f39b581e7 \
-                    size 2721287
+version             2.11.6
+checksums           rmd160  bc00b95128956424a2f3466d25c4dd9f03169c0b \
+                    sha256  e7346057db47d2fb384467fafccfcb13aa0741373c5d593bc72b55b2f0dd20a7
+#                    size    3027764
 
 categories          devel
 license             GPL-3
 maintainers         {michaelld @michaelld} {mcalhoun @MarcusCalhoun-Lopez} openmaintainer
 description         QScintilla is a port to Qt of Neil Hodgson's Scintilla C++ editor control.
-homepage            http://www.riverbankcomputing.com/software/qscintilla/
+homepage            https://www.riverbankcomputing.com/software/qscintilla/
 platforms           darwin
 
 long_description    QScintilla is a port to Qt of Neil Hodgson's Scintilla C++ editor control. \
@@ -30,8 +27,14 @@ long_description    QScintilla is a port to Qt of Neil Hodgson's Scintilla C++ e
                     bold and italics, multiple foreground and background colours and    \
                     multiple fonts.
 
-distname            QScintilla_gpl-${version}
-master_sites        sourceforge:pyqt
+#distname            QScintilla_gpl-${version}
+distname            QScintilla-${version}
+master_sites        https://www.riverbankcomputing.com/static/Downloads/QScintilla/${version}
+
+compiler.cxx_standard \
+                    2011
+
+PortGroup           LTO 1.0
 
 foreach qt_major {4 5} {
     subport ${name}-qt${qt_major} {
@@ -39,9 +42,16 @@ foreach qt_major {4 5} {
             PortGroup qmake 1.0
         } else {
             PortGroup qmake${qt_major} 1.0
+            PortGroup preserve_runtime_libraries 1.0
         }
 
         worksrcdir ${worksrcdir}/Qt4Qt5
+
+        # temporary path to fix necessary inclusion of QUrl
+        patchfiles-append patch-Qt4Qt5_qsciscintillabase.cpp.diff
+
+        # fixup @rpath in the library's install_name
+        patchfiles-append patch-Qt4Qt5-qscintilla.pro.diff
 
         if {${qt_major} eq 4} {
             # enable C++11
@@ -54,6 +64,14 @@ foreach qt_major {4 5} {
             qt${qt_major}.depends_component qtmacextras
             configure.args-append CONFIG+=absolute_library_soname
             configure.args-append CONFIG+=c++11
+
+            post-destroot {
+                if {${os.platform} eq "darwin"} {
+                    ui_warn "preserve_libraries not yet implemented!"
+                } else {
+                    preserve_libraries ${qt_libs_dir} "libqscintilla2_qt${qt_major}.so.*"
+                }
+            }
         }
 
         # work around build issue with qt4 version and QtAccessibility
@@ -70,7 +88,7 @@ foreach qt_major {4 5} {
         }
 
         description       Qt Designer plugin for Qt${qt_major} QScintilla
-        long_description  ${description}
+        long_description  {*}${description}
 
         worksrcdir ${worksrcdir}/designer-Qt4Qt5
 
@@ -96,12 +114,10 @@ foreach qt_major {4 5} {
     subport py-${name}-qt${qt_major} {
         categories-append python
         use_configure no
-        fetch {}
-        checksum {}
-        extract {}
+        distfiles
+        patchfiles
         supported_archs noarch
         depends_lib port:py27-qscintilla-qt${qt_major}
-        patch {}
         build {}
         destroot {
             xinstall -d -m 755 ${destroot}${prefix}/share/doc/${subport}
@@ -109,7 +125,7 @@ foreach qt_major {4 5} {
         }
     }
 
-    set python_versions {27 34 35 36}
+    set python_versions {27 35 36 37 38 39}
 
     foreach pver ${python_versions} {
         subport py${pver}-${name}-qt${qt_major} {
@@ -150,15 +166,13 @@ foreach qt_major {4 5} {
             configure.pre_args
 
             configure.cmd       ${configure.python} configure.py
-            configure.args-append                          \
+            configure.args-append --verbose                \
                 --pyqt=PyQt${qt_major}                     \
                 --sip=${prefix}/bin/sip-${python_ver_dot}  \
-                --qmake=${qt_qmake_cmd}
+                --qmake=${qt_qmake_cmd}                    \
+                --no-dist-info
 
             if {${qt_major} eq 4} {
-                configure.args-append \
-                    --pyqt-sipdir=${prefix}/share/py${pver}-sip/PyQt4
-
                 configure.args-append \
                     --spec=${qt_qmake_spec}
             } else {
@@ -177,15 +191,17 @@ foreach qt_major {4 5} {
     }
 }
 
-if {${subport} eq ${name}} {
-    revision 1
+if {[info procs qmake${qt_major}.save_configure_cmd] ne ""} {
+    qmake${qt_major}.save_configure_cmd "install log"
+}
 
+if {${subport} eq ${name}} {
+    revision 2
+
+    distfiles
+    patchfiles
     use_configure no
-    fetch {}
-    checksum {}
-    extract {}
     supported_archs noarch
-    patch {}
     build {}
     destroot {
         xinstall -d -m 755 ${destroot}${prefix}/share/doc/${subport}
@@ -209,18 +225,4 @@ if {${subport} eq ${name}} {
 
 livecheck.type      regex
 livecheck.url       ${homepage}download
-livecheck.regex     >QScintilla\[_-\]gpl-\(\[0-9.\]+\)${extract.suffix}<
-
-# see https://trac.macports.org/ticket/55261
-# see https://trac.macports.org/wiki/PortfileRecipes#deactivatehack
-if {${subport} eq "qscintilla-qt4" || ${subport} eq "qscintilla-designer-qt4"} {
-    pre-activate {
-        if {![catch {set installed [lindex [registry_active qscintilla] 0]}]} {
-            set _version  [lindex $installed 1]
-            set _revision [lindex $installed 2]
-            if {[vercmp $_version 2.10.1] < 0 || ([vercmp $_version 2.10.1] == 0 && $_revision < 1)} {
-                registry_deactivate_composite qscintilla "" [list ports_nodepcheck 1]
-            }
-        }
-    }
-}
+livecheck.regex     >QScintilla\[^0-9.\]+\(\[0-9.\]+\)${extract.suffix}<
