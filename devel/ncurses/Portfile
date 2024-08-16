@@ -1,3 +1,5 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
 PortSystem 1.0
 PortGroup       clang_dependency 1.0
 PortGroup       LTO 1.0
@@ -27,7 +29,7 @@ if {${os.platform} eq "darwin" && ${os.major} < 11 && ${cxx_stdlib} eq "libc++"}
 
 # keep the ncurses5 checks in for easier syncing between the Linux and Mac versions of this port
 if {${subport} ne "${name}5"} {
-    version     6.4 ; revision 2
+    version     6.4 ; revision 3
     checksums   rmd160 a8b6ef8fe778c87ffdd3e0f3199c156c47b8dc39 \
                 sha256 6931283d9ac87c5073f30b6290c4c75f21632bb4fc3603ac8100812bed248159
 
@@ -120,6 +122,10 @@ post-destroot {
             ln -s lib${f}.a ${destroot}${prefix}/lib/lib${f}w.a
             ln -s ${f}.pc ${destroot}${prefix}/lib/pkgconfig/${f}w.pc
             reinplace "s|-Wl,-syslibroot,${configure.sdkroot}||" ${destroot}${prefix}/lib/pkgconfig/${f}.pc
+            if {${os.platform} ne "darwin"} {
+                # ncurses has hardcoded pkgconfig files...
+                reinplace "s|prefix\}/include|prefix\}/include/ncursesw|g" ${destroot}${prefix}/lib/pkgconfig/${f}.pc
+            }
             if {"${archflags}" ne ""} {
                 reinplace "s|${archflags}||" ${destroot}${prefix}/lib/pkgconfig/${f}.pc
             }
