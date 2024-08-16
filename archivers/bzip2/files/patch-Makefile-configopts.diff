@@ -1,12 +1,13 @@
---- orig.Makefile	2015-11-10 15:56:52.116513101 +0100
-+++ Makefile	2015-11-10 15:58:49.421517990 +0100
-@@ -21,7 +21,8 @@
- LDFLAGS=
+diff --git orig.Makefile Makefile
+index ed40fde..eef86ea 100644
+--- orig.Makefile
++++ Makefile
+@@ -22,6 +22,8 @@ LDFLAGS=
  
  BIGFILES=-D_FILE_OFFSET_BITS=64
--CFLAGS=-Wall -Winline -O2 -g $(BIGFILES)
+ CFLAGS=-Wall -Winline -O2 -fPIC -fpic -g $(BIGFILES)
 +MPCFLAGS=
-+CFLAGS=-Wall -Winline -O2 -g $(BIGFILES) $(MPCFLAGS)
++CFLAGS=-Wall -Winline -O2 -fPIC -fpic -g $(BIGFILES) $(MPCFLAGS)
  
  # Where you want it installed when you do 'make install'
  PREFIX=/usr/local
