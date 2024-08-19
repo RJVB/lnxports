@@ -4,43 +4,50 @@ PortSystem          1.0
 PortGroup           LTO 1.0
 PortGroup           meson 1.0
 PortGroup           compiler_blacklist_versions 1.0
+platform darwin {
+    PortGroup       legacysupport 1.1
+
+    # posix_memalign
+    legacysupport.newest_darwin_requires_legacy 9
+}
 
 name                libdazzle
-version             3.36.0 ; revision 1
+conflicts           libdazzle-devel
+version             3.38.0
+
+categories          gnome
+platforms           darwin
 license             GPL-3+
-set branch          [join [lrange [split ${version} .] 0 1] .]
+maintainers         nomaintainer
+
 description         ${name} is a companion library to GObject and Gtk+.
 long_description    ${description}  It includes a collection of dazzling Gtk widgets, \
                     data structures, search engines, a shortcut engine, panels, \
                     desktop integration, and those missing pieces from common libraries \
                     that help you write cleaner and safer code
-
-maintainers         nomaintainer
-categories          gnome
-platforms           darwin
 homepage            https://gitlab.gnome.org/GNOME/${name}
-master_sites        gnome:sources/${name}/${branch}/
 
+set branch          [join [lrange [split ${version} .] 0 1] .]
+master_sites        gnome:sources/${name}/${branch}/
+distname            ${name}-${version}
+dist_subdir         ${name}
 use_xz              yes
 
-checksums           rmd160  212d790063b884134709c6d08d52d856e701c5e5 \
-                    sha256  82b31bbf550fc62970c78bf7f9d55e5fae5b8ea13b24fe2d13c8c6039409d958
-#                     size    446400
+checksums           rmd160  dcef5df588c735a4046b63967ef1597117721561 \
+                    sha256  e18af28217943bcec106585298a91ec3da48aa3ad62fd0992f23f0c70cd1678f
+#                     size    447304
 
 depends_build-append \
                     port:pkgconfig \
-                    port:vala \
-                    port:gobject-introspection
+                    path:bin/vala:vala
 
-depends_lib-append  port:gtk3
+depends_lib-append  path:lib/pkgconfig/gobject-introspection-1.0.pc:gobject-introspection \
+                    path:lib/pkgconfig/gtk+-3.0.pc:gtk3
 
-# error: invalid value 'gnu11' in '-std=gnu11'
-compiler.blacklist-append  *gcc-3.* *gcc-4.* {clang < 212}
+compiler.c_standard 2011
 
-meson.save_configure_cmd "install log"
-
-# gobject-introspection uses g-ir-scanner, which uses $CC from env
-if {[variant_isset universal]} {
+# uses g-ir-scanner, which uses $CC from env
+if {${universal_possible} && [variant_isset universal]} {
     foreach arch ${configure.universal_archs} {
         lappend merger_build_env(${arch})  "CC=${configure.cc} -arch ${arch}"
         lappend merger_destroot_env(${arch})  "CC=${configure.cc} -arch ${arch}"
@@ -50,10 +57,27 @@ if {[variant_isset universal]} {
     destroot.env-append    "CC=${configure.cc} ${configure.cc_archflags}"
 }
 
-variant nocsd description {disable the GNOME client-side-decoration feature} {
-    patchfiles-append       patch-no-csd.diff
+meson.save_configure_cmd "install log"
+
+test.run            yes
+test.cmd            meson
+test.target         test
+
+platform darwin 8 {
+    test.env-append "DYLD_LIBRARY_PATH=${build_dir}/src"
 }
-# default_variants            +nocsd
+
+# PowerPC support
+if {[string match *gcc* ${configure.compiler}] && ${os.arch} eq "powerpc" } {
+    # https://trac.macports.org/ticket/63490
+    patchfiles-append patch-libdazzle-gcc-powerpc-packed.diff
+
+    # Work around some fstack-protector-strong link errors. We could patch
+    # locally, but the same error affects the g-ir-scanner invocation, so it
+    # won't do any good until gnome.generate_gir is fixed in meson.
+    # See: https://gitlab.gnome.org/GNOME/libdazzle/-/merge_requests/56
+    configure.args-append --buildtype=plain
+}
 
 platform linux {
     configure.ldflags-append \
@@ -61,3 +85,4 @@ platform linux {
 }
 
 livecheck.type      gnome
+livecheck.name      ${name}
