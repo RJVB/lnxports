@@ -75,21 +75,23 @@ if {${subport} eq ${name}} {
 platform darwin {
     if {[string match macports-gcc-* ${configure.compiler}]} {
         set cver 17
-        while {![info exists objcxx] && ${cver} >= 5} {
-            if {[file exists ${prefix}/bin/clang++-mp-${cver}]} {
-                set objcxx ${prefix}/bin/clang++-mp-${cver}
-                depends_build-append port:[exec port -q provides ${objcxx}]
-            } else {
-                set cver [expr ${cver} - 1]
-                if {${cver} < 10} {
-                    set cver ${cver}.0
+        if {![string match macports-clang* ${configure.objcxx}]} {
+            while {![info exists objcxx] && ${cver} >= 5} {
+                if {[file exists ${prefix}/bin/clang++-mp-${cver}]} {
+                    set objcxx ${prefix}/bin/clang++-mp-${cver}
+                    depends_build-append port:[exec port -q provides ${objcxx}]
+                } else {
+                    set cver [expr ${cver} - 1]
+                    if {${cver} < 10} {
+                        set cver ${cver}.0
+                    }
                 }
             }
-        }
-        if {[info exists objcxx]} {
-            configure.objcxx ${objcxx}
-        } else {
-            configure.objcxx clang++
+            if {[info exists objcxx]} {
+                configure.objcxx ${objcxx}
+            } else {
+                configure.objcxx clang++
+            }
         }
         # should be redundant:
         configure.objcxxflags-delete \
