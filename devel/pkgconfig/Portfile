@@ -58,8 +58,9 @@ variant proxy description "Append the system pkg-config default search path to M
                     find packages in ${prefix} first, then packages installed at the system level." {
 }
 
-if {[variant_isset proxy] && ${os.platform} eq "linux"} {
-    # use the proxying principle to build pkg-config itself
+if {${os.platform} eq "linux"} {
+    # use the proxying principle to build pkg-config itself even if +proxy isn't set
+    # this gives us a bootstrappable dependency on port:glib2
     if {[info exists ::env(PKG_CONFIG_PATH)]} {
         set PKG_CONFIG_PATH "${prefix}/lib/pkgconfig:${prefix}/lib/${build_arch}-linux-gnu/pkgconfig:$env(PKG_CONFIG_PATH)"
     } else {
@@ -68,18 +69,22 @@ if {[variant_isset proxy] && ${os.platform} eq "linux"} {
     # port:pkg-config doesn't declare a dependency on glib so we must make sure it's found
     # (or force the use of the included version)
     if {[catch {set GLIB_CFLAGS [exec env PKG_CONFIG_PATH=${PKG_CONFIG_PATH} /usr/bin/pkg-config --cflags glib-2.0]}]} {
-        configure.args-append   --with-internal-glib
+        configure.args-append --with-internal-glib
+    } else {
+        depends_lib-append  port:glib2
     }
 }
+
 pre-configure {
     if {[info exists GLIB_CFLAGS]} {
         set GLIB_LIBS [exec env PKG_CONFIG_PATH=${PKG_CONFIG_PATH} /usr/bin/pkg-config --libs glib-2.0]
-        ui_warn "Bootstrapping pkgconfig with its internal glib"
         configure.env-append \
                             PKG_CONFIG_PATH=${PKG_CONFIG_PATH} \
                             GLIB_CFLAGS=${GLIB_CFLAGS} \
                             GLIB_LIBS=${GLIB_LIBS} \
                             PKG_CONFIG=/usr/bin/pkg-config
+    } else {
+        ui_warn "Bootstrapping pkgconfig with its internal glib"
     }
 }
 
