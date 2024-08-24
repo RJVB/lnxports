@@ -5,6 +5,7 @@ PortGroup           github 1.0
 PortGroup           LTO 1.0
 
 fetch.type          git
+## see also https://github.com/smcv/gtk3-nocsd/commits/dont-crash-steam-runtime
 github.setup        RJVB gtk3-nocsd 3c028f57be4dee2f045ea394202a3b90cf4e135d
 version             3.0.4
 categories          gnome devel
