@@ -2,67 +2,112 @@
 
 PortSystem          1.0
 PortGroup           muniversal 1.0
-PortGroup           xcodeversion 1.0
+#PortGroup           xcodeversion 1.0
 PortGroup           active_variants 1.1
 PortGroup           compiler_blacklist_versions 1.0
-PortGroup           locale_select 1.0
+#PortGroup           legacysupport 1.1
 PortGroup           LTO 1.0
+PortGroup           meson 1.0
+PortGroup           debug 1.0
+PortGroup           locale_select 1.0
 
 name                gtk3
-set real_name       gtk+
+conflicts           gtk3-devel
+set my_name         gtk3
+version             3.24.38
 epoch               1
-version             3.24.20
+
+## upgrading from 3.24.20 WITHOUT +broadway gives a build failure when generating
+## the gir stuff that will preferentially pick up the installed libgtk/libgdk instead
+## of the newly built one, leading to missing symbols warnings. Thus, we probably
+## need to deactivate the installed port during the build if it is missing a feature
+## provided through a variant that is enabled in the new build.
+## There is a variant scanner for that purpose at the end of this Portfile.
+PortGroup           conflicts_build 1.0
+
+set proj_name       gtk+
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          gnome x11
 license             LGPL-2.1+
-maintainers         {devans @dbevans} openmaintainer
+maintainers         {mascguy @mascguy} openmaintainer
 platforms           darwin
 
 description         GTK+ widget toolkit
-
 long_description    GTK+ is a highly usable, feature-rich toolkit for creating graphical user \
                     interfaces, which boasts cross-platform compatibility and an easy-to-use \
                     API. GTK+ is written in C, but has bindings to many other popular \
                     programming languages, such as C++, Python and C#, among others.
-
 homepage            http://www.gtk.org/
-distname            ${real_name}-${version}
+
+distname            ${proj_name}-${version}
+dist_subdir         ${my_name}
 use_xz              yes
+master_sites        gnome:sources/${proj_name}/${branch}/
 
-master_sites        gnome:sources/gtk+/${branch}/
+checksums           rmd160  4b48beab01bc1337c5e5120a68c390ab95e9af16 \
+                    sha256  ce11decf018b25bdd8505544a4f87242854ec88be054d9ade5f3a20444dd8ee7
+#                     size    12398104
 
-checksums           rmd160  84bfcee1909cf0dc3c8be3fc011d4f8e0d006cdc \
-                    sha256  2dac69f716e8d04ba7a95091589e2baaec95dcace932cb15839163db479b1df3 \
-                    size    22726768
+# minimum_xcodeversions {9 3.1}
 
-minimum_xcodeversions {9 3.1}
+set port_ver_major  [lindex [split ${version} .] 0]
 
-depends_build       port:pkgconfig
+depends_build-append \
+                    path:bin/pkg-config:pkgconfig
 platform linux {
     depends_build-append \
                     port:gettext-dev
 }
 
-depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2 \
-                    port:gdk-pixbuf2 \
-                    port:gobject-introspection \
-                    port:libepoxy
+depends_lib-append \
+                    port:atk \
+                    path:lib/pkgconfig/gdk-pixbuf-2.0.pc:gdk-pixbuf2 \
+                    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    path:lib/pkgconfig/gobject-introspection-1.0.pc:gobject-introspection \
+                    path:lib/pkgconfig/harfbuzz.pc:harfbuzz \
+                    port:iso-codes \
+                    port:libepoxy \
+                    path:lib/pkgconfig/pango.pc:pango
 
-# # mesa required to configure both +x11, +quartz (not just +x11) due to their dependency on libepoxy
-# depends_lib-append  port:mesa
+# mesa required to configure both +x11, +quartz (not just +x11) due to their dependency on libepoxy
+depends_lib-append  port:mesa
                     
-depends_run         port:shared-mime-info \
+depends_run-append \
+                    port:shared-mime-info \
                     port:hicolor-icon-theme
 
 # highly recommended to the point it should be a runtime dependency
 depends_run-append  port:dconf
+compiler.cxx_standard 2011
+
+# # darwin 10 and earlier requires legacy support for O_CLOEXEC
+# legacysupport.newest_darwin_requires_legacy 10
+# 
+# # Upstream disables X11 for macOS; disable that behavior
+# patchfiles-append   patch-meson.build-x11-enabled.diff
+# 
+# # Quartz patch to fix QuartzCore linking and compiling with 10.11
+# # Upstream merge request: https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/4298
+# patchfiles-append   patch-quartz-calayer-contentsformat.diff
+# 
+# # Quartz patch to eliminate hard-coded use of NSEventTypeApplicationDefined
+# # Upstream merge request: https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/5958
+# patchfiles-append   patch-quartz-nseventtype.diff
+# 
+# # Quartz patch to make CoreGraphics optional; not available for 10.7 and earlier
+# # Upstream merge request: https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/5959
+# patchfiles-append   patch-quartz-meson-appleframeworks.diff
+
+# RJVB : relax the at_spi2 requirement (seems to play at runtime anyway)
+patchfiles-append   patch-relax-atspi-req.diff
+
+# RJVB : allow user to opt to continue after X11 errors
+patchfiles-append   patch-allow-ignoring-X11errors.diff
 
 ####################
-PortGroup devport 1.0
-create_devport port:${name}
+PortGroup           devport 1.0
+create_devport      port:${name}
 ####################
-
-# patchfiles          O_CLOEXEC-10.6-and-earlier.patch
 
 # gtk3 +quartz uses instancetype which is not available
 # before approximately Xcode 4.6 (#49391)
@@ -77,7 +122,7 @@ if {[variant_isset quartz]} {
 
 # gobject-introspection uses g-ir-scanner, which uses $CC from env
 
-if {[variant_isset universal]} {
+if {${universal_possible} && [variant_isset universal]} {
     foreach arch ${configure.universal_archs} {
         lappend merger_build_args(${arch})  CC='${configure.cc} -arch ${arch}'
         lappend merger_build_args(${arch})  CC_FOR_BUILD='${configure.cc} -arch ${arch}'
@@ -85,12 +130,6 @@ if {[variant_isset universal]} {
         lappend merger_destroot_args(${arch})  CC_FOR_BUILD='${configure.cc} -arch ${arch}'
     }
 }
-# else {
-#     build.args-append       CC="${configure.cc} ${configure.cc_archflags}" \
-#                             CC_FOR_BUILD="${configure.cc} ${configure.cc_archflags}"
-#     destroot.args-append    CC="${configure.cc} ${configure.cc_archflags}" \
-#                             CC_FOR_BUILD="${configure.cc} ${configure.cc_archflags}"
-# }
 
 if {[is_mainport]} {
     pre-configure {
@@ -100,41 +139,31 @@ if {[is_mainport]} {
     }
 }
 
-configure.ccache    no
-
 configure.cppflags-append \
                     -DX_LOCALE
 
 configure.cflags-append \
                     -fstrict-aliasing
 
-# cloudprint backend requires rest, json-glib
-# but this causes a circular dependency on libsoup
-# explicitly disable cloudprint for now
+configure.args-append \
+                    -Dtests=false \
+                    -Dgtk_doc=false \
+                    -Dman=true \
+                    -Dintrospection=true \
+                    -Ddemos=false \
+                    -Dexamples=false \
+                    -Dprofiler=false \
+                    -Dwayland_backend=false
 
 configure.ldflags-append \
                     -lintl
-
-configure.args      --enable-static \
-                    --disable-glibtest \
-                    --enable-introspection=yes \
-                    --disable-cloudprint \
-                    --disable-mir-backend \
-                    --disable-schemas-compile \
-                    gio_can_sniff=yes
-
-build.args-append   V=1 \
-                    CPP_FOR_BUILD="${configure.cpp}"
-
-test.run            yes
-test.target         check
 
 if {[is_mainport]} {
     post-destroot {
         file delete -force ${destroot}${prefix}/share/gtk-doc/html
         set docdir ${prefix}/share/doc/${name}
         xinstall -d ${destroot}${docdir}
-        xinstall -m 644 -W ${worksrcpath} AUTHORS COPYING HACKING NEWS README \
+        xinstall -m 644 -W ${worksrcpath} CONTRIBUTING.md COPYING NEWS README.md \
             ${destroot}${docdir}
 
         # avoid conflict with the gtk-update-icon-cache installed by gtk2
@@ -147,6 +176,7 @@ if {[is_mainport]} {
             ${destroot}${prefix}/lib/gtk-3.0/3.0.0/immodules/*.so \
             >${destroot}${prefix}/etc/gtk-3.0/gtk.immodules"
         reinplace "s|${destroot}||" ${destroot}${prefix}/etc/gtk-3.0/gtk.immodules
+
         ####################
         register_devport_standard_content
         create_devport_content_archive
@@ -156,15 +186,9 @@ if {[is_mainport]} {
 
 platform darwin {
     if {${os.major} <= 8} {
-        # The rules enabled by gobject-introspection require GNU make 3.81+
-        depends_build-append    port:gmake
-        build.cmd               ${prefix}/bin/gmake
-
         if {[variant_isset quartz] || ![variant_isset x11]} {
             configure.ldflags-append  -framework Cocoa -framework Carbon
         }
-    
-        configure.args-append --disable-cups
     }
 
     if {${os.major} <= 10} {
@@ -173,9 +197,20 @@ platform darwin {
             patchfiles-append   patch-gdk_quartz_gdkcursor-quartz-10_6_compat.diff
         }
     }
+
+    if {${os.major} <= 11} {
+        # Drop linking to 'CoreGraphics', not available for 10.7 and earlier
+        patchfiles-append patch-quartz-disable-coregraphics.diff
+    }
+
+    if {${os.major} <= 12} {
+        # requires cups 1.7
+        configure.args-append \
+            -Dprint_backends=file,lpr,test
+    }
 }
 
-if {[variant_isset universal]} {
+if {${universal_possible} && [variant_isset universal]} {
     set cups /usr/bin/cups-config
     if {[info exists universal_sysroot]} {
         set cups ${universal_sysroot}${cups}
@@ -250,44 +285,111 @@ if {[variant_isset universal]} {
     configure.cc "${configure.cc} ${configure.cc_archflags}"
 }
 
-variant quartz conflicts x11 wayland {
+pre-build {
+    # The gir generation will fail if -L/usr/lib/x86_64-linux-gnu is on the commandline
+    # (will cause host libraries to be picked up even if the .so linker stubs aren't there?!)
+    # Luckily it's a standard search path...
+    foreach f {meson-info/intro-dependencies.json meson-info/intro-targets.json build.ninja} {
+        reinplace "s|-L/usr/lib/x86_64-linux-gnu|-L${prefix}/lib|g" ${build.dir}/${f}
+    }
+}
+
+meson.save_configure_cmd "install log"
+
+build.pre_args              -k 0
+
+variant tests description {Enable tests} {
+    configure.args-replace \
+                            -Dtests=false \
+                            -Dtests=true
+
+    test.run                yes
+    test.target             test
+}
+
+variant broadway description {Enable the broadway (HTML5) gdk backend} {
+    configure.args-append \
+                            -Dbroadway_backend=true
+}
+
+variant demos description {Build demos and examples} {
+    configure.args-replace \
+                            -Ddemos=false \
+                            -Ddemos=true
+    configure.args-replace \
+                            -Dexamples=false \
+                            -Dexamples=true
+}
+
+variant quartz conflicts x11 {
+    ui_error "Only supported on Mac"
+    return -code error "Variant quartz not supported"
     require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
     require_active_variants path:lib/pkgconfig/pango.pc:pango quartz
-    require_active_variants port:gdk-pixbuf2 "" x11
 
-    configure.args-append   --enable-quartz-backend
+    configure.args-append \
+                            -Dx11_backend=false \
+                            -Dquartz_backend=true \
+                            -Dxinerama=no
 }
 
 variant x11 conflicts quartz {
 #     require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
 #     require_active_variants path:lib/pkgconfig/pango.pc:pango x11
-#     require_active_variants port:gdk-pixbuf2 x11
 # 
-#     depends_lib-append      port:xorg-libXi \
+#     depends_lib-append \
+#                             port:at-spi2-atk \
+#                             port:fontconfig \
+#                             port:libxkbcommon-x11 \
+#                             port:xorg-libXi \
 #                             port:xorg-libXrandr \
 #                             port:xorg-libXcursor \
 #                             port:xorg-libXinerama \
 #                             port:xorg-libXdamage \
 #                             port:xorg-libXcomposite \
-#                             port:xorg-libXfixes \
-#                             port:at-spi2-atk
+#                             port:xorg-libXfixes
 
-    configure.args-append   --enable-xinerama \
-                            --x-include=${prefix}/include \
-                            --x-lib=${prefix}/lib \
-                            --enable-x11-backend
+    configure.args-append \
+                            -Dx11_backend=true \
+                            -Dquartz_backend=false \
+                            -Dxinerama=yes
 }
 
 variant wayland conflicts quartz description {build Wayland support} {}
 if {[variant_isset wayland]} {
     depends_lib-append      port:wayland \
                             port:wayland-protocols
-    configure.args-append   --enable-wayland-backend
+    configure.args-replace  -Dwayland_backend=false \
+                            -Dwayland_backend=true
 }
 
 if {![variant_isset quartz]} {
     default_variants +x11
 }
+
+## check if we (probably) need to deactivate the active version/variant
+## of the port, because we ask for a new feature enabled via a variant
+## and that variant isn't set in the active port. The gir scanner will
+## (probably) fail in that case because it seems to favour the installed
+## shlibs rather than those just built that it should be processing.
+set selected_variants [split [dev::port_variants] "+"]
+if {![catch {set installed [lindex [registry_active ${subport}] 0]}]} {
+    set installed_variants [split [lindex $installed 3] "+"]
+    foreach v ${selected_variants} {
+        if {${v} ne "" && [lsearch -exact ${installed_variants} ${v}] < 0} {
+            ui_debug "Variant +${v} not enabled in active port with variants: [lindex ${installed} 3]"
+            if {[lsearch -exact {broadway wayland} ${v}] >=0} {
+                ui_info "port:${subport} needs to be deactivated during the build"
+                conflicts_build-append \
+                            gtk3 \
+                            gtk3-dev
+                # only need to call conflicts_build once.
+                break
+            }
+        }
+    }
+}
+
 
 if {${subport} eq "${name}"} {
     post-activate {
@@ -302,4 +404,4 @@ livecheck.type      gnome
 livecheck.name      gtk+
 # versions 3.89.1+ are snapshots of unstable development leading to GTK+ 4
 # and are not compatible with gtk3
-livecheck.regex     "LATEST-IS-(\\d+\\.\[0-7\]\[02468\](?:\\.\\d+)*)"
+livecheck.regex     "LATEST-IS-(${port_ver_major}\\.\[0-7\]\[02468\](?:\\.\\d+)*)"
