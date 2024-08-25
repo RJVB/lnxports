@@ -1,0 +1,13 @@
+diff --git orig.Configure Configure
+index 39172df..0515f0b 100755
+--- orig.Configure
++++ Configure
+@@ -5799,7 +5799,7 @@ $cc -o ${mc_file} $optimize $ccflags $ldflags $* ${mc_file}.c $libs > /dev/null
+ compile_ok='
+ mc_file=$1;
+ shift;
+-$cc -o ${mc_file} $optimize $ccflags $ldflags $* ${mc_file}.c $libs;'
++set -x ; $cc -o ${mc_file} $optimize $ccflags $ldflags $* ${mc_file}.c $libs; set +x'
+ 
+ : determine filename position in cpp output
+ echo " "
