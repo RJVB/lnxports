@@ -105,6 +105,8 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             # on linux, port:nss installs a libdbm.a that is taken for a DB library
             conflicts_configure-append \
                             nss
+        }
+        if {${perl5.major} >= 5.26} {
             require_active_variants gdbm "" compat
         }
 
@@ -232,14 +234,15 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                             -Dpager='/usr/bin/less -sR' \
                             -Dperlpath="${perl5.bin}" \
                             -Dstartperl="#!${perl5.bin}" \
-                           {-A append:cppflags="$CPPFLAGS"} \
-                           {-A append:ccflags="$CFLAGS"} \
-                           {-A append:lddlflags="$LDFLAGS -shared"} \
-                           {-A append:ldflags="$LDFLAGS"}
+                           {-A append:cppflags=" $CPPFLAGS "} \
+                           {-A append:ccflags=" $CFLAGS "} \
+                           {-A append:lddlflags=" $LDFLAGS -shared "} \
+                           {-A append:ldflags=" $LDFLAGS "}
         # Note the use of "append:" in the -A options, which is to ensure that OS-specific flags
         # are not overwritten. That could lead to errors like "undefined reference to `main'" when
         # linking libperl.so ... because the linker tries to build an executable.
-        # Idem for the explicit -shared in lddlflags
+        # Idem for the explicit -shared in lddlflags.
+        # Also note the leading and trailing whitespace, because "append:" doesn't insert any!
 
         ## perl5.28 and 5.30 will compile on macOS 11.3 / Xcode 12.5 with
         ##   the above patch-hints-darwin_sh.diff, and perl5.32(.1) has
