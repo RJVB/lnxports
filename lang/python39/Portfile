@@ -7,11 +7,12 @@ PortGroup openssl 1.0
 
 set LTO.configure_option --with-lto
 PortGroup LTO 1.0
+PortGroup save_configure_cmd 1.0
 
 name                python39
 
 # Remember to keep py39-tkinter and py39-gdbm's versions sync'd with this
-version             3.9.18
+version             3.9.19
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          lang
@@ -29,9 +30,9 @@ platforms           linux darwin
 
 distname            Python-${version}
 use_xz              yes
-checksums           md5 765576c3af57deb046819ecd57804bbb \
-                    rmd160 6d8f4682626cdbf7c7d049382e322b49d671f981 \
-                    sha256 01597db0132c1cf7b331eff68ae09b5a235a3c3caa9c944c29cac7d1c4c4c00a
+checksums           md5 87d0f8281237b972ff8b23e0e2c8d325 \
+                    rmd160 b46fbe50a0cace4a6ecdb70d026a32932427f566 \
+                    sha256 d4892cd1618f6458cb851208c030df1482779609d0f3939991bd38184f8c679e
 
 patchfiles          patch-setup.py.diff \
                     patch-Lib-cgi.py.diff \
@@ -49,7 +50,11 @@ if {${os.platform} eq "darwin" && ${os.major} <= 10} {
 }
 
 depends_build       port:pkgconfig \
-                    port:ncurses-dev
+                    port:ncurses-dev \
+                    port:gettext-dev \
+                    port:ncurses-dev \
+                    port:patchelf
+
 depends_lib         port:bzip2 \
                     port:expat \
                     port:gettext-runtime \
@@ -83,6 +88,10 @@ configure.ccache    no
 # pkg-config removes -I flags for paths in CPATH, which confuses python.
 configure.env       PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1 \
                     SETUPTOOLS_USE_DISTUTILS=stdlib
+if {[string match macports-clang* ${configure.compiler}]} {
+    configure.env-append \
+                    "LLVM_PROFDATA=[string map {"clang" "llvm-profdata"} ${configure.cc}]"
+}
 build.env           SETUPTOOLS_USE_DISTUTILS=stdlib
 destroot.env        SETUPTOOLS_USE_DISTUTILS=stdlib
 
@@ -112,9 +121,9 @@ destroot.target     frameworkinstall maninstall
 build.args-append   MAKE="${build.cmd} CC=${configure.cc}"
 destroot.args-append    MAKE="${destroot.cmd} CC=${configure.cc}"
 
-set pythonNoDot python[string map {. {}} $branch]
-select.entries      [list python python-$pythonNoDot $pythonNoDot] \
-                    [list python3 python3-$pythonNoDot $pythonNoDot]
+set pythonVerNoDot python[string map {. {}} $branch]
+select.entries      [list python python-$pythonVerNoDot $pythonVerNoDot] \
+                    [list python3 python3-$pythonVerNoDot $pythonVerNoDot]
 
 set framewpath ${frameworks_dir}/Python.framework
 set framewdir  ${framewpath}/Versions/${branch}
@@ -131,9 +140,13 @@ if {${os.platform} eq "darwin"} {
             file mtime ${worksrcpath}/pyconfig.h $oldmtime
         }
     }
+} elseif {${os.platform} eq "linux"} {
+    set confdir config-${branch}-${build_arch}-linux-gnu
 } else {
-    set confdir config-${branch}-x86_64-linux-gnu
+    set confdir config-${branch}-${build_arch}-${os.platform}
 }
+
+configure.save_configure_cmd "install log"
 
 post-destroot {
 
@@ -200,9 +213,19 @@ post-destroot {
             file delete ${destroot}${prefix}/${b}
         }
 
-        reinplace "s|python3.9.1\$|python3.9.1.gz|g" \
+        reinplace "s|python${version}\$|python${version}.gz|g" \
            ${destroot}${prefix}/etc/select/python/python39 \
            ${destroot}${prefix}/etc/select/python3/python39
+
+        if {[file exists ${prefix}/lib/libuuid.so.1] &&
+            [file exists ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu_failed.so]
+        } {
+            # the build didn't pick up our libuuid.so; fix that.
+            ln -s _uuid.cpython-39-${build_arch}-linux-gnu_failed.so \
+                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu.so
+            system "patchelf --add-needed libuuid.so.1 \
+                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu.so"
+        }
     }
 }
 
@@ -210,8 +233,8 @@ notes "
 To make this the default Python or Python 3 (i.e., the version run by\
 the 'python' or 'python3' commands), run one or both of:
 
-    sudo port select --set python $pythonNoDot
-    sudo port select --set python3 $pythonNoDot
+    sudo port select --set python $pythonVerNoDot
+    sudo port select --set python3 $pythonVerNoDot
 "
 
 platform darwin {
@@ -285,22 +308,44 @@ variant optimizations description {enable expensive, stable optimizations (inclu
     configure.args-append   --enable-optimizations
 }
 
-default_variants LTO
-
-platform darwin {
+if {${os.platform} eq "darwin"} {
     # Build failures on 10.9 and older
     if {${os.major} > 11} {
         if {${os.major} > 14 || !($universal_possible && [variant_isset universal])} {
-            default_variants +lto
+            default_variants +LTO
         }
         if {${os.major} > 13} {
             default_variants-append +optimizations
         }
     }
+} else {
+    default_variants-append +LTO +optimizations
 }
 
 variant dtrace description {enable DTrace support} {
     configure.args-append   --with-dtrace
+}
+
+post-activate {
+    if {![file exists "${framewdir}/lib/python${branch}/site-packages/__Previous_Pythons__.pth"]} {
+        set pthname "${framewdir}/lib/python${branch}/site-packages/__Previous_Pythons__.pth"
+        if {![catch {set fp [open ${pthname} "w"]}]} {
+            set minor [expr [lindex [split ${branch} .] 1] -1]
+            set curdir [pwd]
+            while {${minor} >= 0} {
+                set v "3.${minor}"
+                set spdir ${framewpath}/Versions/${v}/lib/python${v}/site-packages
+                # just test if we have a directory by chdir'ing into it, and back
+                if {![catch {_cd ${spdir}} err]} {
+                    puts ${fp} "${spdir}"
+                    _cd ${curdir}
+                }
+                incr minor -1
+            }
+            close ${fp}
+        }
+        notes-append "A file ${pthname} has been created that tells python${branch} where to find packages installed for older 3.x versions."
+    }
 }
 
 livecheck.type      regex
