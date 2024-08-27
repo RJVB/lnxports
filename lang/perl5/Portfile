@@ -5,7 +5,7 @@ PortGroup           perl5 1.0
 PortGroup           clang_dependency 1.0
 # we can't avoid that the system compiler "/usr/bin/cc" is used, and it
 # will likely generate LTO bitcode the selected compiler can't grok.
-set LTO.disable_LTO yes
+# set LTO.disable_LTO yes
 set LTO.LTO.maybe_ForceLD no
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
@@ -47,12 +47,13 @@ set perl5.versions_info {
 }
 
 ## NB: +1 revbump for forcing -Dcc{,p}=${configure.cc}, which (hopefully) ensures Errno.pm gets generated properly
+## +1 revbump for platform-specific post-build config editing, and the tsa_mutex patch
 foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5.size} ${perl5.versions_info} {
     subport perl${perl5.v} {
         set perl5.major     ${perl5.v}
         version             ${perl5.major}.[string range ${perl5.subversion} 0 0]
         set minor           [lrange [split ${version} .] 1 1]
-        revision            ${perl5.revision} ; revision [expr ${revision} +1]
+        revision            ${perl5.revision} ; revision [expr ${revision} +2]
         checksums           rmd160 ${perl5.rmd160} sha256 ${perl5.sha256} size ${perl5.size}
 
         description         Perl ${version} - Practical Extraction and Report Language
@@ -194,6 +195,8 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             patchfiles-append \
                             ${perl5.major}/patch-want-implicit-errors.diff
         }
+        # I haven't tried to refactor this one against any versions but 5.26:
+        patchfiles-append   patch-always-provide-tsa_mutex-fncs.diff
 
         post-patch {
             reinplace -W ${worksrcpath} "s|__PREFIX__|${prefix}|g" \
@@ -232,6 +235,7 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                             -Duseshrplib \
                             -Dcc="${configure.cc}" \
                             -Dcpp="${configure.cpp}" \
+                            -Dld="${configure.cc}" \
                             -Dman1ext=${man1ext} \
                             -Dman3ext=3pm \
                             -Dinstallstyle='lib/perl5' \
@@ -281,24 +285,13 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             }
             ui_debug "> cat myconfig"
             system -W ${worksrcpath} "cat myconfig"
-
-            if {[string match *clang* ${configure.compiler}]} {
-                ui_warn "Perl built with clang will export perl_tsa_* functions in its libperl,\
-                    and at least port:p5.${minor}-net-ssleay will detect and use those functions,\
-                    meaning you cannot then rebuilt port:perl5.${minor} with another compiler without\
-                    also rebuilding the net-ssleay module."
-            } elseif {[string match *gcc* ${configure.compiler}]} {
-                ui_warn "Perl built with GCC will NOT export perl_tsa_* functions in its libperl.\
-                    If you have built port:p5.${minor}-net-ssleay and possibly other ports against\
-                    a perl5.${minor} install built with clang they will require those functions and\
-                    fail to load in this new perl5.${minor} build!"
-            }
         }
 
         configure.save_configure_cmd "install log"
 
         build.post_args-append -w -k
-        build.env-append "CC=${configure.cc}"
+        build.env-append "CC=${configure.cc}" \
+                         "LD=${configure.cc}"
 
         post-build {
             # preserve file mtimes to avoid rebuilding
@@ -311,10 +304,20 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                 ${worksrcpath}/lib/Config_heavy.pl
             reinplace -E {s/-mmacosx-version-min=[0-9.]+//g} \
                 ${worksrcpath}/lib/Config_heavy.pl
-            reinplace "s|${configure.cc}|/usr/bin/cc|g" \
-                ${worksrcpath}/lib/Config.pm \
-                ${worksrcpath}/lib/Config_heavy.pl \
-                ${worksrcpath}/config.h
+            if {${os.platform} eq "darwin"} {
+                # no idea why this is a good idea on Mac but it isn't on Linux!
+                reinplace "s|${configure.cc}|/usr/bin/cc|g" \
+                    ${worksrcpath}/lib/Config.pm \
+                    ${worksrcpath}/lib/Config_heavy.pl \
+                    ${worksrcpath}/config.h
+            } else {
+                reinplace "s|cpprun='${configure.cc}|cpprun='{configure.cpp}|g" \
+                    ${worksrcpath}/lib/Config_heavy.pl
+                reinplace "s|cppstdin='${configure.cc}|cppstdin='${configure.cpp}|g" \
+                    ${worksrcpath}/lib/Config_heavy.pl
+                reinplace "s|${configure.cc}|${configure.cpp}|g" \
+                    ${worksrcpath}/config.h
+            }
             reinplace -E {s|-isysroot[[:space:]]*[^[:space:]]+\.sdk||g} \
                 ${worksrcpath}/lib/Config_heavy.pl \
                 ${worksrcpath}/config.h
@@ -326,7 +329,13 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             }
         }
 
-        destroot.env-append "CC=${configure.cc}"
+        destroot.env-append "CC=${configure.cc}" \
+                            "LD=${configure.cc}"
+        pre-destroot {
+            foreach var [array names ::env] {
+                ui_debug "${var}=$::env(${var})"
+            }
+        }
 
         test.run            yes
 
@@ -352,6 +361,21 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             foreach man3File [glob -directory "${destroot}${prefix}/share/man/man3${mandirsuffix}" *] {
                 regexp (.*)(\.3.*) ${man3File} -> program suffix
                 move ${man3File} ${program}-${perl5.major}${suffix}
+            }
+
+            set errnopm [glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Errno.pm]
+            if {[file exists ${errnopm}]} {
+                ui_debug "Verifying ${errnopm}"
+                if {[catch {exec fgrep EAGAIN ${errnopm} >/dev/null}]} {
+                    if {[file exists ${filespath}/patch-errno_pm-generic-${os.platform}.diff]} {
+                        ui_warn "Errno.pm was not generated correctly; patching it with generic data"
+                        system -W [file dirname ${errnopm}] \
+                            "patch -Np1 -i ${filespath}/patch-errno_pm-generic-${os.platform}.diff"
+                    } else {
+                        ui_error "Your Errno.PM file has not been generated correctly, please fix it manually"
+                        return -code error "Please fix ${errnopm}"
+                    }
+                }
             }
         }
 

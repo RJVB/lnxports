@@ -1,0 +1,35 @@
+## adapted from https://git.smallrat.net/mitch/perl5/commit/22ca1a825f4307983785c7182370d7c2fc43f085.patch
+From 22ca1a825f4307983785c7182370d7c2fc43f085 Mon Sep 17 00:00:00 2001
+From: Tom Stellard <tstellar@redhat.com>
+Date: Thu, 14 May 2020 23:51:15 +0000
+Subject: [PATCH] Always expose the perl_tsa_mutex_* functions when threads are
+ enabled
+
+These functions were only part of the API if perl is built with clang.
+However perl modules built with clang still try to use them even
+when perl itself is built with gcc.  This patch replaces the #ifdef PERL_TSA_ACTIVE
+around these functions with defined(USE_ITHREADS) && defined(I_PTHREAD)
+so they are always available when treading is enabled.  This fixes the clang build of
+perl modules when perl is built with gcc.
+
+diff --git util.c util.c
+index 0b546d5b21..d0c639a01e 100644
+--- util.c
++++ util.c
+@@ -6360,7 +6360,7 @@ Perl_dump_c_backtrace(pTHX_ PerlIO* fp, int depth, int skip)
+ 
+ #endif /* #ifdef USE_C_BACKTRACE */
+ 
+-#ifdef PERL_TSA_ACTIVE
++#if defined(USE_ITHREADS) && defined(I_PTHREAD)
+ 
+ /* pthread_mutex_t and perl_mutex are typedef equivalent
+  * so casting the pointers is fine. */
+@@ -6382,7 +6382,6 @@ int perl_tsa_mutex_destroy(perl_mutex* mutex)
+ 
+ #endif
+ 
+-
+ #ifdef USE_DTRACE
+ 
+ /* log a sub call or return */
