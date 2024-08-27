@@ -6,6 +6,7 @@ PortGroup           clang_dependency 1.0
 # we can't avoid that the system compiler "/usr/bin/cc" is used, and it
 # will likely generate LTO bitcode the selected compiler can't grok.
 set LTO.disable_LTO yes
+set LTO.LTO.maybe_ForceLD no
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 PortGroup           conflicts_configure 1.0
@@ -45,12 +46,13 @@ set perl5.versions_info {
     5.38 2  0 febb7a0e281e16f217259441da1fa1d1b8dfe33f  d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8  13679524
 }
 
+## NB: +1 revbump for forcing -Dcc{,p}=${configure.cc}, which (hopefully) ensures Errno.pm gets generated properly
 foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5.size} ${perl5.versions_info} {
     subport perl${perl5.v} {
         set perl5.major     ${perl5.v}
         version             ${perl5.major}.[string range ${perl5.subversion} 0 0]
         set minor           [lrange [split ${version} .] 1 1]
-        revision            ${perl5.revision}
+        revision            ${perl5.revision} ; revision [expr ${revision} +1]
         checksums           rmd160 ${perl5.rmd160} sha256 ${perl5.sha256} size ${perl5.size}
 
         description         Perl ${version} - Practical Extraction and Report Language
@@ -102,12 +104,17 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                             -I${prefix}/include/db48
             configure.ldflags-append \
                             -L${prefix}/lib/db48 -Wl,-rpath,${prefix}/lib/db48
-            # on linux, port:nss installs a libdbm.a that is taken for a DB library
-            conflicts_configure-append \
-                            nss
         }
         if {${perl5.major} >= 5.26} {
-            require_active_variants gdbm "" compat
+            # let's avoid depending on the gdbm_compat library; and just to be sure provide
+            # a variant for this, in case the build will pick up the library from the host,
+            # possibly mixing versions?
+            variant gdbm_compat description {expose the GNU database compatibility library} {}
+            if {[variant_isset gdbm_compat]} {
+                require_active_variants gdbm compat
+            } else {
+                require_active_variants gdbm "" compat
+            }
         }
 
         platform darwin {
@@ -194,6 +201,10 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             # make certain the tests use the correct library
             reinplace -W ${worksrcpath} "s|#DBNAME = -ldb-2.4.10|DBNAME = -ldb-4.8|g" \
                     Configure Makefile.SH cpan/DB_File/config.in
+            # assume we either use GCC or clang, just make the Errno.pm generator
+            # always tell $CPP to suppress #line markers
+            reinplace -W ${worksrcpath} "s|my \$inhibit_linemarkers = '';|my \$inhibit_linemarkers = ' -P';|g" \
+                    ext/Errno/Errno_pm.PL
             catch {system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-verboser-Configure.diff"}
         }
 
@@ -219,7 +230,8 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                             -Dusemultiplicity=y \
                             -Dusethreads \
                             -Duseshrplib \
-                           {-Dcc="$CC"} \
+                            -Dcc="${configure.cc}" \
+                            -Dcpp="${configure.cpp}" \
                             -Dman1ext=${man1ext} \
                             -Dman3ext=3pm \
                             -Dinstallstyle='lib/perl5' \
@@ -269,6 +281,18 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             }
             ui_debug "> cat myconfig"
             system -W ${worksrcpath} "cat myconfig"
+
+            if {[string match *clang* ${configure.compiler}]} {
+                ui_warn "Perl built with clang will export perl_tsa_* functions in its libperl,\
+                    and at least port:p5.${minor}-net-ssleay will detect and use those functions,\
+                    meaning you cannot then rebuilt port:perl5.${minor} with another compiler without\
+                    also rebuilding the net-ssleay module."
+            } elseif {[string match *gcc* ${configure.compiler}]} {
+                ui_warn "Perl built with GCC will NOT export perl_tsa_* functions in its libperl.\
+                    If you have built port:p5.${minor}-net-ssleay and possibly other ports against\
+                    a perl5.${minor} install built with clang they will require those functions and\
+                    fail to load in this new perl5.${minor} build!"
+            }
         }
 
         configure.save_configure_cmd "install log"
