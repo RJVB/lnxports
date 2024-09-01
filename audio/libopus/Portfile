@@ -4,7 +4,7 @@ PortSystem      1.0
 PortGroup       muniversal 1.0
 PortGroup       compiler_blacklist_versions 1.0
 PortGroup       LTO 1.0
-PortGroup       preserve_runtime_libraries 1.0
+# PortGroup       preserve_runtime_libraries 1.0
 PortGroup       save_configure_cmd 1.0
 
 name            libopus
@@ -49,9 +49,9 @@ platform darwin 10 {
 
 configure.save_configure_cmd "install log"
 
-post-destroot {
-    preserve_libraries ${prefix}/lib "libopus.*.dylib libopus.so.*"
-}
+# post-destroot {
+#     preserve_libraries ${prefix}/lib "libopus.*.dylib libopus.so.*"
+# }
 
 livecheck.type  regex
 livecheck.url   ${master_sites}
