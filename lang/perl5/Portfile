@@ -195,8 +195,6 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             patchfiles-append \
                             ${perl5.major}/patch-want-implicit-errors.diff
         }
-        # I haven't tried to refactor this one against any versions but 5.26:
-        patchfiles-append   patch-always-provide-tsa_mutex-fncs.diff
 
         post-patch {
             reinplace -W ${worksrcpath} "s|__PREFIX__|${prefix}|g" \
@@ -208,7 +206,12 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             # always tell $CPP to suppress #line markers
             reinplace -W ${worksrcpath} "s|my \$inhibit_linemarkers = '';|my \$inhibit_linemarkers = ' -P';|g" \
                     ext/Errno/Errno_pm.PL
-            catch {system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-verboser-Configure.diff"}
+            if {[catch {system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-always-provide-tsa_mutex-fncs.diff"}]} {
+                ui_info "Patching failure ignored"
+            }
+            if {[catch {system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-verboser-Configure.diff"}]} {
+                ui_info "Patching failure ignored"
+            }
         }
 
         # Rather not revbump many p5 ports, so just fix it for new versions
