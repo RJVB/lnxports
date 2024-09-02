@@ -108,7 +108,7 @@ meson.save_configure_cmd "install log"
 build.pre_args-prepend -k 0
 
 test.run            yes
-test.target         check
+test.target         test
 
 livecheck.type      regex
 livecheck.url       ${master_sites}
