@@ -107,6 +107,9 @@ configure.args-append \
 meson.save_configure_cmd "install log"
 build.pre_args-prepend -k 0
 
+# for g-ir-scanner:
+build.env-append    "CC=${configure.cc}"
+
 test.run            yes
 test.target         test
 
