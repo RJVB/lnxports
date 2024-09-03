@@ -1,12 +1,11 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 143767 2015-12-21 07:47:17Z jwa@macports.org $
 
 PortSystem 1.0
 PortGroup select 1.0
 
 name                    python34
 
-if {${os.platform} eq "linux"} {
+if {${os.platform} eq "linux" && [file exists /usr/bin/python3.4]} {
 #     This port is too complicated to get right on Linux, adding in the fact
 #     that Python itself doesn't really support building in a non-default
 #     prefix there (rpath hacks required).
@@ -15,9 +14,10 @@ if {${os.platform} eq "linux"} {
     maintainers     gmail.com:rjvbertin
     version         [exec /usr/bin/python3.4 -c "import sys ; print('%d.%d.%d' %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro))"]
     revision        1
+    set is_wrapper  yes
 } else {
     # Remember to keep py34-tkinter and py34-gdbm's versions sync'd with this
-    version             3.4.4
+    version         3.4.4
 }
 
 epoch                   20151221
@@ -37,7 +37,7 @@ long_description        Python is an interpreted, interactive, object-oriented \
 
 homepage                http://www.python.org/
 
-if {${os.platform} eq "linux"} {
+if {[tbool is_wrapper]} {
     set python.version \
                     [string map {. {}} $branch]
     set pythonNoDot python${python.version}

@@ -1,12 +1,11 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 140531 2015-09-21 23:39:33Z eborisch@macports.org $
 
 PortSystem          1.0
 PortGroup           select 1.0
 
 name                python27
 epoch               2
-if {${os.platform} eq "linux"} {
+if {${os.platform} eq "linux" && [file exists /usr/bin/python2.7]} {
 #     This port is too complicated to get right on Linux, adding in the fact
 #     that Python itself doesn't really support building in a non-default
 #     prefix there (rpath hacks required).
@@ -15,10 +14,11 @@ if {${os.platform} eq "linux"} {
     maintainers     gmail.com:rjvbertin
     version         [exec /usr/bin/python2.7 -c "import sys ; print '%d.%d.%d' %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro)"]
     revision        4
+    set is_wrapper  yes
 } else {
     # Remember to keep py27-tkinter and py27-gdbm's versions sync'd with this
-    version             2.7.10
-    revision            3
+    version         2.7.10
+    revision        3
 }
 
 set major           [lindex [split $version .] 0]
@@ -35,7 +35,7 @@ long_description    Python is an interpreted, interactive, object-oriented \
 
 homepage            http://www.python.org/
 
-if {${os.platform} eq "linux"} {
+if {[tbool is_wrapper]} {
     PortGroup       python 1.0
     python.version  27
     python.add_dependencies no
