@@ -1,0 +1,316 @@
+commit 15c82115d4ed6a0ce5d87a3b21fdc5978e12c352
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Thu Dec 31 18:14:39 2020 -0500
+
+    Add deprecation warning.
+
+commit 79668aa9d2dfcfc5e3375bf520ffa3aa07db15ef
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Wed Dec 23 23:52:08 2020 -0500
+
+    Disable fontconfig docs to fix broken build.
+    
+    The fontconfig build broke due to changes in the docs generator. The official
+    Arch package is also broken in the same way. Since we track the Arch official
+    package, disable docs until the official package is updated and an upstream
+    fix is included.
+    
+    Docs can still be installed via the fontconfig-docs package.
+    
+    Fixes #19.
+
+commit 80a261448c7e26f0b67426f8c2dcc788dd7cd571
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Fri Dec 11 22:44:28 2020 -0500
+
+    Remove freetype2-demos-infinality-remix.
+    
+    The freetype2-demos-infinality-remix package was built using a split
+    package with freetype2-infinality-remix. However, since
+    freetype2-infinality-remix is not installed until after the demos
+    build, the systems pre-existing freetype2 headers would be used for
+    the demos build. If the installed freetype version is >2.10.1, then
+    the 2.10.1 demos won't build due to header differences.
+    
+    The solution is to not use a split package and split the freetype2
+    build from the demos build.
+    
+    However, since there is no actual difference between the official
+    freetype2-demos package and ours, drop the package all together.
+    
+    Fixes #18.
+
+commit 6a8711d1eaa66786ced9f716a8c05628665b067d
+Merge: 0512444 2f3c89e
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Nov 29 21:16:14 2020 -0500
+
+    Merge pull request #17 from htower/master
+    
+    Update fontconfig-infinality-remix to 2.13.91+48+gfcb0420
+
+commit 2f3c89ea65dc3e3af6f9f2e3737a72db2cc234a1
+Author: Anton Anikin <anton@anikin.xyz>
+Date:   Wed Nov 25 16:13:51 2020 +0800
+
+    Update fontconfig-infinality-remix to 2.13.91+48+gfcb0420
+
+commit 05124441900f837a53e1244a4fb946e1011c3eab
+Merge: 37b2ccc 87d1628
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sat Oct 24 16:10:22 2020 -0400
+
+    Merge pull request #12 from lachlanwimsett/patch-1
+    
+    Fix recommended fonts.
+
+commit 87d1628bafea7de5a09e588e42816b01f21c6749
+Author: Lachlan Wimsett <6858484+lachlanwimsett@users.noreply.github.com>
+Date:   Fri Jun 5 17:31:29 2020 +1200
+
+    Fix recommended fonts.
+    
+    Change some of the recommended fonts so they point to valid arch packages.
+
+commit 37b2ccce64a36fc4283187a2c5da61970c5a7d70
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Fri Nov 1 15:24:16 2019 -0400
+
+    Update PKGBUILD for fontconfig-infinality-remix.
+    
+    - Adds lynx dependency for docbook-utils to generate text docs.
+    - Updates SHA256 checksum for new fc-presets.
+
+commit 13bf1e6d73150b9a97f257dac57fd8d022fadffb
+Merge: a13e2a6 f3644bb
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Fri Nov 1 15:09:00 2019 -0400
+
+    Merge pull request #6 from tam1m/master
+    
+    Update fc-preset to include the 'remix' preset
+
+commit a13e2a6e2d9e31af9be8f0da690634e3e7eae6e9
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Fri Nov 1 15:04:42 2019 -0400
+
+    Fix makedepends for fontconfig-infinality-remix.
+
+commit f3644bbe8baef295d5abed0ecd103cec9d34cec4
+Author: Tamim Baschour <t.baschour@gmail.com>
+Date:   Fri Nov 1 09:46:02 2019 +0100
+
+    Update fc-preset to include the 'remix' preset
+
+commit 0cbc19e64fcdaf216637a49b57f6a40ed3d2897e
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Wed Oct 30 16:46:50 2019 -0400
+
+    Update fontconfig-infinality-remix to 2.13.91+24+g75eadca.
+
+commit 46fa102042bc1847b01e4ac644b5dd8e6d114d05
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Wed Aug 21 15:20:37 2019 -0400
+
+    Update freetype-infinality-remix to 2.10.1.
+
+commit 877e0b2885074003db5d1633e020ad12c03eae9a
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Wed Aug 21 14:05:15 2019 -0400
+
+    Update cairo-infinality-remix to 1.17.2.
+
+commit 182f1c8d93ef45464202fb213b27ce7d78ca8d35
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Jul 7 15:18:10 2019 -0400
+
+    Add sample images.
+
+commit 43080261b5ec0d852d34fcd73ac921579ff81895
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Fri Mar 29 21:59:42 2019 -0400
+
+    Add AUR instructions to README.
+
+commit 738e07c1d7a3e2ea71ad92fbf85a88e101388f28
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Mon Mar 25 15:58:46 2019 -0400
+
+    Clarify that FreeType2 uses the Remix version of Infinality.
+
+commit 6db9a171c9ab060db8f64737491c981334d192b4
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Mon Mar 25 15:45:02 2019 -0400
+
+    Update PKGBUILDs for AUR inclusion.
+
+commit 80fe3bf58d20fc55c5380427df782fbe4964a1f6
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Mon Mar 18 16:56:31 2019 -0400
+
+    Force autohint in /most/ cases.
+
+commit cb55b385a9b75397f18cc5128e12d20a2d33c68e
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Mon Mar 18 16:47:42 2019 -0400
+
+    Update Cairo PKGBUILD to upstream.
+
+commit e1d676cfd372c083e36eab4859229e39f9929550
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Mon Mar 18 14:18:19 2019 -0400
+
+    Cairo depends on freetype2, not fontconfig. Add upstream patch.
+
+commit 3820bd0cf1454131c2c99e3e8a0866d9cdfc8af5
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Mar 17 23:27:25 2019 -0400
+
+    Use Noto Sans as a Verdana substitute instead of DejaVu Sans.
+
+commit 20af2fd240d58c3b5ac1d44e25a34bb3d97dc14c
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Mar 17 17:20:48 2019 -0400
+
+    Fix configuration file list. Ghostwriter is not the same as GitHub for markdown.
+
+commit 31c01781da47a981f4022a828fa052da91f2b000
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Mar 17 17:18:08 2019 -0400
+
+    Better clarify configuration in README, particularly DPI.
+
+commit 4ea381e2907108b073242fa77e469436652b6707
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Mar 17 16:04:10 2019 -0400
+
+    Use Roboto instead of Noto Sans for a Segoe UI substitution.
+
+commit b3edaf3ac420801cab1827ea4cb893ea99524792
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Mar 17 15:44:21 2019 -0400
+
+    Enable stem darkening for ultimate[1-5].
+    
+    This commit marks the first major departure from the Infinality Ultimate patch set.
+    All Remix tweaks to FreeType are contained in the 0006-infinality-remix-*.patch file.
+    The 0002-infinality-*.patch file remains exclusively the Infinality patch with any Remix tweaks.
+
+commit 0d4bf4474cd80ba59e3fb1b2b2b3546e6bc335d3
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Fri Mar 15 19:48:30 2019 -0400
+
+    Update patch for FreeType 2.10.0.
+    
+    Remove broken email address from PKGBUILDs.
+
+commit 6cba569594d53944d4c4a1b8a6bd67fe9deb38a5
+Merge: 0e655bf 2175e4c
+Author: Philip D <philip.deljanov@gmail.com>
+Date:   Mon Jan 7 14:15:19 2019 -0500
+
+    Merge pull request #1 from TheSpiritof69/master
+    
+    Add missing build dependencies to FreeType and Fontconfig.
+
+commit 2175e4c8439f120342fe01260a78efaa6f967733
+Author: Khorne <khorne@khorne.me>
+Date:   Mon Jan 7 10:58:42 2019 +0100
+
+    fix build dependencies
+
+commit 0e655bf0b5cdecff5c022cf034fbfa817162064f
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Jan 6 18:26:03 2019 -0500
+
+    Add recommended fonts.
+
+commit 8c7ef9ec8cdd6bc4ce6338be458df0f753c34763
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Jan 6 17:22:51 2019 -0500
+
+    Fix PKGBUILD header comments and dates.
+
+commit 48acad3f2987c69f0de8e575da57460470a576e6
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Jan 6 17:09:43 2019 -0500
+
+    Update for public release.
+
+commit 01c5924a979faa8e6573ae8b6ceddd87ff4607f9
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Tue Oct 30 17:14:20 2018 -0400
+
+    Update README with repo instructions.
+
+commit 03e1d442f3f996a91f889d68ffa1a70b4b264575
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Mon Oct 29 16:51:55 2018 -0400
+
+    Add meta package.
+
+commit 674205394c803d2a3c599fb1ad6a48d736cca4c1
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Mon Oct 29 15:13:54 2018 -0400
+
+    Use email that matches Git and signing key.
+
+commit 827815168e5cf2bd0b2d836c16a52d84e16a4983
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Mon Oct 29 14:30:52 2018 -0400
+
+    Update PKGBUILD attributions.
+
+commit d5eb17bcfb019be2957ac29167e41370ff3325c5
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Oct 28 15:38:27 2018 -0400
+
+    Stub out fc-infinality-update-config script and hook.
+
+commit 014e808dc2cfedaad30b56ef77b86076e59b03d4
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Oct 28 15:38:12 2018 -0400
+
+    Update README.
+
+commit e7ebc1ec7cc7760c098eaf99e8c9862c80bfb26c
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Oct 28 14:53:07 2018 -0400
+
+    Add Infinality Ultimate font configurations for base fonts.
+
+commit b20988a34317548871686d99be7f88230bdbf940
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Oct 28 14:49:29 2018 -0400
+
+    Add script to generate fontconfig-infinality-remix-srcs tar.
+
+commit aefd61bf1767f508cbf21d3d2a4bd337f5dd9574
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Oct 28 14:36:22 2018 -0400
+
+    Don't add PKGREL to fontconfig patches. Use per-package gitignores.
+
+commit 556844c866079f2e226017e5285781e3659c1604
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Sun Oct 28 13:52:02 2018 -0400
+
+    Clean-up fontconfig-infinality-remix.
+
+commit 3a5ffc68eefcebd3d9e2516e1054f336c1a4892a
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Thu Oct 25 18:01:25 2018 -0400
+
+    Add execute bit for xinitrc.d scripts.
+
+commit e7cdb5bc442d8e5f20fcd1fabd9ee1fc0a79f0f0
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Thu Oct 25 17:45:14 2018 -0400
+
+    Add cairo and fontconfig to Infinality Remix.
+
+commit 5874d3fa13b4d1c5ad0baed27cfd8361a9d0148c
+Author: Philip Deljanov <philip.deljanov@gmail.com>
+Date:   Thu Oct 25 17:01:01 2018 -0400
+
+    Initial commit with FreeType 2.9.1 patched with Infinality.

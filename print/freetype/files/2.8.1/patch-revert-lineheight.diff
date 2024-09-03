@@ -13,10 +13,10 @@ Date:   Thu Mar 30 13:14:43 2017 +0200
     * src/truetype/ttgload.c (compute_glyph_metrics, TT_Load_Glyph):
     Refer to the metrics of the `TT_Size' object.
 
-diff --git ChangeLog.28 ChangeLog.28
+diff --git ChangeLog ChangeLog
 index f6de03c78e954a163969fc5fbdb4b0509e3da7c9..18555a6c4f62c5b69923c67076e09eca59b44541 100644
---- ChangeLog.28
-+++ ChangeLog.28
+--- ChangeLog
++++ ChangeLog
 @@ -1758,7 +1758,7 @@
  	glyph indices larger than `mapCount' as described in the
  	specification.
@@ -36,15 +36,15 @@ index a1653b241cabfc3b051b05c8fc7daf7d6d3010c7..0259de80ceb08f882433320db79c205e
      {
 -      error = tt_size_reset( ttsize, 0 );
 +      error                = tt_size_reset( ttsize, 0 );
-+      if ( !error ) ttsize->root.metrics = *ttsize->metrics;
++      ttsize->root.metrics = *ttsize->metrics;
  
  #ifdef TT_USE_BYTECODE_INTERPRETER
        /* for the `MPS' bytecode instruction we need the point size */
-diff --git src/truetype/orig.ttgload.c src/truetype/ttgload.c
-index 1dd319d..42a064b 100644
---- src/truetype/orig.ttgload.c
+diff --git src/truetype/ttgload.c src/truetype/ttgload.c
+index 5e102c615190dc02d73f0c37f9333f567e0b4c29..6cc1105749ae77bcc284be048bd4a5c34d78f793 100644
+--- src/truetype/ttgload.c
 +++ src/truetype/ttgload.c
-@@ -2239,7 +2239,7 @@
+@@ -2035,7 +2035,7 @@
  
      y_scale = 0x10000L;
      if ( ( loader->load_flags & FT_LOAD_NO_SCALE ) == 0 )
@@ -53,7 +53,7 @@ index 1dd319d..42a064b 100644
  
      if ( glyph->format != FT_GLYPH_FORMAT_COMPOSITE )
        FT_Outline_Get_CBox( &glyph->outline, &bbox );
-@@ -2271,7 +2271,7 @@
+@@ -2067,7 +2067,7 @@
  
  
        widthp = tt_face_get_device_metrics( face,
@@ -62,7 +62,21 @@ index 1dd319d..42a064b 100644
                                             glyph_index );
  
  #ifdef TT_SUPPORT_SUBPIXEL_HINTING_INFINALITY
-@@ -3000,7 +3000,7 @@
+@@ -2698,11 +2698,11 @@
+           if ( !glyph->metrics.horiAdvance && glyph->linearHoriAdvance )
+             glyph->metrics.horiAdvance =
+               FT_MulFix( glyph->linearHoriAdvance,
+-                         size->metrics->x_scale );
++                         size->root.metrics.x_scale );
+           if ( !glyph->metrics.vertAdvance && glyph->linearVertAdvance )
+             glyph->metrics.vertAdvance =
+               FT_MulFix( glyph->linearVertAdvance,
+-                         size->metrics->y_scale );
++                         size->root.metrics.y_scale );
+         }
+ 
+         return FT_Err_Ok;
+@@ -2798,7 +2798,7 @@
      /* TrueType glyphs at all sizes using the bytecode interpreter. */
      /*                                                              */
      if ( !( load_flags & FT_LOAD_NO_SCALE ) &&
@@ -70,4 +84,4 @@ index 1dd319d..42a064b 100644
 +         size->root.metrics.y_ppem < 24         )
        glyph->outline.flags |= FT_OUTLINE_HIGH_PRECISION;
  
-     FT_TRACE1(( "  subglyphs = %u, contours = %hd, points = %hd,"
+   Exit:
