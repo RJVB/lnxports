@@ -9,7 +9,7 @@ if {![catch {set result [exec /usr/bin/pkg-config --modversion gconf-2.0]}]} {
     ui_debug        "host has gconf version ${result}"
     version         ${result}
 } else {
-    ui_warn         "host libgconf[2] devel package isn't installed; assuming version 3.2.6"
+    ui_warn         "host libgconf\[2\] devel package isn't installed; assuming version 3.2.6"
     version         3.2.6
 }
 revision        1
