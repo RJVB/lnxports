@@ -410,6 +410,11 @@ if {$subport eq $name} {
     use_configure           no
     build                   {}
 
+    set mandirsuffix p
+    if {${perl5.major} >= 5.38} {
+        set mandirsuffix ""
+    }
+
     ##
     ## Note:  the destroot section below currently uses lists of files
     ##   to know what files to link.  In the future we can use
@@ -445,12 +450,16 @@ if {$subport eq $name} {
         foreach manFile $man1List {
             if {[file exists ${prefix}/share/man/man1${mandirsuffix}/${manFile}-${perl5.major}.1.gz]} {
                 ln -s ${manFile}-${perl5.major}.1.gz ${destroot}${prefix}/share/man/man1${mandirsuffix}/${manFile}.1.gz
+            } elseif {[file exists ${prefix}/share/man/man1${mandirsuffix}/${manFile}-${perl5.major}.1]} {
+                ln -s ${manFile}-${perl5.major}.1 ${destroot}${prefix}/share/man/man1${mandirsuffix}/${manFile}.1
             }
         }
         file mkdir ${destroot}${prefix}/share/man/man3${mandirsuffix}
         foreach manFile $man3List {
             if {[file exists ${prefix}/share/man/man3${mandirsuffix}/${manFile}-${perl5.major}.3pm.gz]} {
                 ln -s ${manFile}-${perl5.major}.3pm.gz ${destroot}${prefix}/share/man/man3${mandirsuffix}/${manFile}.3pm.gz
+            } elseif {[file exists ${prefix}/share/man/man3${mandirsuffix}/${manFile}-${perl5.major}.3pm]} {
+                ln -s ${manFile}-${perl5.major}.3pm ${destroot}${prefix}/share/man/man3${mandirsuffix}/${manFile}.3pz
             }
         }
     }
