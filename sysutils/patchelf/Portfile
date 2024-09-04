@@ -5,11 +5,14 @@ PortGroup           github 1.0
 PortGroup           save_configure_cmd 1.0
 
 github.setup        NixOS patchelf 5908e16cd562bcb1909be4de0409c4912a8afc52
-fetch.type          git
 version             0.16.1
 epoch               2
-worksrcdir          ${name}-git
-distname            ${name}-git
+# fetch.type          git
+# worksrcdir          ${name}-git
+# distname            ${name}-git
+
+checksums           rmd160  40bada41bf1b684640bca1cf10bec64b7a936f83 \
+                    sha256  372b04d72268cf46f0e5c76dbc1d8a21a822810fce02707e8a75acca03afbb30
 
 name                patchelf
 categories          sysutils
