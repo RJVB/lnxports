@@ -99,7 +99,7 @@ platform darwin 8 {
 configure.optflags
 configure.cflags-append -I. -fno-common
 if {[string match "*clang*" ${configure.compiler}]} {
-    configure.cflag-append -read_only_relocs suppress
+    configure.cflags-append -read_only_relocs suppress
 }
 
 destroot.args       DIR_INSTALL=${destroot}${prefix}
