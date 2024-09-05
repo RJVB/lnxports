@@ -40,7 +40,8 @@ distname            ${name}
 set python_major    2
 set python_minor    7
 set python_version  ${python_major}${python_minor}
-set perl_version    5.26
+PortGroup           perl5 1.0
+set perl_version    [perl5_get_default_branch]
 
 depends_build       port:pkgconfig \
                     port:intltool \

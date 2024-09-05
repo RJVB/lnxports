@@ -29,7 +29,8 @@ checksums           rmd160  95648c6b491e09920662e03a51f2278a0ff10392 \
                     sha256  063296c05a65d7a92a0f627485b66221487acfc64a24f712eb5237c4bd7816b2 \
                     size    31606442
 
-set perl_version    5.24
+PortGroup           perl5 1.0
+set perl_version    [perl5_get_default_branch]
 
 depends_build       port:pkgconfig \
                     port:autoconf \
