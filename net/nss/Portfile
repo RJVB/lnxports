@@ -1,13 +1,13 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
-PortGroup           legacysupport 1.1
 PortGroup           muniversal 1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
 
 name                nss
-version             3.92
+version             3.103
 revision            0
 set NSS_VMAJOR      [lindex [split ${version} .] 0]
 set NSS_VMINOR      [lindex [split ${version} .] 1]
@@ -25,14 +25,14 @@ long_description    {*}${description}
 use_configure       no
 homepage            https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS
 
-set my_release      NSS_[strsed ${version} {g/\./_/}]_RTM
+set my_release      NSS_[string map {. _} ${version}]_RTM
 
 master_sites        https://ftp.mozilla.org/pub/security/nss/releases/${my_release}/src/ \
                     ftp://ftp.mozilla.org/pub/security/nss/releases/${my_release}/src/
 
-checksums           rmd160  4b5a7067df81594282581f0c6b19febbf5699b97 \
-                    sha256  3db192d6e882039af02ae7eaf3217ed114bb7ad83414c646772ab8021e24a254
-#                     size    72133646
+checksums           rmd160  5ebc19b312e4a5e2f6f345e5f0c4e852a18651f2 \
+                    sha256  7b4ab657f772dc7520c46e8d481940b292dcfc6a4c90150a7c26672384cee962 \
+                    size    76470174
 
 # build fails with gcc-4.2 on Intel, but succeeds with gcc-4.2 on PPC
 # cc1: error: unrecognized command line option "-mpclmul"
@@ -40,6 +40,8 @@ checksums           rmd160  4b5a7067df81594282581f0c6b19febbf5699b97 \
 if {${configure.build_arch} in [list i386 x86_64]} {
     compiler.blacklist-append *gcc-4.* *gcc-3.*
 }
+
+patchfiles          undef-prefix.patch
 
 # VSX and Crypto have to be disabled, since they belong to post-G5 ISA.
 # See: https://bugzilla.mozilla.org/show_bug.cgi?id=1687164
@@ -55,8 +57,12 @@ patchfiles-append \
                 patch-AR.diff \
                 patch-sign_sh.diff
 
-# fails with clang-425 https://trac.macports.org/ticket/63245
-compiler.blacklist-append {clang < 426}
+# fails with clang-425: https://trac.macports.org/ticket/63245
+#   warning: implicit declaration of function '_mm_sha256xxxxx'
+# fails with clang < 800: https://trac.macports.org/ticket/67585
+#   error: "AES/PCLMUL instructions not enabled"
+# TODO: Latter blacklisting is a quick fix only; needs more investigation
+compiler.blacklist-append {clang < 800}
 
 depends_lib     port:nspr \
                 port:zlib \
@@ -220,6 +226,8 @@ platform darwin 8 {
     depends_build-append port:gmake-apple
     build.cmd ${prefix}/bin/gmake-apple
 }
+
+configure.save_build_cmd "install"
 
 livecheck.type    regex
 livecheck.url     https://ftp.mozilla.org/pub/security/nss/releases/
