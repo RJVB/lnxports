@@ -1,31 +1,54 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 150359 2016-07-17 07:30:36Z larryv@macports.org $
 
 PortSystem          1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
 
 name                libassuan
-version             2.4.3
+version             2.5.7
+
 categories          devel
-platforms           darwin
+platforms           darwin linux
 # strangely enough, only the docs are under GPL3
 license             LGPL-2.1+ GPL-3+
-maintainers         larryv openmaintainer
+maintainers         {larryv @larryv} \
+                    {gmail.com:herby.gillot @herbygillot} \
+                    openmaintainer
 
 description         Assuan IPC library
+
 long_description    Libassuan is a small library implementing the \
                     so-called Assuan protocol. This protocol is used \
                     for IPC between most newer GnuPG components. Both \
                     server and client side functions are provided.
+
 homepage            https://www.gnupg.org/related_software/libassuan
 
-# depends_lib         port:libgpg-error port:pth
-depends_lib         port:libgpg-error
+depends_lib-append  port:libgpg-error \
+                    port:pth
 
 master_sites        gnupg
 use_bzip2           yes
-checksums           sha1    27391cf4a820b5350ea789c30661830c9a271518 \
-                    rmd160  1e1a28d4beebb5ad9c660957de250e3315eecba2 \
-                    sha256  22843a3bdb256f59be49842abf24da76700354293a066d82ade8134bb5aa2b71
+
+checksums           rmd160  5a30275a86cd10e46ee66c10010ca846f28b172f \
+                    sha256  0103081ffc27838a2e50479153ca105e873d3d65d8a9593282e9c94c7e6afb76
+#                    size    605076
+
+platform darwin {
+    # assuan-socket.c:723: error: 'fd_set' undeclared
+    patchfiles-append   patch-src-assuan-socket-tiger-needs-sys-select.diff
+}
+
+platform darwin 10 {
+    # Rosetta misdetects the arch and gives a warning of a mismatch:
+    # *** The config script "/opt/local/bin/gpgrt-config --libdir=/opt/local/lib gpg-error" was
+    # *** built for powerpc-apple-darwin10 and thus may not match the used host x86_64-apple-darwin10.8.0.
+    if {${build_arch} eq "ppc"} {
+        configure.args-append --build=powerpc-apple-darwin${os.major}
+    }
+}
+
+configure.save_configure_cmd "install log"
 
 test.run            yes
 test.target         check
