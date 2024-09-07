@@ -71,9 +71,9 @@ depends_lib-append  port:aom \
                     port:x265
 
 if {${os.platform} eq "darwin"} {
+                    #port:libgsm 
     depends_lib-append \
                     port:libdca \
-                    port:libgsm \
                     port:libmms \
                     port:libmpcdec \
                     port:libnice \
@@ -126,6 +126,7 @@ configure.args-append \
                     -Dexamples=disabled \
                     -Dfaac=disabled \
                     -Dfdkaac=disabled \
+                    -Dfrei0r=disabled \
                     -Dopencv=disabled \
                     -Dsctp=disabled \
                     -Dsrtp=disabled \
