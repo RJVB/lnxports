@@ -91,6 +91,17 @@ patchfiles          modplug.patch \
                     no_pqueue_size.patch 
                     #patch-for-newer-vulkan.diff
 
+pre-patch {
+    if {![catch {set installed [lindex [registry_active openexr] 0]}]} {
+        set exr_version [lindex ${installed} 1]
+        if {[vercmp ${exr_version} 3] < 0} {
+            ui_warn "re-enabling compatibility with OpenEXR v2.x"
+            patchfiles-append \
+                    patch-openexr2.diff
+        }
+    }
+}
+
 post-patch {
     reinplace "s|/usr/bin/env python3|${python.bin}|" \
         ${worksrcpath}/scripts/extract-release-date-from-doap-file.py \

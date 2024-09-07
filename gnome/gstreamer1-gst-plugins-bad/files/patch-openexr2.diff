@@ -1,0 +1,31 @@
+diff --git ext/openexr/gstopenexrdec.cpp.orig ext/openexr/gstopenexrdec.cpp
+index d54b308..f96ebc3 100644
+--- ext/openexr/gstopenexrdec.cpp.orig
++++ ext/openexr/gstopenexrdec.cpp
+@@ -43,8 +43,8 @@ public:
+   }
+ 
+   virtual bool read (char c[], int n);
+-  virtual uint64_t tellg ();
+-  virtual void seekg (uint64_t pos);
++  virtual Int64 tellg ();
++  virtual void seekg (Int64 pos);
+   virtual void clear ();
+ 
+ private:
+@@ -64,13 +64,13 @@ bool MemIStream::read (char c[], int n)
+   return (offset == size);
+ }
+ 
+-uint64_t MemIStream::tellg ()
++Int64 MemIStream::tellg ()
+ {
+   return offset;
+ }
+ 
+ void
+-MemIStream::seekg (uint64_t pos)
++MemIStream::seekg (Int64 pos)
+ {
+   offset = pos;
+   if (offset > size)
