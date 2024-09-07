@@ -57,12 +57,16 @@ if {${subport} eq "${name}-infinality"} {
     notes-append "freetype must be now be (re)build and (re)installed with the +infinality variant."
 
 } else {
-    PortGroup               muniversal 1.0
+    PortGroup               muniversal-rjvb 1.0
     PortGroup               LTO 1.0
     PortGroup               save_configure_cmd 1.0
 
     name                    freetype
     version                 2.10.2; revision 1
+    platform darwin {
+        # for fixing the problem with creating a universal binary ftconfig.h
+        revision            [expr ${revision} +1]
+    }
     set docdistname         ${name}-doc-${version}
     use_xz                  yes
     checksums               ${distname}${extract.suffix} \
