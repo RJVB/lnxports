@@ -30,7 +30,7 @@
 # compiler.blacklist-delete clang
 #
 # This PortGroup was created following this discussion:
-# https://lists.macosforge.org/pipermail/macports-dev/2012-November/021103.html
+# https://lists.macports.org/pipermail/macports-dev/2012-November/021103.html
 
 option_proc compiler.blacklist compiler_blacklist_versions._set_compiler_blacklist
 
@@ -60,14 +60,14 @@ proc compiler_blacklist_versions._set_compiler_blacklist {option action args} {
     }
 }
 
-proc compiler_blacklist_versions._matches_all_versions {compiler comparisons} {
+proc compiler_blacklist_versions._matches_all_versions {compiler_version comparisons} {
     if {[llength ${comparisons}] % 2} {
         return -code error "invalid/incomplete comparison specification \"${comparisons}\""
     }
     while {[llength ${comparisons}] > 0} {
         set comparison_operator [lindex ${comparisons} 0]
         set test_version [lindex ${comparisons} 1]
-        if {![compiler_blacklist_versions._version_matches ${compiler} ${comparison_operator} ${test_version}]} {
+        if {![compiler_blacklist_versions._version_matches ${compiler_version} ${comparison_operator} ${test_version}]} {
             return 0
         }
         set comparisons [lrange ${comparisons} 2 end]
@@ -91,6 +91,10 @@ proc compiler_blacklist_versions._get_compiler_version {compiler} {
     switch -glob ${compiler} {
         clang* {
             set re {clang version ([0-9.]+)-}
+        }
+        llvm-gcc-4.2 {
+            # doesn't exist on Linux, so `file exists $cc` below will fail
+            set re ""
         }
         cc -
         gcc* {
