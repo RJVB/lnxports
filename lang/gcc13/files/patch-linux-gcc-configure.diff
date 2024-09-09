@@ -1,8 +1,8 @@
 diff --git gcc/orig.configure gcc/configure
-index f4bd9c5..d3cb598 100755
+index c7b26d1..d3cb598 100755
 --- gcc/orig.configure
 +++ gcc/configure
-@@ -12072,7 +12035,8 @@ ac_fn_cxx_check_decl "$LINENO" "basename(const char*)" "$as_ac_Symbol" "
+@@ -12035,7 +12035,8 @@ ac_fn_cxx_check_decl "$LINENO" "basename(const char*)" "$as_ac_Symbol" "
  if eval test \"x\$"$as_ac_Symbol"\" = x"yes"; then :
    ac_have_decl=1
  else
@@ -12,7 +12,7 @@ index f4bd9c5..d3cb598 100755
  fi
  
  cat >>confdefs.h <<_ACEOF
-@@ -12088,7 +12052,8 @@ ac_fn_cxx_check_decl "$LINENO" "strstr(const char*,const char*)" "$as_ac_Symbol"
+@@ -12051,7 +12052,8 @@ ac_fn_cxx_check_decl "$LINENO" "strstr(const char*,const char*)" "$as_ac_Symbol"
  if eval test \"x\$"$as_ac_Symbol"\" = x"yes"; then :
    ac_have_decl=1
  else
@@ -22,7 +22,7 @@ index f4bd9c5..d3cb598 100755
  fi
  
  cat >>confdefs.h <<_ACEOF
-@@ -12096,6 +12061,7 @@ cat >>confdefs.h <<_ACEOF
+@@ -12059,6 +12061,7 @@ cat >>confdefs.h <<_ACEOF
  _ACEOF
  
  
@@ -30,7 +30,7 @@ index f4bd9c5..d3cb598 100755
  for ac_func in getenv atol atoll asprintf sbrk abort atof getcwd getwd \
  	madvise stpcpy strnlen strsignal strverscmp \
  	strtol strtoul strtoll strtoull setenv unsetenv \
-@@ -12130,6 +12096,11 @@ if ac_fn_cxx_try_compile "$LINENO"; then :
+@@ -12093,6 +12096,11 @@ if ac_fn_cxx_try_compile "$LINENO"; then :
    eval "gcc_cv_have_decl_$ac_func=yes"
  else
    eval "gcc_cv_have_decl_$ac_func=no"
@@ -42,7 +42,7 @@ index f4bd9c5..d3cb598 100755
  fi
  rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
  fi
-@@ -12149,7 +12120,7 @@ _ACEOF
+@@ -12112,7 +12120,7 @@ _ACEOF
  fi
  
  done
@@ -51,7 +51,7 @@ index f4bd9c5..d3cb598 100755
  
  for ac_func in getrlimit setrlimit getrusage
  do
-@@ -12282,7 +12253,9 @@ if ac_fn_cxx_try_compile "$LINENO"; then :
+@@ -12245,7 +12253,9 @@ if ac_fn_cxx_try_compile "$LINENO"; then :
  
  else
  
@@ -62,7 +62,7 @@ index f4bd9c5..d3cb598 100755
  
  fi
  rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-@@ -18813,7 +18739,10 @@ if test "$GCC" = yes; then
+@@ -18729,7 +18739,10 @@ if test "$GCC" = yes; then
    # Ok, now we have the path, separated by spaces, we can step through it
    # and add multilib dir if necessary.
    lt_tmp_lt_search_path_spec=
