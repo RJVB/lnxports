@@ -116,10 +116,15 @@ universal_variant   no
 
 post-destroot {
     platform linux {
-        set archdir "${prefix}/${build_arch}-pc-linux-gnu"
         # the MacPorts install/activation process breaks hard symlinks
-        file delete ${destroot}${archdir}/bin/ld.bfd
-        ln -s ld ${destroot}${archdir}/bin/ld.bfd
+        # No telling what the archdir will look like, so just work with what we have:
+        foreach ad [glob -types d ${destroot}${prefix}/${build_arch}-*] {
+            set archdir [string map [list ${destroot} ""] ${ad}]
+            system "ls -ail ${destroot}${archdir}/bin"
+            file delete ${destroot}${archdir}/bin/ld.bfd
+            ln -s ld ${destroot}${archdir}/bin/ld.bfd
+        }
+        # symlink the copies in bin to the ones in the last found archdir, which should be the only one
         foreach bin [glob ${destroot}${prefix}/bin/*] {
             set b [file tail ${bin}]
             if {[file exists ${destroot}${archdir}/bin/${b}]} {
