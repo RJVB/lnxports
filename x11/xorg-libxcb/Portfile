@@ -29,15 +29,11 @@ use_parallel_build yes
 
 depends_build   port:pkgconfig
 
-platform darwin {
-    depends_lib port:xorg-libXau \
+depends_lib     port:xorg-libXau \
                 port:xorg-libXdmcp \
-                port:xorg-libpthread-stubs
-}
-depends_lib-append \
+                port:xorg-libpthread-stubs \
                 port:xorg-xcb-proto
 
-configure.save_configure_cmd "install log"
 configure.args  --disable-devel-docs \
                 --disable-silent-rules \
                 --enable-ge --enable-xevie --enable-xprint
@@ -121,6 +117,8 @@ if {[info exists python_version]} {
     ui_error "${subport} needs a Python variant to be set"
     return -code error "Missing variant"
 }
+
+configure.save_configure_cmd "install log"
 
 livecheck.type  regex
 livecheck.url   https://xorg.freedesktop.org/archive/individual/lib/?C=M&O=D
