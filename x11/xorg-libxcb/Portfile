@@ -31,7 +31,7 @@ depends_build   port:pkgconfig
 
 depends_lib     port:xorg-libXau \
                 port:xorg-libXdmcp \
-                port:xorg-libpthread-stubs
+                port:xorg-libpthread-stubs \
                 port:xorg-xcb-proto
 
 configure.args  --disable-devel-docs \
