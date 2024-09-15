@@ -9,9 +9,9 @@ if [ "${PKG_CONFIG_MACPORTS_ONLY}" = "" ] ;then
 		SYSPKG_PATH="`${PKG_CONFIG_SYS} --variable pc_path pkg-config`"
 	fi
 	if [ "${PKG_CONFIG_PATH}" != "" ] ;then
-		PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:@PREFIX@/lib/pkgconfig:@PREFIX@/share/pkgconfig:@PREFIX@/lib/@BUILDARCH@-linux-gnu/pkgconfig:${SYSPKG_PATH}"
+		PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:@PREFIX@/lib/pkgconfig:@PREFIX@/share/pkgconfig:@PREFIX@/lib/@BUILDARCH@-linux-gnu/pkgconfig:@PREFIX@/lib64/pkgconfig:${SYSPKG_PATH}"
 	else
-		PKG_CONFIG_PATH="@PREFIX@/lib/pkgconfig:@PREFIX@/share/pkgconfig:@PREFIX@/lib/@BUILDARCH@-linux-gnu/pkgconfig:${SYSPKG_PATH}"
+		PKG_CONFIG_PATH="@PREFIX@/lib/pkgconfig:@PREFIX@/share/pkgconfig:@PREFIX@/lib/@BUILDARCH@-linux-gnu/pkgconfig:@PREFIX@/lib64/pkgconfig:${SYSPKG_PATH}"
 	fi
 	export PKG_CONFIG_PATH
 	exec "${PKG_CONFIG_SYS}" "$@"

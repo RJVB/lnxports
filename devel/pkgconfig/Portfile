@@ -5,7 +5,7 @@ PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 
 name                pkgconfig
-version             0.29.2	; revision 3
+version             0.29.2	; revision 4
 categories          devel
 maintainers         {ryandesign @ryandesign}
 license             GPL-2+
@@ -35,8 +35,6 @@ patchfiles          patch-glib-configure.diff \
 # don't use "docdir" as the variable name, it gets redefined somehow!
 set DOCDIR          ${prefix}/share/doc/${name}
 
-configure.save_configure_cmd "install log"
-
                     #--with-internal-glib
 configure.args      --disable-silent-rules \
                     --disable-host-tool \
@@ -62,9 +60,9 @@ if {${os.platform} eq "linux"} {
     # use the proxying principle to build pkg-config itself even if +proxy isn't set
     # this gives us a bootstrappable dependency on port:glib2
     if {[info exists ::env(PKG_CONFIG_PATH)]} {
-        set PKG_CONFIG_PATH "${prefix}/lib/pkgconfig:${prefix}/lib/${build_arch}-linux-gnu/pkgconfig:$env(PKG_CONFIG_PATH)"
+        set PKG_CONFIG_PATH "${prefix}/lib/pkgconfig:${prefix}/lib/${build_arch}-linux-gnu/pkgconfig:${prefix}/lib64/pkgconfig:$env(PKG_CONFIG_PATH)"
     } else {
-        set PKG_CONFIG_PATH "${prefix}/lib/pkgconfig:${prefix}/lib/${build_arch}-linux-gnu/pkgconfig"
+        set PKG_CONFIG_PATH "${prefix}/lib/pkgconfig:${prefix}/lib/${build_arch}-linux-gnu/pkgconfig:${prefix}/lib64/pkgconfig"
     }
     # port:pkg-config doesn't declare a dependency on glib so we must make sure it's found
     # (or force the use of the included version)
@@ -87,6 +85,8 @@ pre-configure {
         ui_warn "Bootstrapping pkgconfig with its internal glib"
     }
 }
+
+configure.save_configure_cmd "install log"
 
 post-destroot {
     if {[variant_isset proxy]} {
