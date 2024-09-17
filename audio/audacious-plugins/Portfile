@@ -5,6 +5,7 @@ PortGroup           LTO 1.0
 PortGroup           meson 1.0
 PortGroup           active_variants 1.1
 PortGroup           locale_select 1.0
+PortGroup           from_ports_variant 1.0
 
 name                audacious-plugins
 
@@ -416,7 +417,8 @@ if {[variant_isset qt5]} {
 }
 
 variant gtk2 conflicts gtk3 description {Add GTK2 support} {
-    depends_lib-append      path:lib/pkgconfig/gtk+-2.0.pc:gtk2
+    fromPorts::depends      lib-append \
+                            path:lib/pkgconfig/gtk+-2.0.pc:gtk2
 
     configure.args-replace  -Dgtk=false \
                             -Dgtk=true \

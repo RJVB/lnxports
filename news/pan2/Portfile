@@ -2,6 +2,7 @@
 
 PortSystem          1.0
 PortGroup           locale_select 1.0
+PortGroup           from_ports_variant 1.0
 
 name                pan2
 version             0.145
@@ -27,15 +28,14 @@ checksums           rmd160  4286659500e031219c7e972ff87f645f43d68ede \
                     sha256  68da514a8088513502b418859a7df7638866f75d03a429197cf9c23176559cac
 
 depends_build       port:pkgconfig
-platform darwin {
-    depends_build-append \
+fromPorts::depends  build-append \
                     port:itstool \
                     port:yelp-tools
-    depends_lib     port:desktop-file-utils \
+fromPorts::depends  lib \
+                    port:desktop-file-utils \
                     port:gmime \
                     port:gtk2 \
                     port:gtkspell2
-}
 
 depends_lib-append  port:pcre \
                     port:gnutls \
@@ -48,12 +48,16 @@ configure.ldflags-append \
                     -liconv
 
 variant gtk3 description {Build using gtk3} {
-    depends_lib-replace port:gtk2 port:gtk3
-    platform darwin {
-        depends_lib-replace port:gtkspell2 port:gtkspell3
-        depends_lib-append  port:gcr port:libsecret
-        depends_run-append  port:adwaita-icon-theme
-    }
+    depends_lib-delete \
+                    port:gtk2 \
+                    port:gtkspell2
+    depends_lib-append \
+                    port:gtk3 \
+                    port:gtkspell3 \
+                    port:gcr \
+                    port:libsecret
+    depends_run-append \
+                    port:adwaita-icon-theme
 
     configure.args-append --with-gtk3 --enable-gkr
 }

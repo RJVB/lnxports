@@ -1,6 +1,7 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem                  1.0
+PortGroup                   from_ports_variant 1.0
 
 name                        pinentry
 version                     1.1.0
@@ -55,7 +56,8 @@ depends_lib                 port:libiconv \
                             port:libgpg-error
 
 variant gtk2 description {Enable gtk2-based pinentry tool} {
-    depends_lib-append      port:gtk2
+    fromPorts::depends lib-append \
+                            port:gtk2
     configure.args-delete   --disable-pinentry-gtk2
     configure.args-append   --enable-pinentry-gtk2 \
                             --enable-fallback-curses

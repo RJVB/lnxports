@@ -11,6 +11,8 @@ if {[variant_isset qt5]} {
 }
 PortGroup           LTO 1.0
 PortGroup           locale_select 1.0
+PortGroup           save_configure_cmd 1.0
+PortGroup           from_ports_variant 1.0
 
 name                VLC
 
@@ -92,21 +94,19 @@ build.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
 destroot.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
 ##################################################
 
-platform darwin {
-depends_lib-append  path:lib/libavcodec.diff:ffmpeg \
+fromPorts::depends  lib-append \
+                    path:lib/libavcodec.diff:ffmpeg \
                     port:a52dec \
                     port:avahi \
                     port:bzip2 \
                     port:faad2 \
                     port:flac \
-                    port:fluidsynth \
                     port:fontconfig \
                     port:freetype \
                     port:fribidi \
                     port:gettext \
                     path:lib/pkgconfig/glib-2.0.pc:glib2 \
                     port:gmp \
-                    port:gnutls \
                     path:include/turbojpeg.h:libjpeg-turbo \
                     port:lame \
                     port:libass \
@@ -114,10 +114,6 @@ depends_lib-append  path:lib/libavcodec.diff:ffmpeg \
                     port:libcddb \
                     port:libdc1394 \
                     port:libdca \
-                    port:libdvbpsi \
-                    port:libdvdnav \
-                    port:libdvdread \
-                    port:libebml \
                     port:libgcrypt \
                     port:libgpg-error \
                     port:libiconv \
@@ -125,7 +121,6 @@ depends_lib-append  path:lib/libavcodec.diff:ffmpeg \
                     port:libidn \
                     port:libmad \
                     port:libmatroska \
-                    port:libmodplug \
                     port:libmpcdec \
                     port:libmpeg2 \
                     port:libmtp \
@@ -159,10 +154,23 @@ depends_lib-append  path:lib/libavcodec.diff:ffmpeg \
                     port:twolame \
                     port:x264 \
                     port:x265 \
-				port:aribb24
+                    port:aribb24
+depends_lib-append  port:libdvdread \
+                    port:libdvdnav \
+                    port:gnutls \
+                    path:include/turbojpeg.h:libjpeg-turbo \
+                    port:fluidsynth \
+                    port:libsndio \
+                    port:portaudio \
+                    port:libdvbpsi \
+                    port:soxr \
+                    port:libsecret \
+                    port:libmodplug \
+                    port:libebml
 depends_run-append  port:libaacs \
                     port:libbdplus
 
+platform darwin {
     # VLC calls ibtools which isn't part of the commandline tools
     use_xcode yes
     if {${os.major} < 13} {
@@ -202,41 +210,41 @@ platform linux {
         }
     }
 
-# platform dependencies for Ubuntu 14.04 :
-# liba52-0.7.4-dev libaa1-dev libasound2-dev libass-dev libavahi-client-dev libavc1394-dev
-# libbluray-dev libcaca-dev libcddb2-dev libcdio-dev libchromaprint-dev libcrystalhd-dev
-# libdc1394-22-dev libdca-dev libdirac-dev libdirectfb-dev libdvbpsi-dev libdvdnav-dev
-# libdvdread-dev libfaad-dev libflac-dev libfreerdp-dev libfreetype6-dev
-# libfribidi-dev libgl1-mesa-dev libgtk2.0-dev libidn11-dev libiso9660-dev
-# libjack-dev libkate-dev liblircclient-dev liblivemedia-dev liblua5.2-dev libmad0-dev
-# libmatroska-dev libmodplug-dev libmpcdec-dev libmpeg2-4-dev libmtp-dev libncursesw5-dev
-# libnotify-dev libogg-dev libomxil-bellagio-dev libopus-dev libpng-dev libpulse-dev
-# libqt4-dev libraw1394-dev libresid-builder-dev librsvg2-dev libsamplerate0-dev
-# libschroedinger-dev libsdl-image1.2-dev libsdl1.2-dev libshout3-dev libsidplay2-dev
-# libsmbclient-dev libspeex-dev libspeexdsp-dev libssh2-1-dev libtag1-dev libtar-dev
-# libtheora-dev libtwolame-dev libudev-dev libupnp-dev libv4l-dev libva-dev libvcdinfo-dev
-# libvdpau-dev libvorbis-dev libx11-dev libx264-dev libxcb-composite0-dev libxcb-keysyms1-dev
-# libxcb-randr0-dev libxcb-shm0-dev libxcb-xv0-dev libxcb1-dev libxext-dev libxinerama-dev
-# libxml2-dev libxpm-dev libzvbi-dev lua5.2 oss4-dev zlib1g-dev
-#
-# from  ppa:rjvbertin/misc :
-# libavcodec-ffmpeg-opti-dev
-# libavformat-ffmpeg-opti-dev
-# libpostproc-ffmpeg-opti-dev
-# libswscale-ffmpeg-opti-dev
-depends_lib-append  port:libdvdread \
-                    port:libdvdnav \
-                    port:gnutls \
-                    port:fluidsynth \
-                    port:libsndio \
-                    port:portaudio \
-                    port:libaacs \
-                    port:libdvbpsi \
-                    port:libbdplus \
-                    port:soxr \
-                    port:libsecret \
-                    port:libmodplug \
-                    port:libebml
+# # platform dependencies for Ubuntu 14.04 :
+# # liba52-0.7.4-dev libaa1-dev libasound2-dev libass-dev libavahi-client-dev libavc1394-dev
+# # libbluray-dev libcaca-dev libcddb2-dev libcdio-dev libchromaprint-dev libcrystalhd-dev
+# # libdc1394-22-dev libdca-dev libdirac-dev libdirectfb-dev libdvbpsi-dev libdvdnav-dev
+# # libdvdread-dev libfaad-dev libflac-dev libfreerdp-dev libfreetype6-dev
+# # libfribidi-dev libgl1-mesa-dev libgtk2.0-dev libidn11-dev libiso9660-dev
+# # libjack-dev libkate-dev liblircclient-dev liblivemedia-dev liblua5.2-dev libmad0-dev
+# # libmatroska-dev libmodplug-dev libmpcdec-dev libmpeg2-4-dev libmtp-dev libncursesw5-dev
+# # libnotify-dev libogg-dev libomxil-bellagio-dev libopus-dev libpng-dev libpulse-dev
+# # libqt4-dev libraw1394-dev libresid-builder-dev librsvg2-dev libsamplerate0-dev
+# # libschroedinger-dev libsdl-image1.2-dev libsdl1.2-dev libshout3-dev libsidplay2-dev
+# # libsmbclient-dev libspeex-dev libspeexdsp-dev libssh2-1-dev libtag1-dev libtar-dev
+# # libtheora-dev libtwolame-dev libudev-dev libupnp-dev libv4l-dev libva-dev libvcdinfo-dev
+# # libvdpau-dev libvorbis-dev libx11-dev libx264-dev libxcb-composite0-dev libxcb-keysyms1-dev
+# # libxcb-randr0-dev libxcb-shm0-dev libxcb-xv0-dev libxcb1-dev libxext-dev libxinerama-dev
+# # libxml2-dev libxpm-dev libzvbi-dev lua5.2 oss4-dev zlib1g-dev
+# #
+# # from  ppa:rjvbertin/misc :
+# # libavcodec-ffmpeg-opti-dev
+# # libavformat-ffmpeg-opti-dev
+# # libpostproc-ffmpeg-opti-dev
+# # libswscale-ffmpeg-opti-dev
+# depends_lib-append  port:libdvdread \
+#                     port:libdvdnav \
+#                     port:gnutls \
+#                     port:fluidsynth \
+#                     port:libsndio \
+#                     port:portaudio \
+#                     port:libaacs \
+#                     port:libdvbpsi \
+#                     port:libbdplus \
+#                     port:soxr \
+#                     port:libsecret \
+#                     port:libmodplug \
+#                     port:libebml
 configure.ldflags-append \
                     -Wl,-rpath=${vlcprefix}/lib
 configure.args-append \

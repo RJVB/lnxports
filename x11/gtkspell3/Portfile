@@ -3,6 +3,7 @@
 PortSystem          1.0
 PortGroup           gobject_introspection 1.0
 PortGroup           locale_select 1.0
+PortGroup           from_ports_variant 1.0
 
 name                gtkspell3
 version             3.0.9
@@ -58,7 +59,8 @@ configure.args      --disable-gtk2 \
                     --disable-gtk-doc
 
 variant gtk2 description {Build with support for GTK+ 2} {
-#     depends_lib-append  port:gtk2
+    fromPorts::depends      lib-append \
+                            port:gtk2
     configure.args-replace  --disable-gtk2 --enable-gtk2
 }
 

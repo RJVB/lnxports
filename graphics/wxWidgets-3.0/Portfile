@@ -5,6 +5,7 @@ PortGroup           active_variants 1.1
 PortGroup           github          1.0
 PortGroup           select          1.0
 PortGroup           wxWidgets       1.0
+PortGroup           from_ports_variant 1.0
 
 github.setup        wxWidgets wxWidgets 3.0.4 v
 github.tarball_from releases
@@ -50,6 +51,13 @@ if {${subport} eq ${name}} {
     wxWidgets.use   wxGTK-3.0
     set installname wxGTK
     set wxtype      gtk3
+
+    variant gtk2 conflicts gtk3 description {} {}
+    variant gtk3 conflicts gtk2 description {} {}
+    variant x11 conflicts quartz {}
+    PortGroup               stub 1.0
+    depends_lib             port:wxWidgets-3.0
+    return
 }
 set branch          [join [lrange [split ${version} .] 0 1] .]
 
@@ -205,74 +213,18 @@ if {${subport} eq "wxPython-3.0"} {
     }
 
     livecheck.type          none
-} elseif {${subport} eq "wxgtk-3.0"} {
-    # patch could be added to wxWidgets-3.0, but it is not needed for Cocoa
-    #
-    # patch-sdl.diff: the patch allows using --with-sdl
-    # patch-gtk-quartz.diff: avoid build failure for wxgtk3 +quartz (the patch is not yet complete)
-    patchfiles-append       patch-sdl.diff \
-                            patch-gtk-quartz.diff
-
-#     depends_build-append    port:pkgconfig
-#     depends_lib-append      path:lib/pkgconfig/cairo.pc:cairo \
-#                             port:libsdl \
-#                             port:libsdl_mixer
-
-#     configure.args-delete   --with-cocoa \
-#                             --without-sdl
-#     configure.args-append   --with-sdl
-
-    #variant gtk2 conflicts gtk3 description {} {
-    #    depends_lib-append      port:gtk2
-    #    configure.args-append   --with-gtk=2
-    #    set wxtype              gtk2
-    #}
-    #variant gtk3 conflicts gtk2 description {} {
-#         depends_lib-append      port:gtk3
-        configure.args-append   --with-gtk=3
-    #}
-#     variant quartz conflicts x11 description "(Doesn't work properly yet)" {
-#        require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
-#        require_active_variants gtk3 quartz
-#     }
-    variant x11 conflicts quartz {
-#         depends_lib-append  port:mesa port:libGLU
-#         require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
-#         require_active_variants gtk3 x11
-    }
-    #if{![variant_isset gtk2] && ![variant_isset gtk3]} {
-    #    default_variants-append +gtk3
-    #}
-    if {![variant_isset quartz] && ![variant_isset x11]} {
-    #   if {[active_variants gtk3 quartz ""]} {
-    #       default_variants-append +quartz
-    #   } else {
-            default_variants-append +x11
-    #   }
-    }
-    #if{[variant_isset gtk2]} {
-    #    if{[variant_isset quartz]} {
-    #        require_active_variants gtk2 quartz
-    #    } else {
-    #        require_active_variants gtk2 x11
-    #    }
-    #} else {
-    #    if{[variant_isset quartz]} {
-    #        require_active_variants gtk3 quartz
-    #    } else {
-    #        require_active_variants gtk3 x11
-    #    }
-    #}
 } else {
     variant gtk2 conflicts gtk3 description {} {
         configure.args-delete   --with-gtk=3
         configure.args-append   --with-gtk=2
         set wxtype              gtk2
+        fromPorts::depends      lib-append port:gtk3
     }
     variant gtk3 conflicts gtk2 description {} {
         configure.args-delete   --with-gtk=2
         configure.args-append   --with-gtk=3
         set wxtype              gtk3
+        depends_lib-append      port:gtk3
     }
     if {![variant_isset gtk2] && ![variant_isset gtk3]} {
         default_variants        +gtk2

@@ -7,6 +7,7 @@ platform darwin {
     PortGroup       cxx11 1.1
 }
 PortGroup           cmake 1.1
+PortGroup           from_ports_variant 1.0
 
 cmake.generator     Ninja
 
@@ -47,47 +48,34 @@ depends_build       port:pkgconfig \
                     port:intltool \
                     port:perl5
 
-platform darwin {
-    depends_lib     port:desktop-file-utils \
-                    port:popt \
-                    path:lib/libgc.dylib:boehmgc \
-                    path:lib/libgomp.dylib:libomp \
+set shext [expr {${os.platform} eq "darwin" ? "dylib" : "so"}]
+
+fromPorts::depends  lib \
+                    port:desktop-file-utils \
+                    port:gtkmm \
+                    port:libcdr-0.1 \
+                    port:aspell \
+                    port:gtkspell2
+depends_lib-append  port:popt \
+                    path:lib/libgc.${shext}:boehmgc \
+                    path:lib/libgomp.${shext}:libomp \
                     port:gdk-pixbuf2 \
                     port:gsl \
-                    port:gtkmm \
                     port:glibmm \
                     port:dbus-glib \
+                    port:ImageMagick \
                     port:lcms2 \
+                    port:libwpg-0.3 \
                     port:poppler \
                     port:boost \
-                    port:ImageMagick \
-                    port:libcdr-0.1 \
                     port:libexif \
                     port:libvisio-0.1 \
                     port:libwpg-0.3 \
-                    port:aspell \
-                    port:gtkspell2 \
                     port:potrace \
                     port:python${python_version} \
                     port:py${python_version}-lxml \
-                    port:py${python_version}27-numpy
-}
+                    port:py${python_version}-numpy
 platform linux {
-    depends_lib     \
-                    port:gdk-pixbuf2 \
-                    port:gsl \
-                    port:glibmm \
-                    port:lcms2 \
-                    port:poppler \
-                    port:boost \
-                    port:libexif \
-                    port:libvisio-0.1 \
-                    port:libwpg-0.3 \
-                    port:potrace
-    if {[string match *clang* ${configure.cxx}]} {
-        depends_lib-append \
-                    path:lib/libgomp.so:libomp
-    }
     depends_lib-append \
                     port:gettext
 }

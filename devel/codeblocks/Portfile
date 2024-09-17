@@ -53,7 +53,7 @@ depends_build-append \
 build.post_args-append -k
 destroot.post_args-append -k
 
-# build.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
+build.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
 destroot.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
 
 # FileManager requires "gamin" to be installed when using wxGTK,

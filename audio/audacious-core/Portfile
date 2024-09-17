@@ -4,6 +4,7 @@ PortSystem          1.0
 PortGroup           LTO 1.0
 PortGroup           meson 1.0
 PortGroup           locale_select 1.0
+PortGroup           from_ports_variant 1.0
 
 name                audacious-core
 set real_name       audacious
@@ -70,7 +71,8 @@ variant qt5 description {Add Qt5 support} {
 }
 
 variant gtk2 conflicts gtk3 description {Add GTK2 support} {
-    depends_lib-append      path:lib/pkgconfig/gtk+-2.0.pc:gtk2
+    fromPorts::depends      lib-append \
+                            path:lib/pkgconfig/gtk+-2.0.pc:gtk2
 
     configure.args-replace  -Dgtk=false \
                             -Dgtk=true

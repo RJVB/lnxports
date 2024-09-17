@@ -8,6 +8,7 @@ platform darwin {
 }
 PortGroup           LTO 1.0
 PortGroup           locale_select 1.0
+PortGroup           from_ports_variant 1.0
 
 github.setup        lathiat avahi 0.8 v
 categories          net devel
@@ -164,11 +165,10 @@ variant test description {Build tests} {
 }
 
 variant gtk description {Build with GTK2} {
-    platform darwin {
-        # assume we have everything on the host
-        depends_lib-append      port:gtk2 \
+    # assume we have everything on the host
+    fromPorts::depends lib-append \
+                                port:gtk2 \
                                 port:libglade2
-    }
     configure.args-replace      --disable-gtk \
                                 --enable-gtk
 }

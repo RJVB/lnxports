@@ -3,6 +3,7 @@
 PortSystem          1.0
 PortGroup           github 1.0
 PortGroup           locale_select 1.0
+PortGroup           from_ports_variant 1.0
 
 name                fontforge
 github.setup        fontforge fontforge 20170731
@@ -39,8 +40,10 @@ if {${os.platform} eq "darwin" && ${os.major} > 9} {
 
 depends_build       port:pkgconfig
 
-platform darwin {
-    depends_lib     path:lib/pkgconfig/cairo.pc:cairo \
+fromPorts::depends lib \
+                    port:libspiro
+depends_lib-append \
+                    path:lib/pkgconfig/cairo.pc:cairo \
                     port:readline \
                     port:freetype \
                     port:gettext \
@@ -48,28 +51,12 @@ platform darwin {
                     path:include/turbojpeg.h:libjpeg-turbo \
                     port:libiconv \
                     port:libpng \
-                    port:libspiro \
                     port:libuninameslist \
                     port:libxml2 \
                     path:lib/pkgconfig/pango.pc:pango \
                     port:potrace \
                     port:tiff \
                     port:zlib
-}
-platform linux {
-    depends_lib     port:readline \
-                    port:freetype \
-                    port:gettext \
-                    path:include/turbojpeg.h:libjpeg-turbo \
-                    port:libiconv \
-                    port:libpng \
-                    port:libuninameslist \
-                    port:libxml2 \
-                    path:lib/pkgconfig/pango.pc:pango \
-                    port:potrace \
-                    port:tiff \
-                    port:zlib
-}
 
 configure.args      --mandir=${prefix}/share/man \
                     --disable-python-scripting \
@@ -90,9 +77,16 @@ variant python27 description {Enable Python support (Python 2.7)} {
 }
 
 variant gui description {Enable GUI support} {
-#     depends_lib-append      port:xorg-libXi
+    fromPorts::depends lib-append \
+                            port:xorg-libXi \
+                            port:gtk2
     configure.args-replace  --without-x --with-x
     configure.args-append   --enable-gtk2-use
+}
+
+variant zmq description {Enable ZeroMQ support} {
+    configure.args-replace  --without-libzmq --with-libzmq
+    depends_lib-append      port:zmq
 }
 
 # post-destroot {

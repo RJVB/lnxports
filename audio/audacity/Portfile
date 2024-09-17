@@ -13,6 +13,7 @@ platform darwin {
 #>> RJVB
 PortGroup           compress_workdir 1.0
 PortGroup           LTO 1.0
+PortGroup           from_ports_variant 1.0
 #<< RJVB
 
 # placeholder name
@@ -618,9 +619,9 @@ platform darwin {
                         wxW/patch-cocoa-build.diff
 
     set wxtype      gtk2
-    # we take GTk2 deps from the system for now
-#     depends_lib-append \
-#                     port:gtk2
+    # we take GTk2 deps from the system, preferably
+    fromPorts::depends  lib-append \
+                        port:gtk2
     compiler.c_standard 2011
     compiler.cxx_standard 2014
 

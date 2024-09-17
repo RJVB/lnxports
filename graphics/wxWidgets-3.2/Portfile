@@ -6,6 +6,7 @@ PortGroup           select          1.0
 PortGroup           wxWidgets       1.0
 PortGroup           LTO             1.0
 PortGroup           preserve_runtime_libraries 1.0
+PortGroup           from_ports_variant 1.0
 
 variant cmake conflicts universal description {build using cmake} {}
 if {[variant_isset cmake] && ![variant_isset universal]} {
@@ -68,6 +69,8 @@ depends_lib-append  path:include/turbojpeg.h:libjpeg-turbo \
                     port:zlib \
                     port:libiconv \
                     port:expat
+fromPorts::depends  lib-append \
+                    port:gtk2
 platform linux {
     depends_build-append \
                     port:tiff-dev
