@@ -11,7 +11,7 @@ name                gcc12
 
 homepage            https://gcc.gnu.org/
 
-platforms           {darwin >= 10}
+platforms           {darwin >= 10} linux
 categories          lang
 maintainers         nomaintainer
 # an exception in the license allows dependents to not be GPL
@@ -335,9 +335,6 @@ if { ${subport} ne ${libcxxname} } {
     set LTO.disable_LTO yes
     PortGroup LTO                   1.0
     PortGroup preserve_runtime_libraries 1.0
-    if {${subport} eq "${name}"} {
-        configure.save_configure_cmd "install log"
-    }
 
     LTO.use_archive_helpers no
 ### MacStrop private
@@ -348,6 +345,13 @@ if { ${subport} ne ${libcxxname} } {
         configure.ccache no
     } else {
         ui_debug "Allowing +quick builds with ccache"
+    }
+
+    variant no_sanit description {don't include the sanitiser libraries} {
+        post-extract {
+            file delete -force ${worksrcpath}/libsanitizer.moved
+            file rename ${worksrcpath}/libsanitizer ${worksrcpath}/libsanitizer.moved
+        }
     }
 
 #    variant stdlib_flag conflicts libcxx description {Enable stdlib command line flag to select c++ runtime} {
@@ -575,7 +579,7 @@ if {${subport} eq "${name}"} {
 
         platform linux {
             # note: this assumes 64bit builds and breaks multi-arch builds (which we don't support anyway)
-            system "ls -l ${destroot}${prefix}/lib/lib64 "
+            catch {system "ls -l ${destroot}${prefix}/lib/lib64 "}
             foreach l [glob -nocomplain -directory ${destroot}${prefix}/lib/lib64 -tails *] {
                 file rename ${destroot}${prefix}/lib/lib64/${l} ${destroot}${prefix}/lib/gcc12/
             }
@@ -691,6 +695,9 @@ if {${subport} eq "${name}"} {
         configure.universal_ldflags
         configure.universal_args
     }
+### MacStrop private
+    configure.save_configure_cmd "install log"
+### MacStrop private
 }
 
 livecheck.type      regex
