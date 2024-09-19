@@ -350,7 +350,6 @@ if { ${subport} ne ${libcxxname} } {
     set LTO.disable_LTO yes
     PortGroup LTO                   1.0
     PortGroup preserve_runtime_libraries 1.0
-    configure.save_configure_cmd "install log"
 
     LTO.use_archive_helpers no
 ### MacStrop private
@@ -361,6 +360,13 @@ if { ${subport} ne ${libcxxname} } {
         configure.ccache no
     } else {
         ui_debug "Allowing +quick builds with ccache"
+    }
+
+    variant no_sanit description {don't include the sanitiser libraries} {
+        post-extract {
+            file delete -force ${worksrcpath}/libsanitizer.moved
+            file rename ${worksrcpath}/libsanitizer ${worksrcpath}/libsanitizer.moved
+        }
     }
 
 #    variant stdlib_flag conflicts libcxx description {Enable stdlib command line flag to select c++ runtime} {
@@ -779,6 +785,9 @@ if { ${subport} ne ${libcxxname} } {
         configure.universal_ldflags
         configure.universal_args
     }
+### MacStrop private
+    configure.save_configure_cmd "install log"
+### MacStrop private
 }
 
 livecheck.type      regex
