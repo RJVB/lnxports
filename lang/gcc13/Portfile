@@ -542,7 +542,7 @@ if {${subport} eq ${libgccname}} {
         file mkdir ${destroot}${prefix}/lib/libgcc.merged
         platform linux {
             # note: this assumes 64bit builds and breaks multi-arch builds (which we don't support anyway)
-            system "ls -l ${destroot}${prefix}/lib/lib64 "
+            catch {system "ls -l ${destroot}${prefix}/lib/lib64 "}
             foreach l [glob -nocomplain -directory ${destroot}${prefix}/lib/lib64 -tails *] {
                 file rename ${destroot}${prefix}/lib/lib64/${l} ${destroot}${prefix}/lib/libgcc/
             }
