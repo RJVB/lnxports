@@ -10,7 +10,7 @@ platform linux {
 }
 
 name                binutils
-if {${os.platform} eq "linux" && ${build_arch} eq "x86_64"} {
+if {${build_arch} eq "x86_64"} {
     version         2.43.1
 
     checksums       rmd160  6f8ed9d308d81752726f80939826621ed441d11b \
