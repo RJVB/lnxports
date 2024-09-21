@@ -673,7 +673,7 @@ if {${subport} eq "${name}"} {
             "CXXFLAGS_FOR_TARGET=\"-g ${configure.cxxflags} ${LTO.cpuflags}\"" \
             "do-compare=/bin/true" \
             {*}${preargs}
-        depends_build port:gmake
+        depends_build-append port:gmake
         build.cmd ${prefix}/bin/gmake
     }
     configure.cc-append [get_canonical_archflags]
