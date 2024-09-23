@@ -22,16 +22,16 @@ long_description    {*}${description}, including front ends for \
                     C, C++, Objective-C, Objective-C++ and Fortran.
 
 # Remember to reset all revision increments below to 0 on new versions
-version             13.2.0 ; revision 6
+version             13.3.0
 
 set libgccname      lib${name}
 subport             ${libgccname} { revision [ expr ${revision} + 0 ] }
 
 set libcxxname      ${name}-libcxx
 
-checksums           rmd160  a6d646ed9765f973d3f63ef560edf4a50cf686c3 \
-                    sha256  e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da
-#                     size    87858592
+checksums           rmd160  a01df0d39af53b8bef8ff42f87469212589984ec \
+                    sha256  0845e9621c9543a13f484e94584a49ffc0129970e9914624235fc1d061a0c083
+#                     size    87909952
 
 # Primary releases
 master_sites        https://ftpmirror.gnu.org/gcc/gcc-${version}/ \
@@ -206,19 +206,26 @@ platform darwin {
                     OTOOL64=${prefix}/bin/otool
 }
 
-if { ${os.platform} eq "darwin" } {
+#if { ${os.platform} eq "darwin" } {
     # Patch generated from https://github.com/iains/gcc-13-branch
     # git diff --no-prefix releases/gcc-13.1.0 gcc-13.1-darwin-r0
     patchfiles-append       patch-darwin-gcc-${version}.diff
     # Do not abort if 'system' headers in /opt/local/include/gcc are missing
     patchfiles-append       darwin/patch-disable-sys-header-missing-abort.diff
     # GCC fixinc work-around for sys/ucred.h on OSX10.14.4 no longer seems to work ???
-    if { ${os.major} == 18 } {
+    if { ${os.platform} eq "darwin" && ${os.major} == 18 } {
         patchfiles-append   darwin/patch-OSX10.14-ucred-atomic-define.diff
     }
-} else {
-    patchfiles-append   patch-linux-gcc-configure.diff
-}
+#} else {
+    patchfiles-append   patch-linux-gcc-configure.diff \
+                        patch-linux-add-macports-paths.diff
+    if {${subport} eq "${name}"} {
+        post-patch {
+            # for now we're hard-coding our mp_extra_rpath
+            reinplace "s|@MP_EXTRA_RPATH@|${mp_extra_rpath}|g" ${worksrcpath}/gcc/gcc.cc
+        }
+    }
+#}
 
 # Since GCC 7.4.0, during configure, it detects features supported by target-as.
 # On the other hand, MacPorts cctools contain a proxy for 'as' that runs system
@@ -283,9 +290,10 @@ pre-configure {
 proc libcxx_incpath {} {
     global prefix name
     if {[variant_exists libcxx] && [variant_isset libcxx]} {
-        return ${prefix}/include/libcxx/v1
+        # this is where port:libcxx puts its headers on Linux!
+        return /usr/include/c++/v1
     } else {
-        return ${prefix}/libexec/${name}/libc++/include/c++/v1
+        return -code error "Internal Portfile error"
     }
 }
 
@@ -363,7 +371,7 @@ if { ${subport} ne ${libcxxname} } {
     }
 
     variant no_sanit description {don't include the sanitiser libraries} {
-        post-extract {
+        post-patch {
             file delete -force ${worksrcpath}/libsanitizer.moved
             file rename ${worksrcpath}/libsanitizer ${worksrcpath}/libsanitizer.moved
         }
@@ -386,12 +394,17 @@ if { ${subport} ne ${libcxxname} } {
     if {[variant_exists libcxx] && [variant_isset libcxx]} {
         if {${subport} eq ${name}} {
             depends_build-append \
+                port:libcxx \
                 port:libcxx-dev
-            platform darwin {
+            if {${os.platform} eq "darwin"} {
                 depends_run-append \
                     port:${libcxxname}
                 require_active_variants port:${libcxxname} libcxx
                 require_active_variants libcxx-dev macports_libcxx
+            } else {
+                depends_run-append \
+                    port:libcxx \
+                    port:libcxx-dev
             }
         }
         patchfiles-append \
@@ -630,6 +643,8 @@ if {${subport} eq ${name}} {
     # RJVB : should we add an explicit depends_run on port:${libgccname}?
     require_active_variants libgcc {} {gcc7 gcc8 gcc9 gcc10 gcc11 gcc12}
 
+    stdcxxabi.dependencies_concerned_by_ABI port:libgcc${major}
+
     post-destroot {
 
         file delete ${destroot}${prefix}/share/info/dir
@@ -662,17 +677,26 @@ if {${subport} eq ${name}} {
             }
         }
 
+        # the MacPorts activation process breaks hardlinks on Linux; avoid that
+        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/x86_64-pc-linux-gnu-c++-mp-12
+        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/g++-mp-12
+        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/c++-mp-12
+        ln -sf x86_64-pc-linux-gnu-gcc-12.3.0 ${destroot}${prefix}/bin/gcc-mp-12
+        foreach b {gcc-ar gcc-nm gcc-ranlib gfortran} {
+            ln -sf x86_64-pc-linux-gnu-${b}-mp-12 ${destroot}${prefix}/bin/${b}-mp-12
+        }
+
         if {[variant_isset oldabi]} {
-            system -W ${destroot}${prefix}/include/gcc13 "${patch.cmd} -Np0 -i ${filespath}/patch-force-oldcxxabi.diff"
+            system -W ${destroot}${prefix} "${patch.cmd} -Np0 -i ${filespath}/patch-force-oldcxxabi.diff"
         }
     }
 
     select.group        gcc
     select.file         ${filespath}/mp-${name}
-
 }
 
 if { ${subport} ne ${libcxxname} } {
+# this block is for port:gccXY and port:libgccXY (if libgccXY is not a shim)
 
     post-extract {
         xinstall -m 644 ${worksrcpath}/config/bootstrap-O3.mk ${worksrcpath}/config/bootstrap-Os.mk
@@ -682,14 +706,10 @@ if { ${subport} ne ${libcxxname} } {
     post-destroot {
         # Ensure all dylibs in destroot have our extra rpath added ..
         # https://trac.macports.org/ticket/65503
-        if {${subport} eq ${name}} {
-            ui_warn "Port ${subport} rpath massaging not handled yet"
-        } else {
-            set nrpath "${prefix}/lib:${mp_extra_rpath}"
-            foreach dlib [ exec find ${destroot}${prefix} -name "*.so" ] {
-                ui_debug "Ensuring DYLIB '${dlib}' has RPATH '${mp_extra_rpath}'"
-                catch {system "patchelf --set-rpath ${nrpath} ${dlib}"}
-            }
+        set nrpath "${prefix}/lib:${mp_extra_rpath}:${prefix}/lib/${name}"
+        foreach dlib [ exec find ${destroot}${prefix} -name "*.so" ] {
+            ui_debug "Ensuring DYLIB '${dlib}' has RPATH '${mp_extra_rpath}'"
+            catch {system "patchelf --set-rpath ${nrpath} ${dlib}"}
         }
     }
 
@@ -729,7 +749,7 @@ if { ${subport} ne ${libcxxname} } {
         "CPP=${configure.cc} -E" \
         "CPP_FOR_BUILD=${configure.cc} -E" \
         "CXXCPP=${configure.cxx} -E"
-    if {[variant_exists libcxx] && [variant_isset libcxx] && ![variant_isset quick]} {
+    if {${subport} eq "${name}" && [variant_exists libcxx] && [variant_isset libcxx] && ![variant_isset quick]} {
         post-patch {
             reinplace "s|BOOT_CFLAGS= -g -O2|BOOT_CFLAGS= -Os|g" ${worksrcpath}/Makefile.in
         }
@@ -763,7 +783,7 @@ if { ${subport} ne ${libcxxname} } {
             "CXXFLAGS_FOR_TARGET=\"-g ${configure.cxxflags} ${LTO.cpuflags}\"" \
             "do-compare=/bin/true" \
             {*}${preargs}
-        depends_build port:gmake
+        depends_build-append port:gmake
         build.cmd ${prefix}/bin/gmake
     }
     configure.cc-append [get_canonical_archflags]
