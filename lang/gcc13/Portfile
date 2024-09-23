@@ -635,11 +635,6 @@ if {${subport} eq ${libgccname}} {
 
 if {${subport} eq ${name}} {
 
-    pre-fetch {
-        ui_error "this port has been disabled for now"
-        return -code error "Port disabled."
-    }
-
     # RJVB : should we add an explicit depends_run on port:${libgccname}?
     require_active_variants libgcc {} {gcc7 gcc8 gcc9 gcc10 gcc11 gcc12}
 
@@ -678,16 +673,23 @@ if {${subport} eq ${name}} {
         }
 
         # the MacPorts activation process breaks hardlinks on Linux; avoid that
-        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/x86_64-pc-linux-gnu-c++-mp-12
-        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/g++-mp-12
-        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/c++-mp-12
-        ln -sf x86_64-pc-linux-gnu-gcc-12.3.0 ${destroot}${prefix}/bin/gcc-mp-12
-        foreach b {gcc-ar gcc-nm gcc-ranlib gfortran} {
-            ln -sf x86_64-pc-linux-gnu-${b}-mp-12 ${destroot}${prefix}/bin/${b}-mp-12
+        set target [exec ${worksrcpath}/config.guess]
+        if {[file exists ${destroot}${prefix}/bin/${target}-c++-mp-${major}]} {
+            ln -sf ${target}-g++-mp-${major} ${destroot}${prefix}/bin/${target}-c++-mp-${major}
+            ln -sf ${target}-g++-mp-${major} ${destroot}${prefix}/bin/g++-mp-${major}
+            ln -sf ${target}-g++-mp-${major} ${destroot}${prefix}/bin/c++-mp-${major}
+            ln -sf ${target}-gcc-${major}.3.0 ${destroot}${prefix}/bin/gcc-mp-${major}
+            foreach b {gcc-ar gcc-nm gcc-ranlib gfortran} {
+                ln -sf ${target}-${b}-mp-${major} ${destroot}${prefix}/bin/${b}-mp-${major}
+            }
+        } else {
+            ui_warn "Mis-guessed the target \"triplet\" as \"${target}\"."
+            ui_msg "The files below (if any) will be copies of each other instead of symlinks:"
+            ui_msg "[file -nocomplain ${destroot}${prefix}/bin/${target}-*-mp-${major}]"
         }
 
         if {[variant_isset oldabi]} {
-            system -W ${destroot}${prefix} "${patch.cmd} -Np0 -i ${filespath}/patch-force-oldcxxabi.diff"
+            system -W ${destroot}${prefix}/include/gcc${major} "${patch.cmd} -Np0 -i ${filespath}/patch-force-oldcxxabi.diff"
         }
     }
 
