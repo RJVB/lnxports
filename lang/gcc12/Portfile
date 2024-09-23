@@ -551,12 +551,19 @@ if {${subport} eq ${name}} {
         }
 
         # the MacPorts activation process breaks hardlinks on Linux; avoid that
-        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/x86_64-pc-linux-gnu-c++-mp-12
-        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/g++-mp-12
-        ln -sf x86_64-pc-linux-gnu-g++-mp-12 ${destroot}${prefix}/bin/c++-mp-12
-        ln -sf x86_64-pc-linux-gnu-gcc-12.3.0 ${destroot}${prefix}/bin/gcc-mp-12
-        foreach b {gcc-ar gcc-nm gcc-ranlib gfortran} {
-            ln -sf x86_64-pc-linux-gnu-${b}-mp-12 ${destroot}${prefix}/bin/${b}-mp-12
+        set target [exec ${worksrcpath}/config.guess]
+        if {[file exists ${destroot}${prefix}/bin/${target}-c++-mp-12]} {
+            ln -sf ${target}-g++-mp-12 ${destroot}${prefix}/bin/${target}-c++-mp-12
+            ln -sf ${target}-g++-mp-12 ${destroot}${prefix}/bin/g++-mp-12
+            ln -sf ${target}-g++-mp-12 ${destroot}${prefix}/bin/c++-mp-12
+            ln -sf ${target}-gcc-12.3.0 ${destroot}${prefix}/bin/gcc-mp-12
+            foreach b {gcc-ar gcc-nm gcc-ranlib gfortran} {
+                ln -sf ${target}-${b}-mp-12 ${destroot}${prefix}/bin/${b}-mp-12
+            }
+        } else {
+            ui_warn "Mis-guessed the target \"triplet\" as \"${target}\"."
+            ui_msg "The files below (if any) will be copies of each other instead of symlinks:"
+            ui_msg "[file -nocomplain ${destroot}${prefix}/bin/${target}-*-mp-12]"
         }
 
         if {[variant_isset oldabi]} {
