@@ -1,5 +1,8 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
 PortSystem              1.0
 PortGroup               compiler_blacklist_versions 1.0
+set LTO.allow_ThinLTO no
 PortGroup               LTO 1.0
 PortGroup               cmake 1.1
 # Do not propagate c/c++ standards as set by base
@@ -16,19 +19,14 @@ platform darwin {
 
 name                    libcxx-devel
 epoch                   1
-set llvm_version        16
-version                 16.0.6
+set llvm_version        17
+version                 17.0.6
 categories              lang
-platforms               darwin
+platforms               darwin linux
 license                 MIT NCSA
 maintainers             gmail.com:rjvbertin
 description             libc++ is a new implementation of the C++ standard library with support for C++11 and portions of C++14.
-long_description        ${description} \
-                        Because objects cannot be passed between different versions of the C++ runtime, this port must \
-                        replace the host version in order to be used.  On Snow Leopard and earlier, this is done \
-                        automatically because there is no existing host version of this library.  On Lion and later, \
-                        users must build the port with +replacemnt_libcxx and install the root manually if they wish \
-                        to replace the existing host implementation.
+long_description        ${description}
 
 homepage                http://libcxx.llvm.org/
 
@@ -41,16 +39,15 @@ livecheck.regex         download.html\#(\\d+\\.\\d+(\\.\\d+)+)
 use_xz                  yes
 distname                llvm-project-${version}.src
 
-checksums               rmd160  b86eeac2e1dd052a182022109374372844934cfc \
-                        sha256  ce5e71081d17ce9e86d7cbcfa28c4b04b9300f8fb7e78422b1feb6bc52c3028e
-#                         size    118013488
-
+checksums               rmd160  10f44d5a8e3d0d5fc1a1961a8adaac945733ec07 \
+                        sha256  58a8818c60e6627064f312dbf46c02d9949956558340938b71cf731ad8bc0813
+#                         size    127838860
 
 set suffix              mp-${llvm_version}
 
-compiler.blacklist-append *gcc* clang
+compiler.blacklist-append clang
 # pick the newest available (= installed) port:clang-XY compiler:
-foreach clv {3.9 4.0 5.0 6.0 7.0 8.0 9.0 10 11 12 13 14 15 16 17 18 19 20} {
+foreach clv {8.0 9.0 10 11 12 13 14 15 16 17 18 19 20} {
     if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
         compiler.whitelist-prepend macports-clang-${clv}
     }
@@ -70,11 +67,33 @@ if {[string match *clang++-mp-* ${configure.cxx}]} {
             }
         }
     }
-} else {
+} elseif {![string match macports-gcc* ${configure.compiler}]} {
     pre-configure {
-        ui_error "This port needs to be built with a clang compiler from MacPorts (>= 3.9)"
+        ui_error "This port needs to be built with a gcc or clang compiler from MacPorts (clang >= 8.0)"
         return -code error "install a MacPorts clang compiler or invoke the install with `configure.compiler=macports-clang-XY`"
     }
+}
+
+variant pstl description "Build libc++ with ParallelSTL support (TBB backend)" {}
+variant static_abi description {link the ABI library (libstdc++) statically} {}
+
+variant builtwith description {Label the install with the compiler used} {}
+if {[variant_isset builtwith]} {
+	set usedCompiler [string map {"-" "_"} [file tail ${configure.cc}]]
+	variant ${usedCompiler} requires builtwith description "placeholder variant to record the compiler used" {
+		pre-configure {
+			ui_warn "This is just a placeholder variant"
+		}
+	}
+	default_variants-append +${usedCompiler}
+}
+
+PortGroup               devport 1.0
+create_devport          port:${name}
+
+if {![is_mainport]} {
+    # nothing else to be done
+    return
 }
 
 if {${os.platform} eq "linux"} {
@@ -88,14 +107,32 @@ if {${os.platform} eq "linux"} {
 
     patch.pre_args -p1
     patchfiles-append \
-        0010-compiler-rt-cmake-config-ix.cmake-was-Leopard-No-ASA.patch \
-        0011-Fix-missing-long-long-math-prototypes-when-using-the.patch \
-        0012-compiler-rt-add-some-defs-missing-in-older-SDKs.patch \
-        0016-10.10-and-less-compiler-rt-find-macosx-sdk.patch \
-        0017-10.6-and-less-libcxxabi-work-around-no-reexported_symbo.patch \
-        0017-10.6-and-less-libcxx-work-around-no-reexported_symbo.patch \
-        0021-10.6-and-less-libcxx-disable-Availability-tests.patch \
-        0024-10.5-and-less-compiler-rt-work-around-no-libdispatch.patch \
+		0010-compiler-rt-cmake-config-ix.cmake-was-Leopard-No-ASA.patch \
+		0011-Fix-missing-long-long-math-prototypes-when-using-the.patch \
+		0012-compiler-rt-add-some-defs-missing-in-older-SDKs.patch
+	if {${os.platform} eq "darwin" && ${os.major} < 14} {
+		patchfiles-append \
+			0016-10.10-and-less-compiler-rt-find-macosx-sdk.patch
+	}
+	if {${os.platform} eq "darwin" && ${os.major} < 11} {
+		patchfiles-append \
+			0017-10.6-and-less-libcxxabi-work-around-no-reexported_symbo.patch \
+			0017-10.6-and-less-libcxx-work-around-no-reexported_symbo.patch \
+			0021-10.6-and-less-libcxx-disable-Availability-tests.patch
+	}
+	if {${os.platform} eq "darwin" && ${os.major} < 10} {
+		patchfiles-append \
+			0024-10.5-and-less-compiler-rt-work-around-no-libdispatch.patch \
+			0027-libcxx-link-gcc_s.1-on-macOS-before-10.6.patch \
+			0028-libcxx-use-malloc-free-only-on-macOS-before-10.6.patch \
+			49d2071572d484a2b5dc356f59050bb173c8c77c-inverse.patch
+	}
+	if {${os.platform} eq "darwin" && ${os.major} <= 16} {
+		# https://github.com/llvm/llvm-project/issues/64226
+		patchfiles-append \
+			0042-mbstate_t-not-defined.patch
+	}
+    patchfiles-append \
         patch-accept-build_types.diff \
         patch-config-availability+ABIhiding.diff \
         patch-experimental-no-lto.diff
@@ -103,22 +140,26 @@ if {${os.platform} eq "linux"} {
     patchfiles-append \
         patch-strings-benchmark.diff \
         patch-cheaper-variant-benchmark.diff
+    # clang-13/work/build/include/c++/v1/optional:224:5: error: destructor cannot be marked constexpr
+    #     _LIBCPP_CONSTEXPR_AFTER_CXX17 ~__optional_destruct_base()
+    patchfiles-append patch-no-const_expr_dtor.diff
 
-# https://trac.macports.org/ticket/67686
-# revert commit that breaks rpath linkages in clang runtime
-if {${os.platform} eq "darwin"} {
-    patchfiles-append b98da4c71edda3df0a0555b1ab63ec52e92252b4-inverse.patch
-}
+    # provide bits/cxxabi_init_exceptions.h
+    # see https://discourse.llvm.org/t/libc-compiled-with-libstdc-abi-and-cxxabi-h-std-typeinfo/56553
+    patchfiles-append \
+        patch-provide-cxxabi_init_exceptions.diff
+
+    # make the +benchmark_mpstdlibcxx variant possible:
+    patchfiles-append \
+        patch-benchmark_mplibstdcxx.diff
+
+	# https://trac.macports.org/ticket/67686
+	# revert commit that breaks rpath linkages in clang runtime
+	if {${os.platform} eq "darwin"} {
+    		patchfiles-append b98da4c71edda3df0a0555b1ab63ec52e92252b4-inverse.patch
+	}
 
 if {${os.platform} eq "darwin" && ${os.major} < 12} {
-    # On OSX10.7 and older revert call to add_security_warnings as fails with
-    #   add_security_warnings Function invoked with incorrect arguments
-    post-patch {
-        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
-            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
-            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
-    }
-
     # On OSX10.7 and older revert call to add_security_warnings as fails with
     #   add_security_warnings Function invoked with incorrect arguments
     post-patch {
@@ -131,11 +172,12 @@ if {${os.platform} eq "darwin" && ${os.major} < 12} {
 # make some space, but only after the patching so it's easier to share
 # patchfiles with the main llvm ports.
 post-patch {
-	file delete -force ${worksrcpath}/clang
-	file delete -force ${worksrcpath}/llvm/lib
-	file delete -force ${worksrcpath}/llvm/test
-	file delete -force ${worksrcpath}/polly
-	file delete -force ${worksrcpath}/lldb
+    ui_info "Cleaning up unneeded directories"
+    file delete -force ${worksrcpath}/clang
+    file delete -force ${worksrcpath}/llvm/lib
+    file delete -force ${worksrcpath}/llvm/test
+    file delete -force ${worksrcpath}/polly
+    file delete -force ${worksrcpath}/lldb
 }
 
     cmake.install_prefix \
@@ -154,7 +196,6 @@ post-patch {
         set abi_header_dirs {}
     }
 
-#                         -DLLVM_PATH=${worksrcpath}
     configure.args-append \
                         -DLLVM_ENABLE_RUNTIMES=libcxx \
                         -DLLVM_TARGETS_TO_BUILD="X86\;AMDGPU" \
@@ -167,17 +208,36 @@ post-patch {
                         -DLIBCXX_LINK_TESTS_WITH_SHARED_LIBCXXABI=ON \
                         -DLIBCXX_INSTALL_LIBRARY=ON
 
-    cmake.save_configure_cmd "log too"
+    cmake.save_configure_cmd "install log"
     if {${build.jobs} ne 1} {
         build.post_args-append -wk
     }
 
-    variant benchmark_libcxx description {build the benchmark against libc++} {
+    if {[variant_isset pstl]} {
+        depends_lib-append \
+                        port:onetbb
+        configure.args-replace \
+                        -DLLVM_ENABLE_RUNTIMES=libcxx \
+                        -DLLVM_ENABLE_RUNTIMES="pstl\;libcxx"
+        configure.args-append \
+                        -DPSTL_PARALLEL_BACKEND=tbb \
+                        -DLIBCXX_ENABLE_PARALLEL_ALGORITHMS=ON \
+                        -DPSTL_HIDE_FROM_ABI_PER_TU=ON
+        cmake.install_rpath-append \
+                        ${prefix}/libexec/onetbb/lib
+    }
+
+    variant benchmark_libcxx conflicts benchmark_mplibstdcxx description {build the benchmark against libc++ (no need to install with this variant!)} {
         configure.args-replace \
                         -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++ \
                         -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libc++
     }
-    variant static_abi description {link the ABI library (libstdc++) statically} {
+    variant benchmark_mplibstdcxx conflicts benchmark_libcxx description {build the benchmark against macports-libstdc++ (no need to install with this variant!)} {
+        configure.args-append \
+                        -DLIBCXX_BENCHMARK_NATIVE_STDLIB_FROM_MACPORTS=ON
+    }
+
+    if {[variant_isset static_abi]} {
         configure.args-append \
                         -DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON
     }
@@ -186,8 +246,49 @@ post-patch {
     cmake.source_dir    ${worksrcpath}/runtimes
     destroot.violate_mtree yes
 
+    post-destroot {
+## With libc++ v13 we moved the pstl headers into the libc++ header dir but somewhere after that
+## version upstream put a modified subsection of the pstl headers there, and kept a larger selection
+## in the toplevel include dir. Seems best not to meddle with that anymore.
+#         if {[variant_isset pstl]} {
+#             foreach i [glob ${destroot}/usr/include/*pstl*] {
+#                 # move the ParellelSTL headers into the libc++ include dir so they're found when
+#                 # that directory is added to the compiler's header search path. Upstream appear to
+#                 # be making this same merger.
+#                 file rename ${i} ${destroot}/usr/include/c++/v1
+#             }
+#         }
+        # be somewhat naughty: install system-wide links to the crucial OneTBB dependencies: without
+        # those, using ParallelSTL would require pointing the build to the port:onetbb resources
+        set otbpref ${prefix}/libexec/onetbb
+        foreach d [glob ${otbpref}/include/*] {
+            ln -s ${d} ${destroot}/usr/include/
+        }
+        foreach d [glob -dir ${otbpref}/lib/ *.so libtbb.so.12] {
+            ln -s ${d} ${destroot}/usr/lib/
+        }
+        xinstall -m 755 -d ${destroot}/usr/lib/pkgconfig/
+        foreach d [glob ${otbpref}/lib/pkgconfig/*] {
+            ln -s ${d} ${destroot}/usr/lib/pkgconfig/
+        }
+
+        # there is probably no standard content at all...
+        register_devport_standard_content
+        append_to_devport_standard_content ${cmake.install_prefix}/include
+        append_to_devport_standard_content ${cmake.install_prefix}/lib/*.so
+        append_to_devport_standard_content ${cmake.install_prefix}/lib/*.a
+        append_to_devport_standard_content ${cmake.install_prefix}/lib/cmake
+        create_devport_content_archive
+    }
+
     test.run            yes
-    test.dir            ${configure.dir}
-    test.target         check-libcxx
+    test.dir            ${build.dir}
+    test.target         cxx-benchmarks
+    post-test {
+        system -W ${build.dir}/libcxx/benchmarks "time ./algorithms.libcxx.out --benchmark_repetitions=1 --benchmark_filter='_1$'\;\
+            time ./algorithms.native.out --benchmark_repetitions=1 --benchmark_filter='_1$' \;\
+            time ./algorithms.libcxx.out --benchmark_repetitions=1 --benchmark_filter='_262144$'\;\
+            time ./algorithms.native.out --benchmark_repetitions=1 --benchmark_filter='_262144$'"
+    }
 
 }

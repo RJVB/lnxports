@@ -1,56 +1,8 @@
-diff --git a/clang/CMakeLists.txt b/clang/CMakeLists.txt
-index 090cfa3..3c0ff9d 100644
---- a/clang/CMakeLists.txt
-+++ b/clang/CMakeLists.txt
-@@ -906,7 +906,7 @@ if (CLANG_BOLT_INSTRUMENT AND NOT LLVM_BUILD_INSTRUMENTED)
-                 -DCMAKE_CXX_COMPILER=${CLANGXX_INSTRUMENTED}
-                 -DCMAKE_ASM_COMPILER=${CLANG_INSTRUMENTED}
-                 -DCMAKE_ASM_COMPILER_ID=Clang
--                -DCMAKE_BUILD_TYPE=Release
-+                -DCMAKE_BUILD_TYPE=MacPorts
-                 -DLLVM_ENABLE_PROJECTS=${CLANG_BOLT_INSTRUMENT_PROJECTS}
-                 -DLLVM_TARGETS_TO_BUILD=${LLVM_TARGETS_TO_BUILD}
-     BUILD_COMMAND ${CMAKE_COMMAND} --build ${BINARY_DIR}
-diff --git a/libc/benchmarks/CMakeLists.txt b/libc/benchmarks/CMakeLists.txt
-index f4e1ff6..bb1056d 100644
---- a/libc/benchmarks/CMakeLists.txt
-+++ b/libc/benchmarks/CMakeLists.txt
-@@ -59,7 +59,7 @@ ExternalProject_Add(google-benchmark-libc
-           -DBENCHMARK_ENABLE_WERROR:BOOL=${LLVM_ENABLE_WERROR}
-           -DBENCHMARK_FORCE_WERROR:BOOL=OFF
-           -DBENCHMARK_USE_LIBCXX:BOOL=OFF
--          -DCMAKE_BUILD_TYPE:STRING=RELEASE
-+          -DCMAKE_BUILD_TYPE:STRING=MacPorts
-           -DCMAKE_C_COMPILER:STRING=${CMAKE_C_COMPILER}
-           -DCMAKE_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}
-           -DCMAKE_CXX_FLAGS:STRING=${BENCHMARK_LIBC_COMPILE_FLAGS}
-diff --git a/libcxx/benchmarks/CMakeLists.txt b/libcxx/benchmarks/CMakeLists.txt
-index 7eb76ac..e07b4dd 100644
---- a/libcxx/benchmarks/CMakeLists.txt
-+++ b/libcxx/benchmarks/CMakeLists.txt
-@@ -40,7 +40,7 @@ ExternalProject_Add(google-benchmark-libcxx
-         CMAKE_CACHE_ARGS
-           -DCMAKE_C_COMPILER:STRING=${CMAKE_C_COMPILER}
-           -DCMAKE_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}
--          -DCMAKE_BUILD_TYPE:STRING=RELEASE
-+          -DCMAKE_BUILD_TYPE:STRING=MacPorts
-           -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
-           -DCMAKE_CXX_FLAGS:STRING=${BENCHMARK_LIBCXX_COMPILE_FLAGS}
-           -DBENCHMARK_USE_LIBCXX:BOOL=ON
-@@ -66,7 +66,7 @@ if (LIBCXX_BENCHMARK_NATIVE_STDLIB)
-           -DCMAKE_C_COMPILER:STRING=${CMAKE_C_COMPILER}
-           -DCMAKE_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}
-           -DCMAKE_CXX_FLAGS:STRING=${BENCHMARK_NATIVE_TARGET_FLAGS}
--          -DCMAKE_BUILD_TYPE:STRING=RELEASE
-+          -DCMAKE_BUILD_TYPE:STRING=MacPorts
-           -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
-           -DBENCHMARK_ENABLE_TESTING:BOOL=OFF)
- endif()
 diff --git a/libcxxabi/CMakeLists.txt b/libcxxabi/CMakeLists.txt
-index 8f48d40..6c5cd31 100644
+index 6de2b5a..c49be65 100644
 --- a/libcxxabi/CMakeLists.txt
 +++ b/libcxxabi/CMakeLists.txt
-@@ -342,11 +342,11 @@ if (LIBCXXABI_ENABLE_ASSERTIONS)
+@@ -358,11 +358,11 @@ if (LIBCXXABI_ENABLE_ASSERTIONS)
    endif()
    # On Release builds cmake automatically defines NDEBUG, so we
    # explicitly undefine it:
@@ -64,23 +16,10 @@ index 8f48d40..6c5cd31 100644
      list(APPEND LIBCXXABI_COMPILE_FLAGS -DNDEBUG)
    endif()
  endif()
-diff --git a/llvm/CMakeLists.txt b/llvm/CMakeLists.txt
-index 2b9315c..3454d88 100644
---- a/llvm/CMakeLists.txt
-+++ b/llvm/CMakeLists.txt
-@@ -378,7 +378,7 @@ string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
- 
- if (CMAKE_BUILD_TYPE AND
-     NOT uppercase_CMAKE_BUILD_TYPE MATCHES "^(DEBUG|RELEASE|RELWITHDEBINFO|MINSIZEREL)$")
--  message(FATAL_ERROR "Invalid value for CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-+  message(STATUS "Custom value for CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
- endif()
- 
- # LLVM_INSTALL_PACKAGE_DIR needs to be declared prior to adding the tools
-diff --git a/openmp/runtime/CMakeLists.txt b/openmp/runtime/CMakeLists.txt
+diff --git b/openmp/runtime/CMakeLists.txt.orig a/openmp/runtime/CMakeLists.txt
 index 43299dd..e1e8677 100644
---- a/openmp/runtime/CMakeLists.txt
-+++ b/openmp/runtime/CMakeLists.txt
+--- b/openmp/runtime/CMakeLists.txt.orig
++++ a/openmp/runtime/CMakeLists.txt
 @@ -195,7 +195,7 @@ set(RELEASE_BUILD FALSE)
  set(DEBUG_BUILD FALSE)
  set(RELWITHDEBINFO_BUILD FALSE)
@@ -90,3 +29,17 @@ index 43299dd..e1e8677 100644
    set(RELEASE_BUILD TRUE)
  elseif("${uppercase_CMAKE_BUILD_TYPE}" STREQUAL "DEBUG")
    set(DEBUG_BUILD TRUE)
+
+diff --git b/llvm/CMakeLists.txt.orig a/llvm/CMakeLists.txt
+index 79de9eb..563cb38 100644
+--- b/llvm/CMakeLists.txt.orig
++++ a/llvm/CMakeLists.txt
+@@ -381,7 +381,7 @@ string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
+ 
+ if (CMAKE_BUILD_TYPE AND
+     NOT uppercase_CMAKE_BUILD_TYPE MATCHES "^(DEBUG|RELEASE|RELWITHDEBINFO|MINSIZEREL)$")
+-  message(WARNING "Unknown value for CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
++  message(STATUS "Custom value for CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+ endif()
+ 
+ # LLVM_INSTALL_PACKAGE_DIR needs to be declared prior to adding the tools
