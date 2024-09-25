@@ -89,10 +89,8 @@ if {[variant_isset builtwith]} {
 	default_variants-append +${usedCompiler}
 }
 
-if {${name} eq "libcxx"} {
-    PortGroup           devport 1.0
-    create_devport      port:${name}
-}
+PortGroup               devport 1.0
+create_devport          port:${name}
 
 if {![is_mainport]} {
     # nothing else to be done
