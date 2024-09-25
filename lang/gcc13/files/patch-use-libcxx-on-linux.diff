@@ -90,3 +90,37 @@ index 727282f..3912d25 100644
  do-compare3 = $(do-compare)
  
  # -----------------------------------------------
+diff --git gcc/cp/orig.g++spec.cc gcc/cp/g++spec.cc
+index 2e1e06e..d7aec02 100644
+--- gcc/cp/orig.g++spec.cc
++++ gcc/cp/g++spec.cc
+@@ -60,8 +60,12 @@ along with GCC; see the file COPYING3.  If not see
+ #endif
+ 
+ #ifndef LIBCXXABI
++#ifdef linux
++#define LIBCXXABI NULL
++#else
+ #define LIBCXXABI "c++abi"
+ #endif
++#endif
+ #ifndef LIBCXXABI_PROFILE
+ #define LIBCXXABI_PROFILE LIBCXXABI
+ #endif
+diff --git gcc/m2/orig.gm2spec.cc gcc/m2/gm2spec.cc
+index 75a6ed3..2e75132 100644
+--- gcc/m2/orig.gm2spec.cc
++++ gcc/m2/gm2spec.cc
+@@ -89,8 +89,12 @@ along with GNU Modula-2; see the file COPYING3.  If not see
+ #endif
+ 
+ #ifndef LIBCXXABI
++#ifdef linux
++#define LIBCXXABI NULL
++#else
+ #define LIBCXXABI "c++abi"
+ #endif
++#endif
+ #ifndef LIBCXXABI_PROFILE
+ #define LIBCXXABI_PROFILE LIBCXXABI
+ #endif

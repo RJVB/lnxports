@@ -22,7 +22,7 @@ long_description    {*}${description}, including front ends for \
                     C, C++, Objective-C, Objective-C++ and Fortran.
 
 # Remember to reset all revision increments below to 0 on new versions
-version             13.3.0
+version             13.3.0 ; revision 1
 
 set libgccname      lib${name}
 subport             ${libgccname} { revision [ expr ${revision} + 0 ] }
