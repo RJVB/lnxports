@@ -25,7 +25,7 @@ categories              lang
 platforms               darwin
 license                 MIT NCSA
 maintainers             gmail.com:rjvbertin
-description             libc++ is a new implementation of the C++ standard library with support for C++11 and portions of C++14.
+description             libc++ is the LLVM Project's implementation of the C++ standard library with support for C++11 and later.
 long_description        ${description}
 
 homepage                http://libcxx.llvm.org/
