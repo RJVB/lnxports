@@ -20,7 +20,7 @@ platform darwin {
 name                    libcxx-devel
 epoch                   1
 set llvm_version        17
-version                 17.0.6
+version                 17.0.6 ; revision 1
 categories              lang
 platforms               darwin linux
 license                 MIT NCSA
@@ -271,6 +271,19 @@ post-patch {
         foreach d [glob ${otbpref}/lib/pkgconfig/*] {
             ln -s ${d} ${destroot}/usr/lib/pkgconfig/
         }
+
+        # install a synthetic libc++.pc file, mostly so ports can do a path-style dependency
+        # on our devport without having to deal with the "++" in most names of interest,
+        # or with absolute filenames:
+        xinstall -m 755 -d ${destroot}${prefix}/lib/pkgconfig/
+        xinstall -m 644 ${filespath}/libcxx.pc ${destroot}${prefix}/lib/pkgconfig/
+        reinplace "s|@PREFIX@|${cmake.install_prefix}|g" ${destroot}${prefix}/lib/pkgconfig/libcxx.pc
+        reinplace "s|@VERSION@|${version}|g" ${destroot}${prefix}/lib/pkgconfig/libcxx.pc
+        ln -s libcxx.pc ${destroot}${prefix}/lib/pkgconfig/libc++.pc
+
+        # idem, allow path-style depspecs on ourselves
+        xinstall -m 755 -d ${destroot}${prefix}/share/doc/libcxx
+        exec echo "port:${subport}" > ${destroot}${prefix}/share/doc/libcxx/provider
 
         # there is probably no standard content at all...
         register_devport_standard_content
