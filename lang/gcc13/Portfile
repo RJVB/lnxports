@@ -4,7 +4,7 @@ PortSystem                                       1.0
 PortGroup           select                       1.0
 PortGroup           compiler_blacklist_versions  1.0
 PortGroup           active_variants              1.1
-PortGroup           conflicts_build              1.0
+PortGroup           conflicts_build              1.1
 
 epoch               0
 name                gcc13
@@ -22,7 +22,7 @@ long_description    {*}${description}, including front ends for \
                     C, C++, Objective-C, Objective-C++ and Fortran.
 
 # Remember to reset all revision increments below to 0 on new versions
-version             13.3.0 ; revision 1
+version             13.3.0 ; revision 2
 
 set libgccname      lib${name}
 subport             ${libgccname} { revision [ expr ${revision} + 0 ] }
@@ -394,8 +394,8 @@ if { ${subport} ne ${libcxxname} } {
     if {[variant_exists libcxx] && [variant_isset libcxx]} {
         if {${subport} eq ${name}} {
             depends_build-append \
-                port:libcxx \
-                port:libcxx-dev
+                path:share/doc/libcxx/provider:libcxx \
+                path:lib/pkgconfig/libcxx.pc:libcxx-dev
             if {${os.platform} eq "darwin"} {
                 depends_run-append \
                     port:${libcxxname}
@@ -403,8 +403,8 @@ if { ${subport} ne ${libcxxname} } {
                 require_active_variants libcxx-dev macports_libcxx
             } else {
                 depends_run-append \
-                    port:libcxx \
-                    port:libcxx-dev
+                    path:share/doc/libcxx/provider:libcxx \
+                    path:lib/pkgconfig/libcxx.pc:libcxx-dev
             }
         }
         patchfiles-append \
@@ -706,6 +706,23 @@ if { ${subport} ne ${libcxxname} } {
     }
 
     post-destroot {
+        platform linux {
+            # note: this assumes 64bit builds and breaks multi-arch builds (which we don't support anyway)
+            catch {system "ls -l ${destroot}${prefix}/lib/lib64 "}
+            foreach l [glob -nocomplain -directory ${destroot}${prefix}/lib/lib64 -tails *] {
+                file rename ${destroot}${prefix}/lib/lib64/${l} ${destroot}${prefix}/lib/gcc${major}/
+            }
+            # gcc links libfoo.so and libfoo.so.X both to libfoo.so.X.Y.Z, rather than
+            # linking libfoo.so to libfoo.so.X and that one to libfoo.so.X.Y.Z .
+            # Probably a detail, but fix that:
+            foreach l [glob -nocomplain -directory ${destroot}${prefix}/lib/gcc${major} -tails *.so.\[0-9\]] {
+                set dylib_nover \
+                    "[string range ${l} 0 [string last ".so" ${l}]]so"
+                ln -s -f ${l} ${destroot}${prefix}/lib/gcc${major}/${dylib_nover}
+            }
+            system "ls -l ${destroot}${prefix}/lib/gcc${major} "
+        }
+
         # Ensure all dylibs in destroot have our extra rpath added ..
         # https://trac.macports.org/ticket/65503
         set nrpath "${prefix}/lib:${mp_extra_rpath}:${prefix}/lib/${name}"
