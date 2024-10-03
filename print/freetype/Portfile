@@ -62,7 +62,7 @@ if {${subport} eq "${name}-infinality"} {
     PortGroup               save_configure_cmd 1.0
 
     name                    freetype
-    version                 2.10.2; revision 1
+    version                 2.10.2; revision 2
     platform darwin {
         # for fixing the problem with creating a universal binary ftconfig.h
         revision            [expr ${revision} +1]
@@ -162,6 +162,11 @@ if {${subport} eq "${name}-infinality"} {
         patchfiles-append       0001-Enable-table-validation-modules.patch \
                                 0002-infinality-2.10.2-2024.89.03.patch \
                                 0004-Enable-long-PCF-family-names.patch
+        # include the "remix" tweaks, which do seem to improve rendering
+        # to be a bit closer to the quality obtained with Freetype+Infinality 2.8.1
+        # (which remains better, IMHO)
+        patchfiles-append       0006-infinality-remix-tweaks.patch
+
 #         pre-patch {
 #             # make -p0 patches
 #             set pf [split ${patchfiles} " "]
