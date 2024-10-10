@@ -225,6 +225,7 @@ post-patch {
                         -DPSTL_HIDE_FROM_ABI_PER_TU=ON
         cmake.install_rpath-append \
                         ${prefix}/libexec/onetbb/lib
+        notes-append "Using pstl will require -fexperimental-library or -D_LIBCPP_ENABLE_EXPERIMENTAL, and does not appear to generate parallel code at all!"
     }
 
     variant benchmark_libcxx conflicts benchmark_mplibstdcxx description {build the benchmark against libc++ (no need to install with this variant!)} {
