@@ -11,11 +11,12 @@ PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 PortGroup           locale_select 1.0
 PortGroup           python-required 1.0
+PortGroup           conflicts_build 1.0
 
 name                gstreamer1-gst-plugins-bad
 set upstr_name      gst-plugins-bad
 # please only commit stable updates (even numbered releases)
-version             1.24.7
+version             1.24.7 ; revision 1
 description         A set of plug-ins for GStreamer that need more quality.
 long_description    GStreamer Bad Plug-ins is a set of plug-ins that aren't up to par compared \
                     to the rest. They might be close to being good quality, but they're missing \
@@ -72,11 +73,11 @@ depends_lib-append  port:aom \
 
 if {${os.platform} eq "darwin"} {
                     #port:libgsm 
+                    #port:libnice \
     depends_lib-append \
                     port:libdca \
                     port:libmms \
                     port:libmpcdec \
-                    port:libnice \
                     port:neon \
                     port:rtmpdump \
                     port:spandsp-devel
@@ -85,6 +86,10 @@ if {${os.platform} eq "darwin"} {
                     port:vulkan-headers \
                     port:shaderc
 }
+
+# libnice can thwart the dynamic libsoup loading feature
+conflicts_build-append \
+                    libnice
 
 patchfiles          modplug.patch \
                     libressl.patch \
