@@ -1,0 +1,51 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           gitlab 1.0
+PortGroup           LTO 1.0
+PortGroup           meson 1.0
+
+gitlab.instance     https://gitlab.freedesktop.org
+default gitlab.master_sites {${gitlab.homepage}/-/releases/${git.branch}/downloads}
+gitlab.setup        wayland wayland 1.23.0
+categories          devel graphics
+maintainers         gmail.com:rjvbertin
+license             MIT
+homepage            https://wayland.freedesktop.org
+use_bzip2           no
+use_xz              yes
+platforms           linux
+
+depends_build-append \
+                    port:pkgconfig
+
+description         Wayland client libraries
+long_description    Wayland is intended as a simpler replacement for X11 \
+                    easier to develop and maintain. GTk, Qt, GNOME and KDE have backends for it.
+#master_sites        https://gitlab.freedesktop.org/${name}/${name}/-/releases/${version}/downloads
+
+depends_lib-append  port:libffi
+depends_run-append  port:libxml2 \
+                    port:expat
+
+configure.args-append \
+                    -Ddocumentation=false \
+                    -Dicon_directory=${prefix}/share/icons
+
+variant docs description {} {
+    configure.args-replace \
+                    -Ddocumentation=false \
+                    -Ddocumentation=true
+}
+
+meson.save_configure_cmd "install log"
+
+installs_libs       yes
+version             1.23.0
+checksums           rmd160  d70012060e8d5f9894d97a03a236524653bc4b18 \
+                    sha256  05b3e1574d3e67626b5974f862f36b5b427c7ceeb965cb36a4e6c2d342e45ab2
+#                     size    237900
+
+
+livecheck.url       https://wayland.freedesktop.org/releases.html
+livecheck.regex     "${subport}-(\\d+(?:\\.\\d+)*)"
