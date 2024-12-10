@@ -5,47 +5,75 @@ PortGroup           gitlab 1.0
 PortGroup           LTO 1.0
 PortGroup           meson 1.0
 
-gitlab.instance     https://gitlab.freedesktop.org
-default gitlab.master_sites {${gitlab.homepage}/-/releases/${git.branch}/downloads}
-gitlab.setup        wayland wayland 1.23.0
+name                wayland
 categories          devel graphics
 maintainers         gmail.com:rjvbertin
 license             MIT
-homepage            https://wayland.freedesktop.org
-use_bzip2           no
-use_xz              yes
 platforms           linux
 
 depends_build-append \
                     port:pkgconfig
 
-description         Wayland client libraries
-long_description    Wayland is intended as a simpler replacement for X11 \
-                    easier to develop and maintain. GTk, Qt, GNOME and KDE have backends for it.
-#master_sites        https://gitlab.freedesktop.org/${name}/${name}/-/releases/${version}/downloads
+subport wayland-protocols {
+    gitlab.instance     https://gitlab.freedesktop.org
+    default gitlab.master_sites {${gitlab.homepage}/-/releases/${git.branch}/downloads}
+    gitlab.setup        wayland wayland-protocols 1.38
+    use_bzip2           no
+    use_xz              yes
 
-depends_lib-append  port:libffi
-depends_run-append  port:libxml2 \
-                    port:expat
+    description         wayland protocols
+    long_description    ${description}
+    checksums           rmd160  eedac45ed4053e56aa5948403c565e3b24dc8465 \
+                        sha256  ff17292c05159d2b20ce6cacfe42d7e31a28198fa1429a769b03af7c38581dbe
+#                         size    102648
+    supported_archs     noarch
+    installs_libs       no
 
-configure.args-append \
-                    -Ddocumentation=false \
-                    -Dicon_directory=${prefix}/share/icons
+    depends_run-append  port:wayland
 
-variant docs description {} {
-    configure.args-replace \
-                    -Ddocumentation=false \
-                    -Ddocumentation=true
+    post-destroot {
+        file rename ${destroot}${prefix}/share/pkgconfig/wayland-protocols.pc ${destroot}${prefix}/lib/pkgconfig
+    }
+
+    test.run            yes
 }
 
-meson.save_configure_cmd "install log"
+subport wayland {
+    gitlab.instance     https://gitlab.freedesktop.org
+    default gitlab.master_sites {${gitlab.homepage}/-/releases/${git.branch}/downloads}
+    gitlab.setup        wayland wayland 1.23.0
+    homepage            https://wayland.freedesktop.org
+    use_bzip2           no
+    use_xz              yes
 
-installs_libs       yes
-version             1.23.0
-checksums           rmd160  d70012060e8d5f9894d97a03a236524653bc4b18 \
-                    sha256  05b3e1574d3e67626b5974f862f36b5b427c7ceeb965cb36a4e6c2d342e45ab2
+    description         Wayland client libraries
+    long_description    Wayland is intended as a simpler replacement for X11 \
+                        easier to develop and maintain. GTk, Qt, GNOME and KDE have backends for it.
+#master_sites        https://gitlab.freedesktop.org/${name}/${name}/-/releases/${version}/downloads
+
+    depends_lib-append  port:libffi
+    depends_run-append  port:libxml2 \
+                        port:expat
+
+    configure.args-append \
+                        -Ddocumentation=false \
+                        -Dicon_directory=${prefix}/share/icons
+
+    variant docs description {} {
+        configure.args-replace \
+                        -Ddocumentation=false \
+                        -Ddocumentation=true
+    }
+
+    installs_libs       yes
+    version             1.23.0
+    checksums           rmd160  d70012060e8d5f9894d97a03a236524653bc4b18 \
+                        sha256  05b3e1574d3e67626b5974f862f36b5b427c7ceeb965cb36a4e6c2d342e45ab2
 #                     size    237900
 
 
-livecheck.url       https://wayland.freedesktop.org/releases.html
-livecheck.regex     "${subport}-(\\d+(?:\\.\\d+)*)"
+    livecheck.url       https://wayland.freedesktop.org/releases.html
+    livecheck.regex     "${subport}-(\\d+(?:\\.\\d+)*)"
+}
+
+meson.save_configure_cmd "install log"
