@@ -9,7 +9,7 @@ PortGroup           meson 1.0
 PortGroup           gitlab 1.0
 PortGroup           openssl 1.0
 
-gitlab.setup        pipewire pipewire 1.1.81
+gitlab.setup        pipewire pipewire 1.2.7
 
 license             MIT
 categories          audio
@@ -31,12 +31,14 @@ homepage            https://www.pipewire.org
 
 use_bzip2           yes
 
-checksums           rmd160  ad1398c66b15c8bf3f5000ef51aac606124253e6 \
-                    sha256  71b5f102b4a77cc5505f4a3af84a817f3f97ab70a83627eb96c8b84ee7fe463a
-#                     size    1798812
+checksums           rmd160  59e1f3bc3dedb3de315feeb79ca54ff1301547d9 \
+                    sha256  3c00292f9a419610c9eeb6e45b958d460afb601ecc6894012574a3b9f118616a
+#                     size    1823442
 
 
 set perl_branch     5
+
+# dependency on python3 goes through meson
 
 depends_build-append \
                     port:gettext \
@@ -47,6 +49,7 @@ depends_build-append \
 depends_test-append port:openal-soft
 
 depends_lib-append  port:alsa-lib \
+                    port:pulseaudio \
                     port:avahi \
                     port:dbus \
                     port:ffmpeg \
@@ -60,7 +63,8 @@ depends_lib-append  port:alsa-lib \
                     port:libtool \
                     port:libusb \
                     port:readline \
-                    port:systemd
+                    port:systemd \
+                    port:lua
 
 if {${os.platform} ne "darwin"} {
 #     depends_lib-append \
@@ -118,7 +122,7 @@ configure.args-append \
                     -Dsdl2=disabled \
                     -Davahi=enabled \
                     -Dlibpulse=enabled \
-                    -Dgsettings-pulse-schema=enabled \
+                    -Dgsettings-pulse-schema=disabled \
                     -Dlibusb=enabled \
                     -Dx11=disabled \
                     -Dlibcanberra=enabled \
@@ -126,7 +130,9 @@ configure.args-append \
                     -Dgsettings=disabled \
                     -Dopus=enabled \
                     -Dvulkan=disabled \
-                    -Dbluez5=disabled
+                    -Dbluez5=disabled \
+                    -Dlv2=disabled \
+                    -Dwireplumber:system-lua=true
 # don't expect CLOCK_TAI
 configure.args-append \
                     -Davb=disabled
@@ -141,9 +147,19 @@ configure.cxxflags-append \
 
 meson.save_configure_cmd "install log"
 
+# for g-ir-scanner which would otherwise use the compiler it's built with itself:
+build.env-append    CC=${configure.cc} \
+                    CXX=${configure.cxx}
+
 test.run            no
 test.target         test
 
+
+variant lv2 conflicts minimal {
+    configure.args-replace  -Dlv2=disabled \
+                            -Dlv2=enabled
+    depends_lib-append      port:lilv
+}
 
 variant x11 conflicts minimal {
     configure.args-replace  -Dx11=disabled \
@@ -159,7 +175,10 @@ variant jack conflicts minimal description {Enable Jack support.} {
                             -Dpipewire-jack=enabled
     # depend on the distro-version on Linux for now
     depends_lib-append  bin:jack_test:jack
-    configure.args-append   -Dlibjack-path=/usr/lib/x86_64-linux-gnu/jack
+    if {[file exists /usr/lib/x86_64-linux-gnu/jack]} {
+        configure.args-append \
+                            -Dlibjack-path=/usr/lib/x86_64-linux-gnu/jack
+    }
 }
 
 variant gsettings conflicts minimal description {Enable GSettings support } {
@@ -174,7 +193,18 @@ variant tests description {Enable testing.} {
     test.run                yes
 }
 
-default_variants            +x11
+variant minimal description {minimal install; currently only excluding wireplumbing and depending on PulseAudio} {
+    configure.args-replace  -Dlibpulse=enabled \
+                            -Dlibpulse=disabled
+    # let the build figure this one out:
+    configure.args-delete   -Dgsettings-pulse-schema=disabled
+    depends_lib-delete      port:lua \
+                            port:pulseaudio
+}
+
+if {![variant_isset minimal]} {
+    default_variants        +x11
+}
 
 build.pre_args-append       -k 0
 
