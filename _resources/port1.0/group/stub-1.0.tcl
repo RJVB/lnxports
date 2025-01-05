@@ -67,6 +67,7 @@ proc stub::setup_stub_linux {} {
     patchfiles
     use_autoreconf      no
     use_configure       no
+    depends_lib
     build {}
     # RJVB : run our bit of code in the destroot because "base"
     # has been modified not to run pre- and post- blocks if
