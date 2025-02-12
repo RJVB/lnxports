@@ -1,0 +1,13 @@
+diff --git a/configure.ac b/configure.ac
+index b288ecb..bf50481 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -366,7 +366,7 @@ if test "x$GCC" = xyes; then
+     if test "x$USE_GNU99" = xyes; then
+         CFLAGS="$CFLAGS -std=gnu99"
+     else
+-        CFLAGS="$CFLAGS -std=c99"
++        CFLAGS="$CFLAGS -std=c11"
+     fi
+ fi
+ 

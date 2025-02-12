@@ -1,0 +1,20 @@
+diff --git a/meson.build b/meson.build
+index de9c9af..69e5fcb 100644
+--- a/meson.build
++++ b/meson.build
+@@ -1530,11 +1530,11 @@ if with_gallium_i915 and host_machine.cpu_family().startswith('x86') == false
+ endif
+ 
+ # Determine whether or not the rt library is needed for time functions
+-if host_machine.system() == 'windows' or cc.has_function('clock_gettime')
++#if host_machine.system() == 'windows' or cc.has_function('clock_gettime')
+   dep_clock = null_dep
+-else
+-  dep_clock = cc.find_library('rt')
+-endif
++#else
++  #dep_clock = cc.find_library('rt')
++#endif
+ 
+ # IMPORTANT: We can't upgrade Zlib beyond 1.2.5 because it would break Viewperf.
+ dep_zlib = dependency('zlib', version : '>= 1.2.3',
