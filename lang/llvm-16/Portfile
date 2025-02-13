@@ -4,14 +4,18 @@ PortSystem                            1.0
 PortGroup select                      1.0
 PortGroup compiler_blacklist_versions 1.0
 PortGroup active_variants             1.1
+PortGroup LTO                         1.0
 PortGroup cmake                       1.1
 if {${os.platform} eq "darwin"} {
     PortGroup legacysupport           1.1
 } else {
     PortGroup conflicts_build         1.0
 }
-PortGroup compress_workdir            1.0
 
+# # optional support for HFS-compression of the source and build dirs
+if {[file exists ${cmake::currentportgroupdir}/compress_workdir-1.0.tcl]} {
+    PortGroup           compress_workdir 1.0
+}
 # Do not propagate c/c++ standards as set by base
 cmake.set_c_standard                  no
 cmake.set_cxx_standard                no
@@ -82,11 +86,9 @@ platform darwin {
             -DCMAKE_INSTALL_NAME_DIR=${cmake.install_prefix}/lib \
             -DCMAKE_INSTALL_RPATH=${cmake.install_prefix}/lib
 
-        platform darwin {
-            configure.pre_args-replace \
+        configure.pre_args-replace \
             -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=ON \
             -DCMAKE_BUILD_WITH_INSTALL_RPATH:BOOL=OFF
-        }
 
         configure.pre_args-replace \
             -DCMAKE_SYSTEM_PREFIX_PATH="${prefix}\;/usr" \
@@ -283,7 +285,6 @@ patchfiles-append \
 patchfiles-append \
     patch-RTLD_FIRST.diff
 
-
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|" \
         ${patch.dir}/clang/lib/Driver/ToolChains/Clang.cpp \
@@ -362,7 +363,6 @@ if {${subport} eq "mlir-${llvm_version}"} {
 
 if { ${subport} eq "clang-${llvm_version}" } {
     homepage            https://clang.llvm.org/
-
     description         C, C++, Objective C and Objective C++ compiler
     long_description    The Clang project provides a language front-end and tooling infrastructure \
                         for languages in the C language family (C, C++, Objective C/C++, OpenCL, \
@@ -601,7 +601,6 @@ if { ${subport} eq "clang-${llvm_version}" || ${subport} eq "flang-${llvm_versio
         configure.args-append    -DCLANG_ENABLE_CLANGD=OFF \
                                  -DLLVM_ENABLE_BACKTRACES=OFF
     }
-
 }
 
 if {${subport} eq "lldb-${llvm_version}"} {
