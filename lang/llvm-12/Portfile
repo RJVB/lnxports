@@ -20,6 +20,11 @@ if {[file exists ${cmake::currentportgroupdir}/compress_workdir-1.0.tcl]} {
 cmake.set_c_standard     no
 cmake.set_cxx_standard   no
 
+# ensure pre-compiled headers and the possible use of ccache can co-exist
+configure.env-append \
+                    "CCACHE_SLOPPINESS=pch_defines,time_macros"
+build.env-append    "CCACHE_SLOPPINESS=pch_defines,time_macros"
+
 if {${os.platform} eq "darwin"} {
     # link legacysupport statically for compilers
     legacysupport.use_static yes
@@ -216,7 +221,8 @@ if {${os.platform} eq "darwin" && ${os.major} < 10} {
 # RJVB
 patchfiles-append \
     patch-accept-build_types.diff \
-    patch-RTLD_FIRST.diff
+    patch-RTLD_FIRST.diff \
+    patch-signals_h.diff
 
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|" \
