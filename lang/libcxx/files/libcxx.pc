@@ -1,0 +1,10 @@
+prefix=@PREFIX@
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: LLVM libc++
+Description: LLVM libc++ standard C++ library
+URL: http://libcxx.llvm.org/
+Version: @VERSION@
+Libs: -L${libdir} -lc++
+Cflags: -nostdinc++ -isystem${includedir}
