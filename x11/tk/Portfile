@@ -60,7 +60,7 @@ destroot.target-append \
 destroot.destdir    INSTALL_ROOT=${destroot}
 post-destroot {
     ln -s wish8.6 ${destroot}${prefix}/bin/wish
-    ln -s libtk8.6.dylib ${destroot}${prefix}/lib/libtk.dylib
+    ln -s libtk8.6.so ${destroot}${prefix}/lib/libtk.so
 }
 
 if {![variant_isset universal]} {
