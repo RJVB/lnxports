@@ -6,6 +6,7 @@ PortGroup           LTO 1.0
 platform linux {
     PortGroup       meson 1.0
 }
+PortGroup           active_variants 1.1
 
 platform darwin {
     # May need clock_gettime()
@@ -13,9 +14,11 @@ platform darwin {
     legacysupport.newest_darwin_requires_legacy 15
 }
 
+# TODO : figure out how to build the crocus (and i915?) Gallium drivers!
+
 name                mesa
 epoch               1
-version             21.0.1 ; revision 6
+version             21.2.5
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -24,17 +27,13 @@ description         Mesa 3D Graphics Library
 long_description    Mesa is an open-source implementation of the OpenGL specification, a system for rendering interactive 3D graphics.
 
 homepage            https://www.mesa3d.org
-master_sites        https://archive.mesa3d.org
+master_sites        https://archive.mesa3d.org/older-versions/21.x
 platforms           macosx darwin
 use_xz              yes
 
-checksums           rmd160  db3e5d44cec00ffe085deadbcfb776a494632466 \
-                    sha256  379fc984459394f2ab2d84049efdc3a659869dc1328ce72ef0598506611712bb
-#                     size    14648932
-# # 20.3.5:
-# checksums           rmd160  0fd933f8a5a4eb615936281cf5fcc4aa90f9d281 \
-#                     sha256  909a72df63dfa3c0844ccf44a26ac028d148297ed333ab51560893923d7691ce
-# #                     size    14367412
+checksums           rmd160  9fd50ec9a8047140d88097b25afa3c0412e33161 \
+                    sha256  8e49585fb760d973723dab6435d0c86f7849b8305b1e6d99f475138d896bacbb
+#                     size    15829684
 
 platform linux {
     depends_fetch-append \
@@ -96,8 +95,8 @@ if {[string match *meson* ${configure.cmd}]} {
                     -Degl=false \
                     -Dgbm=false \
                     -Dosmesa=false \
-                    -Dshared-llvm=false \
-                    -Dgallium-drivers=
+                    -Dshared-llvm=false
+        set gallium_drivers ""
     }
     platform linux {
         depends_lib-append \
@@ -117,14 +116,14 @@ if {[string match *meson* ${configure.cmd}]} {
                 ${worksrcpath}/src/intel/vulkan/anv_allocator.c \
                 ${worksrcpath}/src/drm-shim/device.c
         }
-#                     -Ddri-drivers=i915,i965,r100,r200,swrast
+        options gallium_drivers
+        set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris"
         configure.args-append \
                     -Ddri3=true \
                     -Degl=true \
                     -Dosmesa=false \
-                    -Dvulkan-drivers=intel,amd \
+                    -Dvulkan-drivers=intel,amd,swrast \
                     -Dplatforms=x11,wayland \
-                    -Dgallium-drivers=r300,r600,nouveau,swrast,svga,virgl,swr \
                     -Dgallium-extra-hud=true \
                     -Dgallium-va=true \
                     -Dgallium-opencl=disabled \
@@ -139,18 +138,11 @@ if {[string match *meson* ${configure.cmd}]} {
             configure.args-append \
                     -Dbuild-tests=true
         }
+        pre-configure {
+            configure.args-append \
+                    -Dgallium-drivers=${gallium_drivers}
+        }
         post-destroot {
-#             # meson rebuilds to-be-installed libraries without rpath information, so replace those with
-#             # the ones from the build dir that do have the info.
-#             xinstall -m 755 ${build.dir}/src/glx/libGL.so.1.2.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-#             xinstall -m 755 ${build.dir}/src/mapi/shared-glapi/libglapi.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-#             xinstall -m 755 ${build.dir}/src/mapi/es1api/libGLESv1_CM.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-#             xinstall -m 755 ${build.dir}/src/mapi/es2api/libGLESv2.so.2.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-#             xinstall -m 755 ${build.dir}/src/gallium/drivers/swr/libswrAVX2.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-#             xinstall -m 755 ${build.dir}/src/gallium/drivers/swr/libswrAVX.so.0.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-#             xinstall -m 755 ${build.dir}/src/gallium/targets/xa/libxatracker.so.2.4.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-#             xinstall -m 755 ${build.dir}/src/egl/libEGL.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-#             xinstall -m 755 ${build.dir}/src/gbm/libgbm.so.1.0.0 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
             if {[file type ${prefix}/lib/${build_arch}-linux-gnu/] eq "directory"} {
                 # a previous version of this port probably installed its libraries there
                 xinstall -m 755 -d ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
@@ -174,8 +166,8 @@ if {[string match *meson* ${configure.cmd}]} {
                     --disable-egl \
                     --disable-gbm \
                     --disable-osmesa \
-                    --disable-llvm-shared-libs \
-                    --with-gallium-drivers=
+                    --disable-llvm-shared-libs
+        set gallium_drivers ""
     }
 }
 
@@ -187,13 +179,6 @@ platform darwin {
 configure.env-append \
                     export ac_cv_func_timespec_get=no \
                     STRIP=echo
-
-# if {[string match macports-clang* ${configure.compiler}]} {
-#     configure.env-append \
-#                     AR="[string map {"clang" "llvm-ar"} ${configure.cc}]" \
-#                     NM="[string map {"clang" "llvm-nm"} ${configure.cc}]" \
-#                     RANLIB="[string map {"clang" "llvm-ranlib"} ${configure.cc}]"
-# }
 
 # This project is affected by a bug in Apple's gcc driver driver that I fixed in the apple-gcc42 port.
 # Use that or clang.
@@ -270,7 +255,7 @@ platform darwin {
     }
 }
 
-if {[string match *gcc* ${configure.compiler}]} {
+if {![string match *meson* ${configure.cmd}] && [string match *gcc* ${configure.compiler}]} {
     # Older gcc fail to do -Werror=missing-prototypes correctly
     # https://trac.macports.org/ticket/46827
     patchfiles-append no-missing-prototypes-error.patch
@@ -294,17 +279,6 @@ platform linux {
     }
 }
 
-# variant python27 description {Use python 2.7} {
-#     depends_build-append \
-#         port:py27-libxml2
-#     configure.env-append \
-#         PYTHON2="${prefix}/bin/python2.7"
-# }
-# 
-# if {![variant_isset python27]} {
-#     default_variants-append +python27
-# }
-
 platform darwin {
     variant egl description {enable EGL support} {}
     if {[variant_isset egl]} {
@@ -313,27 +287,21 @@ platform darwin {
             configure.args-replace \
                                -Degl=false \
                                -Degl=true
-            configure.args-replace \
-                                -Dgallium-drivers= \
-                                -Dgallium-drivers=swrast
         } else {
             configure.args-replace \
                                 --disable-egl \
                                 --enable-egl
-            configure.args-replace \
-                                --with-gallium-drivers= \
-                                --with-gallium-drivers=swrast
         }
+        set gallium_drivers swrast
         patchfiles-append       patch-support-egl_dri2.diff
-    #     post-patch {
-    #         reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/src/egl/drivers/dri2/egl_dri2.c
-    #     }
     }
 
     variant llvm64bit description {The +llvm variants are effective for the 64bit components of universal builds only} {}
 }
 
-    set lldversions {7.0 8.0 9.0}
+    # v21.2.5 seems to build against a narrow range of LLVM versions only; >= 11 specified and
+    # my attempt against LLVM 14 failed.
+    set lldversions {11 12 13}
     set llvariant ""
     foreach ldv ${lldversions} {
         set llv [join [lrange [split ${ldv} .] 0 1] ""]
@@ -354,19 +322,20 @@ platform darwin {
         if {[variant_isset llvm${llv}]} {
             if {!([variant_exists llvm${llv}] && [variant_isset llvm64bit])} {
                 depends_lib-append \
-                    port:llvm-${ldv} port:clang-${ldv}
+                    port:llvm-${ldv}
             } else {
                 # This is a hack; build and runtime dependencies are agnostic of the +universal variant
                 # *if depends_skip_archcheck is also set* and
                 # so the only way to register some kind of dependency on the required LLVM ports
                 # without forcing them to be installed +universal too.
                 depends_build-append \
-                    port:llvm-${ldv} port:clang-${ldv}
+                    port:llvm-${ldv}
                 depends_run-append \
-                    port:llvm-${ldv} port:clang-${ldv}
+                    port:llvm-${ldv}
                 depends_skip_archcheck \
                     llvm-${ldv} clang-${ldv}
             }
+            set llvm_port llvm-${ldv}
             if {[string match *meson* ${configure.cmd}]} {
                 if {[variant_exists llvm${llv}] && [variant_isset llvm64bit]} {
                     ui_warning "+llvm64bit is to be implemented and currently ignored"
@@ -375,9 +344,7 @@ platform darwin {
                     -Dllvm=enabled
                 set PATH $env(PATH)
                 set env(PATH) ${prefix}/libexec/llvm-${ldv}/bin:${PATH}
-#                 configure.args-replace \
-#                     -Dgallium-drivers= \
-#                     -Dgallium-drivers=swrast
+                configure.ldflags-append -Wl,-rpath,${prefix}/libexec/llvm-${ldv}/lib
             } else {
                 if {[variant_exists llvm${llv}] && [variant_isset llvm64bit]} {
                     lappend merger_configure_args(x86_64) \
@@ -391,9 +358,6 @@ platform darwin {
                         --enable-llvm \
                         --with-llvm-prefix=${prefix}/libexec/llvm-${ldv}
                 }
-#                 configure.args-replace \
-#                     --with-gallium-drivers= \
-#                     --with-gallium-drivers=swrast
             }
         }
     }
@@ -420,9 +384,6 @@ if {[variant_isset opencl]} {
         configure.args-replace \
                     -Dgallium-opencl=disabled \
                     -Dgallium-opencl=standalone
-#         configure.args-replace \
-#                     -Dopencl-spirv=false \
-#                     -Dopencl-spirv=true
         configure.args-replace \
                     -Dopencl-native=false \
                     -Dopencl-native=true
@@ -430,6 +391,15 @@ if {[variant_isset opencl]} {
         configure.args-replace \
                     --disable-opencl \
                     --enable-opencl
+    }
+    if {[info exists llvm_port]} {
+        depends_lib-append port:[string map {"llvm" "clang"} ${llvm_port}]
+        require_active_variants ${llvm_port} "" nortti
+    } else {
+        pre-configure {
+            ui_error "+opencl requires port:clang-XY and one of the LLVM variants"
+            return -code error "LLVM required"
+        }
     }
 } elseif {[variant_isset opencl_icd]} {
     depends_build-append port:libclc
@@ -440,14 +410,17 @@ if {[variant_isset opencl]} {
     configure.args-replace \
                     -Dopencl-native=false \
                     -Dopencl-native=true
+    if {[info exists llvm_port]} {
+        depends_lib-append port:[string map {"llvm" "clang"} ${llvm_port}]
+        require_active_variants ${llvm_port} "" nortti
+    } else {
+        pre-configure {
+            ui_error "+opencl_icd requires port:clang-XY and one of the LLVM variants"
+            return -code error "LLVM required"
+        }
+    }
 }
 default_variants-append +osmesa
-
-#variant openvg description {enable support for OpenVG API} {
-#    configure.args-delete --disable-egl --disable-openvg
-#    configure.args-append --enable-egl --enable-openvg
-#}
-#default_variants-append +openvg
 
 if {[string match *meson* ${configure.cmd}]} {
     build.post_args-append -k 0
