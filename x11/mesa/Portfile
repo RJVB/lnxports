@@ -14,11 +14,10 @@ platform darwin {
     legacysupport.newest_darwin_requires_legacy 15
 }
 
-# TODO : figure out how to build the crocus (and i915?) Gallium drivers!
-
 name                mesa
 epoch               1
 version             21.2.5
+if {${subport} eq "${name}"} { revision [expr ${revision} +1]; }
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -41,6 +40,13 @@ platform linux {
     # avoid certificate issues on freedesktop.org
     fetch {
         system "wget ${master_sites}/${distname}${extract.suffix} --no-check-certificate --progress=bar:force -O ${distpath}/${distname}${extract.suffix}"
+    }
+
+    subport ${name}-crocus-driver {
+        description \
+                    installs the Crocus driver for i965 GPUs
+        long_description \
+                    installs Mesa's Crocus driver for i965 GPUs
     }
 }
 
@@ -116,8 +122,15 @@ if {[string match *meson* ${configure.cmd}]} {
                 ${worksrcpath}/src/intel/vulkan/anv_allocator.c \
                 ${worksrcpath}/src/drm-shim/device.c
         }
-        options gallium_drivers
-        set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris"
+        if {${subport} ne "${name}-crocus-driver"} {
+            set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris"
+            configure.args-append \
+                    -Ddri-drivers=i915,i965,r100,r200,nouveau
+        } else {
+            set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris,crocus"
+            configure.args-append \
+                    -Ddri-drivers=i965,r100,r200,nouveau
+        }
         configure.args-append \
                     -Ddri3=true \
                     -Degl=true \
@@ -143,12 +156,44 @@ if {[string match *meson* ${configure.cmd}]} {
                     -Dgallium-drivers=${gallium_drivers}
         }
         post-destroot {
-            if {[file type ${prefix}/lib/${build_arch}-linux-gnu/] eq "directory"} {
-                # a previous version of this port probably installed its libraries there
-                xinstall -m 755 -d ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-                foreach l [glob ${destroot}${prefix}/lib/*.so ${destroot}${prefix}/lib/*.so.*] {
-                    ln -s [file join ".." [file tail ${l}]] ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+            if {${subport} ne "${name}-crocus-driver"} {
+                if {[file type ${prefix}/lib/${build_arch}-linux-gnu/] eq "directory"} {
+                    # a previous version of this port probably installed its libraries there
+                    xinstall -m 755 -d ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+                    foreach l [glob ${destroot}${prefix}/lib/*.so ${destroot}${prefix}/lib/*.so.*] {
+                        ln -s [file join ".." [file tail ${l}]] ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+                    }
+                    # mesa/meson install a bunch of drivers as hardlinks to a single file.
+                    # MacPorts's activation mechanism tends to make independent files out of those,
+                    # multiplying storage requirements. Avoid this by converting to symlinks pointing
+                    # to an appropriate named single file.
+                    file rename ${destroot}${prefix}/lib/dri/i915_dri.so \
+                        ${destroot}${prefix}/lib/dri/mesa_dri_driver.so
+                    foreach d {i830 i915 i965 radeon r200 nouveau_vieux} {
+                        ln -sf mesa_dri_driver.so ${destroot}${prefix}/lib/dri/${d}_dri.so
+                    }
+                    file rename ${destroot}${prefix}/lib/dri/swrast_dri.so \
+                        ${destroot}${prefix}/lib/dri/gallium_dri.so
+                    foreach d {radeonsi nouveau swrast kms_swrast iris r300 r600 vmwgfx virtio_gpu} {
+                        ln -sf gallium_dri.so ${destroot}${prefix}/lib/dri/${d}_dri.so
+                    }
+                    file rename ${destroot}${prefix}/lib/libXvMCr600.so.1.0.0 \
+                        ${destroot}${prefix}/lib/libXvMCgallium.so.1.0.0
+                    foreach d {libXvMCr600.so.1.0.0 libXvMCnouveau.so.1.0.0} {
+                        ln -sf libXvMCgallium.so.1.0.0 ${destroot}${prefix}/lib/${d}
+                    }
+                    file rename ${destroot}${prefix}/lib/dri/r600_drv_video.so \
+                        ${destroot}${prefix}/lib/dri/gallium_drv_video.so
+                    foreach d {r600 radeonsi nouveau} {
+                        ln -sf gallium_drv_video.so ${destroot}${prefix}/lib/dri/${d}_drv_video.so
+                    }
                 }
+            } else {
+                # we only want the ${prefix}/lib/dri/crocus_dri.so driver
+                file rename ${destroot}${prefix} ${destroot}/tmp
+                xinstall -m 755 -d ${destroot}${prefix}/lib/dri
+                file rename ${destroot}/tmp/lib/dri/crocus_dri.so ${destroot}${prefix}/lib/dri/crocus_dri.so
+                file delete -force ${destroot}/tmp
             }
         }
     }
@@ -362,66 +407,77 @@ platform darwin {
         }
     }
 
-variant osmesa description {enable OSMesa library} {}
-if {[variant_isset osmesa]} {
-    if {[string match *meson* ${configure.cmd}]} {
-        configure.args-replace \
+if {${subport} eq "${name}"} {
+    variant osmesa description {enable OSMesa library} {}
+    if {[variant_isset osmesa]} {
+        if {[string match *meson* ${configure.cmd}]} {
+            configure.args-replace \
                     -Dosmesa=false \
                     -Dosmesa=true
-    } else {
-        configure.args-replace \
+        } else {
+            configure.args-replace \
                     --disable-osmesa \
                     --enable-osmesa
+        }
     }
-}
 
-variant opencl conflicts opencl_icd description {enable OpenCL (standalone variant)} {}
-variant opencl_icd conflicts opencl description {enable OpenCL (ICD variant: PREFERRED!)} {}
-if {[variant_isset opencl]} {
-    conflicts-append port:ocl-icd
-    depends_build-append port:libclc
-    if {[string match *meson* ${configure.cmd}]} {
-        configure.args-replace \
+    variant opencl conflicts opencl_icd description {enable OpenCL (standalone variant)} {}
+    variant opencl_icd conflicts opencl description {enable OpenCL (ICD variant: PREFERRED!)} {}
+    if {[variant_isset opencl]} {
+        conflicts-append port:ocl-icd
+        depends_build-append port:libclc
+        if {[string match *meson* ${configure.cmd}]} {
+            configure.args-replace \
                     -Dgallium-opencl=disabled \
                     -Dgallium-opencl=standalone
-        configure.args-replace \
+            configure.args-replace \
                     -Dopencl-native=false \
                     -Dopencl-native=true
-    } else {
-        configure.args-replace \
+        } else {
+            configure.args-replace \
                     --disable-opencl \
                     --enable-opencl
-    }
-    if {[info exists llvm_port]} {
-        depends_lib-append port:[string map {"llvm" "clang"} ${llvm_port}]
-        require_active_variants ${llvm_port} "" nortti
-    } else {
-        pre-configure {
-            ui_error "+opencl requires port:clang-XY and one of the LLVM variants"
-            return -code error "LLVM required"
         }
-    }
-} elseif {[variant_isset opencl_icd]} {
-    depends_build-append port:libclc
-    depends_lib-append   port:ocl-icd
-    configure.args-replace \
+        if {[info exists llvm_port]} {
+            depends_lib-append port:[string map {"llvm" "clang"} ${llvm_port}]
+            require_active_variants ${llvm_port} "" nortti
+        } else {
+            pre-configure {
+                ui_error "+opencl requires port:clang-XY and one of the LLVM variants"
+                return -code error "LLVM required"
+            }
+        }
+    } elseif {[variant_isset opencl_icd]} {
+        depends_build-append port:libclc
+        depends_lib-append   port:ocl-icd
+        configure.args-replace \
                     -Dgallium-opencl=disabled \
                     -Dgallium-opencl=icd
-    configure.args-replace \
+        configure.args-replace \
                     -Dopencl-native=false \
                     -Dopencl-native=true
-    if {[info exists llvm_port]} {
-        depends_lib-append port:[string map {"llvm" "clang"} ${llvm_port}]
-        require_active_variants ${llvm_port} "" nortti
-    } else {
-        pre-configure {
-            ui_error "+opencl_icd requires port:clang-XY and one of the LLVM variants"
-            return -code error "LLVM required"
+        if {[info exists llvm_port]} {
+            depends_lib-append port:[string map {"llvm" "clang"} ${llvm_port}]
+            require_active_variants ${llvm_port} "" nortti
+        } else {
+            pre-configure {
+                ui_error "+opencl_icd requires port:clang-XY and one of the LLVM variants"
+                return -code error "LLVM required"
+            }
         }
     }
-}
-default_variants-append +osmesa
 
+    default_variants-append +osmesa
+}
+
+# variant i915_gallium description {build the Gallium3D i915 and crocus drivers instead of the i915 DRI driver} {}
+# if {[variant_isset i915_gallium]} {
+#     set gallium_drivers "${gallium_drivers},i915,crocus"
+#     configure.args-replace \
+#                     -Ddri-drivers=auto \
+#                     -Ddri-drivers=i965,r100,r200,nouveau
+# }
+# 
 if {[string match *meson* ${configure.cmd}]} {
     build.post_args-append -k 0
 } else {
