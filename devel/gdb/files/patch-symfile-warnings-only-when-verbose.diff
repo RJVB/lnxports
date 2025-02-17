@@ -1,6 +1,6 @@
-diff --git gdb/orig.machoread.c gdb/machoread.c
-index 49cf4fd..2f20b8c 100644
---- gdb/orig.machoread.c
+diff --git gdb/machoread.c.orig gdb/machoread.c
+index ac764c0..0ef3379 100644
+--- gdb/machoread.c.orig
 +++ gdb/machoread.c
 @@ -421,6 +421,7 @@ macho_add_oso_symfile (oso_el *oso, const gdb_bfd_ref_ptr &abfd,
    asymbol **symp;
@@ -10,7 +10,7 @@ index 49cf4fd..2f20b8c 100644
  
    /* Per section flag to mark which section have been rebased.  */
    unsigned char *sections_rebased;
-@@ -429,14 +430,14 @@ macho_add_oso_symfile (oso_el *oso, const gdb_bfd_ref_ptr &abfd,
+@@ -429,7 +430,7 @@ macho_add_oso_symfile (oso_el *oso, const gdb_bfd_ref_ptr &abfd,
  
    if (!bfd_check_format (abfd.get (), bfd_object))
      {
@@ -19,15 +19,16 @@ index 49cf4fd..2f20b8c 100644
  	       bfd_errmsg (bfd_get_error ()));
        return;
      }
- 
-   if (abfd->my_archive == NULL && oso->mtime != bfd_get_mtime (abfd.get ()))
+@@ -437,7 +438,7 @@ macho_add_oso_symfile (oso_el *oso, const gdb_bfd_ref_ptr &abfd,
+   if (abfd->my_archive == nullptr
+       && oso->mtime != gdb_bfd_get_mtime (abfd.get ()))
      {
 -      warning (_("`%s': file time stamp mismatch."), oso->name);
 +      if (should_print) warning (_("`%s': file time stamp mismatch."), oso->name);
        return;
      }
  
-@@ -602,6 +603,7 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
+@@ -600,6 +601,7 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
  {
    int ix;
    oso_el *oso;
@@ -35,7 +36,7 @@ index 49cf4fd..2f20b8c 100644
  
    /* Sort oso by name so that files from libraries are gathered.  */
    std::sort (oso_vector_ptr->begin (), oso_vector_ptr->end (),
-@@ -636,14 +638,14 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
+@@ -634,14 +636,14 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
  						     gnutarget));
  	  if (archive_bfd == NULL)
  	    {
@@ -52,7 +53,7 @@ index 49cf4fd..2f20b8c 100644
  		       archive_name.c_str ());
  	      ix = last_ix;
  	      continue;
-@@ -654,7 +656,7 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
+@@ -652,7 +654,7 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
  
  	  if (member_bfd == NULL)
  	    {
@@ -61,7 +62,7 @@ index 49cf4fd..2f20b8c 100644
  			 "OSO archive \"%s\""), archive_name.c_str ());
  	      ix = last_ix;
  	      continue;
-@@ -691,7 +693,7 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
+@@ -689,7 +691,7 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
  	    {
  	      oso2 = &(*oso_vector_ptr)[ix2];
  
@@ -70,7 +71,7 @@ index 49cf4fd..2f20b8c 100644
  		warning (_("Could not find specified archive member "
  			   "for OSO name \"%s\""), oso->name);
  	    }
-@@ -700,10 +702,10 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
+@@ -698,10 +700,10 @@ macho_symfile_read_all_oso (std::vector<oso_el> *oso_vector_ptr,
        else
  	{
  	  gdb_bfd_ref_ptr abfd (gdb_bfd_open (oso->name, gnutarget));

@@ -13,10 +13,10 @@ platform darwin {
 }
 
 name            gdb
-version         13.2
-platform darwin {
-    revision [expr ${revision} +1]
-}
+version         16.2
+# platform darwin {
+#     revision [expr ${revision} +1]
+# }
 categories      devel
 license         GPL-3+
 maintainers     nomaintainer
@@ -43,12 +43,9 @@ supported_archs x86_64 i386
 
 master_sites    gnu
 
-checksums       rmd160  ef57e9d16e34b6820791edaf3b4ec9c992cfaa3a \
-                sha256  7ead13d9e19fa0c57bb19104e1a5f67eefa9fc79f2e6360de491e8fddeda1e30
-#                 size    40251050
-
-# fix test for makeinfo version in libctf
-patchfiles      patch-gdb-libctf-makeinfo-test.diff
+checksums           rmd160  e5ab4a54ca868191478a2baed12c4e8e2b3f99c5 \
+                    sha256  bdc1da4a033280ac752e7d34b0418efaa45bed093235cb88e62ea961752a37f8
+#                     size    41593955
 
 # On darwin, only print warnings about missing or unreadable object files in build directories
 # when gdb is set to verbose mode (set verbose on). We know that we don't have Apple's
@@ -109,7 +106,7 @@ configure.args \
     --enable-lto \
     --enable-host-shared
 
-platform darwin {
+if {${os.platform} eq "darwin"} {
     configure.args-append \
         --without-guile \
         --program-prefix=g
