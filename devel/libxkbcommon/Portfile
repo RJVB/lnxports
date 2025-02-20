@@ -24,7 +24,13 @@ checksums           rmd160  e58f3a80e8108a30af33a593c368c3b927914a9b \
 installs_libs       yes
 
 depends_build-append \
-                    port:pkgconfig
+                    port:bison \
+                    port:pkgconfig \
+                    port:xorg-libxcb
+
+depends_run-append  port:libxml2 \
+                    port:icu
+
 
 configure.args      -Ddefault_library=both \
                     -Denable-docs=false \
