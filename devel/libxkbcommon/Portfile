@@ -1,9 +1,11 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           meson 1.0
+PortGroup           LTO 1.0
 
-name                libxkbcommon
-version             0.7.1
+github.setup        xkbcommon libxkbcommon 1.8.0 xkbcommon-
 categories          devel
 maintainers         gmail.com:rjvbertin
 license             MIT
@@ -13,40 +15,35 @@ long_description    Xkbcommon is a library to handle keyboard descriptions, incl
                     and other system applications. Currently that includes Wayland, Qt, Clutter and more. \
                     It is also used by some XCB (X11) applications for proper keyboard support.
 homepage            https://xkbcommon.org
-master_sites        http://xkbcommon.org/download
-use_xz              yes
 platforms           darwin linux
 
-checksums           rmd160  f9b185768306a1f103ea81118276b770261d4b95 \
-                    sha256  ba59305d2e19e47c27ea065c2e0df96ebac6a3c6e97e28ae5620073b6084e68b
+checksums           rmd160  e58f3a80e8108a30af33a593c368c3b927914a9b \
+                    sha256  ab20ea6fd99bd799b17d43e6ff6e649fb3eea7dd196c408fe1654c4b31682abb
+#                     size    995697
 
 installs_libs       yes
 
 depends_build-append \
                     port:pkgconfig
 
-# depends_lib-append  port:xkeyboard-config
+configure.args      -Ddefault_library=both \
+                    -Denable-docs=false \
+                    -Denable-wayland=false \
+                    -Denable-x11=false
 
-# configure.cmd       ./autogen.sh
-configure.args-append \
-                    --disable-dependency-tracking \
-                    --disable-x11 \
-                    --without-doxygen \
-                    --disable-docs \
-                    --disable-wayland
 
 variant x11 description {enable support for creating keymaps with the X11 protocol} {
-#     depends_lib-append \
-#                     port:xorg-libxcb
+    depends_lib-append \
+                    port:xorg-libxcb
     configure.args-replace \
-                    --disable-x11 \
-                    --enable-x11
+                    -Denable-x11=false \
+                    -Denable-x11=true
 }
 
 variant docs description {} {
     configure.args-replace \
-                    --disable-docs \
-                    --enable-docs
+                    -Denable-docs=false \
+                    -Denable-docs=true
 }
 
 variant wayland description {} {
@@ -54,6 +51,12 @@ variant wayland description {} {
                     port:wayland \
                     port:wayland-protocols
     configure.args-replace \
-                    --disable-wayland \
-                    --enable-wayland
+                    -Denable-wayland=false \
+                    -Denable-wayland=true
+}
+
+post-destroot {
+    if {[file exists ${destroot}/usr/share/bash-completion]} {
+        file rename ${destroot}/usr/share/bash-completion ${destroot}${prefix}/share/
+    }
 }
