@@ -29,6 +29,7 @@ depends_build-append \
                     port:xorg-libxcb
 
 depends_run-append  port:libxml2 \
+                    port:xkeyboard-config \
                     port:icu
 
 
