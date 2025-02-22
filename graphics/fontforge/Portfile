@@ -62,7 +62,28 @@ if {(${os.major} eq "darwin" && ${os.major} < 9) || \
     }
 } else {
     patchfiles-append \
-                    stdlib.patch
+                    stdlib.patch \
+                    patch-cmake-project-has-objc.diff
+    platform darwin {
+        pre-configure {
+            if {[string match *gcc* ${configure.objc}]} {
+                ui_error "Fontforge will not build using OBJCC=${configure.objc}; use configure.objc=clang-mp-* to select a Clang compiler"
+                return -code error "Fontforge requires clang to compile ObjC"
+            }
+        }
+
+        variant x11 description {force the GTk3 X11 backend} {}
+        if {[variant_isset x11]} {
+            PortGroup active_variants 1.1
+
+            require_active_variants gtk3 x11
+            # hack the startup routine so the X11 GDK backend is picked even if GTk3
+            # has been built with both backends available (in which case fontforge
+            # somehow manages to pick the quartz backend!)
+            patchfiles-append \
+                    patch-force-gdk-x11-backend.diff
+        }
+    }
 }
 
 github.tarball_from releases
