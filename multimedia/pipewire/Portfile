@@ -9,7 +9,7 @@ PortGroup           meson 1.0
 PortGroup           gitlab 1.0
 PortGroup           openssl 1.0
 
-gitlab.setup        pipewire pipewire 1.2.7
+gitlab.setup        pipewire pipewire 1.2.7 ; revision 1
 
 license             MIT
 categories          audio
@@ -111,7 +111,7 @@ configure.args-append \
                     -Ddbus=enabled \
                     -Dudev=enabled \
                     -Dgstreamer=enabled \
-                    -Dsystemd=disabled \
+                    -Dsystemd=enabled \
                     -Dselinux=disabled \
                     -Dpipewire-alsa=enabled \
                     -Dalsa=enabled \
@@ -193,9 +193,13 @@ variant tests description {Enable testing.} {
     test.run                yes
 }
 
-variant minimal description {minimal install; currently only excluding wireplumbing and depending on PulseAudio} {
+variant minimal description {minimal install; see `port info pipewire +minimal`} {
+    long_description-append \nThe minimal variant disables the PulseAudio compatibility, WirePlumber \
+                            and systemd integration.
     configure.args-replace  -Dlibpulse=enabled \
                             -Dlibpulse=disabled
+    configure.args-replace  -Dsystemd=enabled \
+                            -Dsystemd=disabled
     # let the build figure this one out:
     configure.args-delete   -Dgsettings-pulse-schema=disabled
     depends_lib-delete      port:lua \
@@ -220,6 +224,12 @@ post-destroot {
     file rename ${destroot}/usr/lib/udev/rules.d/90-pipewire-alsa.rules  ${destroot}${prefix}/lib/udev/rules.d/
     xinstall -m 755 -d ${destroot}/lib/udev/rules.d
     ln -s ${prefix}/lib/udev/rules.d/90-pipewire-alsa.rules ${destroot}/lib/udev/rules.d/
+    if {![variant_isset minimal] && [file exists /usr/lib/systemd/user]} {
+        xinstall -m 755 -d ${destroot}/usr/lib/systemd/user
+        foreach s [glob ${destroot}${prefix}/lib/systemd/user/*] {
+            ln -s [string map [list ${destroot}/ "../../../../"] ${s}] ${destroot}/usr/lib/systemd/user
+        }
+    }
 }
 
 post-activate {
