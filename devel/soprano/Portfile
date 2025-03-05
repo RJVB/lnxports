@@ -17,6 +17,13 @@ homepage            https://projects.kde.org/projects/kdesupport/soprano
 
 if {${subport} eq "${name}"} {
     PortGroup       kde4 1.1
+    platform linux {
+        depends_build-delete \
+                    port:automoc
+        depends_lib-delete \
+                    path:lib/libQtCore.so.4:qt4-x11 \
+                    port:phonon
+    }
 
     version         2.9.4 ; revision 4
     master_sites    sourceforge:soprano
@@ -26,6 +33,9 @@ if {${subport} eq "${name}"} {
 
     patchfiles-append \
                     patch-kde4-header-location.diff
+    compiler.cxx_standard 1998
+    configure.cxxflags-append \
+                    -std=gnu++98
     configure.args-append \
                     -DQT5_BUILD=OFF \
                     -DINCLUDE_INSTALL_DIR=${kde4.include_dirs}
