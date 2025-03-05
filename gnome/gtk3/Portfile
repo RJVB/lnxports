@@ -14,7 +14,7 @@ PortGroup           locale_select 1.0
 name                gtk3
 conflicts           gtk3-devel
 set my_name         gtk3
-version             3.24.38
+version             3.24.38 ; revision 1
 epoch               1
 
 ## upgrading from 3.24.20 WITHOUT +broadway gives a build failure when generating
