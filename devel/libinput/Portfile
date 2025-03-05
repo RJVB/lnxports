@@ -1,84 +1,96 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup           meson 1.0
+PortGroup           LTO 1.0
 
 name                libinput
-version             1.11.2
+
+license             MIT
+installs_libs       yes
 categories          devel
 maintainers         gmail.com:rjvbertin
-license             MIT
-description         A library that handles input devices for display servers and other applications \
-                    that need to deal directly with input devices.
-long_description    libinput is a library that handles input devices for display servers and other applications \
-                    that need to deal directly with input devices.
-homepage            https://wayland.freedesktop.org/libinput/doc/${version}
-master_sites        https://www.freedesktop.org/software/libinput/
 use_xz              yes
 platforms           linux
 
-checksums           rmd160  5c7eef361ada720a2301b03a6859d75eb256afc8 \
-                    sha256  6b36e1163d306c292ec8359b35aa65431cd29d0a5254923775e8019ff5018107
+subport             libevdev {}
 
-installs_libs       yes
+if {${subport} eq "${name}"} {
+    version         1.19.4
+    description     A library that handles input devices for display servers and other applications \
+                    that need to deal directly with input devices.
+    long_description \
+                    libinput is a library that handles input devices for display servers and other applications \
+                    that need to deal directly with input devices.
+    homepage        https://www.freedesktop.org/wiki/Software/libinput/
+    master_sites    https://www.freedesktop.org/software/libinput/
 
-depends_build-append \
-                    port:meson \
-                    port:ninja \
-                    bin:wget:wget
+    checksums       rmd160  86d057349946c2e010d6843df12d33e5f21ba517 \
+                    sha256  ff33a570b5a936c81e6c08389a8581c2665311d026ce3d225c88d09c49f9b440
+#                     size    655528
 
-# avoid certificate issues on freedesktop.org
-fetch {
-    system "wget ${master_sites}/${distname}${extract.suffix} --no-check-certificate --progress=bar:force -O ${distpath}/${distname}${extract.suffix}"
-}
 
-if {![file exists /usr/include/linux/input-event-codes.h]} {
+    depends_lib-append \
+                    port:libevdev \
+                    port:systemd
+
+    if {![file exists /usr/include/linux/input-event-codes.h]} {
 #     post-extract {
 #         xinstall -m 755 /usr/src/linux-headers-[exec uname -r]/include/uapi/linux/input-event-codes.h ${worksrcpath}/include/linux
 #     }
-    configure.cppflags-append \
+        configure.cppflags-append \
                     -I${worksrcpath}/include
-}
+    }
 
-patchfiles-append   patch-evdev-pre-1.3.diff \
-                    patch-set-rpath.diff
+#     patchfiles-append \
+#                     patch-set-rpath.diff
 
-post-patch {
-    reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/meson.build
-}
+#     post-patch {
+#         reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/meson.build
+#     }
 
-configure.dir       ${worksrcpath}
-build.dir           ${workpath}/build
+    destroot.violate_mtree yes
 
-if {![file exists ${build.dir}/meson-logs]} {
-    configure.cmd   ${prefix}/bin/meson
+#                     -Ddebug-gui=false
     configure.args-append \
-                    --buildtype plain
+                    -Dudev-dir=/lib/udev \
+                    -Dlibwacom=false
+    set docdisa     false
+    set docena      true
+
+    post-destroot {
+        xinstall -m 755 -d ${destroot}${prefix}/lib/${build_arch}-linux-gnu
+        # a previous version of this port installed into ${prefix}/lib/${build_arch}-linux-gnu
+        # so we put a symlink there to make certain we can still be found via that rpath.
+        ln -s ../libinput.so.10 ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+    }
+
 } else {
-    configure.cmd   ${prefix}/bin/mesonconf
-    configure.pre_args
+    version         1.13.3
+    description     Wrapper library for evdev devices
+    long_description \
+                    libevdev is a wrapper library for evdev devices. it moves the common \
+                    tasks when dealing with evdev devices into a library and provides a library \
+                    interface to the callers, thus avoiding erroneous ioctls, etc.
+
+    homepage        https://www.freedesktop.org/wiki/Software/libevdev/
+    master_sites    https://www.freedesktop.org/software/libevdev/
+    distname        ${subport}-${version}
+    checksums       rmd160  8e24f92d3f3e5be5bac72ff09c937ca68e957505 \
+                    sha256  abf1aace86208eebdd5d3550ffded4c8d73bb405b796d51c389c9d0604cbcfbf
+#                     size    460660
+    set docdisa     disabled
+    set docena      enabled
 }
 
-build.cmd           ninja
-build.pre_args      -C ${build.dir} -j ${build.jobs} -v
-# ninja needs the DESTDIR argument in the environment
-destroot.destdir
-destroot.env-append DESTDIR=${destroot}
-destroot.violate_mtree yes
-
-configure.ldflags-append \
-                    -Wl,-R,${prefix}/lib/${build_arch}-linux-gnu
-
-configure.post_args-append \
-                    ${build.dir}
-
+# they just can't use the same kind of type for the meson documentation variable, can they...
 configure.args-append \
-                    -Dudev-dir=/lib/udev \
-                    -Ddebug-gui=false \
-                    -Ddocumentation=false \
-                    -Dlibwacom=false
+                    -Ddocumentation=${docdisa}
 
 variant docs description {} {
     configure.args-replace \
-                    -Ddocumentation=false \
-                    -Ddocumentation=true
+                    -Ddocumentation=${docdisa} \
+                    -Ddocumentation=${docena}
 }
+
+test.run            yes
