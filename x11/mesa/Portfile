@@ -46,7 +46,8 @@ platform linux {
         description \
                     installs the Crocus driver for i965 GPUs
         long_description \
-                    installs Mesa's Crocus driver for i965 GPUs
+                    installs Mesa's Crocus driver for i965 GPUs\n\
+                    Force the use of this driver via the environment: MESA_LOADER_DRIVER_OVERRIDE=crocus
     }
 }
 
