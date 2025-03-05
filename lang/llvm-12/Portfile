@@ -464,28 +464,25 @@ if {${subport} eq "lldb-${llvm_version}"} {
             }
         }
     }
-}
 
-if {${subport} eq "lldb-${llvm_version}"} {
     variant tests description {Enable building of test code} {}
-}
-if {[variant_isset tests]} {
-    depends_test-append     port:py37-psutil
-    test.run                yes
-    configure.args-append   -DLLVM_INCLUDE_TESTS=ON
-    test.target             check
 
-   if {${subport} eq "clang-${llvm_version}"} {
-       test.target    check-all
-   }
+    if {[variant_isset tests]} {
+        depends_test-append     port:py37-psutil
+        test.run                yes
+        configure.args-append   -DLLVM_INCLUDE_TESTS=ON
+        test.target             check
 
-   if {${subport} eq "lldb-${llvm_version}"} {
+       if {${subport} eq "clang-${llvm_version}"} {
+           test.target    check-all
+       }
+
         pre-fetch {
             ui_error "running the test suite on ${subport} is not supported at present."
             return -code error {unsupported platform}
         }
         ui_warn "running the test suite on ${subport} is not supported at present."
-   }
+    }
 }
 
 variant desktop description "Target only Mac desktop CPUs and GPUs" {
