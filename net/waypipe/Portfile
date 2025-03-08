@@ -15,6 +15,8 @@ distname            ${name}-git
 categories          net graphics
 maintainers         gmail.com:rjvbertin
 license             GPL-3.0
+# C-implementation is MIT-licensed
+license             MIT
 platforms           linux
 
 depends_build-append \
