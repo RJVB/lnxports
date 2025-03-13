@@ -35,12 +35,12 @@ checksums           rmd160  9fd50ec9a8047140d88097b25afa3c0412e33161 \
 #                     size    15829684
 
 platform linux {
-    depends_fetch-append \
-                    bin:wget:wget
-    # avoid certificate issues on freedesktop.org
-    fetch {
-        system "wget ${master_sites}/${distname}${extract.suffix} --no-check-certificate --progress=bar:force -O ${distpath}/${distname}${extract.suffix}"
-    }
+#     depends_fetch-append \
+#                     bin:wget:wget
+#     # avoid certificate issues on freedesktop.org
+#     fetch {
+#         system "wget ${master_sites}/${distname}${extract.suffix} --no-check-certificate --progress=bar:force -O ${distpath}/${distname}${extract.suffix}"
+#     }
 
     subport ${name}-crocus-driver {
         description \
@@ -48,6 +48,20 @@ platform linux {
         long_description \
                     installs Mesa's Crocus driver for i965 GPUs\n\
                     Force the use of this driver via the environment: MESA_LOADER_DRIVER_OVERRIDE=crocus
+    }
+    subport ${name}-glx-xlib-driver {
+        description \
+                    installs libGL with the legacy XLib driver for GLX
+        long_description \
+                    installs Mesa's libGL with the legacy XLib driver for GLX\n\
+                    Force the use of this driver via the environment: LD_PRELOAD=${prefix}/lib/libGL-xlib.so.1.6.0
+    }
+    subport ${name}-glx-galliumxlib-driver {
+        description \
+                    installs the gallium-xlib driver for GLX
+        long_description \
+                    installs Mesa's gallium-xlib driver for GLX\n\
+                    Force the use of this driver via the environment: LD_PRELOAD=${prefix}/lib/libGL-galliumxlib.so.1.5.0
     }
 }
 
@@ -86,134 +100,176 @@ platform darwin {
 patchfiles-append   patch-meson.diff \
                     patch-verbose-loader_open_device.diff
 
-if {[string match *meson* ${configure.cmd}]} {
-    post-patch {
-        reinplace "s|'python3'|'python3.9'|g" \
+post-patch {
+    reinplace "s|'python3'|'python3.9'|g" \
                     ${worksrcpath}/meson.build
-    }
-    platform darwin {
-        patchfiles-append \
-                    patch-autoconf-c11.diff
-        depends_build   port:cctools
+}
 
-        configure.args-append \
+configure.args-append \
+                    -Dvalgrind=disabled
+
+platform darwin {
+    patchfiles-append \
+                    patch-autoconf-c11.diff
+    depends_build   port:cctools
+
+    configure.args-append \
                     -Dplatforms=x11 \
                     -Ddri3=false \
                     -Degl=false \
                     -Dgbm=false \
                     -Dosmesa=false \
                     -Dshared-llvm=false
-        set gallium_drivers ""
-    }
-    platform linux {
-        depends_lib-append \
+    set gallium_drivers ""
+}
+platform linux {
+    depends_lib-append \
                     port:libelf \
                     port:wayland \
                     port:vulkan-loader
-        pre-configure {
-            # delete certain auto-generated files that may require changes when building against
-            # a different LLVM version.
-            file delete [glob -nocomplain ${worksrcpath}/src/gallium/drivers/swr/rasterizer/jitter/gen_*]
-        }
-        post-patch {
-            # should be a patch of course
-            reinplace "s|SYS_memfd_create|__NR_memfd_create|g" \
-                ${worksrcpath}/src/intel/tools/aub_mem.c \
-                ${worksrcpath}/src/intel/vulkan/anv_gem_stubs.c \
-                ${worksrcpath}/src/intel/vulkan/anv_allocator.c \
-                ${worksrcpath}/src/drm-shim/device.c
-        }
-        if {${subport} ne "${name}-crocus-driver"} {
-            set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris"
-            configure.args-append \
-                    -Ddri-drivers=i915,i965,r100,r200,nouveau
-        } else {
-            set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris,crocus"
-            configure.args-append \
-                    -Ddri-drivers=i965,r100,r200,nouveau
-        }
-        configure.args-append \
-                    -Ddri3=true \
-                    -Degl=true \
-                    -Dosmesa=false \
-                    -Dvulkan-drivers=intel,amd,swrast \
+    pre-configure {
+        # delete certain auto-generated files that may require changes when building against
+        # a different LLVM version.
+        file delete [glob -nocomplain ${worksrcpath}/src/gallium/drivers/swr/rasterizer/jitter/gen_*]
+    }
+    post-patch {
+        # should be a patch of course
+        reinplace "s|SYS_memfd_create|__NR_memfd_create|g" \
+                    ${worksrcpath}/src/intel/tools/aub_mem.c \
+                    ${worksrcpath}/src/intel/vulkan/anv_gem_stubs.c \
+                    ${worksrcpath}/src/intel/vulkan/anv_allocator.c \
+                    ${worksrcpath}/src/drm-shim/device.c
+    }
+    configure.args-append \
+                    -Ddri3=enabled \
+                    -Degl=enabled \
                     -Dplatforms=x11,wayland \
+                    -Dvulkan-drivers=intel,amd,swrast \
+                    -Dgallium-va=enabled \
+                    -Dglx-direct=true \
+                    -Dllvm=disabled
+    switch ${subport} {
+        "mesa-crocus-driver" {
+            set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris,crocus"
+            set dri_drivers "i965,r100,r200,nouveau"
+        }
+        "mesa-glx-xlib-driver" {
+            configure.args-append \
+                    -Dglx=xlib \
+                    -Dshared-glapi=disabled
+            configure.args-replace \
+                    -Ddri3=enabled \
+                        -Ddri3=disabled \
+                    -Degl=enabled \
+                        -Degl=disabled \
+                    -Dplatforms=x11,wayland \
+                        -Dplatforms=x11 \
+                    -Dvulkan-drivers=intel,amd,swrast \
+                        -Dvulkan-drivers= \
+                    -Dgallium-va=enabled \
+                        -Dgallium-va=disabled \
+                    -Dglx-direct=true \
+                        -Dglx-direct=false
+            set dri_drivers ""
+            set gallium_drivers ""
+        }
+        "mesa-glx-galliumxlib-driver" {
+            configure.args-append \
+                    -Dglx=gallium-xlib \
+                    -Dshared-glapi=disabled
+            configure.args-replace \
+                    -Degl=enabled \
+                        -Degl=disabled \
+                    -Dplatforms=x11,wayland \
+                        -Dplatforms=x11 \
+                    -Dvulkan-drivers=intel,amd,swrast \
+                        -Dvulkan-drivers= \
+                    -Dgallium-va=enabled \
+                        -Dgallium-va=disabled \
+                    -Dglx-direct=true \
+                        -Dglx-direct=false
+            set dri_drivers ""
+            set gallium_drivers "swrast,swr"
+        }
+        default {
+            set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris"
+            set dri_drivers "i915,i965,r100,r200,nouveau"
+            configure.args-append \
+                    -Dtools=all
+        }
+    }
+    configure.args-append \
+                    -Dosmesa=false \
+                    -Ddri-drivers=${dri_drivers} \
                     -Dgallium-extra-hud=true \
-                    -Dgallium-va=true \
                     -Dgallium-opencl=disabled \
                     -Dopencl-spirv=false \
-                    -Dopencl-native=false \
-                    -Dtools=all \
-                    -Dglx-direct=true
-        if {[string match *clang* ${configure.compiler}]} {
-            configure.args-append \
-                    -Dbuild-tests=false
-        } else {
-            configure.args-append \
-                    -Dbuild-tests=true
-        }
-        pre-configure {
-            configure.args-append \
-                    -Dgallium-drivers=${gallium_drivers}
-        }
-        post-destroot {
-            if {${subport} ne "${name}-crocus-driver"} {
-                if {[file type ${prefix}/lib/${build_arch}-linux-gnu/] eq "directory"} {
-                    # a previous version of this port probably installed its libraries there
-                    xinstall -m 755 -d ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-                    foreach l [glob ${destroot}${prefix}/lib/*.so ${destroot}${prefix}/lib/*.so.*] {
-                        ln -s [file join ".." [file tail ${l}]] ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
-                    }
-                    # mesa/meson install a bunch of drivers as hardlinks to a single file.
-                    # MacPorts's activation mechanism tends to make independent files out of those,
-                    # multiplying storage requirements. Avoid this by converting to symlinks pointing
-                    # to an appropriate named single file.
-                    file rename ${destroot}${prefix}/lib/dri/i915_dri.so \
-                        ${destroot}${prefix}/lib/dri/mesa_dri_driver.so
-                    foreach d {i830 i915 i965 radeon r200 nouveau_vieux} {
-                        ln -sf mesa_dri_driver.so ${destroot}${prefix}/lib/dri/${d}_dri.so
-                    }
-                    file rename ${destroot}${prefix}/lib/dri/swrast_dri.so \
-                        ${destroot}${prefix}/lib/dri/gallium_dri.so
-                    foreach d {radeonsi nouveau swrast kms_swrast iris r300 r600 vmwgfx virtio_gpu} {
-                        ln -sf gallium_dri.so ${destroot}${prefix}/lib/dri/${d}_dri.so
-                    }
-                    file rename ${destroot}${prefix}/lib/libXvMCr600.so.1.0.0 \
-                        ${destroot}${prefix}/lib/libXvMCgallium.so.1.0.0
-                    foreach d {libXvMCr600.so.1.0.0 libXvMCnouveau.so.1.0.0} {
-                        ln -sf libXvMCgallium.so.1.0.0 ${destroot}${prefix}/lib/${d}
-                    }
-                    file rename ${destroot}${prefix}/lib/dri/r600_drv_video.so \
-                        ${destroot}${prefix}/lib/dri/gallium_drv_video.so
-                    foreach d {r600 radeonsi nouveau} {
-                        ln -sf gallium_drv_video.so ${destroot}${prefix}/lib/dri/${d}_drv_video.so
-                    }
-                }
-            } else {
-                # we only want the ${prefix}/lib/dri/crocus_dri.so driver
-                file rename ${destroot}${prefix} ${destroot}/tmp
-                xinstall -m 755 -d ${destroot}${prefix}/lib/dri
-                file rename ${destroot}/tmp/lib/dri/crocus_dri.so ${destroot}${prefix}/lib/dri/crocus_dri.so
-                file delete -force ${destroot}/tmp
-            }
-        }
-    }
-} else {
-    post-patch {
-        system -W ${worksrcpath} "autoreconf -fvi"
-    }
-    configure.args  --enable-autotools \
-                    --disable-dependency-tracking \
-                    --disable-silent-rules
-    platform darwin {
+                    -Dopencl-native=false
+    if {[string match *clang* ${configure.compiler}]} {
         configure.args-append \
-                    --with-platforms=x11 \
-                    --disable-dri3 \
-                    --disable-egl \
-                    --disable-gbm \
-                    --disable-osmesa \
-                    --disable-llvm-shared-libs
-        set gallium_drivers ""
+                    -Dbuild-tests=false
+    } else {
+        configure.args-append \
+                    -Dbuild-tests=true
+    }
+    pre-configure {
+        configure.args-append \
+                    -Dgallium-drivers=${gallium_drivers}
+    }
+    post-destroot {
+        if {${subport} eq "${name}"} {
+            if {[file type ${prefix}/lib/${build_arch}-linux-gnu/] eq "directory"} {
+                # a previous version of this port probably installed its libraries there
+                xinstall -m 755 -d ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+                foreach l [glob ${destroot}${prefix}/lib/*.so ${destroot}${prefix}/lib/*.so.*] {
+                    ln -s [file join ".." [file tail ${l}]] ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+                }
+                # mesa/meson install a bunch of drivers as hardlinks to a single file.
+                # MacPorts's activation mechanism tends to make independent files out of those,
+                # multiplying storage requirements. Avoid this by converting to symlinks pointing
+                # to an appropriate named single file.
+                file rename ${destroot}${prefix}/lib/dri/i915_dri.so \
+                    ${destroot}${prefix}/lib/dri/mesa_dri_driver.so
+                foreach d {i830 i915 i965 radeon r200 nouveau_vieux} {
+                    ln -sf mesa_dri_driver.so ${destroot}${prefix}/lib/dri/${d}_dri.so
+                }
+                file rename ${destroot}${prefix}/lib/dri/swrast_dri.so \
+                    ${destroot}${prefix}/lib/dri/gallium_dri.so
+                foreach d {radeonsi nouveau swrast kms_swrast iris r300 r600 vmwgfx virtio_gpu} {
+                    ln -sf gallium_dri.so ${destroot}${prefix}/lib/dri/${d}_dri.so
+                }
+                file rename ${destroot}${prefix}/lib/libXvMCr600.so.1.0.0 \
+                    ${destroot}${prefix}/lib/libXvMCgallium.so.1.0.0
+                foreach d {libXvMCr600.so.1.0.0 libXvMCnouveau.so.1.0.0} {
+                    ln -sf libXvMCgallium.so.1.0.0 ${destroot}${prefix}/lib/${d}
+                }
+                file rename ${destroot}${prefix}/lib/dri/r600_drv_video.so \
+                    ${destroot}${prefix}/lib/dri/gallium_drv_video.so
+                foreach d {r600 radeonsi nouveau} {
+                    ln -sf gallium_drv_video.so ${destroot}${prefix}/lib/dri/${d}_drv_video.so
+                }
+            }
+        } else {
+            # we only want a single driver
+            file rename ${destroot}${prefix} ${destroot}/tmp
+            xinstall -m 755 -d ${destroot}${prefix}/lib/dri
+            switch ${subport} {
+                mesa-crocus-driver {
+                    file rename ${destroot}/tmp/lib/dri/crocus_dri.so ${destroot}${prefix}/lib/dri/crocus_dri.so
+                }
+                mesa-glx-xlib-driver {
+                    file rename ${destroot}/tmp/lib/libGL.so.1.6.0 ${destroot}${prefix}/lib/libGL-xlib.so.1.6.0
+                }
+                mesa-glx-galliumxlib-driver {
+                    file rename ${destroot}/tmp/lib/libGL.so.1.5.0 ${destroot}${prefix}/lib/libGL-galliumxlib.so.1.5.0
+                }
+                default {
+                    ui_error "${subport} : Portfile error: we shouldn't be here!!"
+                    return -code error "Portfile error"
+                }
+            }
+            file delete -force ${destroot}/tmp
+        }
     }
 }
 
@@ -267,13 +323,8 @@ platform darwin {
 
     if {${os.major} < 11} {
         # See https://trac.macports.org/ticket/54643
-        if {[string match *meson* ${configure.cmd}]} {
-            patchfiles-append \
+        patchfiles-append \
                     patch-disable-glx_tls.diff
-        } else {
-            configure.args-append \
-                    --disable-glx-tls
-        }
     }
 
     if {${os.major} < 14} {
@@ -281,10 +332,8 @@ platform darwin {
         # See https://trac.macports.org/ticket/54643
         # disk_cache uses the fstatat() function
         patchfiles-append disable_shader_cache.patch
-        if {[string match *meson* ${configure.cmd}]} {
-            configure.args-append \
+        configure.args-append \
                     -Dshader-cache=false
-        }
     }
 
     if { ![file exists /usr/include/Xplugin.h] } {
@@ -299,12 +348,6 @@ platform darwin {
             return -code error "missing libXplugin.dylib"
         }
     }
-}
-
-if {![string match *meson* ${configure.cmd}] && [string match *gcc* ${configure.compiler}]} {
-    # Older gcc fail to do -Werror=missing-prototypes correctly
-    # https://trac.macports.org/ticket/46827
-    patchfiles-append no-missing-prototypes-error.patch
 }
 
 configure.cppflags-delete -I${prefix}/include
@@ -329,15 +372,8 @@ platform darwin {
     variant egl description {enable EGL support} {}
     if {[variant_isset egl]} {
         depends_lib-append      port:xorg-libxshmfence
-        if {[string match *meson* ${configure.cmd}]} {
-            configure.args-replace \
-                               -Degl=false \
+        configure.args-replace -Degl=false \
                                -Degl=true
-        } else {
-            configure.args-replace \
-                                --disable-egl \
-                                --enable-egl
-        }
         set gallium_drivers swrast
         patchfiles-append       patch-support-egl_dri2.diff
     }
@@ -345,6 +381,7 @@ platform darwin {
     variant llvm64bit description {The +llvm variants are effective for the 64bit components of universal builds only} {}
 }
 
+if {${subport} ne "${name}-glx-xlib-driver"} {
     # v21.2.5 seems to build against a narrow range of LLVM versions only; >= 11 specified and
     # my attempt against LLVM 14 failed.
     set lldversions {11 12 13}
@@ -382,44 +419,25 @@ platform darwin {
                     llvm-${ldv} clang-${ldv}
             }
             set llvm_port llvm-${ldv}
-            if {[string match *meson* ${configure.cmd}]} {
-                if {[variant_exists llvm${llv}] && [variant_isset llvm64bit]} {
-                    ui_warning "+llvm64bit is to be implemented and currently ignored"
-                }
-                configure.args-append \
-                    -Dllvm=enabled
-                set PATH $env(PATH)
-                set env(PATH) ${prefix}/libexec/llvm-${ldv}/bin:${PATH}
-                configure.ldflags-append -Wl,-rpath,${prefix}/libexec/llvm-${ldv}/lib
-            } else {
-                if {[variant_exists llvm${llv}] && [variant_isset llvm64bit]} {
-                    lappend merger_configure_args(x86_64) \
-                        --enable-llvm \
-                        --with-llvm-prefix=${prefix}/libexec/llvm-${ldv}
-                    lappend merger_configure_args(arm64) \
-                        --enable-llvm \
-                        --with-llvm-prefix=${prefix}/libexec/llvm-${ldv}
-                } else {
-                    configure.args-append \
-                        --enable-llvm \
-                        --with-llvm-prefix=${prefix}/libexec/llvm-${ldv}
-                }
+            if {[variant_exists llvm${llv}] && [variant_isset llvm64bit]} {
+                ui_warning "+llvm64bit is to be implemented and currently ignored"
             }
+            configure.args-replace \
+                    -Dllvm=disabled \
+                    -Dllvm=enabled
+            set PATH $env(PATH)
+            set env(PATH) ${prefix}/libexec/llvm-${ldv}/bin:${PATH}
+            configure.ldflags-append -Wl,-rpath,${prefix}/libexec/llvm-${ldv}/lib
         }
     }
+}
 
 if {${subport} eq "${name}"} {
     variant osmesa description {enable OSMesa library} {}
     if {[variant_isset osmesa]} {
-        if {[string match *meson* ${configure.cmd}]} {
-            configure.args-replace \
+        configure.args-replace \
                     -Dosmesa=false \
                     -Dosmesa=true
-        } else {
-            configure.args-replace \
-                    --disable-osmesa \
-                    --enable-osmesa
-        }
     }
 
     variant opencl conflicts opencl_icd description {enable OpenCL (standalone variant)} {}
@@ -427,18 +445,12 @@ if {${subport} eq "${name}"} {
     if {[variant_isset opencl]} {
         conflicts-append port:ocl-icd
         depends_build-append port:libclc
-        if {[string match *meson* ${configure.cmd}]} {
-            configure.args-replace \
+        configure.args-replace \
                     -Dgallium-opencl=disabled \
                     -Dgallium-opencl=standalone
-            configure.args-replace \
+        configure.args-replace \
                     -Dopencl-native=false \
                     -Dopencl-native=true
-        } else {
-            configure.args-replace \
-                    --disable-opencl \
-                    --enable-opencl
-        }
         if {[info exists llvm_port]} {
             depends_lib-append port:[string map {"llvm" "clang"} ${llvm_port}]
             require_active_variants ${llvm_port} "" nortti
@@ -469,6 +481,11 @@ if {${subport} eq "${name}"} {
     }
 
     default_variants-append +osmesa
+} elseif {${subport} ne "${name}-glx-xlib-driver" && ![info exists llvm_port]} {
+    pre-fetch {
+        ui_error "port:${subport} requires one of the LLVM variants to be set!"
+        return -code error "LLVM required"
+    }
 }
 
 # variant i915_gallium description {build the Gallium3D i915 and crocus drivers instead of the i915 DRI driver} {}
@@ -479,47 +496,15 @@ if {${subport} eq "${name}"} {
 #                     -Ddri-drivers=i965,r100,r200,nouveau
 # }
 # 
-if {[string match *meson* ${configure.cmd}]} {
-    build.post_args-append -k 0
-} else {
-    build.post_args-append -k
-}
+build.post_args-append -k 0
 
 livecheck.type  regex
 livecheck.url   ${homepage}
 livecheck.regex {relnotes/([0-9.]+)\.html}
 
 
-if {[string match *meson* ${configure.cmd}]} {
-    meson.save_configure_cmd "install log"
-} else {
-    configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
-    pre-configure {
-        set cmd [join "${configure.cmd} ${configure.pre_args} ${configure.args}"]
-        configure.pre_args-prepend "-cf '${configure.cmd} "
-        configure.cmd "/bin/csh"
-        ui_debug "configure command set to `${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}`"
-        system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.log"
-    }
-    post-configure {
-        if {![catch {set fd [open "${workpath}/.macports.${subport}.configure.cmd" "w"]} err]} {
-            foreach var [array names ::env] {
-                puts ${fd} "${var}=$::env(${var})"
-            }
-            puts ${fd} "[join [lrange [split ${configure.env} " "] 0 end] "\n"]\n"
-            puts ${fd} "cd ${worksrcpath}"
-            if {[info exists configure.post_args]} {
-                puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}"
-            } else {
-                puts ${fd} "${configure.cmd} ${configure.pre_args} ${configure.args}"
-            }
-        } else {
-            if {[info exists fd]} {
-                unset fd
-            }
-        }
-    }
-}
+meson.save_configure_cmd "install log"
+test.run yes
 
 post-activate {
     ui_msg "--->    ${subport} activated!"
