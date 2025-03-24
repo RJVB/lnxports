@@ -5,9 +5,10 @@ PortGroup           github 1.0
 set LTO.allow_ThinLTO no
 set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
 
-github.setup        RJVB wrapped-syscalls b7d80ed8f0df9d5a26abc95fcf28e02cd543f97c
-version             1.0.0.10
+github.setup        RJVB wrapped-syscalls f51181f75ab28a9454b09f7c6dc3ccb077ea1713
+version             1.0.0.13
 fetch.type          git
 distname            wrapped-syscalls-git
 
@@ -32,12 +33,16 @@ build.post_args-append \
     "CC=${configure.cc}" \
     "CFLAGS=\"${configure.cflags} ${LTO.cpuflags} ${configure.ldflags}\""
 pre-build {
-	file delete -force ${worksrcpath}/libwrapped_syscalls.so
+    file delete -force ${worksrcpath}/libwrapped_syscalls.so
 }
+
+configure.save_build_cmd "install"
 
 destroot {
     xinstall -m 755 ${worksrcpath}/libwrapped_syscalls.so ${destroot}${prefix}/lib/
     xinstall -m 755 -d ${destroot}${prefix}/share/doc/${subport}
     xinstall -m 644 ${worksrcpath}/README.md ${destroot}${prefix}/share/doc/${subport}
+    xinstall -m 755 -d ${destroot}${prefix}/include/sys
+    xinstall -m 644 ${worksrcpath}/sys/mman.h ${destroot}${prefix}/include/sys/
 }
 
