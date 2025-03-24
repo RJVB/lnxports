@@ -3,6 +3,20 @@
 PortSystem          1.0
 PortGroup           gitlab 1.0
 PortGroup           LTO 1.0
+
+variant legacy conflicts rustup_build description {build only the older, pure C implementation} {}
+platform darwin {
+    default_variants +legacy
+}
+if {[variant_isset legacy]} {
+    # placeholder variant
+    variant rustup_build conflicts legacy {build using a private rust install} {}
+} else {
+    set rustup.disable_cargo yes
+    PortGroup       rustup 1.0
+}
+
+# include the meson PG after potentially including the rust PG(s)
 PortGroup           meson 1.0
 
 gitlab.instance     https://gitlab.freedesktop.org
@@ -22,6 +36,17 @@ platforms           linux
 depends_build-append \
                     port:pkgconfig
 
+if {![variant_isset legacy]} {
+    if {[variant_isset rustup_build]} {
+        PortGroup   conflicts_build 1.0
+        # meson finds cargo via the path, so the safest way to enforce using the rustup-installed
+        # copy is to register a build conflict with port:cargo . NB: the rustup PG extends the PATH !
+        conflicts_build-append \
+                    cargo \
+                    ffmpeg-dev
+    }
+}
+
 description         a Wayland proxy
 long_description    waypipe is a proxy for Wayland clients. It forwards Wayland messages and \
                     serialises changes to shared memory buffers over a single socket. This makes \
@@ -39,7 +64,7 @@ depends_build-append \
                     port:scdoc
 
 configure.args-append \
-                    -Dbuild_c=true -Dbuild_rs=false \
+                    -Dbuild_c=true \
                     -Dman-pages=enabled \
                     -Dwith_video=enabled \
                     -Dwith_dmabuf=enabled \
@@ -47,6 +72,35 @@ configure.args-append \
                     -Dwith_zstd=enabled \
                     -Dwith_gbm=enabled \
                     -Dwith_vaapi=enabled 
+
+if {[variant_isset legacy]} {
+    configure.args-append \
+                    -Dbuild_rs=false
+} else {
+    depends_build-append \
+                    port:cmake \
+                    port:shaderc
+    depends_lib-replace \
+                    port:ffmpeg \
+                    port:ffmpeg6
+    configure.ldflags-append \
+                    -lwrapped_syscalls \
+                    -Wl,-rpath,${prefix}/libexec/ffmpeg6/lib
+    set env(PKG_CONFIG_PATH) \
+                    ${prefix}/libexec/ffmpeg6/lib/pkgconfig
+    configure.args-append \
+                    --pkg-config-path ${prefix}/libexec/ffmpeg6/lib/pkgconfig \
+                    -Dbuild_rs=true
+    pre-configure {
+        ui_msg "--->   Fetching rust stuff"
+        system -notty -W ${worksrcpath} "${cargo.bin} fetch --locked"
+        system -notty -W ${worksrcpath} "${cargo.bin} install --locked bindgen-cli"
+    }
+    pre-build {
+        xinstall -m 755 -d ${build.dir}/target/meson-1-strip
+        ln -sf ../${build_arch}-unknown-${os.platform}-gnu/meson-1-strip/waypipe ${build.dir}/target/meson-1-strip
+    }
+}
 
 installs_libs       no
 
