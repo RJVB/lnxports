@@ -7,8 +7,8 @@ set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 
-github.setup        RJVB wrapped-syscalls f51181f75ab28a9454b09f7c6dc3ccb077ea1713
-version             1.0.0.13
+github.setup        RJVB wrapped-syscalls 7a54cec643b50d89dcedfbb3802bd9328feb450a
+version             1.0.0.15
 fetch.type          git
 distname            wrapped-syscalls-git
 
