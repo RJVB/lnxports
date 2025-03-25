@@ -7,8 +7,8 @@ set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 
-github.setup        RJVB wrapped-syscalls 7a54cec643b50d89dcedfbb3802bd9328feb450a
-version             1.0.0.15
+github.setup        RJVB wrapped-syscalls 55dd6f75b0051063c7f90cf165285d2be8d3c69b
+version             1.0.0.16
 fetch.type          git
 distname            wrapped-syscalls-git
 
@@ -29,9 +29,15 @@ if {${os.platform} ne "darwin"} {
 }
 
 build.target
+if {[tbool configure.ccache]} {
+    build.post_args-append \
+        "\"CC=ccache ${configure.cc}\""
+} else {
+    build.post_args-append \
+        "CC=${configure.cc}"
+}
 build.post_args-append \
-    "CC=${configure.cc}" \
-    "CFLAGS=\"${configure.cflags} ${LTO.cpuflags} ${configure.ldflags}\""
+        "CFLAGS=\"${configure.cflags} ${LTO.cpuflags} ${configure.ldflags}\""
 pre-build {
     file delete -force ${worksrcpath}/libwrapped_syscalls.so
 }
