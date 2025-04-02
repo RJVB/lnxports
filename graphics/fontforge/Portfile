@@ -9,10 +9,10 @@ PortGroup           LTO 1.0
 PortGroup           locale_select 1.0
 PortGroup           from_ports_variant 1.0
 
-github.setup        fontforge fontforge 20230101 ; revision 1
-checksums           rmd160  bd104bd30dd9b6673b2f91c6ea45649a4b8be220 \
-                    sha256  ca82ec4c060c4dda70ace5478a41b5e7b95eb035fe1c4cf85c48f996d35c60f8
-#                     size    13761728
+github.setup        fontforge fontforge 072208fae782cd85e34bc09905e9133d8ded555c
+fetch.type          git
+distname            ${name}-git
+version             2030101.56
 
 categories          graphics fonts
 platforms           darwin linux
@@ -86,6 +86,8 @@ if {(${os.major} eq "darwin" && ${os.major} < 9) || \
     }
 }
 
+patchfiles-append   patch-allow-wayland.diff
+
 github.tarball_from releases
 use_xz              yes
 
@@ -120,97 +122,88 @@ post-patch {
 
 compiler.c_standard 2011
 
-configure.args-append -DENABLE_GUI=OFF \
-                      -DENABLE_LIBGIF=ON \
-                      -DENABLE_LIBJPEG=ON \
-                      -DENABLE_LIBPNG=ON \
-                      -DENABLE_LIBREADLINE=ON \
-                      -DENABLE_LIBSPIRO=ON \
-                      -DENABLE_LIBTIFF=ON \
-                      -DENABLE_UNINAMELIST=ON \
-                      -DENABLE_PYTHON_SCRIPTING=OFF \
-                      -DENABLE_PYTHON_EXTENSION=OFF \
-                      -DENABLE_WOFF2=ON \
-                      -DENABLE_WRITE_PFM=OFF \
-                      -DENABLE_X11=OFF \
-                      -DENABLE_FONTFORGE_EXTRAS=ON \
-                      -DENABLE_DOCS=OFF
+configure.args-append \
+                    -DENABLE_GUI=OFF \
+                    -DENABLE_LIBGIF=ON \
+                    -DENABLE_LIBJPEG=ON \
+                    -DENABLE_LIBPNG=ON \
+                    -DENABLE_LIBREADLINE=ON \
+                    -DENABLE_LIBSPIRO=ON \
+                    -DENABLE_LIBTIFF=ON \
+                    -DENABLE_UNINAMELIST=ON \
+                    -DENABLE_PYTHON_SCRIPTING=OFF \
+                    -DENABLE_PYTHON_EXTENSION=OFF \
+                    -DENABLE_WOFF2=ON \
+                    -DENABLE_WRITE_PFM=OFF \
+                    -DENABLE_X11=OFF \
+                    -DENABLE_FONTFORGE_EXTRAS=ON \
+                    -DENABLE_DOCS=OFF
 
-variant python37 conflicts python38 python39 python310 python311 description {Enable Python support (Python 3.7)} {
-    depends_lib-append      port:python37
-    configure.args-replace  -DENABLE_PYTHON_EXTENSION=OFF \
-                            -DENABLE_PYTHON_EXTENSION=ON
-    configure.args-replace  -DENABLE_PYTHON_SCRIPTING=OFF \
-                            -DENABLE_PYTHON_SCRIPTING=ON
-    configure.args-append   -DPython3_EXECUTABLE="${prefix}/bin/python3.7" \
-                            -DPYHOOK_INSTALL_DIR="${frameworks_dir}/Python.framework/Versions/3.7/lib/python3.7/site-packages"
-    configure.pkg_config_path \
-                            "${frameworks_dir}/Python.framework/Versions/3.7/lib/pkgconfig"
+set python_versions {3.8 3.9 3.10 3.11 3.12 3.13}
+# generate the Python variants:
+foreach pdv ${python_versions} {
+    set pv [join [split ${pdv} '.'] ""]
+    set conflist ""
+
+    foreach v ${python_versions} {
+        if {${v} ne ${pdv}} {
+            set cv [join [split ${v} '.'] ""]
+            set conflist "${conflist} python${cv}"
+        }
+    }
+
+    variant python${pv} conflicts ${conflist} description [list Enable Python support (Python ${pdv})] {}
 }
 
-variant python38 conflicts python37 python39 python310 python311 description {Enable Python support (Python 3.8)} {
-    depends_lib-append      port:python38
-    configure.args-replace  -DENABLE_PYTHON_EXTENSION=OFF \
-                            -DENABLE_PYTHON_EXTENSION=ON
-    configure.args-replace  -DENABLE_PYTHON_SCRIPTING=OFF \
-                            -DENABLE_PYTHON_SCRIPTING=ON
-    configure.args-append   -DPython3_EXECUTABLE="${prefix}/bin/python3.8" \
-                            -DPYHOOK_INSTALL_DIR="${frameworks_dir}/Python.framework/Versions/3.8/lib/python3.8/site-packages"
-    configure.pkg_config_path \
-                            "${frameworks_dir}/Python.framework/Versions/3.8/lib/pkgconfig"
+# with this method we can't use inline variant payload definition... and have to
+# loop twice over the supported versions: all variants need to be defined first!
+foreach pdv ${python_versions} {
+    set pv [join [split ${pdv} '.'] ""]
+
+    if {[variant_isset python${pv}]} {
+        set python_variant_set yes
+    }
+
+    if {[variant_isset python${pv}]} {
+        depends_lib-append  port:python${pv}
+        configure.args-replace \
+                        -DENABLE_PYTHON_EXTENSION=OFF \
+                        -DENABLE_PYTHON_EXTENSION=ON
+        configure.args-replace \
+                        -DENABLE_PYTHON_SCRIPTING=OFF \
+                        -DENABLE_PYTHON_SCRIPTING=ON
+        configure.args-append \
+                        -DPython3_EXECUTABLE="${prefix}/bin/python${pdv}" \
+                        -DPYHOOK_INSTALL_DIR="${frameworks_dir}/Python.framework/Versions/${pdv}/lib/python${pdv}/site-packages"
+        configure.pkg_config_path \
+                        "${frameworks_dir}/Python.framework/Versions/${pdv}/lib/pkgconfig"
+    }
 }
 
-variant python39 conflicts python37 python38 python310 python311 description {Enable Python support (Python 3.9)} {
-    depends_lib-append      port:python39
-    configure.args-replace  -DENABLE_PYTHON_EXTENSION=OFF \
-                            -DENABLE_PYTHON_EXTENSION=ON
-    configure.args-replace  -DENABLE_PYTHON_SCRIPTING=OFF \
-                            -DENABLE_PYTHON_SCRIPTING=ON
-    configure.args-append   -DPython3_EXECUTABLE="${prefix}/bin/python3.9" \
-                            -DPYHOOK_INSTALL_DIR="${frameworks_dir}/Python.framework/Versions/3.9/lib/python3.9/site-packages"
-    configure.pkg_config_path \
-                            "${frameworks_dir}/Python.framework/Versions/3.9/lib/pkgconfig"
-}
-
-variant python310 conflicts python37 python38 python39 python311 description {Enable Python support (Python 3.10)} {
-    depends_lib-append      port:python310
-    configure.args-replace  -DENABLE_PYTHON_EXTENSION=OFF \
-                            -DENABLE_PYTHON_EXTENSION=ON
-    configure.args-replace  -DENABLE_PYTHON_SCRIPTING=OFF \
-                            -DENABLE_PYTHON_SCRIPTING=ON
-    configure.args-append   -DPython3_EXECUTABLE="${prefix}/bin/python3.10" \
-                            -DPYHOOK_INSTALL_DIR="${frameworks_dir}/Python.framework/Versions/3.10/lib/python3.10/site-packages"
-    configure.pkg_config_path \
-                            "${frameworks_dir}/Python.framework/Versions/3.10/lib/pkgconfig"
-}
-
-variant python311 conflicts python37 python38 python39 python310 description {Enable Python support (Python 3.11)} {
-    depends_lib-append      port:python311
-    configure.args-replace  -DENABLE_PYTHON_EXTENSION=OFF \
-                            -DENABLE_PYTHON_EXTENSION=ON
-    configure.args-replace  -DENABLE_PYTHON_SCRIPTING=OFF \
-                            -DENABLE_PYTHON_SCRIPTING=ON
-    configure.args-append   -DPython3_EXECUTABLE="${prefix}/bin/python3.11" \
-                            -DPYHOOK_INSTALL_DIR="${frameworks_dir}/Python.framework/Versions/3.11/lib/python3.11/site-packages"
-    configure.pkg_config_path \
-                            "${frameworks_dir}/Python.framework/Versions/3.11/lib/pkgconfig"
+if {![tbool python_variant_set]} {
+    default_variants-append +python38
 }
 
 variant gui description {Enable GUI support} {
     if {${os.platform} eq "darwin"} {
-        PortGroup           app 1.0
-        app.name            FontForge
-        app.icon            ${worksrcpath}/osx/FontForge.app/Contents/Resources/FontForge.icns
+        PortGroup       app 1.0
+        app.name        FontForge
+        app.icon        ${worksrcpath}/osx/FontForge.app/Contents/Resources/FontForge.icns
     }
-    depends_lib-append      path:lib/pkgconfig/gtk+-3.0.pc:gtk3
-    configure.args-replace  -DENABLE_GUI=OFF -DENABLE_GUI=ON
+    depends_lib-append  path:lib/pkgconfig/gtk+-3.0.pc:gtk3
+    configure.args-replace \
+                        -DENABLE_GUI=OFF -DENABLE_GUI=ON
 }
 
 variant docs description {Install the documentation} {
-    configure.args-replace  -DENABLE_DOCS=OFF \
-                            -DENABLE_DOCS=ON
-    configure.args-append   -DSPHINX_USE_VENV=ON
+    configure.args-replace \
+                        -DENABLE_DOCS=OFF \
+                        -DENABLE_DOCS=ON
+    configure.args-append \
+                        -DSPHINX_USE_VENV=ON
 }
+
+default_variants-append +gui
 
 if {[variant_isset gui]} {
     notes-append "
@@ -221,9 +214,4 @@ first time, e.g.:
 "
 }
 
-default_variants    +gui
-if {![variant_isset python38] && ![variant_isset python39] && ![variant_isset python310] && ![variant_isset python311]} {
-    default_variants-append +python37
-}
-
-build.post_args-append      -wk
+build.post_args-append  -wk

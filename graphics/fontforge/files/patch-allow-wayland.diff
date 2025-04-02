@@ -1,0 +1,13 @@
+diff --git fontforgeexe/startui.c fontforgeexe/startui.c
+index 307a442..666fec8 100644
+--- fontforgeexe/startui.c
++++ fontforgeexe/startui.c
+@@ -817,7 +817,7 @@ int fontforge_main( int argc, char **argv ) {
+ 	    /* already did a chdir earlier, don't need to do it again */;
+     }
+ #ifdef FONTFORGE_CAN_USE_GDK
+-    gdk_set_allowed_backends("win32,quartz,x11");
++    gdk_set_allowed_backends("win32,quartz,x11,wayland");
+     gdk_init(&argc, &argv);
+ #endif
+     ensureDotFontForgeIsSetup();
