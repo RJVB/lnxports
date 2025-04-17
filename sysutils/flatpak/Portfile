@@ -1,0 +1,106 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       github 1.0
+PortGroup       LTO 1.0
+PortGroup       meson 1.0
+PortGroup       python-required 1.0
+PortGroup       locale_select 1.0
+
+github.setup    flatpak flatpak 2ae9cfd95082286c790e3f5b571b2e50f6a01aff
+fetch.type      git
+version         1.16.0.38
+description     Linux application sandboxing and distribution framework
+long_description \
+                Flatpak is a system for building, distributing, and running \
+                sandboxed desktop applications on Linux.
+homepage        https://flatpak.org/
+license         LGPL-2.1
+platforms       linux
+
+distname        ${name}-git
+
+set python_exe  [find_new_enough_python3 7]
+
+depends_build-append \
+                port:pkgconfig \
+                port:bison \
+                port:libxslt \
+                port:python${py_ver_nodot}
+
+# port:libcap ...
+# port:fuse and fusermount expected from host
+# polkit-agent-1 expected from host
+depends_lib-append \
+                port:gettext \
+                port:glib2 \
+                port:dbus \
+                port:ostree \
+                port:libarchive \
+                port:curl \
+                port:libxml2 \
+                port:zstd \
+                port:dconf \
+                port:systemd \
+                port:xorg-libXau \
+                port:AppStream \
+                port:gdk-pixbuf2 \
+                port:gpgme
+
+variant wayland_security description {build wayland security-context protocol support} {
+    depends_build_append \
+                port:wayland-protocols
+    depends_lib-append \
+                port:wayland
+    configure.args-replace \
+                -Dwayland_security_context=disabled \
+                -Dwayland_security_context=enabled
+}
+
+# Ubuntu's patches:
+patch.pre_args  -Np1
+
+patchfiles-append \
+                patch-mesonbuild-@PYTHON3@.diff \
+                patch-memfdcreate.diff
+
+if {[file type /dev/shm] eq "link"} {
+    patchfiles-append \
+                patch-devshm-is-symlink.diff
+}
+
+post-patch {
+    reinplace "s|@PYTHON3@|${python_exe}|g" ${worksrcpath}/meson.build
+}
+
+configure.args-append \
+                -Dgir=disabled \
+                -Dseccomp=disabled \
+                -Dselinux_module=disabled \
+                -Dsandboxed_triggers=false \
+                -Dwayland_security_context=disabled \
+                -Ddocbook_docs=disabled \
+                -Dgtkdoc=disabled
+
+platform linux {
+    configure.ldflags-append -Wl,-rpath=${prefix}/lib -Wl,-rpath=${prefix}/lib/${build_arch}-${os.platform}-gnu  -Wl,-rpath=${prefix}/lib/systemd
+    build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib -Wl,-rpath=${prefix}/lib/${build_arch}-${os.platform}-gnu  -Wl,-rpath=${prefix}/lib/systemd
+    destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib -Wl,-rpath=${prefix}/lib/${build_arch}-${os.platform}-gnu  -Wl,-rpath=${prefix}/lib/systemd
+}
+
+build.pre_args-prepend \
+                -k 0
+
+post-destroot {
+    # make certain our DBus files are found by the system daemon(s)
+    xinstall -m 755 -d ${destroot}/usr/share/dbus-1/interfaces/
+    xinstall -m 755 -d ${destroot}/usr/share/dbus-1/services/
+    ln -s ${prefix}/share/dbus-1/interfaces/org.freedesktop.portal.Flatpak.xml ${destroot}/usr/share/dbus-1/interfaces/
+    ln -s ${prefix}/share/dbus-1/services/org.freedesktop.portal.Flatpak.service ${destroot}/usr/share/dbus-1/services/
+}
+
+destroot.violate_mtree      yes
+destroot.keepdirs \
+                ${destroot}${prefix}/var/lib/flatpak
+
+test.run        yes

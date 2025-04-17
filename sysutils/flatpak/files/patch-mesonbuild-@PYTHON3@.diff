@@ -1,0 +1,13 @@
+diff --git a/meson.build b/meson.build
+index 25afdd31..798d2c01 100644
+--- a/meson.build
++++ b/meson.build
+@@ -260,7 +260,7 @@ endif
+ xmlto = find_program('xmlto', required : get_option('docbook_docs'))
+ 
+ if run_command(
+-  'python3', '-c', 'import pyparsing',
++  '@PYTHON3@', '-c', 'import pyparsing',
+   check : false
+ ).returncode() != 0
+   error('python3 "pyparsing" module is required')
