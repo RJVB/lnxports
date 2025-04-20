@@ -1,6 +1,8 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
 PortGroup           locale_select 1.0
 
 name                zenity
@@ -19,8 +21,8 @@ master_sites        gnome:sources/${name}/${branch}/
 use_xz              yes
 
 checksums           rmd160  1a8af7436ab698db73c0f542d731619d31fdbbca \
-                    sha256  db179354721fb4e2d5c418e0dc41f09c831a6b2dd440e33f7743dfc266de8a6b \
-                    size    4458404
+                    sha256  db179354721fb4e2d5c418e0dc41f09c831a6b2dd440e33f7743dfc266de8a6b
+#                     size    4458404
 
 depends_build       port:pkgconfig
 platform darwin {
@@ -45,11 +47,16 @@ if {${os.platform} eq "darwin"} {
                     --disable-webkitgtk \
                     --disable-silent-rules
 } else {
+    depends_lib-append \
+                    path:lib/pkgconfig/webkit2gtk-4.0.pc:webkit2-gtk
     configure.env-append \
-                    LIBS="-L${prefix}/lib -lintl"
+                    "LIBS=-L${prefix}/lib -lintl"
     configure.args  --enable-compile-warnings=minimum \
+                    --enable-webkitgtk \
                     --disable-silent-rules
 }
+
+langselect_dirs_dir ${prefix}/share/help
 
 # optional webkitgtk support requires webkit2gtk-4.0 >= 2.8.1
 
