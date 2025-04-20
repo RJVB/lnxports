@@ -17,8 +17,7 @@ description         Installs the official clang+llvm-${llvm_version} tarball for
 long_description    ${description}.
 
 subport clang-${llvm_version} {
-    description \
-                    The official clang-${llvm_version} binaries
+    description     The official clang-${llvm_version} binaries
     long_description \
                     ${description}. Exposes the executables installed by port:llvm-${llvm_version}.
     depends_lib-append \
@@ -26,12 +25,25 @@ subport clang-${llvm_version} {
 }
 
 subport lldb-${llvm_version} {
-    description \
-                    The official lldb-${llvm_version} binaries
+    description     The official lldb-${llvm_version} binaries
     long_description \
                     ${description}. Exposes the executables installed by port:llvm-${llvm_version}.
     depends_lib-append \
                     port:llvm-${llvm_version}
+
+    conflicts-append \
+                    lldb-standalone-${llvm_version}
+}
+
+subport lldb-standalone-${llvm_version} {
+    description     The official lldb-${llvm_version} binaries
+    long_description \
+                    ${description}. Standalone version not requiring the installation of \
+                    the huge, full port:llvm-${llvm_version}.
+
+    conflicts-append \
+                    llvm-${llvm_version} \
+                    lldb-${llvm_version}
 }
 
 homepage            http://www.llvm.org/
@@ -44,27 +56,39 @@ build           {}
 set llvm_suffix -mp-${llvm_version}
 set llvm_short [lindex [split ${llvm_version} '.'] 0]
 
+master_sites    https://releases.llvm.org/9.0.0
+distname	    clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-14.04
+checksums       rmd160  df6b2bfd99f41be2b54e10fbdeb37226ac486b21 \
+                sha256  bea706c8f6992497d08488f44e77b8f0f87f5b275295b974aa8b194efba18cb8
+#                 size    430135016
+extract         {}
+
+proc set-rpath {exe} {
+    global prefix
+    set rpath [exec patchelf --print-rpath ${exe}]
+    # NB: $rpath will be of the form "$ORIGIN/../lib" so we need to prepend a "\"
+    # in the shell command, hence the "\\${rpath}" below.
+    system "patchelf --set-rpath \
+        \"${prefix}/lib:${prefix}/lib/x86_64-linux-gnu:${prefix}/lib/libgcc:\\${rpath}\" \
+        ${exe}"
+}
+
 if {${subport} eq "llvm-${llvm_version}"} {
-    revision        [expr ${revision} +1]
-    master_sites    https://releases.llvm.org/9.0.0
-    distname	      clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-14.04
+    revision        [expr ${revision} +2]
     use_xz          yes
     installs_libs   yes
-    checksums       rmd160  df6b2bfd99f41be2b54e10fbdeb37226ac486b21 \
-                    sha256  bea706c8f6992497d08488f44e77b8f0f87f5b275295b974aa8b194efba18cb8
-#                     size    430135016
-    extract         {}
     destroot {
-	   if {![file exists ${destroot}${prefix}/libexec/llvm-${llvm_version}]} {
-	       xinstall -m 755 -d ${destroot}${prefix}/libexec
-	       system -W ${destroot}${prefix}/libexec/ "tar -xf ${distpath}/${distname}${extract.suffix}"
-	       file rename ${destroot}${prefix}/libexec/${distname} ${destroot}${prefix}/libexec/llvm-${llvm_version}
+        if {![file exists ${destroot}${prefix}/libexec/llvm-${llvm_version}]} {
+           xinstall -m 755 -d ${destroot}${prefix}/libexec
+           system -W ${destroot}${prefix}/libexec/ "tar -xf ${distpath}/${distname}${extract.suffix}"
+           file rename ${destroot}${prefix}/libexec/${distname} ${destroot}${prefix}/libexec/llvm-${llvm_version}
         }
         set dbindir ${destroot}${prefix}/libexec/llvm-${llvm_version}/bin
         foreach destbin [glob ${dbindir}/llvm* \
                 ${dbindir}/opt \
                 ${dbindir}/llc \
                 ${dbindir}/lli] {
+            set-rpath ${destbin}
             set bin [string map "${destroot}/ /" ${destbin}]
             set bname [file tail ${bin}]
             set bin_filename ${destroot}${prefix}/bin/${bname}${llvm_suffix}
@@ -74,11 +98,28 @@ if {${subport} eq "llvm-${llvm_version}"} {
         }
         # there is no libLLVM.so in this packaging, only libLLVM*.a archives
 #         foreach destbin [glob ${destroot}${prefix}/libexec/llvm-${llvm_version}/lib/libLLVM*] {
-# 		  set bin [string map "${destroot}/ /" ${destbin}]
+#             set bin [string map "${destroot}/ /" ${destbin}]
 #             set bname [file tail ${bin}]
 #             set bin_filename ${destroot}${prefix}/lib/${bname}
 #             ln -s ${bin} ${bin_filename}
 #         }
+    }
+} elseif {${subport} eq "lldb-standalone-${llvm_version}"} {
+    use_xz          yes
+    installs_libs   yes
+    # we extract using bsdtar because we know it'll accept wildcards in the filelist
+    # without requiring extract arguments.
+    depends_extract-append \
+                    port:libarchive \
+                    port:patchelf
+    # use a dedicated extract phase since we want to share the destroot{} phase with the regular lldb port
+    extract {
+        if {![file exists ${destroot}${prefix}/libexec/llvm-${llvm_version}]} {
+           xinstall -m 755 -d ${destroot}${prefix}/libexec
+           system -W ${destroot}${prefix}/libexec/ \
+                   "bsdtar -k -xf ${distpath}/${distname}${extract.suffix} \"*lldb*\" \"*/libc++*.so*\""
+           file rename ${destroot}${prefix}/libexec/${distname} ${destroot}${prefix}/libexec/llvm-${llvm_version}
+        }
     }
 } else {
     distfiles
@@ -100,15 +141,25 @@ if {${subport} eq "llvm-${llvm_version}"} {
                 }
             }
         }
-    } elseif {${subport} eq "lldb-${llvm_version}"} {
-        destroot {
-            foreach bin [glob -nocomplain ${prefix}/libexec/llvm-${llvm_version}/bin/lldb*] {
-                set bname [file tail ${bin}]
-                set bin_filename ${destroot}${prefix}/bin/${bname}${llvm_suffix}
-    
-                xinstall -m 755 "${filespath}/llvm-bin" "${bin_filename}"
-                reinplace "s:EXEC_PATH:${bin}:" "${bin_filename}"
-            }
+    }
+}
+
+if {${subport} eq "lldb-${llvm_version}" || ${subport} eq "lldb-standalone-${llvm_version}"} {
+    destroot {
+        if {${subport} eq "lldb-standalone-${llvm_version}"} {
+            set dbindir ${destroot}${prefix}/libexec/llvm-${llvm_version}/bin
+        } else {
+            set dbindir ${prefix}/libexec/llvm-${llvm_version}/bin
+        }
+        foreach destbin [glob -nocomplain ${dbindir}/lldb*] {
+            set-rpath ${destbin}
+
+            set bin [string map "${destroot}/ /" ${destbin}]
+            set bname [file tail ${bin}]
+            set bin_filename ${destroot}${prefix}/bin/${bname}${llvm_suffix}
+
+            xinstall -m 755 "${filespath}/llvm-bin" "${bin_filename}"
+            reinplace "s:EXEC_PATH:${bin}:" "${bin_filename}"
         }
     }
 }
