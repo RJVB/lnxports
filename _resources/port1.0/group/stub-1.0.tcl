@@ -24,6 +24,10 @@
 # PG Options:
 #   * stub.subport_name - override subport name, for README location
 #   * stub.readme       - whether to create README; defaults to yes
+# PG Variable:
+#   * stub.fromHost_allow_pre_and_post 
+#                       - set this to a True value in the Portfile to allow running
+#                         pre- and post- blocks for +fromHost installs
 #
 #===================================================================================================
 
@@ -47,7 +51,13 @@ proc stub::post_destroot {} {
     }
 }
 
-proc stub::setup_stub_linux {} {
+if {[tbool stub.fromHost_allow_pre_and_post] && [variant_exists fromHost] && [variant_isset fromHost]} {
+    set setupFn "setup_stub"
+} else {
+    set setupFn "setup_stub_linux"
+}
+
+proc stub::${setupFn} {} {
     global PortInfo
 
     if { ![info exists PortInfo(maintainers)] } {
@@ -78,4 +88,4 @@ proc stub::setup_stub_linux {} {
 }
 
 # callback after port is parsed
-port::register_callback stub::setup_stub_linux
+port::register_callback stub::${setupFn}
