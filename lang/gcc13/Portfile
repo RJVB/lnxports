@@ -25,7 +25,7 @@ long_description    {*}${description}, including front ends for \
 version             13.3.0 ; revision 2
 
 set libgccname      lib${name}
-subport             ${libgccname} { revision [ expr ${revision} + 0 ] }
+subport             ${libgccname} { revision [ expr ${revision} + 1 ] }
 
 set libcxxname      ${name}-libcxx
 
@@ -578,29 +578,33 @@ if {${subport} eq ${libgccname}} {
             ui_debug "${destroot}${prefix}/lib/libgcc/${dylib} -> ${destroot}${prefix}/lib/libgcc.merged/"
             file rename ${destroot}${prefix}/lib/libgcc/${dylib} ${destroot}${prefix}/lib/libgcc.merged/
 
-            platform darwin {
-                # Universal support
-                if {[variant_exists universal] && [variant_isset universal]} {
-                    foreach archdir [glob ${destroot}${prefix}/lib/libgcc/*/] {
-                        set archdir_nodestroot [string map "${destroot}/ /" ${archdir}]
-                        if {[file exists ${archdir}/${dylib}]} {
-                            system "install_name_tool -id ${prefix}/lib/libgcc/${dylib} ${archdir}/${dylib}"
-                            foreach link [glob -tails -directory ${archdir} *.dylib] {
-                                system "install_name_tool -change ${archdir_nodestroot}${link} ${prefix}/lib/libgcc/${link} ${archdir}/${dylib}"
-                            }
-                            system "lipo -create -output ${destroot}${prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${prefix}/lib/libgcc.merged/${dylib} ${archdir}/${dylib} && mv ${destroot}${prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${prefix}/lib/libgcc.merged/${dylib}"
-                        }
-                    }
-                }
-
-                # strip debug symbols to supress debugger warnings:
-                # http://trac.macports.org/attachment/ticket/34831
-                if {! [string match *libgcc_ext* ${dylib}]} {
-                    system "strip -x ${destroot}${prefix}/lib/libgcc.merged/${dylib}"
-                }
-            }
+#             platform darwin {
+#                 # Universal support
+#                 if {[variant_exists universal] && [variant_isset universal]} {
+#                     foreach archdir [glob ${destroot}${prefix}/lib/libgcc/*/] {
+#                         set archdir_nodestroot [string map "${destroot}/ /" ${archdir}]
+#                         if {[file exists ${archdir}/${dylib}]} {
+#                             system "install_name_tool -id ${prefix}/lib/libgcc/${dylib} ${archdir}/${dylib}"
+#                             foreach link [glob -tails -directory ${archdir} *.dylib] {
+#                                 system "install_name_tool -change ${archdir_nodestroot}${link} ${prefix}/lib/libgcc/${link} ${archdir}/${dylib}"
+#                             }
+#                             system "lipo -create -output ${destroot}${prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${prefix}/lib/libgcc.merged/${dylib} ${archdir}/${dylib} && mv ${destroot}${prefix}/lib/libgcc.merged/${dylib}~ ${destroot}${prefix}/lib/libgcc.merged/${dylib}"
+#                         }
+#                     }
+#                 }
+# 
+#                 # strip debug symbols to supress debugger warnings:
+#                 # http://trac.macports.org/attachment/ticket/34831
+#                 if {! [string match *libgcc_ext* ${dylib}]} {
+#                     system "strip -x ${destroot}${prefix}/lib/libgcc.merged/${dylib}"
+#                 }
+#             }
         }
         system "ls -l ${destroot}${prefix}/lib/libgcc.merged"
+        # install the LTO linker plugin for use by `nm`:
+        xinstall -m 755 -d ${destroot}${prefix}/lib/bfd-plugins
+        file rename ${destroot}${prefix}/libexec/gcc/x86_64-pc-linux-gnu/13.3.0/liblto_plugin.so \
+                    ${destroot}${prefix}/lib/bfd-plugins/
 
         file delete -force ${destroot}${prefix}/bin
         file delete -force ${destroot}${prefix}/share
@@ -720,7 +724,7 @@ if { ${subport} ne ${libcxxname} } {
                     "[string range ${l} 0 [string last ".so" ${l}]]so"
                 ln -s -f ${l} ${destroot}${prefix}/lib/gcc${major}/${dylib_nover}
             }
-            system "ls -l ${destroot}${prefix}/lib/gcc${major} "
+            catch {system "ls -l ${destroot}${prefix}/lib/gcc${major} "}
         }
 
         # Ensure all dylibs in destroot have our extra rpath added ..
