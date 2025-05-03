@@ -50,7 +50,7 @@ use_xz                  yes
 
 name                    llvm-${llvm_version}
 
-subport                 clang-${llvm_version} {}
+subport                 clang-${llvm_version} {revision [expr ${revision} +1]}
 subport                 lldb-${llvm_version} {
     PortGroup           code_sign 1.0
 }
@@ -652,7 +652,7 @@ if {${subport} eq "clang-${llvm_version}"} {
             reinplace "s|@@MACPORTS_HOST_NAME@@|${build_arch}-apple-darwin${os.major}|g" \
                 ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
             reinplace "s|@@MACPORTS_HOST_NAME@@|${build_arch}-pc-linux-gnu|g" \
-                ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
+                ${patch.dir}/clang/lib/Driver/ToolChains/Gnu.cpp
             reinplace "s|@@MACPORTS_libstdc++@@|${prefix}/lib/libgcc/libstdc++.6.dylib|g" \
                 ${patch.dir}/clang/lib/Driver/ToolChains/Darwin.cpp
             reinplace "s|@@MACPORTS_GCC_LIB_DIR@@|${prefix}/lib/libgcc|g" \
