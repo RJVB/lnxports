@@ -78,6 +78,8 @@ proc stub::${setupFn} {} {
     use_autoreconf      no
     use_configure       no
     depends_lib
+    # we're not building, so why add compiler build dependencies?!
+    configure.compiler.add_deps no
     build {}
     # RJVB : run our bit of code in the destroot because "base"
     # has been modified not to run pre- and post- blocks if
