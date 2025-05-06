@@ -1,0 +1,238 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# Copyright (c) 2015-2025 R.J.V. Bertin
+
+PortSystem          1.0
+
+# set kf5.project     krita
+# set kf5.virtualPath applications
+set kf5.dont_use_xz yes
+set kf5.category    graphics
+set LTO.LTO.maybe_ForceLD yes
+PortGroup           kf5 1.1
+PortGroup           github 1.0
+
+maintainers         gmail.com:rjvbertin openmaintainer
+
+description         a free and open source painting program.
+long_description    Krita is a free and open source painting program. \
+                    It is made by artists who want to see affordable art tools for everyone. \n\
+                    Note that the upstream viewpoint is that \"Macports are \
+                    fine for Linux refugees, but that's not our target user group.\". Please report \
+                    problems to the port maintainer, not upstream.
+#version             3.0.1.1 ; revision 2
+## last version to require Qt 5.9 : 5.0.8 or commit bea8ca5074d9b14d0673294e70268442abc83f4a
+## or commit c99f7a4b47516def58cea3be81acd4afabf56832 on the 5.0 branch
+github.setup        kde krita c99f7a4b47516def58cea3be81acd4afabf56832
+name                kf5-krita
+version             5.0.8.6
+checksums           rmd160  5b09362859b7f55c4ae5bc6dbdd3f6ee59548468 \
+                    sha256  b910cd174d185740c4a28fde0daf028a67febfa6f9386d4903f3d3eda68ebee3
+#                     size    237923311
+distname            ${name}-git
+homepage            https://krita.org
+
+# shared dependencies:
+depends_lib-append  port:curl \
+                    port:libpng \
+                    port:zlib \
+                    port:fftw-3
+
+patch.pre_args      -Np1
+
+kf5.allow_apidocs_generation no
+
+subport ${name}-gmic_plugin {}
+if {${subport} eq "${name}-gmic_plugin"} {
+    description     krita's GMic plugin
+    long_description {*}${description}
+
+    version         3.0.2.2
+    
+    master_sites    https://github.com/amyspark/gmic/releases/download/v${version}
+    distname        gmic-${version}-patched
+    checksums       rmd160  594b13fcdd98abc5b5435101720a4f3f2c73c717 \
+                    sha256  117f0469e8697271f8808318d928013dc5036fe7dc6be180aa30757b65444aae
+#                     size    10452771
+
+    # we share dependencies with the main port, plus the main port itself
+    # also, we use LLVM's libomp for OpenMP functionality since it doesn't
+    # use static TLS like GCC's libgomp does.
+    depends_lib-append \
+                    port:${name} \
+                    path:include/libomp/omp.h:libomp
+    kf5.depends_frameworks \
+                    kcoreaddons
+
+    patchfiles-append \
+                    gmic_plugin/patch-allow-our-buildtype.diff \
+                    gmic_plugin/patch-use-libomp.diff \
+                    gmic_plugin/patch-really-support-qt59.diff
+
+    cmake.source_dir \
+                    ${worksrcpath}/gmic-qt
+    compiler.cxx_standard \
+                    2011
+    configure.args-append \
+                    -DGMIC_QT_HOST=krita-plugin \
+                    -DENABLE_SYSTEM_GMIC=FALSE \
+                    -DENABLE_ASAN=OFF
+
+    platform linux {
+        post-destroot {
+            if {![file exists ${prefix}/lib/kritaplugins] \
+                    && [file exists ${prefix}/lib/x86_64-linux-gnu/kritaplugins]} {
+                # plugin needs to be in with the other plugins or else all hell breaks loose
+                # (probably an order-of-loading thing?)
+                xinstall -m 755 -d ${destroot}${prefix}/lib/x86_64-linux-gnu
+                file rename ${destroot}${prefix}/lib/kritaplugins \
+                    ${destroot}${prefix}/lib/x86_64-linux-gnu/kritaplugins
+            }
+        }
+    }
+
+    # done here!
+    return
+}
+
+PortGroup           python-required 1.0
+PortGroup           boost 1.0
+PortGroup           conflicts_build 1.0
+
+boost.version       1.71
+
+find_new_enough_python3 7
+
+depends_build-append \
+                    port:python${py_ver_nodot}
+
+# optional dependencies that we make default:
+depends_lib-append  port:gsl \
+                    port:tiff \
+                    port:webp \
+                    port:openjpeg \
+                    port:giflib5 \
+                    port:libheif \
+                    path:lib/libjpeg.${kf5::libs_ext}:jpeg \
+                    port:eigen3 \
+                    port:exiv2 \
+                    port:Vc \
+                    port:poppler-qt5 \
+                    port:quazip1 \
+                    port:libraw \
+                    port:lcms2
+
+conflicts_build-append \
+                    giflib
+
+kf5.depends_qt5_components \
+                    qtsvg
+
+kf5.depends_frameworks \
+                    karchive kconfig kcompletion kcoreaddons kcrash \
+                    kguiaddons ki18n kio kitemmodels kitemviews \
+                    kwidgetsaddons kwindowsystem
+
+platform darwin {
+    conflicts calligra
+    use_xcode       yes
+}
+
+# in libs/ui/KisMainWindow.cpp:
+# #ifdef Q_OS_MAC
+#     setUnifiedTitleAndToolBarOnMac(true);
+# #endif
+# and setAttribute(Qt::WA_MacSmallSize)
+
+patchfiles-append   patch-linuxy-build.diff \
+                    patch-omit-custom-rpath.diff \
+                    patch-undo-appbundle-and-x11-assumptions.diff \
+                    patch-generic-fixes.diff \
+                    patch-support-newer-exiv2.diff \
+                    patch-really-support-qt59.diff \
+                    patch-support-osx-pre1012.diff 
+# deleting the icon index in the global destruction phase
+# can lead to a crash on Mac, probably because of the qt5-kde
+# support for icon themes in the XDG location(s). Clearing
+# the index in the KisApplication dtor prevents that.
+patchfiles-append   patch-clear_iconmap.diff
+# show the error that was raised when trying to load the GMic plugin (if any)
+patchfiles-append   patch-show-gmicplugin-error.diff
+
+configure.env-append \
+                    "CCACHE_SLOPPINESS=pch_defines,time_macros"
+build.env-append    "CCACHE_SLOPPINESS=pch_defines,time_macros"
+
+pre-configure {
+    ln -sf ${filespath}/FindGIF.cmake ${worksrcpath}/cmake/modules/
+}
+
+cmake.install_rpath-append \
+                    ${prefix}/lib/giflib5
+
+compiler.cxx_standard \
+                    2014
+
+configure.args-replace \
+                    -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion} \
+                    -DPYTHON_EXECUTABLE=${prefix}/bin/python${py_ver}
+configure.args-append \
+                    -DBUILD_TESTING=OFF \
+                    -DAPPLE_SUPPORT_X11=OFF
+
+platform darwin {
+    variant x11 requires qt5kde description {full X11 support} {}
+    if {[variant_isset x11]} {
+        qt5.depends_component \
+                    x11
+        configure.args-replace \
+                    -DAPPLE_SUPPORT_X11=OFF \
+                    -DAPPLE_SUPPORT_X11=ON
+        configure.args-append \
+                    -DAPPLE_FORCE_X11=ON
+    }
+}
+
+post-destroot {
+    if {${os.platform} eq "darwin"} {
+        set bexecdir ${destroot}${kf5.applications_dir}/krita.app/Contents/MacOS
+        if {![catch {set fd [open "${bexecdir}/krita.sh" "w"]} err]} {
+            puts ${fd} "#!/bin/sh"
+            puts ${fd} "export KRITA_NO_STYLE_OVERRIDE=1"
+            puts ${fd} "export KRITA_PLUGIN_PATH=${prefix}/lib/kritaplugins"
+            puts ${fd} "exec `dirname \$\{0\}`/krita.bin \"\$@\""
+            close ${fd}
+            file rename ${bexecdir}/krita ${bexecdir}/krita.bin
+            file rename ${bexecdir}/krita.sh ${bexecdir}/krita
+            system "chmod 755 ${bexecdir}/krita"
+        } else {
+            kf5.wrapper_env_additions "KRITA_NO_STYLE_OVERRIDE=1 KRITA_PLUGIN_PATH=${prefix}/lib/kritaplugins"
+        }
+        kf5.add_app_wrapper krita5 krita
+        if {[variant_isset x11]} {
+            file copy ${destroot}${kf5.applications_dir}/krita.app ${destroot}${kf5.applications_dir}/krita-x11.app
+            set bexecdir ${destroot}${kf5.applications_dir}/krita-x11.app/Contents/MacOS
+            if {![catch {set fd [open "${bexecdir}/krita" "w"]} err]} {
+                puts ${fd} "#!/bin/sh"
+                puts ${fd} "export QT_QPA_PLATFORM=xcb"
+                puts ${fd} "export QT_XCB_GL_INTEGRATION=xcb_egl"
+                puts ${fd} "export KRITA_NO_STYLE_OVERRIDE=1"
+                puts ${fd} "export KRITA_PLUGIN_PATH=${prefix}/lib/kritaplugins"
+                puts ${fd} "exec `dirname \$\{0\}`/krita.bin \"\$@\""
+                close ${fd}
+                system "chmod 755 ${bexecdir}/krita"
+            } else {
+                kf5.wrapper_env_additions "QT_QPA_PLATFORM=xcb QT_XCB_GL_INTEGRATION=xcb_egl KRITA_NO_STYLE_OVERRIDE=1 KRITA_PLUGIN_PATH=${prefix}/lib/kritaplugins"
+            }
+            kf5.add_app_wrapper krita5-x11 krita-x11 krita
+        }
+    } else {
+        kf5.wrapper_env_additions "KRITA_NO_STYLE_OVERRIDE=1"
+        kf5.add_app_wrapper krita5 krita
+    }
+    # these files are already installed by port:kf5-breeze
+    file delete -force ${destroot}${prefix}/share/color-schemes/BreezeDark.colors \
+                    ${destroot}${prefix}/share/color-schemes/BreezeHighContrast.colors \
+                    ${destroot}${prefix}/share/color-schemes/BreezeLight.colors
+    # this one we have no interest in:
+    file delete -force ${destroot}${prefix}/share/krita/bundles/Krita_Artists_SeExpr_examples.bundle
+}
