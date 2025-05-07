@@ -28,7 +28,7 @@ version             5.0.8.6
 checksums           rmd160  5b09362859b7f55c4ae5bc6dbdd3f6ee59548468 \
                     sha256  b910cd174d185740c4a28fde0daf028a67febfa6f9386d4903f3d3eda68ebee3
 #                     size    237923311
-distname            ${name}-git
+worksrcdir          ${name}-git
 homepage            https://krita.org
 
 # shared dependencies:
