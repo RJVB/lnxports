@@ -10,6 +10,7 @@ set kf5.category    graphics
 set LTO.LTO.maybe_ForceLD yes
 PortGroup           kf5 1.1
 PortGroup           github 1.0
+dist_subdir         kf5-krita
 
 maintainers         gmail.com:rjvbertin openmaintainer
 
@@ -28,7 +29,6 @@ version             5.0.8.6
 checksums           rmd160  5b09362859b7f55c4ae5bc6dbdd3f6ee59548468 \
                     sha256  b910cd174d185740c4a28fde0daf028a67febfa6f9386d4903f3d3eda68ebee3
 #                     size    237923311
-worksrcdir          ${name}-git
 homepage            https://krita.org
 
 # shared dependencies:
@@ -45,14 +45,16 @@ subport ${name}-gmic_plugin {}
 if {${subport} eq "${name}-gmic_plugin"} {
     description     krita's GMic plugin
     long_description {*}${description}
+    conflicts       kf5-krita-legacy-gmic_plugin
 
-    version         3.0.2.2
+    version         3.2.4.1
     
     master_sites    https://github.com/amyspark/gmic/releases/download/v${version}
     distname        gmic-${version}-patched
-    checksums       rmd160  594b13fcdd98abc5b5435101720a4f3f2c73c717 \
-                    sha256  117f0469e8697271f8808318d928013dc5036fe7dc6be180aa30757b65444aae
-#                     size    10452771
+    use_xz          yes
+    checksums       rmd160  884edf8d600fbf8573ce6e0329707c57420ab7a6 \
+                    sha256  06659fe05f7735827a93d637de2267512efb28bb0d55ce573495fecb59172604
+#                     size    10160828
 
     # we share dependencies with the main port, plus the main port itself
     # also, we use LLVM's libomp for OpenMP functionality since it doesn't
@@ -93,6 +95,10 @@ if {${subport} eq "${name}-gmic_plugin"} {
     # done here!
     return
 }
+
+worksrcdir          kf5-krita-git
+
+conflicts           kf5-krita-legacy
 
 PortGroup           python-required 1.0
 PortGroup           boost 1.0
