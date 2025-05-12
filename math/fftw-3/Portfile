@@ -3,10 +3,12 @@
 PortSystem      1.0
 PortGroup       muniversal 1.0
 PortGroup       compiler_blacklist_versions 1.0
+PortGroup       mpi 1.0
 platform darwin {
-    PortGroup   mpi 1.0
     PortGroup   xcode_workaround 1.0
 }
+# we build static libraries:
+set LTO.fat_LTO_Objects yes
 PortGroup       LTO 1.0
 PortGroup       locale_select 1.0
 PortGroup       save_configure_cmd 1.0
@@ -63,8 +65,9 @@ platform darwin {
 variant openmp description {Add OpenMP support} {
     configure.args-append --enable-openmp
 }
-variant threads description {Legacy compatibility variant} requires openmp {
-}
+
+#variant threads description {Legacy compatibility variant} requires openmp {
+# }
 if {[variant_isset openmp] && ![c_variant_isset]} {
     compiler.openmp_version 2.5
 }
@@ -113,6 +116,49 @@ if {${os.platform} eq "darwin"} {
 }
 
 configure.optflags -O3
+
+variant sse2 description {enable support for SSE+SSE2 instructions} {
+    configure.args-append --enable-sse2
+}
+
+variant avx description {enable support for AVX instructions} {
+    configure.args-append --enable-avx
+}
+
+variant avx2 description {enable support for AVX2 instructions} {
+    configure.args-append --enable-avx2
+}
+
+variant altivec description {enable support for Altivec instructions} {
+    configure.args-append --enable-altivec
+}
+
+variant neon description {enable support for ARM Neon instructions} {
+    configure.args-append --enable-neon
+}
+
+variant fma description {enable support for FMA instructions (PPC or X86)} {
+    configure.args-append --enable-fma
+}
+
+proc cpu_options {} {
+    global configure.cflags configure.optflags LTO.cpuflags configure.args
+    foreach f {configure.cflags configure.optflags LTO.cpuflags} {
+        foreach i {sse2 avx avx2 fma} {
+            if {[string first -m${i} [option ${f}]] >= 0} {
+                default_variants-append +${i}
+            }
+        }
+        if {[string first -maltivec ${f}] >= 0 || [string first -faltivec ${f}] >= 0} {
+            default_variants-append +altivec
+        }
+        if {[string first -mfpu=neon ${f}] >= 0} {
+            default_variants-append +neon
+        }
+    }
+}
+
+cpu_options
 
 configure.cflags-append \
     -fno-common \
