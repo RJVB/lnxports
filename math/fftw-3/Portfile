@@ -55,8 +55,8 @@ long_description \
     improvements relative to 2.x, but is not backwardly \
     compatible.
 
+compilers.setup default_fortran
 platform darwin {
-    compilers.setup default_fortran
 
     # see https://trac.macports.org/ticket/59678
     xcode_workaround.fixed_xcode_version 11.2
@@ -92,9 +92,7 @@ variant pfft_patches description {Apply patches recommended for use as dependenc
 
 # don't change configure.cc, etc. since we'll take care of that manually with
 # MPICC env var
-platform darwin {
-    mpi.setup
-}
+mpi.setup
 
 # blacklist older versions of clang which do not handle the --enable-avx option (#41622, #41673)
 compiler.blacklist-append {clang <= 211.10.1} gcc-4.2
@@ -247,13 +245,11 @@ subport fftw-3-single {
         file delete ${destroot}${prefix}/share/info/fftw3.info-4
         file delete ${destroot}${prefix}/share/info/fftw3.info-5
 
-	    platform darwin {
-            if {[mpi_variant_isset]} {
-                file delete ${destroot}${prefix}/include/fftw3-mpi.f03
-                file delete ${destroot}${prefix}/include/fftw3-mpi.h
-                file delete ${destroot}${prefix}/include/fftw3l-mpi.f03
-            }
-	    }
+        if {[mpi_variant_isset]} {
+            file delete ${destroot}${prefix}/include/fftw3-mpi.f03
+            file delete ${destroot}${prefix}/include/fftw3-mpi.h
+            file delete ${destroot}${prefix}/include/fftw3l-mpi.f03
+        }
     }
 }
 
@@ -287,13 +283,11 @@ subport fftw-3-long {
         file delete ${destroot}${prefix}/share/info/fftw3.info-4
         file delete ${destroot}${prefix}/share/info/fftw3.info-5
 
-	    platform darwin {
-            if {[mpi_variant_isset]} {
-                file delete ${destroot}${prefix}/include/fftw3-mpi.f03
-                file delete ${destroot}${prefix}/include/fftw3-mpi.h
-                file delete ${destroot}${prefix}/include/fftw3l-mpi.f03
-            }
-	    }
+        if {[mpi_variant_isset]} {
+            file delete ${destroot}${prefix}/include/fftw3-mpi.f03
+            file delete ${destroot}${prefix}/include/fftw3-mpi.h
+            file delete ${destroot}${prefix}/include/fftw3l-mpi.f03
+        }
     }
 }
 
@@ -322,12 +316,10 @@ if {[info procs fortran_variant_isset] ne ""} {
 # this is put at the bottom to run last (after the sub-ports have done their own
 # logic)
 pre-configure {
-    platform darwin {
-        if {[mpi_variant_isset]} {
-            # MPIRUN is needed for test phase
-            configure.env           MPICC=${mpi.cc} MPIRUN=${mpi.exec}
-            configure.args-append   --enable-mpi
-        }
+    if {[mpi_variant_isset]} {
+        # MPIRUN is needed for test phase
+        configure.env               MPICC=${mpi.cc} MPIRUN=${mpi.exec}
+        configure.args-append       --enable-mpi
     }
 
     if {![variant_exists universal] || ![variant_isset universal]} {
