@@ -20,12 +20,14 @@ long_description    Krita is a free and open source painting program. \
                     Note that the upstream viewpoint is that \"Macports are \
                     fine for Linux refugees, but that's not our target user group.\". Please report \
                     problems to the port maintainer, not upstream.
-#version             3.0.1.1 ; revision 2
 ## last version to require Qt 5.9 : 5.0.8 or commit bea8ca5074d9b14d0673294e70268442abc83f4a
 ## or commit c99f7a4b47516def58cea3be81acd4afabf56832 on the 5.0 branch
 github.setup        kde krita c99f7a4b47516def58cea3be81acd4afabf56832
 name                kf5-krita
 version             5.0.8.6
+if {${subport} eq "${name}"} {
+    revision        1
+}
 checksums           rmd160  5b09362859b7f55c4ae5bc6dbdd3f6ee59548468 \
                     sha256  b910cd174d185740c4a28fde0daf028a67febfa6f9386d4903f3d3eda68ebee3
 #                     size    237923311
@@ -163,6 +165,8 @@ patchfiles-append   patch-linuxy-build.diff \
 patchfiles-append   patch-clear_iconmap.diff
 # show the error that was raised when trying to load the GMic plugin (if any)
 patchfiles-append   patch-show-gmicplugin-error.diff
+# don't crash when displaying the selection boundary when there's some issue with the colour profiles
+patchfiles-append   patch-colourconversion-no-crash.diff
 
 configure.env-append \
                     "CCACHE_SLOPPINESS=pch_defines,time_macros"

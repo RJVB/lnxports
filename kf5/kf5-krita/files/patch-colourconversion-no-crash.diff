@@ -1,0 +1,98 @@
+diff --git a/libs/pigment/KoColorConversionCache.cpp b/libs/pigment/KoColorConversionCache.cpp
+index b05a4a14e2bec58d736bc45b4517e6f1b4622eb8..4da4d8dd3d40bf047bd8e7cdd64bc36e5cb68f1d 100644
+--- a/libs/pigment/KoColorConversionCache.cpp
++++ b/libs/pigment/KoColorConversionCache.cpp
+@@ -105,7 +105,7 @@ KoCachedColorConversionTransformation KoColorConversionCache::cachedConverter(co
+     QList< CachedTransformation* > cachedTransfos = d->cache.values(key);
+     if (cachedTransfos.size() != 0) {
+         Q_FOREACH (CachedTransformation* ct, cachedTransfos) {
+-            if (ct->available()) {
++            if (ct->available() && ct->transfo) {
+                 ct->transfo->setSrcColorSpace(src);
+                 ct->transfo->setDstColorSpace(dst);
+ 
+diff --git a/libs/pigment/KoColorConversionSystem.cpp b/libs/pigment/KoColorConversionSystem.cpp
+index 65312967a45bb85b0ce383e6f795d989e0fd64f0..aa99ba14bc58512e533a402f493f01b2ae20a223 100644
+--- a/libs/pigment/KoColorConversionSystem.cpp
++++ b/libs/pigment/KoColorConversionSystem.cpp
+@@ -261,11 +261,15 @@ void KoColorConversionSystem::createColorConverters(const KoColorSpace* colorSpa
+             }
+         }
+     }
+-    Q_ASSERT(!bestPath.isEmpty());
++    if (!bestPath.isEmpty()) {
++        return;
++    }
+     const KoColorSpace* endColorSpace = defaultColorSpaceForNode(bestPath.endNode());
+     fromCS = createTransformationFromPath(bestPath, colorSpace, endColorSpace, KoColorConversionTransformation::internalRenderingIntent(), KoColorConversionTransformation::internalConversionFlags());
+     Path returnPath = findBestPath(bestPath.endNode(), csNode);
+-    Q_ASSERT(!returnPath.isEmpty());
++    if (!returnPath.isEmpty()) {
++        return;
++    }
+     toCS = createTransformationFromPath(returnPath, endColorSpace, colorSpace, KoColorConversionTransformation::internalRenderingIntent(), KoColorConversionTransformation::internalConversionFlags());
+     Q_ASSERT(*toCS->dstColorSpace() == *fromCS->srcColorSpace());
+     Q_ASSERT(*fromCS->dstColorSpace() == *toCS->srcColorSpace());
+@@ -273,6 +277,9 @@ void KoColorConversionSystem::createColorConverters(const KoColorSpace* colorSpa
+ 
+ KoColorConversionTransformation* KoColorConversionSystem::createTransformationFromPath(const Path &path, const KoColorSpace * srcColorSpace, const KoColorSpace * dstColorSpace, KoColorConversionTransformation::Intent renderingIntent, KoColorConversionTransformation::ConversionFlags conversionFlags) const
+ {
++    if (path.isEmpty()) {
++        return nullptr;
++    }
+     Q_ASSERT(srcColorSpace->colorModelId().id() == path.startNode()->modelId);
+     Q_ASSERT(srcColorSpace->colorDepthId().id() == path.startNode()->depthId);
+     Q_ASSERT(dstColorSpace->colorModelId().id() == path.endNode()->modelId);
+diff --git a/libs/pigment/KoColorConversionSystem_p.h b/libs/pigment/KoColorConversionSystem_p.h
+index 08393905efb84c59ee51382f1a17f338b3d70e67..5b8f921b493a6f1f50a6801c8827ded6ae19912c 100644
+--- a/libs/pigment/KoColorConversionSystem_p.h
++++ b/libs/pigment/KoColorConversionSystem_p.h
+@@ -257,17 +257,19 @@ struct KoColorConversionSystem::Path {
+     typedef QPair<Node*, const KoColorConversionTransformationAbstractFactory* > node2factory;
+     QList< node2factory > compressedPath() const {
+         QList< node2factory > nodes;
+-        nodes.push_back(node2factory(vertexes.first()->srcNode , vertexes.first()->factory()));
+-        const KoColorConversionTransformationAbstractFactory* previousFactory = 0;
+-        Q_FOREACH (Vertex* vertex, vertexes) { // Unless the node is the icc node, add it to the path
+-            Node* n = vertex->dstNode;
+-            if (n->isEngine) {
+-                previousFactory = n->engine;
+-            } else {
+-                nodes.push_back(
+-                            node2factory(n,
+-                                         previousFactory ? previousFactory : vertex->factory()));
+-                previousFactory = 0;
++        if (!vertexes.isEmpty()) {
++            nodes.push_back(node2factory(vertexes.first()->srcNode , vertexes.first()->factory()));
++            const KoColorConversionTransformationAbstractFactory* previousFactory = 0;
++            Q_FOREACH (Vertex* vertex, vertexes) { // Unless the node is the icc node, add it to the path
++                Node* n = vertex->dstNode;
++                if (n->isEngine) {
++                    previousFactory = n->engine;
++                } else {
++                    nodes.push_back(
++                                node2factory(n,
++                                             previousFactory ? previousFactory : vertex->factory()));
++                    previousFactory = 0;
++                }
+             }
+         }
+         return nodes;
+diff --git a/libs/pigment/KoColorSpace.cpp b/libs/pigment/KoColorSpace.cpp
+index af3f98c8cbf995088022515552a739f013760d55..03e34516f1c7aa784b5c5fae6df93d0d8877e54f 100644
+--- a/libs/pigment/KoColorSpace.cpp
++++ b/libs/pigment/KoColorSpace.cpp
+@@ -451,7 +451,12 @@ bool KoColorSpace::convertPixelsTo(const quint8 * src,
+         }
+     } else {
+         KoCachedColorConversionTransformation cct = KoColorSpaceRegistry::instance()->colorConversionCache()->cachedConverter(this, dstColorSpace, renderingIntent, conversionFlags);
+-        cct.transformation()->transform(src, dst, numPixels);
++
++        const auto transfo = cct.transformation();
++        if (!transfo) {
++            return false;
++        }
++        transfo->transform(src, dst, numPixels);
+     }
+     return true;
+ }
