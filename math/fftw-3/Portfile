@@ -12,6 +12,9 @@ set LTO.fat_LTO_Objects yes
 PortGroup       LTO 1.0
 PortGroup       locale_select 1.0
 PortGroup       save_configure_cmd 1.0
+platform darwin {
+    PortGroup   compress_workdir 1.0
+}
 
 name            fftw-3
 version         3.3.10
@@ -63,6 +66,7 @@ platform darwin {
 }
 
 variant openmp description {Add OpenMP support} {
+    depends_lib-append    port:libomp
     configure.args-append --enable-openmp
 }
 
@@ -123,7 +127,7 @@ variant avx description {enable support for AVX instructions} {
     configure.args-append --enable-avx
 }
 
-variant avx2 description {enable support for AVX2 instructions} {
+variant avx2 requires fma description {enable support for AVX2 instructions} {
     configure.args-append --enable-avx2
 }
 
