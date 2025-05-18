@@ -26,7 +26,7 @@ github.setup        kde krita c99f7a4b47516def58cea3be81acd4afabf56832
 name                kf5-krita
 version             5.0.8.6
 if {${subport} eq "${name}"} {
-    revision        1
+    revision        2
 }
 checksums           rmd160  5b09362859b7f55c4ae5bc6dbdd3f6ee59548468 \
                     sha256  b910cd174d185740c4a28fde0daf028a67febfa6f9386d4903f3d3eda68ebee3
@@ -127,7 +127,8 @@ depends_lib-append  port:gsl \
                     port:poppler-qt5 \
                     port:quazip1 \
                     port:libraw \
-                    port:lcms2
+                    port:lcms2 \
+                    port:openexr2
 
 conflicts_build-append \
                     giflib
@@ -167,6 +168,8 @@ patchfiles-append   patch-clear_iconmap.diff
 patchfiles-append   patch-show-gmicplugin-error.diff
 # don't crash when displaying the selection boundary when there's some issue with the colour profiles
 patchfiles-append   patch-colourconversion-no-crash.diff
+# find the desired OpenEXR v2.5 !
+patchfiles-append   patch-openexr-2.5.diff
 
 configure.env-append \
                     "CCACHE_SLOPPINESS=pch_defines,time_macros"
@@ -182,6 +185,7 @@ cmake.install_rpath-append \
 compiler.cxx_standard \
                     2014
 
+cmake.module_path   ${prefix}/libexec/openexr2/lib/cmake
 configure.args-replace \
                     -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion} \
                     -DPYTHON_EXECUTABLE=${prefix}/bin/python${py_ver}
