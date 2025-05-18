@@ -186,6 +186,8 @@ compiler.cxx_standard \
                     2014
 
 cmake.module_path   ${prefix}/libexec/openexr2/lib/cmake
+configure.env-append \
+                    OPENEXR_LOCATION=${prefix}/libexec/openexr2
 configure.args-replace \
                     -DPYTHON_EXECUTABLE=${prefix}/bin/python${kf5::pyversion} \
                     -DPYTHON_EXECUTABLE=${prefix}/bin/python${py_ver}
