@@ -3,6 +3,7 @@
 #===================================================================================================
 #
 # Portgroup to simplify declaration of stub ports/subports
+# With RJVB's modifications to allow dis/re-enabling the pre- and post- phases
 #
 #---------------------------------------------------------------------------------------------------
 #
@@ -24,10 +25,14 @@
 # PG Options:
 #   * stub.subport_name - override subport name, for README location
 #   * stub.readme       - whether to create README; defaults to yes
-# PG Variable:
+#
+# PG Variables (to be set before including the PortGroup!):
 #   * stub.fromHost_allow_pre_and_post 
 #                       - set this to a True value in the Portfile to allow running
 #                         pre- and post- blocks for +fromHost installs
+#   * stub.disable_pre_and_post 
+#                       - set this to a True value in the Portfile to disable
+#                         pre- and post- blocks in all installs
 #
 #===================================================================================================
 
@@ -51,10 +56,12 @@ proc stub::post_destroot {} {
     }
 }
 
-if {[tbool stub.fromHost_allow_pre_and_post] && [variant_exists fromHost] && [variant_isset fromHost]} {
-    set setupFn "setup_stub"
+if {[tbool stub.disable_pre_and_post] \
+    || ([variant_exists fromHost] && [variant_isset fromHost] && ![tbool stub.fromHost_allow_pre_and_post])} {
+    ui_debug "stubbier Portgroup defines stub::setup_stubbier to disable pre- and post- phases!"
+    set setupFn "setup_stubbier"
 } else {
-    set setupFn "setup_stub_linux"
+    set setupFn "setup_stub"
 }
 
 proc stub::${setupFn} {} {
@@ -83,7 +90,7 @@ proc stub::${setupFn} {} {
     build {}
     # RJVB : run our bit of code in the destroot because "base"
     # has been modified not to run pre- and post- blocks if
-    # procedure stub::setup_stub (this function) exists.
+    # procedure stub::stubbier (possibly this function) exists.
     destroot {
         stub::post_destroot
     }
