@@ -1,6 +1,8 @@
---- orig.configure.ac	2017-11-01 17:43:54.000000000 +0100
-+++ configure.ac	2020-05-20 16:05:13.319555408 +0200
-@@ -120,33 +120,18 @@
+diff --git orig.configure.ac configure.ac
+index 42ddc62..401f9ab 100644
+--- orig.configure.ac
++++ configure.ac
+@@ -120,33 +120,19 @@ LIBGD_INIT([_view-common static])
  PKG_CHECK_MODULES(LIBLANGUAGE, $COMMON_MODULES gnome-desktop-3.0 fontconfig)
  PKG_CHECK_MODULES(LIBSHORTCUTS, $COMMON_MODULES x11)
  PKG_CHECK_MODULES(SHELL, $COMMON_MODULES x11 polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION)
@@ -25,7 +27,7 @@
  PKG_CHECK_MODULES(NETWORK_PANEL, $COMMON_MODULES gmodule-2.0
                    polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION)
  PKG_CHECK_MODULES(NOTIFICATIONS_PANEL, $COMMON_MODULES)
--PKG_CHECK_MODULES(ONLINE_ACCOUNTS_PANEL, $COMMON_MODULES goa-1.0 goa-backend-1.0 >= $GOA_REQUIRED_VERSION)
+ PKG_CHECK_MODULES(ONLINE_ACCOUNTS_PANEL, $COMMON_MODULES goa-1.0 goa-backend-1.0 >= $GOA_REQUIRED_VERSION)
 -PKG_CHECK_MODULES(COLOR_PANEL, $COMMON_MODULES
 -                  colord >= $COLORD_REQUIRED_VERSION
 -                  colord-gtk >= $COLORD_GTK_REQUIRED_VERSION
@@ -34,7 +36,7 @@
  PKG_CHECK_MODULES(PRINTERS_PANEL, $COMMON_MODULES
                    polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION
                    smbclient)
-@@ -163,12 +148,6 @@
+@@ -163,12 +149,6 @@ PKG_CHECK_MODULES(SOUND_PANEL, $COMMON_MODULES libxml-2.0
                    libpulse >= $PA_REQUIRED_VERSION
                    libpulse-mainloop-glib >= $PA_REQUIRED_VERSION)
  PKG_CHECK_MODULES(UNIVERSAL_ACCESS_PANEL, $COMMON_MODULES)
@@ -47,19 +49,24 @@
  PKG_CHECK_MODULES(SHARING_PANEL, $COMMON_MODULES)
  PKG_CHECK_MODULES(REMOTE_LOGIN_HELPER, glib-2.0 >= $GLIB_REQUIRED_VERSION gio-2.0)
  
-@@ -229,11 +208,6 @@
-                   libnma >= $NETWORK_MANAGER_APPLET_REQUIRED_VERSION
-                   mm-glib >= $MODEM_MANAGER_REQUIRED_VERSION,
-                   [have_networkmanager=yes], have_networkmanager=no)
+@@ -224,14 +204,8 @@ linux_usb_error_or_warn()
+ 	esac
+ }
+ 
+-PKG_CHECK_MODULES(NETWORK_MANAGER,
+-                  libnm >= $NETWORK_MANAGER_REQUIRED_VERSION
+-                  libnma >= $NETWORK_MANAGER_APPLET_REQUIRED_VERSION
+-                  mm-glib >= $MODEM_MANAGER_REQUIRED_VERSION,
+-                  [have_networkmanager=yes], have_networkmanager=no)
 -if test "x$have_networkmanager" = xno ; then
 -        linux_error_or_warn "*** Network panel will not be built (NetworkManager or ModemManager not found) ***"
 -else
--	AC_DEFINE(BUILD_NETWORK, 1, [Define to 1 to build the Network panel])
--fi
++have_networkmanager=no
++if test "x$have_networkmanager" != xno ; then
+ 	AC_DEFINE(BUILD_NETWORK, 1, [Define to 1 to build the Network panel])
+ fi
  AM_CONDITIONAL(BUILD_NETWORK, [test x$have_networkmanager = xyes])
- if test x${have_networkmanager} = xyes; then
-   AC_DEFINE(HAVE_NETWORK_MANAGER, 1, [Define to 1 if NetworkManager is available])
-@@ -243,24 +217,10 @@
+@@ -243,24 +217,10 @@ if test x${have_networkmanager} = xyes; then
    AC_SUBST(NM_VPN_MODULE_DIR)
  fi
  
@@ -84,7 +91,7 @@
  AM_CONDITIONAL(BUILD_BLUETOOTH, [test x$have_bluetooth = xyes])
  if test x${have_bluetooth} = xyes; then
    AC_DEFINE(HAVE_BLUETOOTH, 1, [Define to 1 if bluetooth support is available])
-@@ -327,12 +287,6 @@
+@@ -327,12 +287,6 @@ PKG_CHECK_MODULES(WACOM_PANEL, $COMMON_MODULES
                    clutter-1.0 >= $CLUTTER_REQUIRED_VERSION,
                    [have_wacom=yes], [have_wacom=no])
  
@@ -97,7 +104,7 @@
  AM_CONDITIONAL(BUILD_WACOM, [test x${have_wacom} = xyes])
  
  # Kerberos kerberos support
-@@ -453,8 +407,6 @@
+@@ -453,8 +407,6 @@ AC_CONFIG_FILES([
  Makefile
  panels/Makefile
  panels/common/Makefile
@@ -106,25 +113,23 @@
  panels/bluetooth/Makefile
  panels/bluetooth/gnome-bluetooth-panel.desktop.in
  panels/datetime/Makefile
-@@ -469,15 +421,6 @@
- panels/region/gnome-region-panel.desktop.in
- panels/mouse/Makefile
- panels/mouse/gnome-mouse-panel.desktop.in
--panels/online-accounts/Makefile
--panels/online-accounts/gnome-online-accounts-panel.desktop.in
--panels/online-accounts/icons/Makefile
--panels/online-accounts/icons/16x16/Makefile
--panels/online-accounts/icons/22x22/Makefile
--panels/online-accounts/icons/24x24/Makefile
--panels/online-accounts/icons/32x32/Makefile
--panels/online-accounts/icons/48x48/Makefile
--panels/online-accounts/icons/256x256/Makefile
- panels/search/Makefile
- panels/search/gnome-search-panel.desktop.in
- panels/sharing/Makefile
---- shell/orig.Makefile.am	2017-08-09 19:32:43.000000000 +0200
-+++ shell/Makefile.am	2020-05-20 09:54:54.052509048 +0200
-@@ -79,23 +79,16 @@
+@@ -541,11 +493,6 @@ panels/printers/Makefile
+ panels/printers/gnome-printers-panel.desktop.in
+ panels/privacy/Makefile
+ panels/privacy/gnome-privacy-panel.desktop.in
+-panels/network/Makefile
+-panels/network/wireless-security/Makefile
+-panels/network/connection-editor/Makefile
+-panels/network/gnome-network-panel.desktop.in
+-panels/network/gnome-wifi-panel.desktop.in
+ panels/notifications/Makefile
+ panels/notifications/gnome-notifications-panel.desktop.in
+ panels/universal-access/Makefile
+diff --git shell/orig.Makefile.am shell/Makefile.am
+index 8099330..6972218 100644
+--- shell/orig.Makefile.am
++++ shell/Makefile.am
+@@ -79,23 +79,17 @@ gnome_control_center_LDADD =						\
  	$(top_builddir)/libgd/libgd.la					\
  	$(top_builddir)/panels/common/liblanguage.la			\
  	$(top_builddir)/panels/common/libdevice.la			\
@@ -136,7 +141,7 @@
  	$(top_builddir)/panels/keyboard/libkeyboard.la			\
 -	$(top_builddir)/panels/mouse/libmouse-properties.la		\
  	$(top_builddir)/panels/notifications/libnotifications.la	\
--	$(top_builddir)/panels/online-accounts/libonline-accounts.la	\
+ 	$(top_builddir)/panels/online-accounts/libonline-accounts.la	\
 -	$(top_builddir)/panels/power/libpower.la			\
  	$(top_builddir)/panels/privacy/libprivacy.la			\
  	$(top_builddir)/panels/region/libregion.la			\
@@ -148,30 +153,11 @@
  	$(top_builddir)/panels/printers/libprinters.la
  
  if BUILD_WACOM
---- panels/orig.Makefile.am	2017-05-10 10:10:21.000000000 +0200
-+++ panels/Makefile.am	2020-05-20 09:54:43.192281198 +0200
-@@ -1,18 +1,11 @@
- SUBDIRS= \
- 	common \
--	background \
--	power \
--	color \
--	display \
--	mouse \
- 	notifications \
--	online-accounts \
- 	region \
- 	info \
- 	sound \
- 	keyboard \
- 	universal-access \
--	user-accounts \
- 	datetime \
- 	search \
- 	privacy \
---- shell/orig.cc-panel-loader.c	2017-09-12 16:28:54.000000000 +0200
-+++ shell/cc-panel-loader.c	2020-05-20 09:55:21.353081821 +0200
-@@ -75,26 +75,38 @@
+diff --git shell/orig.cc-panel-loader.c shell/cc-panel-loader.c
+index 8be3bb9..b92d454 100644
+--- shell/orig.cc-panel-loader.c
++++ shell/cc-panel-loader.c
+@@ -75,26 +75,38 @@ static struct {
    GType (*get_type)(void);
  #endif
  } all_panels[] = {
@@ -201,16 +187,16 @@
    PANEL_TYPE("wifi",             cc_wifi_panel_get_type         ),
  #endif
    PANEL_TYPE("notifications",    cc_notifications_panel_get_type),
-+#ifdef BUILD_ONLINEACCOUNTS
++//#ifdef BUILD_ONLINEACCOUNTS
    PANEL_TYPE("online-accounts",  cc_goa_panel_get_type          ),
-+#endif
++//#endif
 +#ifdef BUILD_POWER
    PANEL_TYPE("power",            cc_power_panel_get_type        ),
 +#endif
    PANEL_TYPE("printers",         cc_printers_panel_get_type     ),
    PANEL_TYPE("privacy",          cc_privacy_panel_get_type      ),
    PANEL_TYPE("region",           cc_region_panel_get_type       ),
-@@ -102,7 +114,9 @@
+@@ -102,7 +114,9 @@ static struct {
    PANEL_TYPE("sharing",          cc_sharing_panel_get_type      ),
    PANEL_TYPE("sound",            cc_sound_panel_get_type        ),
    PANEL_TYPE("universal-access", cc_ua_panel_get_type           ),
@@ -220,3 +206,26 @@
  #ifdef BUILD_WACOM
    PANEL_TYPE("wacom",            cc_wacom_panel_get_type        ),
  #endif
+diff --git panels/orig.Makefile.am panels/Makefile.am
+index 507cd2f..7efc1a8 100644
+--- panels/orig.Makefile.am
++++ panels/Makefile.am
+@@ -1,10 +1,5 @@
+ SUBDIRS= \
+ 	common \
+-	background \
+-	power \
+-	color \
+-	display \
+-	mouse \
+ 	notifications \
+ 	online-accounts \
+ 	region \
+@@ -12,7 +7,6 @@ SUBDIRS= \
+ 	sound \
+ 	keyboard \
+ 	universal-access \
+-	user-accounts \
+ 	datetime \
+ 	search \
+ 	privacy \
