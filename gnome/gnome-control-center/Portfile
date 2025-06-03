@@ -120,9 +120,7 @@ configure.args-append \
                     --disable-silent-rules
 
 post-activate   {
-    platform darwin {
-        system "update-desktop-database ${prefix}/share/applications"
-    }
+    system "update-desktop-database ${prefix}/share/applications"
     system "${prefix}/bin/gtk-update-icon-cache-3.0 -f -t ${prefix}/share/icons/hicolor"
 }
 
