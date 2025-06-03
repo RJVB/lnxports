@@ -1,0 +1,49 @@
+diff --git panels/privacy/orig.cc-privacy-panel.c panels/privacy/cc-privacy-panel.c
+index 30f03f1..9ccd53d 100644
+--- panels/privacy/orig.cc-privacy-panel.c
++++ panels/privacy/cc-privacy-panel.c
+@@ -226,13 +226,27 @@ get_abrt_label (GSettings *settings,
+   GtkWidget *w;
+ 
+   w = gtk_label_new ("");
+-  g_settings_bind_with_mapping (settings, key,
+-                                w, "label",
+-                                G_SETTINGS_BIND_GET,
+-                                abrt_label_mapping_get,
+-                                NULL,
+-                                NULL,
+-                                NULL);
++    gchar **keys = g_settings_list_keys(settings);
++    if (!keys) {
++        return w;
++    }
++    gchar **k = keys;
++    for ( ; *k ; ++k) {
++        if (strcmp(*k, key) == 0) {
++          g_settings_bind_with_mapping (settings, key,
++                                        w, "label",
++                                        G_SETTINGS_BIND_GET,
++                                        abrt_label_mapping_get,
++                                        NULL,
++                                        NULL,
++                                        NULL);
++            break;
++        }
++    }
++    if (!*k) {
++        g_warning ("no key '%s'", key);
++    }
++    g_strfreev(keys);
+   return w;
+ }
+ 
+@@ -1198,6 +1212,9 @@ add_abrt (CcPrivacyPanel *self)
+   char *os_name, *url, *msg;
+ 
+   w = get_abrt_label (self->priv->privacy_settings, REPORT_TECHNICAL_PROBLEMS);
++  if (!w) {
++      return;
++  }
+   self->priv->abrt_row = add_row (self, _("Problem Reporting"), "abrt_dialog", w);
+   gtk_widget_hide (self->priv->abrt_row);
+ 

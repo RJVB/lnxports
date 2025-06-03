@@ -1,0 +1,17 @@
+diff --git panels/info/orig.cc-info-overview-panel.c panels/info/cc-info-overview-panel.c
+index 3af58be..79f35ec 100644
+--- panels/info/orig.cc-info-overview-panel.c
++++ panels/info/cc-info-overview-panel.c
+@@ -574,11 +574,7 @@ get_primary_disc_info (CcInfoOverviewPanel *self)
+   CcInfoOverviewPanelPrivate *priv = cc_info_overview_panel_get_instance_private (self);
+ 
+   hash = g_hash_table_new (g_str_hash, g_str_equal);
+-  points = g_unix_mount_points_get (NULL);
+-
+-  /* If we do not have /etc/fstab around, try /etc/mtab */
+-  if (points == NULL)
+-    points = g_unix_mounts_get (NULL);
++  points = g_unix_mounts_get (NULL);
+ 
+   for (p = points; p != NULL; p = p->next)
+     {
