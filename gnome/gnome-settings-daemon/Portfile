@@ -99,7 +99,8 @@ configure.args      --x-includes=${prefix}/include \
 
 if {${os.platform} eq "darwin"} {
     configure.args-append \
-                    --disable-gudev
+                    --disable-gudev \
+                    --disable-wayland
     if {${os.major} < 10} {
         configure.args-append --disable-cups
     }
