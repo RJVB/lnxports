@@ -1,0 +1,33 @@
+diff --git plugins/xsettings/orig.gsd-xsettings-manager.c plugins/xsettings/gsd-xsettings-manager.c
+index 342984e..5cf0eed 100644
+--- plugins/xsettings/orig.gsd-xsettings-manager.c
++++ plugins/xsettings/gsd-xsettings-manager.c
+@@ -1230,10 +1230,25 @@ gnome_xsettings_manager_start (GnomeXSettingsManager *manager,
+                         continue;
+                 }
+ 
+-                val = g_settings_get_value (settings, translations[i].gsettings_key);
++                gchar **keys = g_settings_list_keys(settings);
++                if (!keys) {
++                        g_warning ("Can't get keys for schema '%s'", translations[i].gsettings_schema);
++                        continue;
++                }
++                gchar **k = keys;
++                for ( ; *k ; ++k) {
++                    if (strcmp(*k, translations[i].gsettings_key) == 0) {
++                        val = g_settings_get_value (settings, translations[i].gsettings_key);
+ 
+-                process_value (manager, &translations[i], val);
+-                g_variant_unref (val);
++                        process_value (manager, &translations[i], val);
++                        g_variant_unref (val);
++                        break;
++                    }
++                }
++                if (!*k) {
++                    g_warning ("Schema '%s' has no key '%s'", translations[i].gsettings_schema, translations[i].gsettings_key);
++                }
++                g_strfreev(keys);
+         }
+ 
+         /* Plugin settings (GTK modules and Xft) */

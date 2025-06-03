@@ -1,0 +1,89 @@
+diff --git orig.configure.ac configure.ac
+index bee9abe..1d26127 100644
+--- orig.configure.ac
++++ configure.ac
+@@ -66,7 +66,7 @@ EXTRA_COMPILE_WARNINGS(yes)
+ GSD_PLUGIN_LDFLAGS="-export_dynamic -module -avoid-version -no-undefined"
+ case $host_os in
+   darwin*)
+-    GSD_PLUGIN_LDFLAGS="${GSD_PLUGIN_LDFLAGS} -Wl,-bundle_loader,\$(top_builddir)/gnome-settings-daemon/gnome-settings-daemon"
++    GSD_PLUGIN_LDFLAGS="${GSD_PLUGIN_LDFLAGS} -Wl,-bundle_loader,\$(top_builddir)/gnome-settings-daemon/.libs/gnome-settings-daemon"
+     ;;
+ esac
+ AC_SUBST([GSD_PLUGIN_LDFLAGS])
+@@ -159,20 +159,20 @@ PKG_CHECK_MODULES(CLIPBOARD,
+ 		  gtk+-x11-3.0
+ 		  x11)
+ 
+-PKG_CHECK_MODULES(COLOR,
+-		  colord >= 1.0.2
+-		  gnome-desktop-3.0 >= $GNOME_DESKTOP_REQUIRED_VERSION
+-		  libcanberra-gtk3
+-		  libgeoclue-2.0 >= $GEOCLUE_REQUIRED_VERSION
+-		  lcms2 >= $LCMS_REQUIRED_VERSION
+-		  libnotify)
+-
+-PKG_CHECK_MODULES(DATETIME,
+-		  libnotify >= $LIBNOTIFY_REQUIRED_VERSION
+-		  libgeoclue-2.0 >= $GEOCLUE_REQUIRED_VERSION
+-		  geocode-glib-1.0 >= $GEOCODE_GLIB_REQUIRED_VERSION
+-		  gweather-3.0 >= $LIBGWEATHER_REQUIRED_VERSION
+-		  polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION)
++dnl PKG_CHECK_MODULES(COLOR,
++dnl		  colord >= 1.0.2
++dnl		  gnome-desktop-3.0 >= $GNOME_DESKTOP_REQUIRED_VERSION
++dnl		  libcanberra-gtk3
++dnl		  libgeoclue-2.0 >= $GEOCLUE_REQUIRED_VERSION
++dnl		  lcms2 >= $LCMS_REQUIRED_VERSION
++dnl		  libnotify)
++
++dnl PKG_CHECK_MODULES(DATETIME,
++dnl 		  libnotify >= $LIBNOTIFY_REQUIRED_VERSION
++dnl 		  libgeoclue-2.0 >= $GEOCLUE_REQUIRED_VERSION
++dnl 		  geocode-glib-1.0 >= $GEOCODE_GLIB_REQUIRED_VERSION
++dnl 		  gweather-3.0 >= $LIBGWEATHER_REQUIRED_VERSION
++dnl 		  polkit-gobject-1 >= $POLKIT_REQUIRED_VERSION)
+ 
+ PKG_CHECK_MODULES(DUMMY,
+ 		  gio-2.0
+@@ -510,7 +510,6 @@ plugins/a11y-settings/Makefile
+ plugins/clipboard/Makefile
+ plugins/color/Makefile
+ plugins/common/Makefile
+-plugins/datetime/Makefile
+ plugins/dummy/Makefile
+ plugins/power/Makefile
+ plugins/housekeeping/Makefile
+Exit 1
+diff --git plugins/orig.Makefile.am plugins/Makefile.am
+index 6de38f0..0674e5d 100644
+--- plugins/orig.Makefile.am
++++ plugins/Makefile.am
+@@ -4,21 +4,22 @@ enabled_plugins =	\
+ 	a11y-keyboard	\
+ 	a11y-settings	\
+ 	clipboard	\
+-	color		\
+-	datetime	\
+ 	dummy		\
+-	power		\
+ 	housekeeping    \
+ 	keyboard	\
+ 	media-keys	\
+ 	mouse		\
+ 	screensaver-proxy \
+-	sharing		\
+ 	sound		\
+ 	xsettings	\
+ 	$(NULL)
+ 
+-disabled_plugins = $(NULL)
++disabled_plugins = 	\
++	color		\
++	datetime		\
++	power		\
++	sharing		\
++	$(NULL)
+ 
+ if SMARTCARD_SUPPORT
+ enabled_plugins += smartcard
