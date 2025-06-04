@@ -6,7 +6,6 @@ PortGroup           LTO 1.0
 
 name                libgdata
 version             0.18.1
-revision            0
 set branch          [join [lrange [split ${version} .] 0 1] .]
 description         libgdata is a GLib-based library for accessing online service APIs using the \
                     GData protocol --- most notably, Google's services.
@@ -53,7 +52,7 @@ if {${os.platform} eq "darwin"} {
                     -Dvapi=false
 }
 
-platform darwin {
+if {${os.platform} eq "darwin"} {
     if {${os.major} > 10 || (${os.major} == 10 && ${configure.build_arch} eq "x86_64")} {
         # This depends on webkit2-gtk, which is broken presently on < 10.6 and 32-bit 10.6:
         variant goa description {support GNome Online Accounts} {}
@@ -63,6 +62,14 @@ platform darwin {
             configure.args-replace \
                     -Dgoa=disabled -Dgoa=enabled
         }
+    }
+} else {
+    variant goa description {support GNome Online Accounts} {}
+    if {[variant_isset goa]} {
+        depends_lib-append \
+                    port:gnome-online-accounts
+        configure.args-replace \
+                    -Dgoa=disabled -Dgoa=enabled
     }
 }
 
