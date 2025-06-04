@@ -1,0 +1,35 @@
+diff --git src/orig.nautilus-file.c src/nautilus-file.c
+index c630aac..e57ca0c 100644
+--- src/orig.nautilus-file.c
++++ src/nautilus-file.c
+@@ -2956,7 +2956,7 @@ update_info_internal (NautilusFile *file,
+     }
+     file->details->size = size;
+ 
+-    sort_order = g_file_info_get_sort_order (info);
++    sort_order = g_file_info_get_attribute_int32 (info, G_FILE_ATTRIBUTE_STANDARD_SORT_ORDER);
+     if (file->details->sort_order != sort_order)
+     {
+         changed = TRUE;
+@@ -3013,7 +3013,7 @@ update_info_internal (NautilusFile *file,
+         file->details->thumbnailing_failed = thumbnailing_failed;
+     }
+ 
+-    symlink_name = g_file_info_get_symlink_target (info);
++    symlink_name = g_file_info_get_attribute_byte_string (info, G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET);
+     if (g_strcmp0 (file->details->symlink_name, symlink_name) != 0)
+     {
+         changed = TRUE;
+diff --git src/orig.nautilus-file-operations.c src/nautilus-file-operations.c
+index 125be8d..edb486c 100644
+--- src/orig.nautilus-file-operations.c
++++ src/nautilus-file-operations.c
+@@ -4374,7 +4374,7 @@ map_possibly_volatile_file_to_real (GFile         *volatile_file,
+         {
+             const gchar *target;
+ 
+-            target = g_file_info_get_symlink_target (info);
++            target = g_file_info_get_attribute_byte_string (info, G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET);
+             real_file = g_file_resolve_relative_path (volatile_file, target);
+         }
+     }
