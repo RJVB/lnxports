@@ -1,7 +1,72 @@
-diff --git src/orig.nautilus-file.c src/nautilus-file.c
-index c630aac..e57ca0c 100644
---- src/orig.nautilus-file.c
+diff --git src/nautilus-directory-async.c src/nautilus-directory-async.c
+index 05e138a..5d5ba29 100644
+--- src/nautilus-directory-async.c
++++ src/nautilus-directory-async.c
+@@ -914,8 +914,8 @@ should_skip_file (NautilusDirectory *directory,
+     }
+ 
+     if (!show_hidden_files &&
+-        (g_file_info_get_is_hidden (info) ||
+-         g_file_info_get_is_backup (info)))
++        (g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_HIDDEN) ||
++         g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_BACKUP)))
+     {
+         return TRUE;
+     }
+diff --git src/nautilus-file-operations.c src/nautilus-file-operations.c
+index 125be8d..6048f07 100644
+--- src/nautilus-file-operations.c
++++ src/nautilus-file-operations.c
+@@ -969,7 +969,7 @@ get_basename (GFile *file)
+         name = NULL;
+         if (info)
+         {
+-            name = g_strdup (g_file_info_get_display_name (info));
++            name = g_strdup (g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME));
+             g_object_unref (info);
+         }
+     }
+@@ -4374,7 +4374,7 @@ map_possibly_volatile_file_to_real (GFile         *volatile_file,
+         {
+             const gchar *target;
+ 
+-            target = g_file_info_get_symlink_target (info);
++            target = g_file_info_get_attribute_byte_string (info, G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET);
+             real_file = g_file_resolve_relative_path (volatile_file, target);
+         }
+     }
+diff --git src/nautilus-file.c src/nautilus-file.c
+index c630aac..d52f3e2 100644
+--- src/nautilus-file.c
 +++ src/nautilus-file.c
+@@ -2678,8 +2678,8 @@ update_info_internal (NautilusFile *file,
+     file->details->got_file_info = TRUE;
+ 
+     changed |= nautilus_file_set_display_name (file,
+-                                               g_file_info_get_display_name (info),
+-                                               g_file_info_get_edit_name (info),
++                                               g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME),
++                                               g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STANDARD_EDIT_NAME),
+                                                FALSE);
+ 
+     file_type = g_file_info_get_file_type (info);
+@@ -2723,14 +2723,14 @@ update_info_internal (NautilusFile *file,
+         }
+     }
+ 
+-    is_symlink = g_file_info_get_is_symlink (info);
++    is_symlink = g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_SYMLINK);
+     if (file->details->is_symlink != is_symlink)
+     {
+         changed = TRUE;
+     }
+     file->details->is_symlink = is_symlink;
+ 
+-    is_hidden = g_file_info_get_is_hidden (info) || g_file_info_get_is_backup (info);
++    is_hidden = g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_HIDDEN) || g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_BACKUP);
+     if (file->details->is_hidden != is_hidden)
+     {
+         changed = TRUE;
 @@ -2956,7 +2956,7 @@ update_info_internal (NautilusFile *file,
      }
      file->details->size = size;
@@ -20,16 +85,32 @@ index c630aac..e57ca0c 100644
      if (g_strcmp0 (file->details->symlink_name, symlink_name) != 0)
      {
          changed = TRUE;
-diff --git src/orig.nautilus-file-operations.c src/nautilus-file-operations.c
-index 125be8d..edb486c 100644
---- src/orig.nautilus-file-operations.c
-+++ src/nautilus-file-operations.c
-@@ -4374,7 +4374,7 @@ map_possibly_volatile_file_to_real (GFile         *volatile_file,
-         {
-             const gchar *target;
+@@ -3107,7 +3107,7 @@ update_info_internal (NautilusFile *file,
+             }
  
--            target = g_file_info_get_symlink_target (info);
-+            target = g_file_info_get_attribute_byte_string (info, G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET);
-             real_file = g_file_resolve_relative_path (volatile_file, target);
+             if (!file->details->got_custom_display_name &&
+-                g_file_info_get_display_name (info) == NULL)
++                g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME) == NULL)
+             {
+                 /* If the file info's display name is NULL,
+                  * nautilus_file_set_display_name() did
+diff --git src/nautilus-search-engine-simple.c src/nautilus-search-engine-simple.c
+index ea2dbe3..7e07185 100644
+--- src/nautilus-search-engine-simple.c
++++ src/nautilus-search-engine-simple.c
+@@ -241,13 +241,13 @@ visit_directory (GFile            *dir,
+ 
+     while ((info = g_file_enumerator_next_file (enumerator, data->cancellable, NULL)) != NULL)
+     {
+-        display_name = g_file_info_get_display_name (info);
++        display_name = g_file_info_get_attribute_string (info, G_FILE_ATTRIBUTE_STANDARD_DISPLAY_NAME);
+         if (display_name == NULL)
+         {
+             goto next;
          }
-     }
+ 
+-        is_hidden = g_file_info_get_is_hidden (info) || g_file_info_get_is_backup (info);
++        is_hidden = g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_HIDDEN) || g_file_info_get_attribute_boolean (info, G_FILE_ATTRIBUTE_STANDARD_IS_BACKUP);
+         if (is_hidden && !nautilus_query_get_show_hidden_files (data->query))
+         {
+             goto next;
