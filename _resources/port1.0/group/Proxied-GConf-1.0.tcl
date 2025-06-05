@@ -33,53 +33,53 @@ default ProxiedGConf::gconf_files           {}
 default ProxiedGConf::handled_since_version -1
 
 if {${os.platform} ne "darwin"} {
-	proc ProxiedGConf::Installer {} {
+    proc ProxiedGConf::Installer {} {
         global prefix destroot subport version
 
         depends_run-append port:gconf
 
-	    post-destroot {
-		   if {[file type ${prefix}/share/GConf] eq "link"} {
-			  ui_warn "This must be a linux install where port:gconf proxies the host package"
-			  if {![catch {set vers [lindex [registry_active ${subport}]]}]
-				 && [vercmp [lindex ${vers} 1] [option ProxiedGConf::handled_since_version]] < 0} {
-				 set ignore_own yes
-			  }
-			  foreach f {*}[option ProxiedGConf::gconf_files] {
-				 set file ${prefix}/share/GConf/gsettings/${f}
-				 if {[file exists ${file}]} {
-					set port [registry_file_registered ${file}]
-					if {${port} != 0 && ![tbool ignore_own]} {
-					    ui_msg "${f} is already installed by port:${port}"
-					} else {
-					    ui_info "${f} is owned by a host package"
-					    if {[catch {exec cmp ${destroot}${file} ${file}}]} {
-						   ui_warn "The new ${file} differs from the host version; installing as ${f}.${subport}@${version}"
-						   file rename ${destroot}${file} ${destroot}${file}.${subport}@${version}
-					    } else {
-						   if {[tbool ignore_own]} {
-							  ui_warn "${file} was installed by us but needs to be restored"
-							  file rename ${destroot}${file} ${destroot}${file}.toberestored_${subport}
-						   } else {
-							  ui_info "${file} already exists and is identical; not reinstalling"
-							  file delete ${destroot}${file}
-						   }
-					    }
-					}
-				 }
-			  }
-		   }
+        post-destroot {
+           if {[file type ${prefix}/share/GConf] eq "link"} {
+              ui_warn "This must be a linux install where port:gconf proxies the host package"
+              if {![catch {set vers [lindex [registry_active ${subport}]]}]
+                 && [vercmp [lindex ${vers} 1] [option ProxiedGConf::handled_since_version]] < 0} {
+                 set ignore_own yes
+              }
+              foreach f {*}[option ProxiedGConf::gconf_files] {
+                 set file ${prefix}/share/GConf/gsettings/${f}
+                 if {[file exists ${file}]} {
+                    set port [registry_file_registered ${file}]
+                    if {${port} != 0 && ![tbool ignore_own]} {
+                        ui_msg "${f} is already installed by port:${port}"
+                    } else {
+                        ui_info "${f} is owned by a host package"
+                        if {[catch {exec cmp ${destroot}${file} ${file}}]} {
+                           ui_warn "The new ${file} differs from the host version; installing as ${f}.${subport}@${version}"
+                           file rename ${destroot}${file} ${destroot}${file}.${subport}@${version}
+                        } else {
+                           if {[tbool ignore_own]} {
+                              ui_warn "${file} was installed by us but needs to be restored"
+                              file rename ${destroot}${file} ${destroot}${file}.toberestored_${subport}
+                           } else {
+                              ui_info "${file} already exists and is identical; not reinstalling"
+                              file delete ${destroot}${file}
+                           }
+                        }
+                    }
+                 }
+              }
+           }
         }
         post-activate {
-		   if {[file type ${prefix}/share/GConf] eq "link"} {
-			  foreach f [glob -nocomplain ${prefix}/share/GConf/gsettings/*.toberestored_${subport}] {
+           if {[file type ${prefix}/share/GConf] eq "link"} {
+              foreach f [glob -nocomplain ${prefix}/share/GConf/gsettings/*.toberestored_${subport}] {
                  set rf [file rootname ${f}]
                  ui_warn "Restoring ${rf}"
-				 file copy ${f} ${rf}
-			  }
-		   }
-	    }
-	}
+                 file copy ${f} ${rf}
+              }
+           }
+        }
+    }
 
     port::register_callback ProxiedGConf::Installer
 }
