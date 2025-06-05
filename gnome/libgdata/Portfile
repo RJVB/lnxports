@@ -3,9 +3,13 @@
 PortSystem          1.0
 PortGroup           meson 1.0
 PortGroup           LTO 1.0
+PortGroup           locale_select 1.0
 
 name                libgdata
 version             0.18.1
+platform darwin {
+    revision        1
+}
 set branch          [join [lrange [split ${version} .] 0 1] .]
 description         libgdata is a GLib-based library for accessing online service APIs using the \
                     GData protocol --- most notably, Google's services.
@@ -27,10 +31,6 @@ checksums           rmd160  f2cddcc8a70ea4bc463241145d13cfe877f9f566 \
 
 depends_build-append \
                     port:pkgconfig
-platform darwin {
-    depends_build-append \
-                    port:gtk-doc
-}
 
 depends_lib         path:lib/pkgconfig/gtk+-3.0.pc:gtk3 \
                     port:gcr \
@@ -41,11 +41,13 @@ depends_lib         path:lib/pkgconfig/gtk+-3.0.pc:gtk3 \
                     port:libxml2 \
                     port:uhttpmock
 
+patchfiles-append   patch-set-darwin-dylib-versions.diff 
+
 meson.save_configure_cmd "install log"
 configure.args      -Dgoa=disabled
 if {${os.platform} eq "darwin"} {
     configure.args-append \
-                    -Dgtk_doc=true
+                    -Dgtk_doc=false
 } else {
     configure.args-append \
                     -Dgtk_doc=false \
@@ -71,6 +73,14 @@ if {${os.platform} eq "darwin"} {
         configure.args-replace \
                     -Dgoa=disabled -Dgoa=enabled
     }
+}
+
+variant docs description {install the documentation} {
+    depends_build-append \
+                    port:gtk-doc
+    configure.args-replace \
+                    -Dgtk_doc=false \
+                    -Dgtk_doc=true
 }
 
 test.run            yes
