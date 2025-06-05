@@ -1,0 +1,79 @@
+diff --git gck/orig.meson.build gck/meson.build
+index a21a1e9..9f8ad7b 100644
+--- gck/orig.meson.build
++++ gck/meson.build
+@@ -86,6 +86,12 @@ gck_linkflags = cc.get_supported_link_arguments(
+   '-Wl,--version-script,@0@'.format(gck_symbolmap),
+ )
+ 
++compat_version = '@0@.@1@.@2@'.format(
++  gck_major_version + 1, 0, 0)
++current_version = '@0@.@1@.@2@'.format(
++  gck_major_version,
++  0, 0)
++
+ gck_lib = shared_library('gck-@0@'.format(gck_major_version),
+   gck_sources,
+   dependencies: gck_deps,
+@@ -94,6 +100,7 @@ gck_lib = shared_library('gck-@0@'.format(gck_major_version),
+   link_depends: gck_symbolmap,
+   include_directories: config_h_dir,
+   version: gck_soversion,
++  darwin_versions: [compat_version, current_version],
+   install: true,
+ )
+ 
+diff --git gcr/orig.meson.build gcr/meson.build
+index c83641b..2924099 100644
+--- gcr/orig.meson.build
++++ gcr/meson.build
+@@ -154,6 +154,14 @@ gcr_base_linkflags = cc.get_supported_link_arguments(
+   '-Wl,--version-script,@0@'.format(gcr_base_symbolmap),
+ )
+ 
++gcr_soversion_array = gcr_soversion.split('.')
++gcr_major_soversion = gcr_soversion_array[0].to_int()
++compat_version = '@0@.@1@.@2@'.format(
++  gcr_major_soversion + 1, 0, 0)
++current_version = '@0@.@1@.@2@'.format(
++  gcr_major_soversion,
++  0, 0)
++
+ gcr_base_lib = shared_library('gcr-base-@0@'.format(gcr_major_version),
+   gcr_base_sources,
+   dependencies: gcr_base_deps,
+@@ -162,6 +170,7 @@ gcr_base_lib = shared_library('gcr-base-@0@'.format(gcr_major_version),
+   link_depends: gcr_base_symbolmap,
+   include_directories: config_h_dir,
+   version: gcr_soversion,
++  darwin_versions: [compat_version, current_version],
+   install: true,
+ )
+ 
+diff --git ui/orig.meson.build ui/meson.build
+index fa8d52d..2a907be 100644
+--- ui/orig.meson.build
++++ ui/meson.build
+@@ -108,6 +108,14 @@ gcr_ui_linkflags = cc.get_supported_link_arguments(
+ gcr_ui_basename = 'gcr-ui-@0@'.format(gcr_major_version)
+ gcr_basename = 'gcr-@0@'.format(gcr_major_version)
+ 
++gcr_soversion_array = gcr_soversion.split('.')
++gcr_major_soversion = gcr_soversion_array[0].to_int()
++compat_version = '@0@.@1@.@2@'.format(
++  gcr_major_soversion + 1, 0, 0)
++current_version = '@0@.@1@.@2@'.format(
++  gcr_major_soversion,
++  0, 0)
++
+ gcr_ui_lib = shared_library(gcr_ui_basename,
+   gcr_ui_sources,
+   dependencies: gcr_ui_deps,
+@@ -116,6 +124,7 @@ gcr_ui_lib = shared_library(gcr_ui_basename,
+   link_depends: gcr_ui_symbolmap,
+   include_directories: config_h_dir,
+   version: gcr_soversion,
++  darwin_versions: [compat_version, current_version],
+   install: true,
+ )
+ 

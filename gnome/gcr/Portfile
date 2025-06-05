@@ -22,6 +22,7 @@ maintainers         {devans @dbevans} openmaintainer
 categories          gnome security
 homepage            https://wiki.gnome.org/Projects/GnomeKeyring
 master_sites        gnome:sources/${name}/${branch}/
+platforms           linux darwin
 
 use_xz              yes
 
@@ -83,6 +84,8 @@ if {${os.platform} ne "darwin" || ${os.major} < 19} {
         reinplace "s|@@PYTHON3BIN@@|${prefix}/bin/python${py_ver}|g" ${worksrcpath}/meson_post_install.py
     }
 }
+
+patchfiles-append   patch-set-darwin-dylib-versions.diff
 
 ProxiedGConf::gconf_files {org.gnome.crypto.pgp.convert org.gnome.crypto.pgp_keyservers.convert}
 ProxiedGConf::handled_since_version 3.41.2
