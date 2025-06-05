@@ -1,0 +1,17 @@
+diff --git ui/orig.gcr-prompter-tool.c ui/gcr-prompter-tool.c
+index 2d3f71e..71e993d 100644
+--- ui/orig.gcr-prompter-tool.c
++++ ui/gcr-prompter-tool.c
+@@ -204,6 +204,12 @@ main (int argc, char *argv[])
+ 	guint system_owner_id;
+ 	guint private_owner_id;
+ 
++#if defined(__APPLE__) && defined(GDK_WINDOWING_X11)
++    if (!g_getenv("DISPLAY")) {
++        g_setenv("DISPLAY", "localhost:0.0", TRUE);
++    }
++#endif
++
+ 	gtk_init (&argc, &argv);
+ 
+ #ifdef HAVE_LOCALE_H

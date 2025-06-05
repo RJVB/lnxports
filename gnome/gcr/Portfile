@@ -9,6 +9,9 @@ PortGroup           Proxied-GConf 1.0
 
 name                gcr
 version             3.41.2
+platform darwin {
+    revision        1
+}
 license             LGPL-2
 set branch          [join [lrange [split ${version} .] 0 1] .]
 description         GCR is a library for displaying certificates, \
@@ -86,6 +89,11 @@ if {${os.platform} ne "darwin" || ${os.major} < 19} {
 }
 
 patchfiles-append   patch-set-darwin-dylib-versions.diff
+
+# make certain that the pw prompter (gcr-prompter) has a DISPLAY variable
+# definition on Mac where the session dbus probably doesn't have that
+# variable set when launched.
+patchfiles-append   patch-darwin-set-DISPLAY.diff
 
 ProxiedGConf::gconf_files {org.gnome.crypto.pgp.convert org.gnome.crypto.pgp_keyservers.convert}
 ProxiedGConf::handled_since_version 3.41.2
