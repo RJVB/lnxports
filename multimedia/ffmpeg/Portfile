@@ -6,7 +6,6 @@ PortGroup           muniversal 1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           active_variants 1.1
 PortGroup           preserve_runtime_libraries 1.0
-# PortGroup           compress_workdir 1.0
 PortGroup           save_configure_cmd 1.0
 
 set LTO.configure_option --enable-lto
@@ -22,7 +21,7 @@ set my_name         ffmpeg
 conflicts           ffmpeg-devel ffmpeg-upstream
 
 # Please increase the revision of mpv whenever ffmpeg's version is updated.
-version             4.4.4 ; revision 2
+version             4.4.5 ; revision 7
 epoch               1
 
 license             LGPL-2.1+
@@ -59,9 +58,9 @@ long_description    FFmpeg is a complete solution to record, convert and \
                     \
                     libavformat is a library containing parsers and \
                     generators for all common audio/video formats.
+homepage            https://ffmpeg.org/
 
 platforms           darwin
-homepage            https://ffmpeg.org/
 master_sites        ${homepage}releases/
 distname            ${my_name}-${version}
 dist_subdir         ${my_name}
@@ -70,28 +69,32 @@ use_xz              yes
 ####################
 PortGroup           devport 1.0
 
+## NB
+## declare all non-yet-declared variants of the main port here!
+## NB
+devport_variants    av1 darwinssl debug ffvp9 gpl2 gpl3 jack libdc1394 librtmp nonfree x11 gcc static opencl
 create_devport port:${name}
 
 if {${subport} eq "${name}-dev"} {
-    foreach v {av1 opencl x11 ffvp9 libdc1394 librtmp jack gpl2 gpl3 nonfree debug gcc static} {
-        variant ${v} description "placeholder variant for the devport" {}
-    }
     # ffmpeg-dev doesn't care about anything that follows,
     # return here to avoid having to add more subport checks.
     return
 }
 ####################
 
-checksums           rmd160  ac9916e0915cfe3952993644d0a26d9e7c70e1b7 \
-                    sha256  e80b380d595c809060f66f96a5d849511ef4a76a26b76eacf5778b94c3570309
-#                     size    9565584
 
-depends_build       port:pkgconfig \
+checksums           rmd160  51d7e4cd1beec0c44c93f466732d11c2573fd77a \
+                    sha256  f9514e0d3515aee5a271283df71636e1d1ff7274b15853bcd84e144be416ab07
+#                     size    9575596
+
+depends_build-append \
                     port:gmake \
+                    path:bin/pkg-config:pkgconfig \
                     port:libvpx-dev
 
 depends_lib-append \
                     port:lame \
+                    path:lib/pkgconfig/libass.pc:libass \
                     port:libiconv \
                     port:libvorbis \
                     port:libopus \
@@ -99,16 +102,18 @@ depends_lib-append \
                     path:lib/pkgconfig/librsvg-2.0.pc:librsvg \
                     port:libtheora \
                     port:libmodplug \
-                    port:libass \
                     port:libbluray \
                     path:lib/pkgconfig/vpx.pc:libvpx \
                     path:lib/pkgconfig/gnutls.pc:gnutls \
+                    port:lzo2 \
                     port:openjpeg \
                     port:zvbi \
+                    port:fontconfig \
                     port:freetype \
                     port:fribidi \
                     path:lib/pkgconfig/harfbuzz.pc:harfbuzz \
                     path:lib/libspeex.dylib:speex \
+                    port:webp \
                     port:soxr \
                     port:dav1d \
                     port:bzip2 \
@@ -134,17 +139,21 @@ patchfiles-append   patch-libavcodec-videotoolboxenc.c.diff
 # Fixed via upstream commit: b786bc7433dfe082441a57c1ba9ae9ea47904b78
 patchfiles-append   patch-issue-9439-non-b-frame-encoding.diff
 
-# Patch for upstream issue:
-# libavcodec/libsvtav1.c:124:53: error: no member named 'compressed_ten_bit_format' in 'struct EbSvtAv1EncConfiguration'
-#         (config->encoder_bit_depth > 8) && (config->compressed_ten_bit_format == 0) ? 1 : 0;
-#                                             ~~~~~~  ^
-# https://trac.macports.org/ticket/67327
-# Fixed via upstream commit: 031f1561cd286596cdb374da32f8aa816ce3b135
-patchfiles-append   patch-libavcodec-libsvtav1-ten_bit_format.diff
+# add retina resolution capabilities via -movflags write_pixeldensity flag
+# this patch is by daniel kaiser who posted on the ffmpeg bugtracker:
+# https://fftrac-bg.ffmpeg.org/ticket/7045
+# but he never formally submitted it to the FFMpeg mailing list, which i did
+# https://ffmpeg.org/pipermail/ffmpeg-devel/2024-July/331470.html
+# so the FFMpeg team does not seem to care to include this functionality
+patchfiles-append   patch-add-pixeldensity.diff
 
-# see https://www.linuxquestions.org/questions/slackware-14/regression-on-current-with-ffmpeg-4175727691/
-# and the patchfile header
-patchfiles-append   patch-mathops_h.diff
+# SVT-AV1 v3 has API changes
+# See https://gitlab.com/AOMediaCodec/SVT-AV1/-/commit/988e930c1083ce518ead1d364e3a486e9209bf73
+patchfiles-append   patch-svt-av1-v3.diff
+
+# doc/t2h: Support texinfo 7.1 and 7.2 pretest
+# https://trac.macports.org/ticket/72110
+patchfiles-append   patch-texinfo7x-pretest-support.diff
 
 # enable auto configure of asm optimizations
 # requires Xcode 3.1 or better on Leopard
@@ -164,10 +173,37 @@ compiler.blacklist-append {clang < 800}
 # Also, -gpl2 causes other ports to fail to build due to the missing libpostproc (#35473)
 default_variants-append +gpl2
 
+if {[tbool configure.ccache]} {
+    PortGroup       compiler_wrapper 1.0
+    # we just need to make certain ccache gets to be used
+    compwrap.add_compiler_flags no
+    pre-configure {
+        configure.cc    [compwrap::wrapped_compiler_path cc]
+        configure.cxx   [compwrap::wrapped_compiler_path cxx]
+    }
+}
+
 configure.cflags-append \
-                    -DHAVE_LRINTF ${configure.cppflags}
+                    -DHAVE_LRINTF \
+                    -Wno-deprecated-declarations \
+                    ${configure.cppflags}
+
+set port_prefix     ${prefix}
+set port_sharedir   ${port_prefix}/share
+set port_datadir    ${port_sharedir}/data/ffmpeg
+set port_docdir     ${port_sharedir}/doc/ffmpeg
+set port_mandir     ${port_sharedir}/man
 
 configure.save_configure_cmd "install log"
+
+pre-configure {
+    configure.pre_args-append \
+                    --cc=${configure.cc} \
+                    --cxx=${configure.cxx} \
+                    --datadir=${port_datadir} \
+                    --docdir=${port_docdir} \
+                    --mandir=${port_mandir}
+}
 
 configure.args-append \
                     --enable-swscale \
@@ -181,6 +217,7 @@ configure.args-append \
                     --enable-libopenjpeg \
                     --enable-libmodplug \
                     --enable-libvpx \
+                    --enable-libwebp \
                     --enable-libsoxr \
                     --enable-libspeex \
                     --enable-libass \
@@ -209,8 +246,13 @@ configure.args-append \
                     --mandir=${prefix}/share/man \
                     --enable-shared \
                     --enable-pthreads \
-                    --disable-stripping \
-                    --cc=${configure.cc}
+                    --disable-stripping
+
+post-extract {
+    # fix file perms; tarball contents deny group and world read
+    system "chmod -R a+r ${worksrcpath}"
+    system "find ${worksrcpath} -type d -print0 | xargs -0 chmod a+rx"
+}
 
 # RJVB: don't depend on texinfo opportunistically
 configure.args-append \
@@ -273,8 +315,8 @@ platform darwin {
         configure.args-append --disable-indev=avfoundation
     }
 
-    # av1 codecs, available on 10.7+
-    if {${os.major} >= 11} {
+    # av1 codecs, available on 10.6+
+    if {${os.major} >= 10} {
         variant av1 description {enable av1 support} {
             configure.args-append \
                         --enable-libaom \
@@ -304,6 +346,13 @@ platform linux {
     }
 }
 
+# libavcodec/pcm-bluray.c:172:45: error: passing argument 2 of 'bytestream2_get_buffer' from incompatible pointer type [-Wincompatible-pointer-types]
+# libavcodec/pcm-dvd.c:155:37: error: passing argument 2 of 'bytestream2_get_buffer' from incompatible pointer type [-Wincompatible-pointer-types]
+if {[string match *gcc* ${configure.compiler}]} {
+    configure.cflags-append \
+                    -Wno-error=incompatible-pointer-types
+}
+
 build.cmd           ${prefix}/bin/gmake
 build.env-append    V=1
 
@@ -320,7 +369,7 @@ post-extract {
 post-destroot {
 
     if {![variant_isset static]} {
-        foreach a [glob -nocomplain ${destroot}${prefix}/lib/*.a] {
+        foreach a [glob -nocomplain ${destroot}${port_prefix}/lib/*.a] {
             file delete ${a}
         }
     }
@@ -393,15 +442,17 @@ if {${universal_possible} && [variant_isset universal]} {
 
 variant x11 {
     # enable x11grab_xcb input device
-    platform darwin {
-    depends_lib-append      port:xorg-libxcb \
-                            port:xorg-libXext \
-                            port:xorg-libXfixes
-    }
-
-    configure.args-delete   --disable-libxcb \
-                            --disable-libxcb-shm \
-                            --disable-libxcb-xfixes
+    # Re libXv see: https://trac.macports.org/ticket/58617
+    depends_lib-append \
+                    port:xorg-libxcb \
+                    port:xorg-libXext \
+                    port:xorg-libXfixes \
+                    port:xorg-libXv
+    configure.args-delete \
+                    --disable-xlib \
+                    --disable-libxcb \
+                    --disable-libxcb-shm \
+                    --disable-libxcb-xfixes
 }
 
 variant ffvp9 description {Use FFmpeg's internal VP9 implementation, potentially faster for non-accelerated decoding but requires hw-accelerated encoding} {
@@ -413,10 +464,14 @@ variant ffvp9 description {Use FFmpeg's internal VP9 implementation, potentially
 
 default_variants +x11
 
-if {[variant_isset x11]} {
-#     require_active_variants libsdl2 x11
-} else {
-#     require_active_variants libsdl2 "" x11
+# On PowerPC libsdl2 is a stub for libsdl2-powerpc, which is always built
+# with X11 backend. It is meaningless to require it as a variant there.
+if {${configure.build_arch} ni [list ppc ppc64]} {
+    if {[variant_isset x11]} {
+        require_active_variants libsdl2 x11
+    } else {
+        require_active_variants libsdl2 "" x11
+    }
 }
 
 variant libdc1394 description {Enable IIDC-1394 frame grabbing using libdc1394 (experimental)} {
@@ -451,18 +506,18 @@ platform darwin {
 }
 
 variant gpl2 description {Enable GPL code, license will be GPL-2+} {
-    configure.args-append   --enable-gpl \
-                            --enable-postproc \
-                            --enable-libx264 \
-                            --enable-libx265 \
-                            --enable-libxvid
-    platform darwin {
-        depends_lib-append  port:XviD \
-                            port:x264 \
-                            port:x265
-    }
+    license         GPL-2+
 
-    license                 GPL-2+
+    configure.args-append \
+                    --enable-gpl \
+                    --enable-libx264 \
+                    --enable-libx265 \
+                    --enable-libxvid \
+                    --enable-postproc
+    depends_lib-append \
+                    port:x264 \
+                    port:x265 \
+                    port:XviD
 }
 
 variant gpl3 requires gpl2 description {Enable GPL code, license will be GPL-3+} {
@@ -483,10 +538,17 @@ default_variants-append    +gpl3
 variant nonfree description {enable nonfree code, libraries and binaries will not be redistributable} {
     configure.args-append   --enable-nonfree \
                             --enable-libfdk-aac
-    platform darwin {
-        depends_lib-append  port:libfdk-aac
-    }
+    depends_lib-append      port:libfdk-aac
     license                 Restrictive
+}
+
+variant rav1e requires av1 description {compatibility variant} {}
+
+variant flite description {Enable flite audio source} {
+    configure.args-append \
+                    --enable-libflite
+    depends_lib-append \
+                    port:flite
 }
 
 variant debug description {build with additional debug info but otherwise optimised as usual} {}
@@ -505,7 +567,7 @@ if {[variant_isset LTO]} {
                             --ar=${configure.ar} \
                             --ranlib=${configure.ranlib}
     configure.ldflags-append \
-                    -flto ${configure.cflags} ${configure.optflags}
+                            -flto ${configure.cflags} ${configure.optflags}
 }
 
 if {[variant_isset nonfree]} {
@@ -553,7 +615,11 @@ and is therefore licensed under LGPL v2.1 or later.
 
 variant gcc description {placeholder variant to label a build with GCC} {
     pre-configure {
-        ui_warn "The +gcc variant is only a label; you need to select a GCC compiler yourself via configure.compiler!"
+        if {![string match *gcc* ${configure.compiler}]} {
+            ui_error "Can't use variant +gcc with compiler \"${configure.compiler}\"!"
+            return -code error "+gcc conflicts with ${configure.compiler}
+        }
+        ui_warn "The +gcc variant is only a label!"
     }
 }
 
