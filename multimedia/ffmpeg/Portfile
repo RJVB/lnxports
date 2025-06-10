@@ -21,7 +21,7 @@ set my_name         ffmpeg
 conflicts           ffmpeg-devel ffmpeg-upstream
 
 # Please increase the revision of mpv whenever ffmpeg's version is updated.
-version             4.4.5 ; revision 7
+version             4.4.5 ; revision 8
 epoch               1
 
 license             LGPL-2.1+
@@ -246,7 +246,8 @@ configure.args-append \
                     --mandir=${prefix}/share/man \
                     --enable-shared \
                     --enable-pthreads \
-                    --disable-stripping
+                    --disable-stripping \
+                    --enable-vulkan
 
 post-extract {
     # fix file perms; tarball contents deny group and world read
