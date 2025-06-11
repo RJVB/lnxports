@@ -25,7 +25,7 @@ platform darwin {
 name                ffmpeg6
 set my_name         ffmpeg
 
-version             6.1.2 ; revision 6
+version             6.1.2 ; revision 7
 
 license             LGPL-2.1+
 categories          multimedia
@@ -79,6 +79,7 @@ depends_build-append \
                     port:libvpx-dev
 
 depends_lib-append \
+                    port:vulkan-loader \
                     port:bzip2 \
                     port:dav1d \
                     port:fontconfig \
@@ -714,6 +715,8 @@ variant gcc description {placeholder variant to label a build with GCC} {
 }
 
 variant novulkan description {Disable support for Vulkan-accelerated decoding (for lesser hardware)} {
+    depends_lib-delete \
+                    port:vulkan-loader
     configure.args-append \
                     --disable-vulkan
 }
