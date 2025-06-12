@@ -5,10 +5,9 @@ PortGroup           github 1.0
 set LTO.allow_ThinLTO no
 set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
-PortGroup           save_configure_cmd 1.0
 
 github.setup        RJVB wrapped-syscalls 55dd6f75b0051063c7f90cf165285d2be8d3c69b
-version             1.0.0.16
+version             1.0.0.16 ; revision 1
 fetch.type          git
 distname            wrapped-syscalls-git
 
@@ -22,6 +21,31 @@ license             none
 maintainers         gmail.com:rjvbertin openmaintainer
 
 use_configure       no
+
+####################
+subport "${name}-headers" {}
+if {${subport} eq "${name}-headers"} {
+    description     headers for the syscall wrapper library
+    long_description {*}${description}
+
+    patchfiles
+    patch {}
+
+    build {}
+
+    destroot {
+        xinstall -m 755 -d ${destroot}${prefix}/include/sys
+        xinstall -m 644 ${worksrcpath}/sys/mman.h ${destroot}${prefix}/include/sys/
+    }
+
+    # we don't care about anything that follows,
+    # return here to avoid having to add more subport checks.
+    return
+}
+####################
+
+PortGroup           save_configure_cmd 1.0
+
 installs_libs       yes
 
 if {${os.platform} ne "darwin"} {
@@ -48,7 +72,5 @@ destroot {
     xinstall -m 755 ${worksrcpath}/libwrapped_syscalls.so ${destroot}${prefix}/lib/
     xinstall -m 755 -d ${destroot}${prefix}/share/doc/${subport}
     xinstall -m 644 ${worksrcpath}/README.md ${destroot}${prefix}/share/doc/${subport}
-    xinstall -m 755 -d ${destroot}${prefix}/include/sys
-    xinstall -m 644 ${worksrcpath}/sys/mman.h ${destroot}${prefix}/include/sys/
 }
 
