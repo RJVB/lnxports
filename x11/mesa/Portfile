@@ -7,6 +7,8 @@ platform linux {
     PortGroup       meson 1.0
 }
 PortGroup           active_variants 1.1
+PortGroup           conflicts_build 1.0
+PortGroup           python-required 1.0
 
 platform darwin {
     # May need clock_gettime()
@@ -16,7 +18,7 @@ platform darwin {
 
 name                mesa
 epoch               1
-version             21.2.5
+version             21.2.5 ; revision 1
 if {${subport} eq "${name}"} { revision [expr ${revision} +1]; }
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
@@ -27,7 +29,12 @@ long_description    Mesa is an open-source implementation of the OpenGL specific
 
 homepage            https://www.mesa3d.org
 master_sites        https://archive.mesa3d.org/older-versions/21.x
-platforms           macosx darwin
+if {${subport} eq "${name}"} {
+    # not even certain this is correct - untested!
+    platforms       linux macosx darwin
+} else {
+    platforms       linux
+}
 use_xz              yes
 
 checksums           rmd160  9fd50ec9a8047140d88097b25afa3c0412e33161 \
@@ -65,16 +72,24 @@ platform linux {
     }
 }
 
-depends_build       port:pkgconfig \
-                    port:python39 \
-                    port:py39-mako
+set pythonExe       [find_new_enough_python3 9]
+
+depends_build-append \
+                    port:pkgconfig \
+                    port:python${py_ver_nodot} \
+                    port:py${py_ver_nodot}-mako
+# don't pick up a mostly pointless dependency on libunwind
+conflicts_build-append \
+                    libunwind-dev
+
 platform darwin {
     depends_build-append \
                     port:flex \
                     port:bison \
                     port:gindent
 
-    depends_lib     port:expat \
+    depends_lib-append \
+                    port:expat \
                     port:xorg-xorgproto \
                     port:xorg-libxcb \
                     port:xorg-libX11 \
@@ -86,9 +101,26 @@ platform darwin {
                     port:xorg-libXxf86vm
 }
 platform linux {
-    depends_lib-append \
+    if {${subport} eq "${name}"} {
+        conflicts_build-append \
+                    wrapped-syscalls-headers
+
+        depends_lib-append \
                     port:xorg-libxcb \
-                    port:xorg-libXvMC
+                    port:xorg-libXvMC \
+                    port:libelf \
+                    port:wayland \
+                    port:vulkan-loader
+    } else {
+        # yup!
+        depends_run-append \
+                    port:mesa
+    }
+    depends_lib-append \
+                    port:libdrm \
+                    port:expat \
+                    port:zlib \
+                    port:zstd
 }
 
 patch.pre_args      -p1
@@ -101,7 +133,7 @@ patchfiles-append   patch-meson.diff \
                     patch-verbose-loader_open_device.diff
 
 post-patch {
-    reinplace "s|'python3'|'python3.9'|g" \
+    reinplace "s|'python3'|'python${py_ver}'|g" \
                     ${worksrcpath}/meson.build
 }
 
@@ -111,7 +143,8 @@ configure.args-append \
 platform darwin {
     patchfiles-append \
                     patch-autoconf-c11.diff
-    depends_build   port:cctools
+    depends_build-append \
+                    port:cctools
 
     configure.args-append \
                     -Dplatforms=x11 \
@@ -123,10 +156,6 @@ platform darwin {
     set gallium_drivers ""
 }
 platform linux {
-    depends_lib-append \
-                    port:libelf \
-                    port:wayland \
-                    port:vulkan-loader
     pre-configure {
         # delete certain auto-generated files that may require changes when building against
         # a different LLVM version.
@@ -146,12 +175,26 @@ platform linux {
                     -Dplatforms=x11,wayland \
                     -Dvulkan-drivers=intel,amd,swrast \
                     -Dgallium-va=enabled \
+                    -Dgallium-xa=enabled \
                     -Dglx-direct=true \
                     -Dllvm=disabled
     switch ${subport} {
         "mesa-crocus-driver" {
-            set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris,crocus"
-            set dri_drivers "i965,r100,r200,nouveau"
+            set gallium_drivers "crocus"
+            set dri_drivers "i965"
+            configure.args-append \
+                    -Dprefer-crocus=true \
+                    -Dgles1=disabled \
+                    -Dgles2=disabled
+            configure.args-replace \
+                    -Degl=enabled \
+                        -Degl=disabled \
+                    -Dvulkan-drivers=intel,amd,swrast \
+                        -Dvulkan-drivers= \
+                    -Dgallium-va=enabled \
+                        -Dgallium-va=disabled \
+                    -Dgallium-xa=enabled \
+                        -Dgallium-xa=disabled
         }
         "mesa-glx-xlib-driver" {
             configure.args-append \
@@ -374,7 +417,7 @@ platform darwin {
         depends_lib-append      port:xorg-libxshmfence
         configure.args-replace -Degl=false \
                                -Degl=true
-        set gallium_drivers swrast
+        set gallium_drivers     swrast
         patchfiles-append       patch-support-egl_dri2.diff
     }
 
@@ -479,6 +522,12 @@ if {${subport} eq "${name}"} {
             }
         }
     }
+    if {![info exists llvm_port]} {
+        set gallium_drivers ""
+        post-configure {
+            ui_warn "Not building any Gallium drivers; they need port:clang-XY and one of the LLVM variants"
+        }
+    }
 
     default_variants-append +osmesa
 } elseif {${subport} ne "${name}-glx-xlib-driver" && ![info exists llvm_port]} {
@@ -496,7 +545,7 @@ if {${subport} eq "${name}"} {
 #                     -Ddri-drivers=i965,r100,r200,nouveau
 # }
 # 
-build.post_args-append -k 0
+build.pre_args-append -k 0
 
 livecheck.type  regex
 livecheck.url   ${homepage}
