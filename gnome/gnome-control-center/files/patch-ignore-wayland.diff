@@ -1,0 +1,28 @@
+diff --git orig.configure.ac configure.ac
+index 1eeac37..7b651b6 100644
+--- orig.configure.ac
++++ configure.ac
+@@ -182,7 +182,8 @@ AM_CONDITIONAL(HAVE_UDEV, [test "x$have_udev" = "xyes"])
+ PKG_CHECK_MODULES(WAYLAND, gdk-wayland-3.0, have_wayland=yes, have_wayland=no)
+ if test "x$have_wayland" = xyes ; then
+ 	if test "x$have_udev" != xyes ; then
+-		AC_MSG_ERROR([udev is required for Wayland support])
++		AC_MSG_WARN([udev is required for Wayland support])
++		have_wayland=no
+ 	fi
+ fi
+ 
+diff --git panels/common/orig.gsd-device-manager.c panels/common/gsd-device-manager.c
+index 541f294..b396e3c 100644
+--- panels/common/orig.gsd-device-manager.c
++++ panels/common/gsd-device-manager.c
+@@ -277,8 +277,7 @@ gsd_device_manager_get (void)
+ 	if (!manager) {
+ #ifdef HAVE_WAYLAND
+ 		if (gnome_settings_is_wayland ()) {
+-			manager = g_object_new (GSD_TYPE_UDEV_DEVICE_MANAGER,
+-						NULL);
++			g_return_val_if_fail (gnome_settings_is_wayland() != FALSE, NULL);
+ 		} else
+ #endif /* HAVE_WAYLAND */
+ 		{

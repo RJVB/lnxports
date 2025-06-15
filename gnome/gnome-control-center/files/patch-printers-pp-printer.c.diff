@@ -1,6 +1,17 @@
---- panels/printers/pp-printer.c.orig	2017-11-01 06:04:03.000000000 -0700
-+++ panels/printers/pp-printer.c	2017-12-27 20:52:12.000000000 -0800
-@@ -26,6 +26,10 @@
+diff --git panels/printers/orig.pp-printer.c panels/printers/pp-printer.c
+index 98474ef..e12f14e 100644
+--- panels/printers/orig.pp-printer.c
++++ panels/printers/pp-printer.c
+@@ -18,6 +18,8 @@
+  *          Marek Kasik <mkasik@redhat.com>
+  */
+ 
++#define _IPP_PRIVATE_STRUCTURES 1
++
+ #include "pp-printer.h"
+ 
+ #include "pp-job.h"
+@@ -26,6 +28,10 @@
  #define IPP_STATE_IDLE IPP_IDLE
  #endif
  

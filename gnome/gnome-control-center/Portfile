@@ -44,14 +44,13 @@ if {${os.platform} eq "linux"} {
                     bin:fc-cache:fontconfig \
                     port:policykit \
                     port:libxml2 \
-                    path:/dev/null:upower \
+                    port:upower \
                     port:libgtop \
-                    path:/dev/null:gnome-settings-daemon \
+                    port:gnome-settings-daemon \
                     port:gnome-online-accounts \
                     port:accountsservice \
                     port:libcanberra \
                     port:pulseaudio \
-                    path:/dev/null:libpwquality \
                     port:kerberos5 \
                     port:grilo \
                     path:bin/smbclient:samba4 \
@@ -76,13 +75,11 @@ if {${os.platform} eq "linux"} {
                     port:libgtop \
                     port:gnome-settings-daemon \
                     port:gnome-online-accounts \
-                    port:accountsservice \
                     port:libcanberra \
                     port:pulseaudio \
-                    port:libpwquality \
                     port:kerberos5 \
                     port:grilo \
-                    port:samba3 \
+                    path:bin/smbclient:samba4 \
                     port:shared-mime-info \
                     port:xorg-libX11 \
                     port:xorg-libXi
@@ -92,7 +89,9 @@ if {${os.platform} eq "linux"} {
                     patch-disable-display-panel.diff \
                     patch-panels-user-accounts.diff \
                     patch-remove-gdkcolor-deprecation-warnings.diff \
-                    patch-printers-pp-printer.c.diff
+                    patch-printers-pp-printer.c.diff \
+                    patch-ignore-wayland.diff \
+                    patch-no-accountsservice.diff
     configure.args  --x-includes=${prefix}/include \
                     --x-libraries=${prefix}/lib \
                     --disable-ibus
