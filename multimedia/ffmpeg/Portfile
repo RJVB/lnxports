@@ -21,7 +21,7 @@ set my_name         ffmpeg
 conflicts           ffmpeg-devel ffmpeg-upstream
 
 # Please increase the revision of mpv whenever ffmpeg's version is updated.
-version             4.4.5 ; revision 8
+version             4.4.5 ; revision 9
 epoch               1
 
 license             LGPL-2.1+
@@ -123,7 +123,8 @@ depends_lib-append \
 
 platform linux {
     depends_lib-append \
-                    port:libva
+                    port:libva \
+                    port:vulkan-loader
 }
 
 patchfiles-append   patch-libavcodec-audiotoolboxenc.c.diff
