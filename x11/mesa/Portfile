@@ -3,7 +3,7 @@
 PortSystem          1.0
 PortGroup           compiler_blacklist_versions 1.0
 PortGroup           LTO 1.0
-platform linux {
+if {![variant_isset future]} {
     PortGroup       meson 1.0
 }
 PortGroup           active_variants 1.1
@@ -19,7 +19,7 @@ platform darwin {
 name                mesa
 epoch               1
 version             21.2.5 ; revision 1
-if {${subport} eq "${name}"} { revision [expr ${revision} +1]; }
+if {${subport} eq "${name}"} { revision [expr ${revision} +2]; }
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
 license             MIT
@@ -40,6 +40,8 @@ use_xz              yes
 checksums           rmd160  9fd50ec9a8047140d88097b25afa3c0412e33161 \
                     sha256  8e49585fb760d973723dab6435d0c86f7849b8305b1e6d99f475138d896bacbb
 #                     size    15829684
+
+variant future description {pull in port:mesa-future instead} {}
 
 platform linux {
 #     depends_fetch-append \
@@ -72,6 +74,27 @@ platform linux {
     }
 }
 
+if {[variant_isset future]} {
+    PortGroup       stub 1.0
+    proc addDeps {} {
+        global subport
+        if {${subport} eq "mesa-crocus-driver"} {
+            depends_lib-append \
+                    port:mesa-future
+        } else {
+            depends_lib-append \
+                    port:${subport}-future
+        }
+    }
+    depends_extract
+    depends_build
+    # the stub PG unsets depends_lib via a callback
+    # so we add ours back via another callback that comes later.
+    port::register_callback addDeps
+    # nothing else to be done here.
+    return
+}
+
 set pythonExe       [find_new_enough_python3 9]
 
 depends_build-append \
@@ -81,6 +104,8 @@ depends_build-append \
 # don't pick up a mostly pointless dependency on libunwind
 conflicts_build-append \
                     libunwind-dev
+
+depends_lib-append  path:lib/pkgconfig/libconfig.pc:libconfig
 
 platform darwin {
     depends_build-append \
@@ -112,8 +137,7 @@ platform linux {
                     port:wayland \
                     port:vulkan-loader
     } else {
-        # yup!
-        depends_run-append \
+        depends_lib-append \
                     port:mesa
     }
     depends_lib-append \
@@ -138,7 +162,8 @@ post-patch {
 }
 
 configure.args-append \
-                    -Dvalgrind=disabled
+                    -Dvalgrind=disabled \
+                    -Dlibunwind=disabled \
 
 platform darwin {
     patchfiles-append \
@@ -155,6 +180,7 @@ platform darwin {
                     -Dshared-llvm=false
     set gallium_drivers ""
 }
+
 platform linux {
     pre-configure {
         # delete certain auto-generated files that may require changes when building against
@@ -267,6 +293,10 @@ platform linux {
                 foreach l [glob ${destroot}${prefix}/lib/*.so ${destroot}${prefix}/lib/*.so.*] {
                     ln -s [file join ".." [file tail ${l}]] ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
                 }
+                if {[info exists llvm_port]} {
+                    xinstall -m 755 ${llvm_lib} \
+                        ${destroot}${prefix}/lib/dri/
+                }
                 # mesa/meson install a bunch of drivers as hardlinks to a single file.
                 # MacPorts's activation mechanism tends to make independent files out of those,
                 # multiplying storage requirements. Avoid this by converting to symlinks pointing
@@ -286,10 +316,15 @@ platform linux {
                 foreach d {libXvMCr600.so.1.0.0 libXvMCnouveau.so.1.0.0} {
                     ln -sf libXvMCgallium.so.1.0.0 ${destroot}${prefix}/lib/${d}
                 }
+#                 file rename ${destroot}${prefix}/lib/dri/r600_drv_video.so \
+#                     ${destroot}${prefix}/lib/dri/gallium_drv_video.so
+#                 foreach d {r600 radeonsi nouveau} {
+#                     ln -sf gallium_drv_video.so ${destroot}${prefix}/lib/dri/${d}_drv_video.so
+#                 }
                 file rename ${destroot}${prefix}/lib/dri/r600_drv_video.so \
-                    ${destroot}${prefix}/lib/dri/gallium_drv_video.so
-                foreach d {r600 radeonsi nouveau} {
-                    ln -sf gallium_drv_video.so ${destroot}${prefix}/lib/dri/${d}_drv_video.so
+                    ${destroot}${prefix}/lib/dri/gallium_video_driver.so
+                foreach d [glob ${destroot}${prefix}/lib/dri/*_drv_video.so] {
+                    ln -sf gallium_video_driver.so ${d}
                 }
             }
         } else {
@@ -447,7 +482,8 @@ if {${subport} ne "${name}-glx-xlib-driver"} {
         set llv [join [lrange [split ${ldv} .] 0 1] ""]
         if {[variant_isset llvm${llv}]} {
             if {!([variant_exists llvm${llv}] && [variant_isset llvm64bit])} {
-                depends_lib-append \
+                # we make our own copy of libLLVM so we don't need to keep the entire port activated
+                depends_build-append \
                     port:llvm-${ldv}
             } else {
                 # This is a hack; build and runtime dependencies are agnostic of the +universal variant
@@ -462,6 +498,7 @@ if {${subport} ne "${name}-glx-xlib-driver"} {
                     llvm-${ldv} clang-${ldv}
             }
             set llvm_port llvm-${ldv}
+            set llvm_lib ${prefix}/libexec/llvm-${ldv}/lib/libLLVM-${ldv}.so
             if {[variant_exists llvm${llv}] && [variant_isset llvm64bit]} {
                 ui_warning "+llvm64bit is to be implemented and currently ignored"
             }
@@ -470,7 +507,9 @@ if {${subport} ne "${name}-glx-xlib-driver"} {
                     -Dllvm=enabled
             set PATH $env(PATH)
             set env(PATH) ${prefix}/libexec/llvm-${ldv}/bin:${PATH}
-            configure.ldflags-append -Wl,-rpath,${prefix}/libexec/llvm-${ldv}/lib
+            configure.ldflags-append \
+                    -Wl,-rpath,${prefix}/libexec/llvm-${ldv}/lib \
+                    -Wl,-rpath,${prefix}/lib/dri
         }
     }
 }
@@ -499,7 +538,7 @@ if {${subport} eq "${name}"} {
             require_active_variants ${llvm_port} "" nortti
         } else {
             pre-configure {
-                ui_error "+opencl requires port:clang-XY and one of the LLVM variants"
+                ui_error "+opencl requires one of the LLVM variants"
                 return -code error "LLVM required"
             }
         }
@@ -517,7 +556,7 @@ if {${subport} eq "${name}"} {
             require_active_variants ${llvm_port} "" nortti
         } else {
             pre-configure {
-                ui_error "+opencl_icd requires port:clang-XY and one of the LLVM variants"
+                ui_error "+opencl_icd requires one of the LLVM variants"
                 return -code error "LLVM required"
             }
         }
@@ -525,7 +564,44 @@ if {${subport} eq "${name}"} {
     if {![info exists llvm_port]} {
         set gallium_drivers ""
         post-configure {
-            ui_warn "Not building any Gallium drivers; they need port:clang-XY and one of the LLVM variants"
+            ui_warn "Not building any Gallium drivers; they need one of the LLVM variants"
+        }
+    }
+    post-activate {
+        # post-activation, if ${llvm_lib} exists we overwrite our copy of it
+        # with a *hard*link to the original library. This reduces the cost of
+        # having our own copy, while preserving the presence of the file on
+        # deactivation of port:${llvm_port} .
+        if {[file exists ${llvm_lib}]} {
+            ui_msg "--->    attempting to restore ${prefix}/lib/dri/[file tail ${llvm_lib}] as a hardlink to ${llvm_lib}"
+            if {[catch {ln -f ${llvm_lib} ${prefix}/lib/dri/[file tail ${llvm_lib}]}]} {
+                # if the hardlink failed we need to restore the binary!
+                xinstall -m 755 ${llvm_lib} ${prefix}/lib/dri/[file tail ${llvm_lib}]
+            }
+        }
+        # along the same lines, turn symlinks back into hardlinks so that
+        # it is possible to see what drivers are loaded.
+        foreach d {i830 i915 i965 radeon r200 nouveau_vieux} {
+            ui_msg "--->    restoring ${prefix}/lib/dri/${d}_dri.so as a hardlink to the DRI driver"
+            ln -f ${prefix}/lib/dri/mesa_dri_driver.so ${prefix}/lib/dri/${d}_dri.so
+        }
+        if {[file exists ${prefix}/lib/dri/gallium_dri.so]} {
+            foreach d {radeonsi nouveau swrast kms_swrast iris r300 r600 vmwgfx virtio_gpu} {
+                ui_msg "--->    restoring ${prefix}/lib/dri/${d}_dri.so as a hardlink to the Gallium DRI driver"
+                ln -f ${prefix}/lib/dri/gallium_dri.so ${prefix}/lib/dri/${d}_dri.so
+            }
+        }
+        if {[file exists ${prefix}/lib/libXvMCgallium.so.1.0.0]} {
+            ui_msg "--->    restoring ${prefix}/lib/libXvMC* hardlinks"
+            foreach d {libXvMCr600.so.1.0.0 libXvMCnouveau.so.1.0.0} {
+                ln -f ${prefix}/lib/libXvMCgallium.so.1.0.0 ${prefix}/lib/${d}
+            }
+        }
+        if {[file exists ${prefix}/lib/dri/gallium_video_driver.so]} {
+            foreach d [glob ${prefix}/lib/dri/*_drv_video.so] {
+                ui_msg "--->    restoring ${d} as a hardlink to the Gallium video driver"
+                ln -f ${prefix}/lib/dri/gallium_video_driver.so ${d}
+            }
         }
     }
 
@@ -537,14 +613,6 @@ if {${subport} eq "${name}"} {
     }
 }
 
-# variant i915_gallium description {build the Gallium3D i915 and crocus drivers instead of the i915 DRI driver} {}
-# if {[variant_isset i915_gallium]} {
-#     set gallium_drivers "${gallium_drivers},i915,crocus"
-#     configure.args-replace \
-#                     -Ddri-drivers=auto \
-#                     -Ddri-drivers=i965,r100,r200,nouveau
-# }
-# 
 build.pre_args-append -k 0
 
 livecheck.type  regex
