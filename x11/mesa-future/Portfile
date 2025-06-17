@@ -1,0 +1,621 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           compiler_blacklist_versions 1.0
+PortGroup           LTO 1.0
+platform linux {
+    PortGroup       meson 1.0
+}
+PortGroup           active_variants 1.1
+PortGroup           conflicts_build 1.0
+PortGroup           python-required 1.0
+
+platform darwin {
+    # May need clock_gettime()
+    PortGroup       legacysupport 1.0
+    legacysupport.newest_darwin_requires_legacy 15
+}
+
+name                mesa-future
+## TODO : try 23.3.6 or 24.0.9
+## Re: 24.0.9 : exploses the static TLS usage with glibc 2.17
+## (see https://bugzilla.redhat.com/attachment.cgi?id=985507&action=diff
+##  for potential glibc patch)
+version             24.0.9
+categories          x11 graphics
+maintainers         {jeremyhu @jeremyhu} openmaintainer
+license             MIT
+license_noconflict  py26-libxml2 py27-libxml2
+description         Mesa 3D Graphics Library
+long_description    Mesa is an open-source implementation of the OpenGL specification, a system for rendering interactive 3D graphics.
+
+homepage            https://www.mesa3d.org
+distname            mesa-${version}
+if {[vercmp ${version} 23.0.0] < 0} {
+    master_sites    https://archive.mesa3d.org/older-versions/21.x
+} else {
+    master_sites    https://archive.mesa3d.org/
+}
+if {${subport} eq "${name}"} {
+    # not even certain this is correct - untested!
+    platforms       linux macosx darwin
+} else {
+    platforms       linux
+}
+use_xz              yes
+
+checksums           rmd160  f2b4c93b4db0230db11d4abe437129d8611ebafd \
+                    sha256  51aa686ca4060e38711a9e8f60c8f1efaa516baf411946ed7f2c265cd582ca4c
+#                     size    20197892
+
+conflicts           mesa-crocus-driver
+
+platform linux {
+#     depends_fetch-append \
+#                     bin:wget:wget
+#     # avoid certificate issues on freedesktop.org
+#     fetch {
+#         system "wget ${master_sites}/${distname}${extract.suffix} --no-check-certificate --progress=bar:force -O ${distpath}/${distname}${extract.suffix}"
+#     }
+
+#     subport ${name}-crocus-driver {
+#         description \
+#                     installs the Crocus driver for i965 GPUs
+#         long_description \
+#                     installs Mesa's Crocus driver for i965 GPUs\n\
+#                     Force the use of this driver via the environment: MESA_LOADER_DRIVER_OVERRIDE=crocus
+#     }
+    subport mesa-glx-xlib-driver-future {
+        description \
+                    installs libGL with the legacy XLib driver for GLX
+        long_description \
+                    installs Mesa's libGL with the legacy XLib driver for GLX\n\
+                    Force the use of this driver via the environment: LD_PRELOAD=${prefix}/lib/libGL-xlib.so.1.6.0
+        conflicts   mesa-glx-xlib-driver
+    }
+    subport mesa-glx-galliumxlib-driver-future {
+        description \
+                    installs the gallium-xlib driver for GLX
+        long_description \
+                    installs Mesa's gallium-xlib driver for GLX\n\
+                    Force the use of this driver via the environment: LD_PRELOAD=${prefix}/lib/libGL-galliumxlib.so.1.5.0
+        conflicts   mesa-glx-galliumxlib-driver
+    }
+}
+
+set pythonExe       [find_new_enough_python3 9]
+
+depends_build-append \
+                    port:pkgconfig \
+                    port:python${py_ver_nodot} \
+                    port:py${py_ver_nodot}-mako
+# don't pick up a mostly pointless dependency on libunwind
+conflicts_build-append \
+                    libunwind-dev
+
+depends_lib-append  path:lib/pkgconfig/libconfig.pc:libconfig
+
+platform darwin {
+    depends_build-append \
+                    port:flex \
+                    port:bison \
+                    port:gindent
+
+    depends_lib-append \
+                    port:expat \
+                    port:xorg-xorgproto \
+                    port:xorg-libxcb \
+                    port:xorg-libX11 \
+                    port:xorg-libXext \
+                    port:xorg-libXdamage \
+                    port:xorg-libXfixes \
+                    port:xorg-libXi \
+                    port:xorg-libXmu \
+                    port:xorg-libXxf86vm
+}
+platform linux {
+    if {${subport} eq "${name}"} {
+        conflicts_build-append \
+                    wrapped-syscalls-headers
+
+        depends_lib-append \
+                    port:xorg-libxcb \
+                    port:xorg-libXvMC \
+                    port:libelf \
+                    port:wayland \
+                    port:vulkan-loader
+    } else {
+        depends_lib-append \
+                    port:mesa
+    }
+    depends_lib-append \
+                    port:libdrm \
+                    port:expat \
+                    port:zlib \
+                    port:zstd
+}
+
+patch.pre_args      -p1
+platform darwin {
+    patchfiles      0001-applegl-Provide-requirements-of-_SET_DrawBuffers.patch \
+                    0002-Hack-to-address-build-failure-when-using-newer-macOS.patch
+}
+
+patchfiles-append   patch-meson.diff \
+                    patch-verbose-loader_open_device.diff
+
+post-patch {
+    reinplace "s|'python3'|'python${py_ver}'|g" \
+                    ${worksrcpath}/meson.build
+}
+
+configure.args-append \
+                    -Dvalgrind=disabled \
+                    -Dlibunwind=disabled \
+                    -Dshared-llvm=enabled \
+                    -Dgallium-rusticl=false
+
+platform darwin {
+    patchfiles-append \
+                    patch-autoconf-c11.diff
+    depends_build-append \
+                    port:cctools
+
+    configure.args-append \
+                    -Dplatforms=x11 \
+                    -Ddri3=false \
+                    -Degl=false \
+                    -Dgbm=false \
+                    -Dosmesa=false
+    set gallium_drivers ""
+}
+
+platform linux {
+    pre-configure {
+        # delete certain auto-generated files that may require changes when building against
+        # a different LLVM version.
+        file delete [glob -nocomplain ${worksrcpath}/src/gallium/drivers/swr/rasterizer/jitter/gen_*]
+    }
+    post-patch {
+        # should be a patch of course
+        reinplace "s|SYS_memfd_create|__NR_memfd_create|g" \
+                    ${worksrcpath}/src/intel/tools/aub_mem.c \
+                    ${worksrcpath}/src/intel/vulkan/anv_gem_stubs.c \
+                    ${worksrcpath}/src/intel/vulkan/anv_allocator.c \
+                    ${worksrcpath}/src/drm-shim/device.c
+    }
+    configure.args-append \
+                    -Ddri3=enabled \
+                    -Degl=enabled \
+                    -Dplatforms=x11,wayland \
+                    -Dvulkan-drivers=intel,intel_hasvk,amd,swrast \
+                    -Dgallium-va=enabled \
+                    -Dgallium-xa=enabled \
+                    -Dglx-direct=true \
+                    -Dvideo-codecs=all \
+                    -Dllvm=disabled
+    switch ${subport} {
+        "mesa-glx-xlib-driver-future" {
+            configure.args-append \
+                    -Dglx=xlib \
+                    -Dshared-glapi=disabled
+            configure.args-replace \
+                    -Ddri3=enabled \
+                        -Ddri3=disabled \
+                    -Degl=enabled \
+                        -Degl=disabled \
+                    -Dplatforms=x11,wayland \
+                        -Dplatforms=x11 \
+                    -Dvulkan-drivers=intel,amd,swrast \
+                        -Dvulkan-drivers= \
+                    -Dgallium-va=enabled \
+                        -Dgallium-va=disabled \
+                    -Dglx-direct=true \
+                        -Dglx-direct=false
+            set dri_drivers ""
+            set gallium_drivers ""
+        }
+        "mesa-glx-galliumxlib-driver-future" {
+            configure.args-append \
+                    -Dglx=gallium-xlib \
+                    -Dshared-glapi=disabled
+            configure.args-replace \
+                    -Degl=enabled \
+                        -Degl=disabled \
+                    -Dplatforms=x11,wayland \
+                        -Dplatforms=x11 \
+                    -Dvulkan-drivers=intel,amd,swrast \
+                        -Dvulkan-drivers= \
+                    -Dgallium-va=enabled \
+                        -Dgallium-va=disabled \
+                    -Dglx-direct=true \
+                        -Dglx-direct=false
+            set dri_drivers ""
+            set gallium_drivers "swrast"
+        }
+        default {
+            set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,iris,i915,crocus,zink,virgl"
+            set dri_drivers "i915,i965,r100,r200,nouveau"
+            configure.args-append \
+                    -Dtools=all
+        }
+    }
+    configure.args-append \
+                    -Dosmesa=false \
+                    -Dgallium-extra-hud=true \
+                    -Dgallium-opencl=disabled \
+                    -Dopencl-spirv=false
+    if {[string match *clang* ${configure.compiler}]} {
+        configure.args-append \
+                    -Dbuild-tests=false
+    } else {
+        configure.args-append \
+                    -Dbuild-tests=true
+    }
+    pre-configure {
+        configure.args-append \
+                    -Dgallium-drivers=${gallium_drivers}
+    }
+    post-destroot {
+        if {${subport} eq "${name}"} {
+            if {[file type ${prefix}/lib/${build_arch}-linux-gnu/] eq "directory"} {
+                # a previous version of this port probably installed its libraries there
+                xinstall -m 755 -d ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+                foreach l [glob ${destroot}${prefix}/lib/*.so ${destroot}${prefix}/lib/*.so.*] {
+                    ln -s [file join ".." [file tail ${l}]] ${destroot}${prefix}/lib/${build_arch}-linux-gnu/
+                }
+                if {[info exists llvm_port]} {
+                    xinstall -m 755 ${llvm_lib} \
+                        ${destroot}${prefix}/lib/dri/
+                }
+                # mesa/meson install a bunch of drivers as hardlinks to a single file.
+                # MacPorts's activation mechanism tends to make independent files out of those,
+                # multiplying storage requirements. Avoid this by converting to symlinks pointing
+                # to an appropriate named single file.
+                if {[vercmp ${version} 21.2.5] == 0} {
+                    file rename ${destroot}${prefix}/lib/dri/i915_dri.so \
+                        ${destroot}${prefix}/lib/dri/mesa_dri_driver.so
+                    foreach d {i830 i915 i965 radeon r200 nouveau_vieux} {
+                        ln -sf mesa_dri_driver.so ${destroot}${prefix}/lib/dri/${d}_dri.so
+                    }
+                    file rename ${destroot}${prefix}/lib/dri/swrast_dri.so \
+                        ${destroot}${prefix}/lib/dri/gallium_dri.so
+                    foreach d {radeonsi nouveau swrast kms_swrast iris r300 r600 vmwgfx virtio_gpu} {
+                        ln -sf gallium_dri.so ${destroot}${prefix}/lib/dri/${d}_dri.so
+                    }
+                    file rename ${destroot}${prefix}/lib/libXvMCr600.so.1.0.0 \
+                        ${destroot}${prefix}/lib/libXvMCgallium.so.1.0.0
+                    foreach d {libXvMCr600.so.1.0.0 libXvMCnouveau.so.1.0.0} {
+                        ln -sf libXvMCgallium.so.1.0.0 ${destroot}${prefix}/lib/${d}
+                    }
+                    file rename ${destroot}${prefix}/lib/dri/r600_drv_video.so \
+                        ${destroot}${prefix}/lib/dri/gallium_drv_video.so
+                    foreach d {r600 radeonsi nouveau} {
+                        ln -sf gallium_drv_video.so ${destroot}${prefix}/lib/dri/${d}_drv_video.so
+                    }
+                } else {
+                    file rename ${destroot}${prefix}/lib/dri/i915_dri.so \
+                        ${destroot}${prefix}/lib/dri/mesa_dri_driver.so
+                    foreach d [glob ${destroot}${prefix}/lib/dri/*_dri.so] {
+                        ln -sf mesa_dri_driver.so ${d}
+                    }
+                    file rename ${destroot}${prefix}/lib/dri/r600_drv_video.so \
+                        ${destroot}${prefix}/lib/dri/gallium_video_driver.so
+                    foreach d [glob ${destroot}${prefix}/lib/dri/*_drv_video.so] {
+                        ln -sf gallium_video_driver.so ${d}
+                    }
+                }
+            }
+        } else {
+            # we only want a single driver
+            file rename ${destroot}${prefix} ${destroot}/tmp
+            xinstall -m 755 -d ${destroot}${prefix}/lib/dri
+            switch ${subport} {
+                mesa-glx-xlib-driver-future {
+                    file rename ${destroot}/tmp/lib/libGL.so.1.6.0 ${destroot}${prefix}/lib/libGL-xlib.so.1.6.0
+                }
+                mesa-glx-galliumxlib-driver-future {
+                    file rename ${destroot}/tmp/lib/libGL.so.1.5.0 ${destroot}${prefix}/lib/libGL-galliumxlib.so.1.5.0
+                }
+                default {
+                    ui_error "${subport} : Portfile error: we shouldn't be here!!"
+                    return -code error "Portfile error"
+                }
+            }
+            file delete -force ${destroot}/tmp
+        }
+    }
+}
+
+platform darwin {
+    configure.env-append \
+                    INDENT=${prefix}/bin/gindent
+}
+# mesa builds with -std=c99 but uses timespec_get() which was added in c11, so this works around that bug
+configure.env-append \
+                    export ac_cv_func_timespec_get=no \
+                    STRIP=echo
+
+# This project is affected by a bug in Apple's gcc driver driver that I fixed in the apple-gcc42 port.
+# Use that or clang.
+# clang-700.1.81 (Xcode 7.2.1) fails at:
+#     disk_cache.c:637:7: error: cannot compile this atomic library call yet
+#           p_atomic_add(cache->size, - (uint64_t)sb.st_blocks * 512);
+#           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compiler.blacklist gcc-3.3 gcc-4.0 gcc-4.2 llvm-gcc-4.2 {clang < 800}
+
+platform darwin {
+    if {${os.major} < 11} {
+
+        # versions > 17 do not presently compile on systems prior to 10.7
+        version             17.1.6 ;    revision 2
+        checksums           rmd160  43a9b758462316ad344ccdccf72d6d0ce295620e \
+                            sha256  0686deadde1f126b20aa67e47e8c50502043eee4ecdf60d5009ffda3cebfee50
+#                             size    9868932
+
+        # this option does nothing in mesa 17.x and generates warnings
+        configure.args-delete --enable-autotools
+
+        # overwrite previous patchfiles, and then add as needed below
+        patchfiles \
+            mesa17-0001-glxcmds-Fix-a-typo-in-the-__APPLE__-codepath.patch \
+            mesa17-0002-glext.h-Add-missing-include-of-stddef.h-for-ptrdiff_.patch \
+            mesa17-0003-applegl-Provide-requirements-of-_SET_DrawBuffers.patch \
+            mesa17-0004-mesa-Deal-with-size-differences-between-GLuint-and-G.patch
+
+        # https://bugs.freedesktop.org/show_bug.cgi?id=89088
+        configure.env-append INDENT=cat
+
+        # not needed if legacysupport is used
+        # patchfiles-append static-strndup.patch
+    }
+
+    if {${os.major} < 10} {
+        # https://trac.macports.org/ticket/52811
+        patchfiles-append patch-include-GL-mesa_glinterop_h.diff
+    }
+
+    if {${os.major} < 11} {
+        # See https://trac.macports.org/ticket/54643
+        patchfiles-append \
+                    patch-disable-glx_tls.diff
+    }
+
+    if {${os.major} < 14} {
+        # See https://trac.macports.org/ticket/54638
+        # See https://trac.macports.org/ticket/54643
+        # disk_cache uses the fstatat() function
+        patchfiles-append disable_shader_cache.patch
+        configure.args-append \
+                    -Dshader-cache=false
+    }
+
+    if { ![file exists /usr/include/Xplugin.h] } {
+        # Xplugin.h is missing on Tiger
+        configure.cppflags-append -I${filespath}/include
+    }
+
+    pre-configure {
+        if { ![file exists /usr/lib/libXplugin.dylib] } {
+            ui_error "Detected a problem with your development environment.  Please work around it by executing:"
+            ui_error "sudo ln -s libXplugin.1.dylib /usr/lib/libXplugin.dylib"
+            return -code error "missing libXplugin.dylib"
+        }
+    }
+}
+
+configure.cppflags-delete -I${prefix}/include
+# configure.cxxflags-append -std=c++11
+
+platform linux {
+    configure.ldflags-append -Wl,-rpath,${prefix}/${build_arch}-linux-gnu
+    post-extract {
+        if {![file exists /usr/include/linux/memfd.h]} {
+            set kernel [exec uname -r]
+            if {![file exists ${worksrcpath}/include/linux/memfd.h]} {
+                xinstall -m 755 -d ${worksrcpath}/include/linux
+                ln -s /usr/src/linux-headers-${kernel}/include/linux/memfd.h ${worksrcpath}/include/linux/
+                xinstall -m 755 -d ${worksrcpath}/include/asm-generic
+                ln -s /usr/src/linux-headers-${kernel}/include/asm-generic/hugetlb_encode.h ${worksrcpath}/include/asm-generic
+            }
+        }
+    }
+}
+
+platform darwin {
+    variant egl description {enable EGL support} {}
+    if {[variant_isset egl]} {
+        depends_lib-append      port:xorg-libxshmfence
+        configure.args-replace -Degl=false \
+                               -Degl=true
+        set gallium_drivers     swrast
+        patchfiles-append       patch-support-egl_dri2.diff
+    }
+
+    variant llvm64bit description {The +llvm variants are effective for the 64bit components of universal builds only} {}
+}
+
+if {${subport} ne "mesa-glx-xlib-driver-future"} {
+    # v21.2.5 seems to build against a narrow range of LLVM versions only; >= 11 specified and
+    # my attempt against LLVM 14 failed.
+    set lldversions {11 12 13 14 15 16 17 18 19 20}
+    set llvariant ""
+    foreach ldv ${lldversions} {
+        set llv [join [lrange [split ${ldv} .] 0 1] ""]
+        set conflist ""
+        foreach v ${lldversions} {
+            if {${v} ne ${ldv}} {
+                set v [join [lrange [split ${v} .] 0 1] ""]
+                set conflist "${conflist} llvm${v}"
+            }
+        }
+        variant llvm${llv} conflicts ${conflist} description "Use LLVM/Clang ${ldv} for the \"accelerated\" Gallium swrast driver" {}
+        if {[variant_exists llvm${llv}] && [variant_isset llvm${llv}]} {
+            set llvariant llvm${llv}
+        }
+    }
+    foreach ldv ${lldversions} {
+        set llv [join [lrange [split ${ldv} .] 0 1] ""]
+        if {[variant_isset llvm${llv}]} {
+            if {!([variant_exists llvm${llv}] && [variant_isset llvm64bit])} {
+                # we make our own copy of libLLVM so we don't need to keep the entire port activated
+                depends_build-append \
+                    port:llvm-${ldv}
+            } else {
+                # This is a hack; build and runtime dependencies are agnostic of the +universal variant
+                # *if depends_skip_archcheck is also set* and
+                # so the only way to register some kind of dependency on the required LLVM ports
+                # without forcing them to be installed +universal too.
+                depends_build-append \
+                    port:llvm-${ldv}
+                depends_run-append \
+                    port:llvm-${ldv}
+                depends_skip_archcheck \
+                    llvm-${ldv} clang-${ldv}
+            }
+            set llvm_port llvm-${ldv}
+            set llvm_lib ${prefix}/libexec/llvm-${ldv}/lib/libLLVM-${ldv}.so
+            if {[variant_exists llvm${llv}] && [variant_isset llvm64bit]} {
+                ui_warning "+llvm64bit is to be implemented and currently ignored"
+            }
+            configure.args-replace \
+                    -Dllvm=disabled \
+                    -Dllvm=enabled
+            set PATH $env(PATH)
+            set env(PATH) ${prefix}/libexec/llvm-${ldv}/bin:${PATH}
+            configure.ldflags-append \
+                    -Wl,-rpath,${prefix}/libexec/llvm-${ldv}/lib \
+                    -Wl,-rpath,${prefix}/lib/dri
+        }
+    }
+}
+
+if {${subport} eq "${name}"} {
+    if {![info exists llvm_port]} {
+        pre-fetch {
+            ui_error "port:mesa requires one of the LLVM variants"
+            return -code error "LLVM required"
+        }
+    }
+
+    variant osmesa description {enable OSMesa library} {}
+    if {[variant_isset osmesa]} {
+        configure.args-replace \
+                    -Dosmesa=false \
+                    -Dosmesa=true
+    }
+
+    variant opencl conflicts opencl_icd description {enable OpenCL (standalone variant)} {}
+    variant opencl_icd conflicts opencl description {enable OpenCL (ICD variant: PREFERRED!)} {}
+    if {[variant_isset opencl]} {
+        conflicts-append port:ocl-icd
+        depends_build-append port:libclc
+        configure.args-replace \
+                    -Dgallium-opencl=disabled \
+                    -Dgallium-opencl=standalone
+        configure.args-replace \
+                    -Dopencl-native=false \
+                    -Dopencl-native=true
+        if {[info exists llvm_port]} {
+            depends_lib-append port:[string map {"llvm" "clang"} ${llvm_port}]
+            require_active_variants ${llvm_port} "" nortti
+        }
+    } else {
+        if {[info exists llvm_port]} {
+            pre-configure {
+                set installed [lindex [registry_active ${llvm_port}] 0]
+                set variants [split [lindex $installed 3] +]
+                if {[lsearch -exact ${variants} "nortti"] >= 0} {
+                    configure.args-append \
+                        -Dcpp_rtti=false
+                } else {
+                    configure.args-append \
+                        -Dcpp_rtti=true
+                }
+            }
+        }
+        if {[variant_isset opencl_icd]} {
+            depends_build-append port:libclc
+            depends_lib-append   port:ocl-icd
+            configure.args-replace \
+                    -Dgallium-opencl=disabled \
+                    -Dgallium-opencl=icd
+            configure.args-replace \
+                    -Dopencl-native=false \
+                    -Dopencl-native=true
+            if {[info exists llvm_port]} {
+                depends_lib-append port:[string map {"llvm" "clang"} ${llvm_port}]
+                require_active_variants ${llvm_port} "" nortti
+            } else {
+                pre-configure {
+                    ui_error "+opencl_icd requires one of the LLVM variants"
+                    return -code error "LLVM required"
+                }
+            }
+        }
+    }
+#     if {![info exists llvm_port]} {
+#         set gallium_drivers ""
+#         post-configure {
+#             ui_warn "Not building any Gallium drivers; they need one of the LLVM variants"
+#         }
+#     }
+
+    default_variants-append +osmesa
+
+    pre-build {
+        # make certain the intel_wa header exists before launching the main build
+        # or else the user may need to relaunch the build, for some weird reason
+        # (this bug was supposed to be fixed in 24.0.8 !)
+        system -W ${build.dir} "${build.cmd} -v src/intel/dev/intel_wa.h"
+    }
+
+    pre-activate {        
+        if {![catch {set installed [lindex [registry_active mesa] 0]}]} {
+            set variants [split [lindex $installed 3] +]
+            if {[lsearch -exact ${variants} "future"] < 0} {
+                ui_warn "The current port:mesa needs to be deactivated!"
+                registry_deactivate_composite mesa "" [list ports_nodepcheck 1]
+            }
+        }
+    }
+    post-activate {
+        # post-activation, if ${llvm_lib} exists we overwrite our copy of it
+        # with a *hard*link to the original library. This reduces the cost of
+        # having our own copy, while preserving the presence of the file on
+        # deactivation of port:${llvm_port} .
+        if {[file exists ${llvm_lib}]} {
+            if {[catch {ln -f ${llvm_lib} ${prefix}/lib/dri/[file tail ${llvm_lib}]}]} {
+                # if the hardlink failed we need to restore the binary!
+                xinstall -m 755 ${llvm_lib} ${prefix}/lib/dri/[file tail ${llvm_lib}]
+            }
+        }
+        # along the same lines, turn symlinks back into hardlinks so that
+        # it is possible to see what drivers are loaded.
+        foreach d [glob ${prefix}/lib/dri/*_dri.so] {
+            ln -f ${prefix}/lib/dri/mesa_dri_driver.so ${d}
+        }
+        foreach d [glob ${prefix}/lib/dri/*_drv_video.so] {
+            ln -f ${prefix}/lib/dri/gallium_video_driver.so ${d}
+        }
+    }
+} elseif {${subport} ne "mesa-glx-xlib-driver-future" && ![info exists llvm_port]} {
+    pre-fetch {
+        ui_error "port:${subport} requires one of the LLVM variants to be set!"
+        return -code error "LLVM required"
+    }
+}
+
+build.pre_args-append -k 0
+
+livecheck.type  regex
+livecheck.url   ${homepage}
+livecheck.regex {relnotes/([0-9.]+)\.html}
+
+
+meson.save_configure_cmd "install log"
+test.run yes
+
+post-activate {
+    ui_msg "--->    ${subport} activated!"
+}

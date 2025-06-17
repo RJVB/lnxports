@@ -1,0 +1,25 @@
+diff --git a/meson.build b/meson.build
+index 09aad54..1e936a6 100644
+--- a/meson.build
++++ b/meson.build
+@@ -336,7 +336,7 @@ if with_egl and not (with_platform_drm or with_platform_surfaceless or with_plat
+   endif
+ endif
+ 
+-pre_args += '-DGLX_USE_TLS'
++# pre_args += '-DGLX_USE_TLS'
+ if with_glx != 'disabled'
+   if not (with_platform_x11 and with_any_opengl)
+     error('Cannot build GLX support without X11 platform support and at least one OpenGL API')
+diff --git a/src/meson.build b/src/meson.build
+index ae094fc..b2b8e1f 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -114,6 +114,6 @@ if with_glx != 'disabled'
+     libraries : _gl,
+     libraries_private : gl_priv_libs,
+     requires_private : gl_priv_reqs,
+-    variables : ['glx_tls=yes'],
++    variables : ['glx_tls=no'],
+   )
+ endif
