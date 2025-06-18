@@ -44,6 +44,8 @@ if {${subport} eq "${name}"} {
 }
 use_xz              yes
 
+dist_subdir         mesa
+
 checksums           rmd160  f2b4c93b4db0230db11d4abe437129d8611ebafd \
                     sha256  51aa686ca4060e38711a9e8f60c8f1efaa516baf411946ed7f2c265cd582ca4c
 #                     size    20197892
