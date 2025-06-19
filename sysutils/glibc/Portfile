@@ -2,13 +2,15 @@
 
 PortSystem 1.0
 PortGroup       conflicts_build 1.0
+PortGroup       LTO 1.0
+PortGroup       save_configure_cmd 1.0
 PortGroup       locale_select 1.0
 
 name            glibc
 set baseversion 2.29
 set urev        3
 set thePrefix   /opt/glibc/${baseversion}
-version         ${baseversion}.${urev}
+version         ${baseversion}.${urev} ; revision 1
 description     The GNU C library
 long_description \
                 The GNU C library. Corresponds to the following Ubuntu packages: \
@@ -16,7 +18,7 @@ long_description \
                 NB this port is EXPERIMENTAL and should be installed ONLY as the very FIRST port to be installed. \
                 Even then it is likely that it will be extremely complicated to mix libraries from MacPorts \
                 with libraries from the host. For that reason this port installs only when you confirm having \
-                read this by setting the variant.
+                read this by setting one of the two variants.
 
 variant opt_libc conflicts I_read_the_info description "Install into ${thePrefix}" {}
 variant I_read_the_info conflicts opt_libc description "use this variant to signal that you read `port info ${name}`" {}
@@ -30,9 +32,14 @@ if {![variant_isset opt_libc]} {
         }
     }
 } else {
+    long_description-append \n\
+                Overload the used library with\n\
+${thePrefix}/lib/ld-${baseversion}.so /path/to/command \[args\]
     configure.pre_args-replace \
         --prefix=${prefix} \
         --prefix=${thePrefix}
+    langselect_prefix \
+        ${thePrefix}
 }
 
 homepage        https://launchpad.net/ubuntu/+source/${name}
@@ -126,11 +133,12 @@ patchfiles-append \
 configure.dir   ${workpath}/build
 build.dir       ${configure.dir}
 configure.cmd   ${worksrcpath}/configure
-build.cmd       gmake
+# our own gmake hangs on the stdio_common subdir?!
+#build.cmd       gmake
 build.post_args-append \
-                -k
+                -k PARALLELMFLAGS=-j${build.jobs}
 destroot.post_args-append \
-                -k -j${build.jobs}
+                -k -j${build.jobs} PARALLELMFLAGS=-j${build.jobs}
 
 # set MAKEINFO to prevent build failures because of local-remove-manual.patch
 # If Ubuntu cannot distribute the manual for licensing reasons we'd probably
@@ -171,16 +179,33 @@ create_devport port:${name}
 
 if {[is_mainport]} {
 
+    depends_build-append \
+                port:patchelf
     conflicts_build-append \
                 gettext-dev
 
     post-destroot {
+        # ld.so does not want to have an RPATH set"
+        system "patchelf --remove-rpath ${destroot}${thePrefix}/lib/ld-${baseversion}.so"
+
         # this is provided by port:gettext-dev
         file delete ${destroot}${thePrefix}/include/libintl.h
         # provided by port:libiconv-dev
         file delete ${destroot}${thePrefix}/include/iconv.h
         # provided by port:libiconv
         file delete ${destroot}${thePrefix}/bin/iconv
+
+        xinstall ${worksrcpath}/debian/local/etc/ld.so.conf ${destroot}${thePrefix}/etc/
+        reinplace "s|/etc|${thePrefix}/etc|g" ${destroot}${thePrefix}/etc/ld.so.conf
+        xinstall -m 755 -d ${destroot}${thePrefix}/etc/ld.so.conf.d
+        xinstall {*}[glob ${worksrcpath}/debian/local/etc/ld.so.conf.d/*] ${destroot}${thePrefix}/etc/ld.so.conf.d/
+        foreach c [glob -nocomplain /etc/ld.so.conf.d/*] {
+            if {![file exists ${destroot}${thePrefix}/etc/ld.so.conf.d/[file tail ${c}]]} {
+                ln -s ${c} ${destroot}${thePrefix}/etc/ld.so.conf.d/
+            }
+        }
+        system "echo ${thePrefix}/lib > ${destroot}${thePrefix}/etc/ld.so.conf.d/000-port:${subport}.conf"
+        file rename ${destroot}${thePrefix}/etc/ld.so.cache ${destroot}${thePrefix}/etc/ld.so.cache.stock
 
         ####################
         register_devport_standard_content
@@ -190,6 +215,19 @@ if {[is_mainport]} {
 #         devport_content-append ${thePrefix}/lib/libc.so ${thePrefix}/lib/libm.so
         create_devport_content_archive
         ####################
-
+    }
+    post-activate {
+        if {[variant_isset opt_libc]} {
+            if {![file exists ${thePrefix}/etc/ld.so.cache]} {
+                file rename ${thePrefix}/etc/ld.so.cache.stock ${thePrefix}/etc/ld.so.cache
+                ui_msg "Current ${thePrefix}/etc/ld.so.cache contents (check the reported path!!):"
+                ui_msg "[exec ${thePrefix}/sbin/ldconfig -v -p]"
+                ui_warn "You will need to run `${thePrefix}/sbin/ldconfig \[-v\]` after ensuring that this will not mess up your /etc/ld.so.cache!!"
+                ui_msg "A safe way to do that is to 'give' ${prefix}/etc to a non-root admin account"
+            } else {
+                ui_warn "You will probable need to re-run `${thePrefix}/sbin/ldconfig \[-v\]` after ensuring that this will not mess up your /etc/ld.so.cache!!"
+                ui_msg "A safe way to do that is to 'give' ${prefix}/etc to a non-root admin account"
+            }
+        }
     }
 }
