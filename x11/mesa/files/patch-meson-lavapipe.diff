@@ -1,0 +1,13 @@
+diff --git src/gallium/targets/lavapipe/orig.meson.build src/gallium/targets/lavapipe/meson.build
+index 1648118..6ce6b64 100644
+--- a/src/gallium/targets/lavapipe/orig.meson.build
++++ b/src/gallium/targets/lavapipe/meson.build
+@@ -14,7 +14,7 @@ libvulkan_lvp = shared_library(
+   link_with : [libpipe_loader_static, libgallium, libwsw, libswdri, libws_null, libswkmsdri ],
+   gnu_symbol_visibility : 'hidden',
+   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
+-  dependencies : driver_swrast,
++  dependencies : [driver_swrast, dep_x11, dep_xcb, dep_x11_xcb, dep_xcb_xrandr,dep_xcb_shm,dep_xcb_present,dep_xshmfence,dep_xcb_sync],
+   name_prefix : host_machine.system() == 'windows' ? '' : 'lib',
+   install : true,
+ )

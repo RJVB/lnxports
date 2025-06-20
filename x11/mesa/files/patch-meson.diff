@@ -1,17 +1,17 @@
-diff --git a/meson.build b/meson.build
-index 9fc09a4..bfdbaad 100644
---- a/meson.build
+diff --git a/orig.meson.build b/meson.build
+index 07c77e1..a66cfb3 100644
+--- a/orig.meson.build
 +++ b/meson.build
-@@ -426,7 +426,7 @@ elif _egl == 'enabled'
+@@ -480,8 +480,6 @@ elif _egl == 'enabled'
      error('EGL requires shared-glapi')
    elif not ['disabled', 'dri'].contains(with_glx)
      error('EGL requires dri, but a GLX is being built without dri')
--  elif ['darwin', 'windows'].contains(host_machine.system())
-+  elif ['windows'].contains(host_machine.system())
-     error('EGL is not available on Windows or MacOS')
+-  elif host_machine.system() == 'darwin'
+-    error('EGL is not available on MacOS')
    endif
    with_egl = true
-@@ -1324,11 +1324,11 @@ elif with_dri_i965 and with_shader_cache
+ else
+@@ -1510,11 +1508,11 @@ elif with_dri_i965 and with_shader_cache
  endif
  
  # Determine whether or not the rt library is needed for time functions
@@ -25,5 +25,5 @@ index 9fc09a4..bfdbaad 100644
 +  #dep_clock = cc.find_library('rt')
 +#endif
  
- # TODO: some of these may be conditional
- dep_zlib = dependency('zlib', version : '>= 1.2.3', fallback : ['zlib', 'zlib_dep'])
+ dep_zlib = dependency('zlib', version : '>= 1.2.3',
+                       fallback : ['zlib', 'zlib_dep'],

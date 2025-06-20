@@ -18,7 +18,8 @@ platform darwin {
 
 name                mesa
 epoch               1
-version             21.2.5 ; revision 1
+# latest version containing "classic" DRI drivers: 21.3.9
+version             21.3.9
 if {${subport} eq "${name}"} { revision [expr ${revision} +2]; }
 categories          x11 graphics
 maintainers         {jeremyhu @jeremyhu} openmaintainer
@@ -37,9 +38,9 @@ if {${subport} eq "${name}"} {
 }
 use_xz              yes
 
-checksums           rmd160  9fd50ec9a8047140d88097b25afa3c0412e33161 \
-                    sha256  8e49585fb760d973723dab6435d0c86f7849b8305b1e6d99f475138d896bacbb
-#                     size    15829684
+checksums           rmd160  d1ab6a229d44fc223298fb91ff6aa913a2d92e62 \
+                    sha256  91fe6f20339884e37a7c47bfba42fb1cd397512c9ed5ad423de369f047cd8b5c
+#                     size    16607716
 
 variant future description {pull in port:mesa-future instead} {}
 
@@ -131,6 +132,7 @@ platform linux {
                     wrapped-syscalls-headers
 
         depends_lib-append \
+                    port:xorg-libX11 \
                     port:xorg-libxcb \
                     port:xorg-libXvMC \
                     port:libelf \
@@ -146,6 +148,7 @@ platform linux {
                     port:zlib \
                     port:zstd
 }
+depends_lib-append  port:gettext
 
 patch.pre_args      -p1
 platform darwin {
@@ -155,6 +158,8 @@ platform darwin {
 
 patchfiles-append   patch-meson.diff \
                     patch-verbose-loader_open_device.diff
+# this is only required with 21.3.9?!
+patchfiles-append   patch-meson-lavapipe.diff
 
 post-patch {
     reinplace "s|'python3'|'python${py_ver}'|g" \
@@ -164,6 +169,7 @@ post-patch {
 configure.args-append \
                     -Dvalgrind=disabled \
                     -Dlibunwind=disabled \
+                    -Dshared-llvm=enabled
 
 platform darwin {
     patchfiles-append \
@@ -176,8 +182,7 @@ platform darwin {
                     -Ddri3=false \
                     -Degl=false \
                     -Dgbm=false \
-                    -Dosmesa=false \
-                    -Dshared-llvm=false
+                    -Dosmesa=false
     set gallium_drivers ""
 }
 
@@ -199,7 +204,6 @@ platform linux {
                     -Ddri3=enabled \
                     -Degl=enabled \
                     -Dplatforms=x11,wayland \
-                    -Dvulkan-drivers=intel,amd,swrast \
                     -Dgallium-va=enabled \
                     -Dgallium-xa=enabled \
                     -Dglx-direct=true \
@@ -208,6 +212,7 @@ platform linux {
         "mesa-crocus-driver" {
             set gallium_drivers "crocus"
             set dri_drivers "i965"
+            set vulkan_drivers ""
             configure.args-append \
                     -Dprefer-crocus=true \
                     -Dgles1=disabled \
@@ -215,8 +220,6 @@ platform linux {
             configure.args-replace \
                     -Degl=enabled \
                         -Degl=disabled \
-                    -Dvulkan-drivers=intel,amd,swrast \
-                        -Dvulkan-drivers= \
                     -Dgallium-va=enabled \
                         -Dgallium-va=disabled \
                     -Dgallium-xa=enabled \
@@ -233,14 +236,13 @@ platform linux {
                         -Degl=disabled \
                     -Dplatforms=x11,wayland \
                         -Dplatforms=x11 \
-                    -Dvulkan-drivers=intel,amd,swrast \
-                        -Dvulkan-drivers= \
                     -Dgallium-va=enabled \
                         -Dgallium-va=disabled \
                     -Dglx-direct=true \
                         -Dglx-direct=false
             set dri_drivers ""
             set gallium_drivers ""
+            set vulkan_drivers ""
         }
         "mesa-glx-galliumxlib-driver" {
             configure.args-append \
@@ -251,25 +253,27 @@ platform linux {
                         -Degl=disabled \
                     -Dplatforms=x11,wayland \
                         -Dplatforms=x11 \
-                    -Dvulkan-drivers=intel,amd,swrast \
-                        -Dvulkan-drivers= \
                     -Dgallium-va=enabled \
                         -Dgallium-va=disabled \
                     -Dglx-direct=true \
                         -Dglx-direct=false
             set dri_drivers ""
             set gallium_drivers "swrast,swr"
+            set vulkan_drivers ""
         }
         default {
-            set gallium_drivers "r300,r600,nouveau,svga,virgl,radeonsi,swrast,swr,iris"
+            set gallium_drivers "r300,r600,nouveau,svga,radeonsi,swrast,swr,iris,zink,virgl"
             set dri_drivers "i915,i965,r100,r200,nouveau"
+            set vulkan_drivers "intel,amd,swrast"
             configure.args-append \
+                    -Dprefer-crocus=false \
                     -Dtools=all
         }
     }
     configure.args-append \
                     -Dosmesa=false \
                     -Ddri-drivers=${dri_drivers} \
+                    -Dvulkan-drivers=${vulkan_drivers} \
                     -Dgallium-extra-hud=true \
                     -Dgallium-opencl=disabled \
                     -Dopencl-spirv=false \
@@ -520,6 +524,14 @@ if {${subport} eq "${name}"} {
         configure.args-replace \
                     -Dosmesa=false \
                     -Dosmesa=true
+    }
+
+    variant prefer_crocus description {Prefer using the crocus driver on relevant Intel GPUs} {}
+    if {[variant_isset prefer_crocus]} {
+        configure.args-replace \
+                    -Dprefer-crocus=false \
+                    -Dprefer-crocus=true
+        notes-append "Remember to install port:mesa-crocus-driver!"
     }
 
     variant opencl conflicts opencl_icd description {enable OpenCL (standalone variant)} {}
