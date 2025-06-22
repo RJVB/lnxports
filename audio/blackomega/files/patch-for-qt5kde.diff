@@ -1,0 +1,52 @@
+diff --git a/source/track/model/src/FileNameParser.cxx b/source/track/model/src/FileNameParser.cxx
+index 671e35b..cb60faf 100644
+--- a/source/track/model/src/FileNameParser.cxx
++++ b/source/track/model/src/FileNameParser.cxx
+@@ -1,8 +1,8 @@
+ #include "track/model/inc/FileNameParser.h"
+ 
+-#if (QT_VERSION < QT_VERSION_CHECK(5, 10, 0))
+-typedef int qsizetype;
+-#endif
++// #if (QT_VERSION < QT_VERSION_CHECK(5, 10, 0))
++// typedef int qsizetype;
++// #endif
+ 
+ //-------------------------------------------------------------------------------------------
+ namespace omega
+@@ -124,7 +124,7 @@ int FileNameParser::trackNumberIfAvailable(const QString& str, QString& nPart)
+ 
+ QStringList FileNameParser::parse(const QString& str)
+ {
+-    qsizetype idx;
++    QIntegerForSizeof<std::size_t>::Signed idx;
+     QString n;
+     QStringList list;
+ 
+
+diff --git a/source/track/model/test/integration/DiscogsServiceTest.cxx b/source/track/model/test/integration/DiscogsServiceTest.cxx
+index e9157d2..fa0c49a 100644
+--- a/source/track/model/test/integration/DiscogsServiceTest.cxx
++++ b/source/track/model/test/integration/DiscogsServiceTest.cxx
+@@ -8,9 +8,9 @@
+ #include <QJsonParseError.h>
+ #endif
+ 
+-#if (QT_VERSION < QT_VERSION_CHECK(5, 10, 0))
+-typedef int qsizetype;
+-#endif
++// #if (QT_VERSION < QT_VERSION_CHECK(5, 10, 0))
++// typedef int qsizetype;
++// #endif
+ 
+ //-------------------------------------------------------------------------------------------
+ namespace omega
+@@ -370,7 +370,7 @@ void DiscogsServiceTest::onReleaseBSG()
+                 QByteArray arr = socket->readAll();
+                 bodyArray.append(arr);
+             }
+-            qsizetype lIdx = bodyArray.lastIndexOf('}');
++            QIntegerForSizeof<std::size_t>::Signed lIdx = bodyArray.lastIndexOf('}');
+             if(lIdx > 0)
+             {
+ #if QT_VERSION >= 0x060000

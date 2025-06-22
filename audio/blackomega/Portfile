@@ -1,0 +1,125 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cmake 1.1
+PortGroup           github 1.0
+PortGroup           qt5 1.0
+
+# github.setup        bonezuk blackomega 2.5.0 v
+set omega_qt4_hash  81b7d4901176ea9238bdbfdf0feb677adc0e244a
+github.setup        barracuda156 blackomega ${omega_qt4_hash}
+fetch.type          git
+set upstream_gitrev 0
+# after `git tag -a -m "release 2.5.0" 2.5.0 db94e00333bbe938f865fb14935c71d282fc11c0`
+set backport_gitrev 67
+version             2.5.0.${upstream_gitrev}.${backport_gitrev}
+distname            ${name}-git
+
+categories          audio
+license             BSD
+maintainers         {@barracuda156 macos-powerpc.org:barracuda}
+
+description         Black Omega, audiophile music player
+long_description    {*}${description}
+
+github.tarball_from archive
+
+# # The patch is 22 MB otherwise. Just use my fork until it is merged:
+# # https://github.com/bonezuk/blackomega/pull/10
+# distname            ${name}-${omega_qt4_hash}
+# master_sites        https://github.com/barracuda156/blackomega/archive/${omega_qt4_hash}/
+# checksums           ${distname}${extract.suffix} \
+#                     rmd160  83a39f2bd20c34c3f235878426134991b5dcf952 \
+#                     sha256  1f6277581786f9f41fdd31d27d2272127ba60c69d44fe2ca9fc28c30f07a5c9f \
+#                     size    32745025
+
+cmake.out_of_source no
+
+depends_build-append \
+                    port:gtest
+
+depends_lib-append  port:libmpcdec \
+                    port:libxml2 \
+                    port:wavpack
+
+patch.pre_args      -Np1
+patchfiles-append   patch-for-qt5.diff \
+                    patch-for-qt5kde.diff \
+                    patch-for-macwin-only.diff \
+                    patch-use-system-plugindir.diff \
+                    patch-use-our-buildtype.diff \
+                    patch-build-no-playerapps.diff \
+                    patch-install-no-tests.diff
+
+post-patch {
+    # https://github.com/bonezuk/blackomega/issues/9
+    if {${os.platform} eq "darwin" && ${os.major} < 11} {
+        reinplace "s|CMAKE_CXX_STANDARD 14|CMAKE_CXX_STANDARD 98|" ${worksrcpath}/CMakeLists.txt
+    }
+}
+
+# successful startup depends on a precise order of loading and initialising the own
+# libraries, which for some reason requires them to be in the location that will be
+# searched first by the dynamic loader.
+# NB: we can remove the $prefix/lib RPATH entry because cmake.install_rpath will add
+# another copy.
+configure.ldflags-replace \
+                    -Wl,-rpath,${prefix}/lib \
+                    -Wl,-rpath,${prefix}/lib/blackomega
+
+# Most certainly TIGER_MAC_STORE is not what we need,
+# however it may be worth reviewing if some code inside
+# this macro is actually useful.
+configure.args-append \
+                    -DBLACKOMEGA_PREFIX=${prefix} \
+                    -DOMEGA_QT4=OFF \
+                    -DOMEGA_QT5=ON \
+                    -DQT_HOME=${qt_dir} \
+                    -DTIGER_MAC_STORE=OFF \
+                    -DTIGER_SYSTEM_DEPS=ON
+
+if {${os.platform} eq "darwin" && ${os.major} < 11} {
+    # Make it compatible with Xcode gcc:
+    compiler.cxx_standard       1998
+    configure.cxxflags-append   -std=gnu++98
+} else {
+    compiler.cxx_standard       2014
+    # Due to gtest:
+    configure.cxxflags-append   -std=gnu++14
+}
+
+build.pre_args      -w
+build.args          Omega oplayer
+build.post_args-append \
+                    -k
+
+post-destroot {
+    xinstall -m 755 -d ${destroot}${prefix}/lib/blackomega
+    file rename {*}[glob ${destroot}${prefix}/lib/lib*] ${destroot}${prefix}/lib/blackomega/
+
+    file delete -force ${destroot}${prefix}/bin/OmegaUnitTests
+    file delete -force ${destroot}${prefix}/bin/OmegaIntegrationTest
+}
+
+
+depends_test-append port:gtest
+
+
+test {
+    if {${os.platform} eq "darwin"} {
+        set env(DYLD_LIBRARY_PATH) \
+            "${destroot}${prefix}/lib:${destroot}${prefix}/lib/blackomega:${worksrcpath}/Build/Omega/lib"
+    } else {
+        set env(LD_LIBRARY_PATH) \
+            "${destroot}${prefix}/lib:${destroot}${prefix}/lib/blackomega:${worksrcpath}/Build/Omega/lib/"
+    }
+    if {![file exists ${worksrcpath}/Build/Omega/lib/OmegaUnitTests]
+        || ![file exists ${worksrcpath}/Build/Omega/lib/OmegaIntegrationTest]} {
+        system -W ${build.dir} \
+            "${build.cmd} ${build.pre_args} OmegaUnitTests OmegaIntegrationTest ${build.post_args}"
+    }
+    catch {system -W ${worksrcpath}/Build/Omega/lib "./OmegaUnitTests"}
+    catch {system -W ${worksrcpath}/Build/Omega/lib "./OmegaIntegrationTest"}
+}
+
+test.run            yes

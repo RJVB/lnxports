@@ -1,0 +1,71 @@
+diff --git a/source/player/src/Main.cxx b/source/player/src/Main.cxx
+index 5ba4611..9eb13cb 100644
+--- a/source/player/src/Main.cxx
++++ b/source/player/src/Main.cxx
+@@ -203,36 +203,36 @@ int main(int argc,char **argv)
+         omega::player::CocoaInitializer cocoaMemPool;
+ #endif
+ 
+-#if defined(Q_OS_MAC)
+-        bool isPluginFound = false;
+-        QString pluginDir;
+-        if(isAppBundle(argv[0],pluginDir))
+-        {
+-            QDir d = pluginDir;
+-            if(d.cd("Contents") && d.cd("Plugins"))
+-            {
+-                pluginDir = d.absolutePath();
+-                isPluginFound = true;
+-            }
+-        }
+-        if(!isPluginFound)
+-        {
+-            QFileInfo appFile(argv[0]);
+-            QDir d = appFile.absolutePath();
+-            pluginDir = d.absolutePath();
+-        }
+-        omega::common::Log::g_Log.print("%s\n",pluginDir.toUtf8().constData());
+-        QApplication::setLibraryPaths(QStringList(pluginDir));
+-#else
+-        QFileInfo appFile(argv[0]);
+-        QDir d = appFile.absolutePath();
+-        QString pluginDir;
+-        d.cdUp();
+-        d.cd("plugins");
+-        pluginDir = d.absolutePath();
+-        pluginDir = QDir::toNativeSeparators(pluginDir);
+-        QApplication::setLibraryPaths(QStringList(pluginDir));
+-#endif
++// #if defined(Q_OS_MAC)
++//         bool isPluginFound = false;
++//         QString pluginDir;
++//         if(isAppBundle(argv[0],pluginDir))
++//         {
++//             QDir d = pluginDir;
++//             if(d.cd("Contents") && d.cd("Plugins"))
++//             {
++//                 pluginDir = d.absolutePath();
++//                 isPluginFound = true;
++//             }
++//         }
++//         if(!isPluginFound)
++//         {
++//             QFileInfo appFile(argv[0]);
++//             QDir d = appFile.absolutePath();
++//             pluginDir = d.absolutePath();
++//         }
++//         omega::common::Log::g_Log.print("%s\n",pluginDir.toUtf8().constData());
++//         QApplication::setLibraryPaths(QStringList(pluginDir));
++// #else
++//         QFileInfo appFile(argv[0]);
++//         QDir d = appFile.absolutePath();
++//         QString pluginDir;
++//         d.cdUp();
++//         d.cd("plugins");
++//         pluginDir = d.absolutePath();
++//         pluginDir = QDir::toNativeSeparators(pluginDir);
++//         QApplication::setLibraryPaths(QStringList(pluginDir));
++// #endif
+ 
+         omega::engine::CodecInitialize::start();
+         omega::engine::blackomega::MPCodecInitialize::start();

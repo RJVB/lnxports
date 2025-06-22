@@ -1,0 +1,28 @@
+diff --git a/source/test/CMakeLists.txt b/source/test/CMakeLists.txt
+index e131d0c..8cec604 100644
+--- a/source/test/CMakeLists.txt
++++ b/source/test/CMakeLists.txt
+@@ -201,6 +200,6 @@ elseif (OMEGA_LINUX)
+     target_link_libraries(OmegaUnitTests audioio blackomega blueomega common cyanomega engine greenomega http mime toneomega wavpackomega network_omega redomega remote rtp rtp_silveromega silveromega trackdb trackinfo trackmodel violetomega whiteomega widget playercommon xml2 ${QTVER}::Core ${QTVER}::Gui ${QTVER}::Xml ${QTVER}::Widgets ${QTVER}::Test wavpack gtest gtest_main gmock gmock_main ${LIBUPNP_LIBRARIES} Threads::Threads)
+ endif (OMEGA_WIN32)
+ 
+-if (${TIGER_SYSTEM_DEPS})
+-    install(TARGETS OmegaUnitTests DESTINATION bin)
+-endif (${TIGER_SYSTEM_DEPS})
++# if (${TIGER_SYSTEM_DEPS})
++#     install(TARGETS OmegaUnitTests DESTINATION bin)
++# endif (${TIGER_SYSTEM_DEPS})
+diff --git a/source/test/integration/CMakeLists.txt b/source/test/integration/CMakeLists.txt
+index 686d9cb..4d685dc 100644
+--- a/source/test/integration/CMakeLists.txt
++++ b/source/test/integration/CMakeLists.txt
+@@ -68,6 +68,6 @@ elseif (OMEGA_LINUX)
+     target_link_libraries(OmegaIntegrationTest audioio blackomega blueomega common cyanomega engine greenomega http mime wavpackomega network_omega redomega remote rtp rtp_silveromega silveromega trackdb trackinfo trackmodel violetomega whiteomega widget xml2 ${QTVER}::Core ${QTVER}::Gui ${QTVER}::Xml ${QTVER}::Widgets ${QTVER}::Network ${QTVER}::Test wavpack gtest gtest_main gmock gmock_main asound ${LIBUPNP_LIBRARIES} Threads::Threads )
+ endif (OMEGA_WIN32)
+ 
+-if (${TIGER_SYSTEM_DEPS})
+-    install(TARGETS OmegaIntegrationTest DESTINATION bin)
+-endif (${TIGER_SYSTEM_DEPS})
++# if (${TIGER_SYSTEM_DEPS})
++#     install(TARGETS OmegaIntegrationTest DESTINATION bin)
++# endif (${TIGER_SYSTEM_DEPS})

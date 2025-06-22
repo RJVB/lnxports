@@ -1,0 +1,13 @@
+diff --git a/source/test/CMakeLists.txt b/source/test/CMakeLists.txt
+index e131d0c..daf19bf 100644
+--- a/source/test/CMakeLists.txt
++++ b/source/test/CMakeLists.txt
+@@ -32,7 +32,6 @@ set ( TEST_HEADERS
+ set ( TEST_SOURCE
+     ../audioio/test/AOBaseTest.cxx
+     ../audioio/test/AOChannelMapTest.cxx
+-    ../audioio/test/AOQuerySharedDeviceTest.cxx
+     ../audioio/test/AudioHardwareBufferTester.cxx
+     ../audioio/test/AudioItemMock.cxx
+     ../audioio/test/AudioSettingsTest.cxx
+

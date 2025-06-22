@@ -1,0 +1,46 @@
+diff --git a/source/CMakeLists.txt b/source/CMakeLists.txt
+index aa96176..7aa4f50 100644
+--- a/source/CMakeLists.txt
++++ b/source/CMakeLists.txt
+@@ -12,7 +12,7 @@ add_subdirectory(engine/wavpackomega)
+ add_subdirectory(engine/whiteomega)
+ add_subdirectory(network)
+ add_subdirectory(network/http)
+-add_subdirectory(network/ftp)
++# add_subdirectory(network/ftp)
+ add_subdirectory(network/mime)
+ add_subdirectory(network/rtp)
+ add_subdirectory(network/rtp/silveromega)
+@@ -24,14 +24,14 @@ add_subdirectory(track/db)
+ add_subdirectory(track/model)
+ add_subdirectory(player)
+ add_subdirectory(player/oplayer)
+-add_subdirectory(playerapp/playercommon)
+-add_subdirectory(playerapp/playerapp)
+-add_subdirectory(playerapp/www)
++add_subdirectory(playerapp/playercommon)
++# add_subdirectory(playerapp/playerapp)
++# add_subdirectory(playerapp/www)
+ 
+ if(NOT OMEGA_QT4)
+     add_subdirectory(test)
+     add_subdirectory(test/integration)
+-    add_subdirectory(playerapp/playerios)
++#     add_subdirectory(playerapp/playerios)
+ endif()
+ 
+ #add_subdirectory(engine/redomega/test/comparison)
+diff --git a/source/track/model/CMakeLists.txt b/source/track/model/CMakeLists.txt
+index c818dc2..d1acbcc 100644
+--- a/source/track/model/CMakeLists.txt
++++ b/source/track/model/CMakeLists.txt
+@@ -20,6 +20,6 @@ else (OMEGA_WIN32)
+     endif (OMEGA_QT4)
+ endif (OMEGA_WIN32)
+ 
+-if (${TIGER_SYSTEM_DEPS})
+-    install(TARGETS trackmodel DESTINATION lib)
+-endif (${TIGER_SYSTEM_DEPS})
++# if (${TIGER_SYSTEM_DEPS})
++#     install(TARGETS trackmodel DESTINATION lib)
++# endif (${TIGER_SYSTEM_DEPS})
