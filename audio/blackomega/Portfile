@@ -41,6 +41,10 @@ depends_build-append \
 depends_lib-append  port:libmpcdec \
                     port:libxml2 \
                     port:wavpack
+platform linux {
+    depends_lib-append \
+                    port:alsa-lib
+}
 
 patch.pre_args      -Np1
 patchfiles-append   patch-for-qt5.diff \
