@@ -1,7 +1,6 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem 1.0
-PortGroup select 1.0
 PortGroup conflicts_build 1.0
 PortGroup openssl 1.0
 
@@ -12,7 +11,7 @@ PortGroup save_configure_cmd 1.0
 name                python39
 
 # Remember to keep py39-tkinter and py39-gdbm's versions sync'd with this
-version             3.9.19
+version             3.9.23
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          lang
@@ -30,9 +29,9 @@ platforms           linux darwin
 
 distname            Python-${version}
 use_xz              yes
-checksums           md5 87d0f8281237b972ff8b23e0e2c8d325 \
-                    rmd160 b46fbe50a0cace4a6ecdb70d026a32932427f566 \
-                    sha256 d4892cd1618f6458cb851208c030df1482779609d0f3939991bd38184f8c679e
+checksums           md5     a4e4a53cbde60b743d7c2f9aa38c3b8f \
+                    rmd160  2d0e831335f28b838eca5622d44984639ff9e705 \
+                    sha256  61a42919e13d539f7673cf11d1c404380e28e540510860b9d242196e165709c9
 
 patchfiles          patch-setup.py.diff \
                     patch-Lib-cgi.py.diff \
@@ -41,7 +40,8 @@ patchfiles          patch-setup.py.diff \
                     patch-libedit.diff \
                     patch-configure-xcode4bug.diff \
                     sysconfig.py.diff \
-                    libedit-types.patch
+                    libedit-types.patch \
+                    implicit-int.patch
 
 if {${os.platform} eq "darwin" && ${os.major} <= 10} {
     # work around no copyfile and/or pthread_threadid_np on older systems
@@ -49,7 +49,7 @@ if {${os.platform} eq "darwin" && ${os.major} <= 10} {
                        patch-threadid-older-systems.diff
 }
 
-depends_build       port:pkgconfig \
+depends_build       path:bin/pkg-config:pkgconfig \
                     port:ncurses-dev \
                     port:gettext-dev \
                     port:ncurses-dev \
@@ -64,8 +64,10 @@ depends_lib         port:bzip2 \
                     port:sqlite3 \
                     port:xz \
                     port:zlib
-depends_run         port:python_select \
-                    port:python3_select
+
+set pythonVerNoDot  [string map {. {}} $branch]
+depends_run         port:python_select-${pythonVerNoDot} \
+                    port:python3_select-${pythonVerNoDot}
 
 # blacklist llvm-gcc-4.2 compiler known to produce bad code
 compiler.blacklist-append *llvm-gcc-4.2
@@ -76,7 +78,8 @@ if {${os.platform} ne "darwin"} {
 
 # ensurepip arg may be removed later, now conflicts with pip and setuptools
 # packages
-configure.args      [expr {${os.platform} eq "darwin" ? "--enable-framework=${frameworks_dir}" : "--enable-shared"}] \
+configure.args-append \
+                    [expr {${os.platform} eq "darwin" ? "--enable-framework=${frameworks_dir}" : "--enable-shared"}] \
                     --enable-ipv6 \
                     --enable-loadable-sqlite-extensions \
                     --with-computed-gotos \
@@ -108,6 +111,10 @@ post-patch {
     # replace /Applications with ${applications_dir}
     reinplace "s|@@APPLICATIONS_DIR@@|${applications_dir}|" \
       ${worksrcpath}/configure
+
+    # configure hardcodes the ncursesw include dir?!
+    reinplace "s|-I/usr/include/ncursesw|-I${prefix}/include/ncursesw|" \
+      ${worksrcpath}/configure
 }
 
 build.target        all
@@ -121,15 +128,13 @@ destroot.target     frameworkinstall maninstall
 build.args-append   MAKE="${build.cmd} CC=${configure.cc}"
 destroot.args-append    MAKE="${destroot.cmd} CC=${configure.cc}"
 
-set pythonVerNoDot python[string map {. {}} $branch]
-select.entries      [list python python-$pythonVerNoDot $pythonVerNoDot] \
-                    [list python3 python3-$pythonVerNoDot $pythonVerNoDot]
+platform darwin {
+    set abiflags    {}
 
-set framewpath ${frameworks_dir}/Python.framework
-set framewdir  ${framewpath}/Versions/${branch}
-
-if {${os.platform} eq "darwin"} {
-    set confdir config-${branch}-darwin
+    if {${os.major} < 9} {
+        # Fixes the return type of `ttyname_r`
+        configure.cppflags-append -D__DARWIN_UNIX03=1
+    }
 
     post-configure {
         # poll() misbehaves on 10.8 and older
@@ -140,17 +145,16 @@ if {${os.platform} eq "darwin"} {
             file mtime ${worksrcpath}/pyconfig.h $oldmtime
         }
     }
-} elseif {${os.platform} eq "linux"} {
-    set confdir config-${branch}-${build_arch}-linux-gnu
-} else {
-    set confdir config-${branch}-${build_arch}-${os.platform}
 }
 
-configure.save_configure_cmd "install log"
+set framewpath  ${frameworks_dir}/Python.framework
+set framewdir   ${framewpath}/Versions/${branch}
 
 post-destroot {
 
-    platform darwin {
+    if {${os.platform} eq "darwin"} {
+        set confdir config-${branch}${abiflags}-darwin
+
         foreach dir { Headers Resources Python Versions/Current } {
             file delete ${destroot}${framewpath}/${dir}
         }
@@ -169,15 +173,15 @@ post-destroot {
         set lfs_pattern {^([[:space:]]*'LINKFORSHARED':).*}
         set lfs_replacement "\\1 '-L${framewdir}/lib/python${branch}/${confdir} -lpython${branch} -ldl -framework CoreFoundation',"
         reinplace -E s|${lfs_pattern}|${lfs_replacement}| \
-            ${libdir}/_sysconfigdata__darwin_darwin.py
+            ${libdir}/_sysconfigdata_${abiflags}_darwin_darwin.py
 
         # remove -arch flags from the config
         reinplace -E {s|-arch [a-z0-9_]+||g} \
-            ${libdir}/_sysconfigdata__darwin_darwin.py
+            ${libdir}/_sysconfigdata_${abiflags}_darwin_darwin.py
 
         # also remove gettext overlinking
         reinplace "s|-lintl||" \
-            ${libdir}/_sysconfigdata__darwin_darwin.py
+            ${libdir}/_sysconfigdata_${abiflags}_darwin_darwin.py
 
         # recompile the modified file
         set python_for_build python.exe
@@ -185,7 +189,7 @@ post-destroot {
         if {![file exists ${worksrcpath}/${python_for_build}]} {
             set python_for_build python
         }
-        system -W ${worksrcpath} "env DYLD_FRAMEWORK_PATH=. ./${python_for_build} -E -m compileall -d [shellescape ${framewdir}/lib/python${branch}] -o 0 -o 1 -o 2 [shellescape ${libdir}/_sysconfigdata__darwin_darwin.py]"
+        system -W ${worksrcpath} "env DYLD_FRAMEWORK_PATH=. ./${python_for_build} -E -m compileall -d [shellescape ${framewdir}/lib/python${branch}] -o 0 -o 1 -o 2 [shellescape ${libdir}/_sysconfigdata_${abiflags}_darwin_darwin.py]"
 
         # Also make the sysconfig changes in the Makefile
         reinplace {s|^\(LINKFORSHARED=\).*$|\1 -L$(LIBPL) -lpython$(VERSION)$(ABIFLAGS) $(LIBS) $(SYSLIBS)|} \
@@ -196,6 +200,10 @@ post-destroot {
 
         reinplace "s|-lintl||" \
            ${libdir}/${confdir}/Makefile
+    } elseif {${os.platform} eq "linux"} {
+        set confdir config-${branch}-${build_arch}-linux-gnu
+    } else {
+        set confdir config-${branch}-${build_arch}-${os.platform}
     }
 
     foreach unversioned {2to3 idle3 pydoc3 python3 python3-config} {
@@ -213,9 +221,9 @@ post-destroot {
             file delete ${destroot}${prefix}/${b}
         }
 
-        reinplace "s|python${version}\$|python${version}.gz|g" \
-           ${destroot}${prefix}/etc/select/python/python39 \
-           ${destroot}${prefix}/etc/select/python3/python39
+#         reinplace "s|python${version}\$|python${version}.gz|g" \
+#            ${destroot}${prefix}/etc/select/python/python39 \
+#            ${destroot}${prefix}/etc/select/python3/python39
 
         if {[file exists ${prefix}/lib/libuuid.so.1] &&
             [file exists ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu_failed.so]
@@ -233,8 +241,8 @@ notes "
 To make this the default Python or Python 3 (i.e., the version run by\
 the 'python' or 'python3' commands), run one or both of:
 
-    sudo port select --set python $pythonVerNoDot
-    sudo port select --set python3 $pythonVerNoDot
+    sudo port select --set python python$pythonVerNoDot
+    sudo port select --set python3 python$pythonVerNoDot
 "
 
 platform darwin {
@@ -325,6 +333,8 @@ if {${os.platform} eq "darwin"} {
 variant dtrace description {enable DTrace support} {
     configure.args-append   --with-dtrace
 }
+
+configure.save_configure_cmd "install log"
 
 post-activate {
     if {![file exists "${framewdir}/lib/python${branch}/site-packages/__Previous_Pythons__.pth"]} {
