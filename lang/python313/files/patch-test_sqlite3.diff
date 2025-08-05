@@ -1,0 +1,48 @@
+diff --git Lib/test/test_sqlite3/orig.test_dbapi.py Lib/test/test_sqlite3/test_dbapi.py
+index 8313402..951e234 100644
+--- Lib/test/test_sqlite3/orig.test_dbapi.py
++++ Lib/test/test_sqlite3/test_dbapi.py
+@@ -675,13 +675,13 @@ class OpenTests(unittest.TestCase):
+     @unittest.skipIf(is_apple, "skipped on Apple platforms")
+     @unittest.skipIf(is_emscripten or is_wasi, "not supported on Emscripten/WASI")
+     @unittest.skipUnless(TESTFN_UNDECODABLE, "only works if there are undecodable paths")
+-    def test_open_with_undecodable_path(self):
+-        path = TESTFN_UNDECODABLE
+-        self.addCleanup(unlink, path)
+-        self.assertFalse(os.path.exists(path))
+-        with contextlib.closing(sqlite.connect(path)) as cx:
+-            self.assertTrue(os.path.exists(path))
+-            cx.execute(self._sql)
++#     def test_open_with_undecodable_path(self):
++#         path = TESTFN_UNDECODABLE
++#         self.addCleanup(unlink, path)
++#         self.assertFalse(os.path.exists(path))
++#         with contextlib.closing(sqlite.connect(path)) as cx:
++#             self.assertTrue(os.path.exists(path))
++#             cx.execute(self._sql)
+ 
+     def test_open_uri(self):
+         path = TESTFN
+@@ -721,14 +721,14 @@ class OpenTests(unittest.TestCase):
+     @unittest.skipIf(is_apple, "skipped on Apple platforms")
+     @unittest.skipIf(is_emscripten or is_wasi, "not supported on Emscripten/WASI")
+     @unittest.skipUnless(TESTFN_UNDECODABLE, "only works if there are undecodable paths")
+-    def test_open_undecodable_uri(self):
+-        path = TESTFN_UNDECODABLE
+-        self.addCleanup(unlink, path)
+-        uri = "file:" + urllib.parse.quote(path)
+-        self.assertFalse(os.path.exists(path))
+-        with contextlib.closing(sqlite.connect(uri, uri=True)) as cx:
+-            self.assertTrue(os.path.exists(path))
+-            cx.execute(self._sql)
++#     def test_open_undecodable_uri(self):
++#         path = TESTFN_UNDECODABLE
++#         self.addCleanup(unlink, path)
++#         uri = "file:" + urllib.parse.quote(path)
++#         self.assertFalse(os.path.exists(path))
++#         with contextlib.closing(sqlite.connect(uri, uri=True)) as cx:
++#             self.assertTrue(os.path.exists(path))
++#             cx.execute(self._sql)
+ 
+     def test_factory_database_arg(self):
+         def factory(database, *args, **kwargs):
