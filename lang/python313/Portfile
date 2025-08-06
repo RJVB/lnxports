@@ -139,7 +139,6 @@ if {$subport eq "${name}-freethreading" || [variant_isset freethreading]} {
             incompatible with extension modules built for the standard ABI."
     # Needs mimalloc which needs arc4random_buf
     platforms-replace   darwin {darwin >= 11}
-    depends_lib-append  port:mimalloc
     # Needs stdatomic.h
     compiler.blacklist  {clang < 700}
     set abiflags        t
@@ -158,7 +157,6 @@ if {$subport eq "${name}-freethreading" || [variant_isset freethreading]} {
 platform darwin {
     if {${os.major} < 11} {
         configure.args-append   --without-mimalloc
-        depends_lib-delete      port:mimalloc
     }
     if {[vercmp $macosx_deployment_target <= 10.5]} {
         configure.cppflags-append -D_DARWIN_USE_64_BIT_INODE
