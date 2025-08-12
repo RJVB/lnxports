@@ -101,7 +101,6 @@ if {${os.platform} eq "darwin"} {
                     port:bzip2 \
                     port:libedit
 } else {
-    PortGroup       compiler_blacklist_versions 1.0
     compiler.blacklist-append \
     				cc
     compiler.whitelist-append \

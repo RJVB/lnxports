@@ -3,7 +3,6 @@
 PortSystem          1.0
 PortGroup           LTO 1.0
 PortGroup           meson 1.0
-PortGroup           compiler_blacklist_versions 1.0
 platform darwin {
     PortGroup       legacysupport 1.1
 

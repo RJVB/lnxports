@@ -8,7 +8,6 @@ PortGroup           wxWidgets 1.0
 PortGroup           active_variants 1.1
 PortGroup           cmake 1.1
 platform darwin {
-    PortGroup       compiler_blacklist_versions 1.0
 }
 #>> RJVB
 PortGroup           compress_workdir 1.0

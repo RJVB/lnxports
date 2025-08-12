@@ -11,7 +11,6 @@ PortGroup           locale_select 1.0
 PortGroup           LTO 1.0
 platform darwin {
     PortGroup       legacysupport 1.1
-    PortGroup       compiler_blacklist_versions 1.0
     PortGroup       compress_workdir 1.0
 
     # clang-12 is the 1st version I have installed that compiles FileSystem.cpp (using std::filesystem) correctly

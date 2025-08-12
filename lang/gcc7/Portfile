@@ -39,7 +39,6 @@ if {[variant_isset proxy]} {
 # NOT +proxy
 
 PortGroup select 1.0
-PortGroup compiler_blacklist_versions 1.0
 PortGroup active_variants 1.1
 ### MacStrop private
 PortGroup compress_workdir 1.0

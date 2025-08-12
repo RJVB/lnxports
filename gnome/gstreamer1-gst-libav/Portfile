@@ -5,7 +5,6 @@ PortSystem          1.0
 # https://bugzilla.gnome.org/show_bug.cgi?id=636134
 PortGroup           muniversal 1.0
 
-PortGroup           compiler_blacklist_versions 1.0
 platform linux {
     # prevent error about libav*.a not having being ranlib'ed
     set LTO.disable_LTO 1
