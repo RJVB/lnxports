@@ -1,0 +1,13 @@
+diff --git shm/orig.dconf-shm.c shm/dconf-shm.c
+index ae8c1c7..c8d19e2 100644
+--- shm/orig.dconf-shm.c
++++ shm/dconf-shm.c
+@@ -58,7 +58,7 @@ dconf_shm_open (const gchar *name)
+   memory = NULL;
+   fd = -1;
+ 
+-  if (g_mkdir_with_parents (shmdir, 0700) != 0)
++  if (!g_file_test(shmdir, G_FILE_TEST_IS_DIR) && g_mkdir_with_parents (shmdir, 0700) != 0)
+     {
+       g_critical ("unable to create directory '%s': %s.  dconf will not work properly.", shmdir, g_strerror (errno));
+       goto out;

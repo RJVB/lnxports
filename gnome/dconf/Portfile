@@ -3,9 +3,10 @@
 PortSystem          1.0
 PortGroup           locale_select 1.0
 PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
 
 name                dconf
-version             0.26.1 ; revision 1
+version             0.26.1 ; revision 2
 set branch          [join [lrange [split ${version} .] 0 1] .]
 maintainers         {devans @dbevans} openmaintainer
 categories          gnome
@@ -67,7 +68,8 @@ checksums           rmd160  4f756c2d1eeb32c6c7d068a08e8ff0f5340e1553 \
 depends_build       port:pkgconfig \
                     port:docbook-xsl-nons \
                     port:libxslt \
-                    port:grep
+                    port:grep \
+                    path:bin/vala:vala
 
 depends_lib         path:lib/pkgconfig/glib-2.0.pc:glib2
 
@@ -79,6 +81,7 @@ platform linux {
                     01_env_path.patch \
                     patch_AR.diff
 }
+patchfiles-append   patch-test-dir-exists-first.diff
 
 pre-configure {
     if {![file exists ${worksrcpath}/config.log]} {
@@ -90,6 +93,25 @@ pre-configure {
 configure.args      --disable-schemas-compile \
                     --disable-silent-rules \
                     --disable-gtk-doc-html
+
+set profile_dir     ${prefix}/share/dconf/profile
+post-destroot {
+    set dprofile_dir ${destroot}${profile_dir}
+    xinstall -m 755 -d ${dprofile_dir}
+    if {[file exists /run/dconf/user]} {
+        ln -s /run/dconf/user ${dprofile_dir}/
+    } elseif {[file exists /run/user]} {
+        ln -s /run/user ${dprofile_dir}/
+    } else {
+        xinstall -m 755 -d ${dprofile_dir}/user
+        destroot.keepdirs ${dprofile_dir}/user
+    }
+}
+if {[file exists /run/dconf/user]} {
+    notes-append "port-dconf exposes the system's mandatory directory /run/dconf/user under ${profile_dir}"
+} elseif {[file exists /run/user]} {
+    notes-append "port-dconf exposes the system's probable XDG_RUNTIME_DIR  directory /run/user under ${profile_dir}"
+}
 
 post-activate {
     system "${prefix}/bin/gio-querymodules ${prefix}/lib/gio/modules"
