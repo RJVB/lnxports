@@ -1,0 +1,52 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           meson 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+
+github.setup        intel intel-vaapi-driver fd727a4e9cb8b2878a1e93d4dddc8dd1c1a4e0ea
+version             2.3.0.39
+
+checksums           rmd160  15bf88ceba4bfbb4ccc46ddb6ecf66e32f686579 \
+                    sha256  848a7b7124d69d9d2b09dabf5509cb1fd8f1ef23c2b3e47dd01d414edb57a2c4
+#                    size    3966792
+
+categories          x11 multimedia
+platforms           linux
+maintainers         gmail.com:rjvbertin
+license             Permissive
+
+description         VA-API user mode driver for Intel GEN Graphics family 
+long_description \
+    VA-API (Video Acceleration API) user mode driver for Intel GEN Graphics family \
+    VA-API is an open-source library and API specification, which provides access to graphics hardware acceleration capabilities for video processing. It consists of a main library and driver-specific acceleration backends for each supported hardware vendor. \
+    The current video driver backend provides a bridge to the GEN GPUs through the packaging of buffers and commands to be sent to the i915 driver for exercising both hardware and shader functionality for video decode, encode, and processing.
+
+depends_build-append \
+                port:pkgconfig
+
+depends_lib-append \
+                port:libva \
+                port:libdrm \
+                port:mesa \
+                port:wayland \
+                port:xorg-libX11
+
+configure.args-append \
+                -Denable_hybrid_codec=true \
+                -Denable_tests=true
+
+configure.save_configure_cmd "install log"
+
+test.run        yes
+
+notes-append \
+"The Intel VAAPI i915 driver has been installed under ${prefix}/lib/dri but be aware that \
+it may be ignored if the LIBVA_DRIVERS_PATH env. variable is set, instructing libva to \
+look in different location(s). If so, please update your .login or .profile (or whatever) to include\n\
+export LIBVA_DRIVERS_PATH=\"${prefix}/lib/dri:\${LIBVA_DRIVERS_PATH}\"\n\
+or\n\
+setenv LIBVA_DRIVERS_PATH \"${prefix}/lib/dri:\${LIBVA_DRIVERS_PATH}\"\n\
+"
