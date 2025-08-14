@@ -2,6 +2,7 @@
 
 PortSystem          1.0
 PortGroup           github 1.0
+PortGroup           meson 1.0
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 
@@ -26,13 +27,6 @@ long_description \
     each supported hardware vendor.\n\
     This is libva ${real_version}
 
-use_autoreconf  yes
-pre-configure {
-    if {[file exists ${worksrcpath}/configure] && [file exists ${worksrcpath}/config.log]} {
-        use_autoreconf no
-    }
-}
-
 # autoreconf needs pkgconfig
 depends_build-append \
                 port:pkgconfig
@@ -44,7 +38,10 @@ depends_lib-append \
                 port:xorg-libX11 \
                 port:xorg-libXext
 
-configure.save_configure_cmd "install log"
+configure.args-append \
+                -Dwith_x11=yes \
+                -Dwith_glx=yes \
+                -Dwith_wayland=yes \
+                -Dwith_win32=yes
 
-test.run        yes
-test.target     check
+configure.save_configure_cmd "install log"
