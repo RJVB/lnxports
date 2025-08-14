@@ -1,0 +1,1463 @@
+From 6e4167728df6bc0512324eefe10b6cf370323b11 Mon Sep 17 00:00:00 2001
+From: Carl Zhang <carl.zhang@intel.com>
+Date: Thu, 20 Jun 2024 20:26:17 +0800
+Subject: [PATCH 01/12] libva 2.23.0.pre1
+
+Signed-off-by: Carl Zhang <carl.zhang@intel.com>
+===
+ configure.ac | 2 +-
+ meson.build  | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index c566063b1..13fc9baed 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -27,7 +27,7 @@
+ # - reset micro version to zero when minor version is incremented
+ # - reset minor version to zero when major version is incremented
+ m4_define([va_api_major_version], [1])
+-m4_define([va_api_minor_version], [22])
++m4_define([va_api_minor_version], [23])
+ m4_define([va_api_micro_version], [0])
+ 
+ m4_define([va_api_version],
+diff --git a/meson.build b/meson.build
+index 96fd8b3a6..2f62f8169 100644
+--- a/meson.build
++++ b/meson.build
+@@ -7,7 +7,7 @@
+ # - reset micro version to zero when VA-API major or minor version is changed
+ project(
+   'libva', 'c',
+-  version : '2.22.0.1',
++  version : '2.23.0.1',
+   meson_version : '>= 0.53.0',
+   default_options : [ 'warning_level=1',
+                       'buildtype=debugoptimized' ])
+@@ -19,7 +19,7 @@ project(
+ # - reset micro version to zero when minor version is incremented
+ # - reset minor version to zero when major version is incremented
+ va_api_major_version = 1
+-va_api_minor_version = 22
++va_api_minor_version = 23
+ va_api_micro_version = 0
+ 
+ va_api_version = '@0@.@1@.@2@'.format(va_api_major_version,
+
+From 9f0ff9ae0ec8d863578d079cbb8bffebf1e325f5 Mon Sep 17 00:00:00 2001
+From: Carl Zhang <carl.zhang@intel.com>
+Date: Wed, 20 Sep 2023 04:57:46 -0400
+Subject: [PATCH 02/12] va:add defintions for segment id block size
+
+Signed-off-by: Carl Zhang <carl.zhang@intel.com>
+===
+ va/va.h | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/va/va.h b/va/va.h
+index 1d99fa6ff..1f4796649 100644
+--- a/va/va.h
++++ b/va/va.h
+@@ -1491,6 +1491,19 @@ typedef union _VAConfigAttribValEncPerBlockControl {
+ /** \brief Driver supports decode processing rate report  */
+ #define VA_PROCESSING_RATE_DECODE                     0x00000002
+ /**@}*/
++
++/** @name segment ID map block size */
++/**@{*/
++/** \brief each segmentID represent a 16x16 block */
++#define VA_SEGID_BLOCK_16X16                          0
++/** \brief each segmentID represent a 32x32 block */
++#define VA_SEGID_BLOCK_32X32                          1
++/** \brief each segmentID represent a 64x64 block */
++#define VA_SEGID_BLOCK_64X64                          2
++/** \brief each segmentID represent a 8x8 block */
++#define VA_SEGID_BLOCK_8X8                            3
++/**@}*/
++
+ /**
+  * if an attribute is not applicable for a given
+  * profile/entrypoint pair, then set the value to the following
+
+From 0bcf883a700e8959e5f0995f52040dc051af2b8f Mon Sep 17 00:00:00 2001
+From: "Yao, Leyu" <leyu.yao@intel.com>
+Date: Mon, 28 Aug 2023 16:27:31 +0800
+Subject: [PATCH 03/12] va: encode segmentation map refine
+
+Signed-off-by: Yao, Leyu <leyu.yao@intel.com>
+Signed-off-by: Zhang,Carl <carl.zhang@intel.com>
+===
+ va/va.h         |  8 ++++++++
+ va/va_enc_av1.h |  9 ++++-----
+ va/va_enc_vp9.h | 36 +++++++++++++++++++++++++++++++++++-
+ va/va_str.c     |  1 +
+ 4 files changed, 48 insertions(+), 6 deletions(-)
+
+diff --git a/va/va.h b/va/va.h
+index 1f4796649..db885bc2d 100644
+--- a/va/va.h
++++ b/va/va.h
+@@ -1053,6 +1053,14 @@ typedef enum {
+      * columns supported for encoding with tile support.
+      */
+     VAConfigAttribEncMaxTileCols        = 57,
++    /**
++     * \brief VP9 encoding attribute. Read-only.
++     *
++     * This attribute exposes a number of capabilities of the underlying
++     * VP9 implementation. The attribute value is partitioned into fields as defined in the
++     * VAConfigAttribValEncVP9 union.
++     */
++    VAConfigAttribEncVP9                = 58,
+     /**@}*/
+     VAConfigAttribTypeMax
+ } VAConfigAttribType;
+diff --git a/va/va_enc_av1.h b/va/va_enc_av1.h
+index d96c3f224..9d7f67f1e 100644
+--- a/va/va_enc_av1.h
++++ b/va/va_enc_av1.h
+@@ -148,8 +148,10 @@ typedef union _VAConfigAttribValEncAV1Ext1 {
+          */
+         uint32_t interpolation_filter          : 5;
+         /**
+-         * \brief Min segmentId block size accepted.
++         * \brief segmentId block size accepted.
+          * Application need to send seg_id_block_size in PPS equal or larger than this value.
++         * one bit represent one block size defined as VA_SEGID_BLOCKXXXX
++         * should be (1 << VA_SEGID_BLOCKXXX | 1 << VA_SEGID_BLOCKXXX ... )
+          */
+         uint32_t min_segid_block_size_accepted : 8;
+         /**
+@@ -667,10 +669,7 @@ typedef struct  _VAEncPictureParameterBufferAV1 {
+     } picture_flags;
+ 
+     /** \brief Block size for each Segment ID in Segment Map.
+-     *  0: 16x16 block size, default value;
+-     *  1: 32x32 block size;
+-     *  2: 64x64 block size;
+-     *  3: 8x8 block size.
++     *  should be \c VA_SEGID_BLOCK_XXXX;
+      */
+     uint8_t     seg_id_block_size;
+ 
+diff --git a/va/va_enc_vp9.h b/va/va_enc_vp9.h
+index 107ab0c9c..3a5359754 100644
+--- a/va/va_enc_vp9.h
++++ b/va/va_enc_vp9.h
+@@ -507,8 +507,16 @@ typedef struct  _VAEncPictureParameterBufferVP9 {
+      */
+     uint32_t    skip_frames_size;
+ 
++    /** \brief Block size for each Segment ID in Segment Map.
++     *  This specify the granularity of media driver of reading and processing the segment map.
++     *  value should be VA_SEGID_BLOCK_XXX
++     */
++    uint8_t     seg_id_block_size;
++
++    uint8_t     va_reserved8[3];
++
+     /** \brief Reserved bytes for future use, must be zero */
+-    uint32_t    va_reserved[VA_PADDING_MEDIUM];
++    uint32_t    va_reserved[VA_PADDING_MEDIUM - 1];
+ } VAEncPictureParameterBufferVP9;
+ 
+ 
+@@ -594,6 +602,32 @@ typedef struct _VAEncMiscParameterTypeVP9PerSegmantParam {
+  */
+ 
+ 
++/** \brief Attribute value for VAConfigAttribEncVP9. */
++typedef union _VAConfigAttribValEncVP9 {
++    struct {
++        /**
++         * \brief segmentId block size accepted.
++         * This is the granularity of segmentation map.
++         * one bit represent one block size defined as VA_SEGID_BLOCKXXXX
++         * should be (1 << VA_SEGID_BLOCKXXX | 1 << VA_SEGID_BLOCKXXX ... )
++         */
++        uint32_t seg_id_block_size             : 8;
++
++        /**
++         * \brief Type of segment feature supported.
++         * (segment_feature_support & 0x01) == 1: SEG_LVL_ALT_Q is supported, 0: not.
++         * (segment_feature_support & 0x02) == 1: SEG_LVL_ALT_L is supported, 0: not.
++         * (segment_feature_support & 0x04) == 1: SEG_LVL_REF_FRAME is supported, 0: not.
++         * (segment_feature_support & 0x08) == 1: SEG_LVL_SKIP is supported, 0: not.
++         */
++        uint32_t segment_feature_support       : 4;
++
++        /** \brief Reserved bits for future, must be zero. */
++        uint32_t reserved                      : 20;
++    } bits;
++    uint32_t value;
++} VAConfigAttribValEncVP9;
++
+ /**@}*/
+ 
+ #ifdef __cplusplus
+diff --git a/va/va_str.c b/va/va_str.c
+index 9d651d0a0..7601cdef2 100644
+--- a/va/va_str.c
++++ b/va/va_str.c
+@@ -153,6 +153,7 @@ const char *vaConfigAttribTypeStr(VAConfigAttribType configAttribType)
+         TOSTR(VAConfigAttribEncPerBlockControl);
+         TOSTR(VAConfigAttribEncMaxTileRows);
+         TOSTR(VAConfigAttribEncMaxTileCols);
++        TOSTR(VAConfigAttribEncVP9);
+     case VAConfigAttribTypeMax:
+         break;
+     }
+
+From 438398bc33bf865353da9d242f53d0160afdd6ec Mon Sep 17 00:00:00 2001
+From: Carl Zhang <carl.zhang@intel.com>
+Date: Wed, 20 Sep 2023 09:45:38 -0400
+Subject: [PATCH 04/12] va: correct the description of segment id map buffer
+ for vp9e
+
+previous description limited the segment id block 8x8
+it is not accurate and should support different block size which
+could be set by picture parameter.
+
+attention: this change will impact backward compatiblility,
+considering no one is using it. we could ignore this side effect
+
+Signed-off-by: Carl Zhang <carl.zhang@intel.com>
+===
+ va/va_enc_vp9.h | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/va/va_enc_vp9.h b/va/va_enc_vp9.h
+index 3a5359754..40f32e3c3 100644
+--- a/va/va_enc_vp9.h
++++ b/va/va_enc_vp9.h
+@@ -595,8 +595,10 @@ typedef struct _VAEncMiscParameterTypeVP9PerSegmantParam {
+  * \brief VP9 Block Segmentation ID Buffer
+  *
+  * The application provides a buffer of VAEncMacroblockMapBufferType containing
+- * the initial segmentation id for each 8x8 block, one byte each, in raster scan order.
+- * Rate control may reassign it.  For example, a 640x480 video, the buffer has 4800 entries.
++ * the initial segmentation id for each block, block size is specified by seg_id_block_size
++ * in VAEncPictureParameterBufferVP9  , one byte each, in raster scan order.
++ * Rate control may reassign it.  For example, a 640x480 video, seg_id_block_size is
++ * VA_SEGID_BLOCK_16X16 , the buffer has 1200 entries.
+  * The value of each entry should be in the range [0..7], inclusive.
+  * If segmentation is not enabled, the application does not need to provide it.
+  */
+
+From 01153523f25ac703e7ce2afc0023788a90f6c1bb Mon Sep 17 00:00:00 2001
+From: "David (Ming Qiang) Wu" <David.Wu3@amd.com>
+Date: Wed, 17 Jul 2024 13:51:11 -0400
+Subject: [PATCH 05/12] va: add av1 profile2
+
+Adding VAProfileAV1Profile2 to support 12bit AV1 decoding
+
+Signed-off-by: David (Ming Qiang) Wu <David.Wu3@amd.com>
+===
+ va/va.h       | 3 ++-
+ va/va_str.c   | 1 +
+ va/va_trace.c | 1 +
+ 3 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/va/va.h b/va/va.h
+index db885bc2d..a4dda28a5 100644
+--- a/va/va.h
++++ b/va/va.h
+@@ -541,7 +541,8 @@ typedef enum {
+     VAProfileProtected                  = 35,
+     VAProfileH264High10                 = 36,
+     VAProfileVVCMain10                  = 37,
+-    VAProfileVVCMultilayerMain10        = 38
++    VAProfileVVCMultilayerMain10        = 38,
++    VAProfileAV1Profile2                = 39
+ } VAProfile;
+ 
+ /**
+diff --git a/va/va_str.c b/va/va_str.c
+index 7601cdef2..b47bf69a2 100644
+--- a/va/va_str.c
++++ b/va/va_str.c
+@@ -64,6 +64,7 @@ const char *vaProfileStr(VAProfile profile)
+         TOSTR(VAProfileHEVCSccMain444);
+         TOSTR(VAProfileAV1Profile0);
+         TOSTR(VAProfileAV1Profile1);
++        TOSTR(VAProfileAV1Profile2);
+         TOSTR(VAProfileHEVCSccMain444_10);
+         TOSTR(VAProfileProtected);
+         TOSTR(VAProfileVVCMain10);
+diff --git a/va/va_trace.c b/va/va_trace.c
+index 8993d6218..6145f818d 100644
+--- a/va/va_trace.c
++++ b/va/va_trace.c
+@@ -6775,6 +6775,7 @@ void va_TraceRenderPicture(
+             break;
+         case VAProfileAV1Profile0:
+         case VAProfileAV1Profile1:
++        case VAProfileAV1Profile2:
+             for (j = 0; j < num_elements; j++) {
+                 va_TraceMsg(trace_ctx, "\telement[%d] = \n", j);
+ 
+
+From c5b392638fc45b075bb89c7f0387530c2b61386e Mon Sep 17 00:00:00 2001
+From: zhangyichix <yichix.zhang@intel.com>
+Date: Fri, 19 Apr 2024 17:03:51 +0800
+Subject: [PATCH 06/12] Add Android.bp to replace mk files
+
+* Add Android.bp to replace mk files
+* Add va_version.h for external reference
+
+Tracked-On: OAM-117146
+Signed-off-by: zhangyichix <yichix.zhang@intel.com>
+===
+ Android.bp      | 122 ++++++++++++++++++++++++++++++++++++++++++++++++
+ Android.mk      |   4 --
+ va/Android.mk   | 102 ----------------------------------------
+ va/va_version.h |  88 ++++++++++++++++++++++++++++++++++
+ 4 files changed, 210 insertions(+), 106 deletions(-)
+ create mode 100644 Android.bp
+ delete mode 100644 Android.mk
+ delete mode 100644 va/Android.mk
+ create mode 100644 va/va_version.h
+
+diff --git a/Android.bp b/Android.bp
+new file mode 100644
+index 000000000..7dc8f10c1
+--- /dev/null
++++ b/Android.bp
+@@ -0,0 +1,122 @@
++// Copyright (c) 2017-2023 Intel Corporation
++//
++// Permission is hereby granted, free of charge, to any person obtaining a copy
++// of this software and associated documentation files (the "Software"), to deal
++// in the Software without restriction, including without limitation the rights
++// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++// copies of the Software, and to permit persons to whom the Software is
++// furnished to do so, subject to the following conditions:
++//
++// The above copyright notice and this permission notice shall be included in all
++// copies or substantial portions of the Software.
++//
++// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++// SOFTWARE.
++
++cc_library_headers {
++    name: "libva_headers",
++
++    export_include_dirs: [
++        ".",
++        "va",
++        "va/drm"
++    ],
++
++    vendor: true,
++}
++
++cc_library_shared {
++    name: "libva",
++
++    shared_libs: [
++        "libdl",
++        "libdrm",
++        "libcutils",
++        "liblog",
++    ],
++
++    local_include_dirs: [
++        ".",
++        "va"
++    ],
++
++    header_libs: [
++        "libutils_headers",
++    ],
++
++    export_include_dirs: [
++        ".",
++    ],
++
++    srcs: [
++        "va/va.c",
++        "va/va_trace.c",
++        "va/va_str.c",
++        "va/drm/va_drm.c",
++        "va/drm/va_drm_auth.c",
++        "va/drm/va_drm_utils.c",
++    ],
++
++    cflags: [
++        "-Werror",
++        "-Wno-error",
++        "-DSYSCONFDIR=\"/vendor/etc\"",
++        "-DLOG_TAG=\"libva\"",
++    ],
++
++    arch: {
++        x86: {
++            cflags: ["-DVA_DRIVERS_PATH=\"/vendor/lib\""],
++        },
++        x86_64: {
++            cflags: ["-DVA_DRIVERS_PATH=\"/vendor/lib64\""],
++        },
++    },
++
++    vendor: true,
++}
++
++cc_library_shared {
++    name: "libva-android",
++
++    static_libs: [
++        "libarect",
++    ],
++
++    shared_libs: [
++        "libva",
++        "libdrm",
++        "liblog",
++    ],
++
++    local_include_dirs: [
++        "va",
++        "va/drm",
++    ],
++
++    header_libs: [
++        "libnativebase_headers",
++        "libutils_headers",
++    ],
++
++    include_dirs: [
++    ],
++
++    srcs: [
++        "va/android/va_android.cpp",
++        "va/drm/va_drm_utils.c",
++    ],
++
++    cflags: [
++        "-Wall",
++        "-Werror",
++        "-Wno-error",
++    ],
++
++    vendor: true,
++}
+diff --git a/Android.mk b/Android.mk
+deleted file mode 100644
+index 5cbb9d8cc..000000000
+--- a/Android.mk
++++ /dev/null
+@@ -1,4 +0,0 @@
+-# Recursive call sub-folder Android.mk
+-#
+-
+- include $(call all-subdir-makefiles)
+diff --git a/va/Android.mk b/va/Android.mk
+deleted file mode 100644
+index a8f05f149..000000000
+--- a/va/Android.mk
++++ /dev/null
+@@ -1,102 +0,0 @@
+-# Copyright (c) 2007 Intel Corporation. All Rights Reserved.
+-#
+-# Permission is hereby granted, free of charge, to any person obtaining a
+-# copy of this software and associated documentation files (the
+-# "Software"), to deal in the Software without restriction, including
+-# without limitation the rights to use, copy, modify, merge, publish,
+-# distribute, sub license, and/or sell copies of the Software, and to
+-# permit persons to whom the Software is furnished to do so, subject to
+-# the following conditions:
+-# 
+-# The above copyright notice and this permission notice (including the
+-# next paragraph) shall be included in all copies or substantial portions
+-# of the Software.
+-# 
+-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+-# IN NO EVENT SHALL PRECISION INSIGHT AND/OR ITS SUPPLIERS BE LIABLE FOR
+-# ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+-# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+-# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-
+-# For libva
+-# =====================================================
+-
+-LOCAL_PATH:= $(call my-dir)
+-
+-LIBVA_DRIVERS_PATH_32 := /vendor/lib/dri
+-LIBVA_DRIVERS_PATH_64 := /vendor/lib64/dri
+-
+-include $(CLEAR_VARS)
+-
+-#LIBVA_MINOR_VERSION := 31
+-#LIBVA_MAJOR_VERSION := 0
+-
+-IGNORED_WARNNING = \
+-	-Wno-sign-compare \
+-	-Wno-missing-field-initializers \
+-	-Wno-unused-parameter \
+-
+-LOCAL_SRC_FILES := \
+-	va.c \
+-	va_trace.c \
+-	va_str.c
+-
+-LOCAL_CFLAGS_32 += \
+-	-DVA_DRIVERS_PATH="\"$(LIBVA_DRIVERS_PATH_32)\"" \
+-
+-LOCAL_CFLAGS_64 += \
+-	-DVA_DRIVERS_PATH="\"$(LIBVA_DRIVERS_PATH_64)\"" \
+-
+-LOCAL_CFLAGS := \
+-	$(IGNORED_WARNNING) \
+-	-DLOG_TAG=\"libva\"
+-
+-LOCAL_C_INCLUDES := $(LOCAL_PATH)/..
+-
+-LOCAL_MODULE_TAGS := optional
+-LOCAL_MODULE := libva
+-LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+-LOCAL_PROPRIETARY_MODULE := true
+-
+-LOCAL_SHARED_LIBRARIES := libdl libdrm libcutils liblog
+-
+-intermediates := $(call local-generated-sources-dir)
+-
+-LOCAL_EXPORT_C_INCLUDE_DIRS := \
+-	$(intermediates) \
+-	$(LOCAL_C_INCLUDES)
+-
+-GEN := $(intermediates)/va/va_version.h
+-$(GEN): SCRIPT := $(LOCAL_PATH)/../build/gen_version.sh
+-$(GEN): PRIVATE_CUSTOM_TOOL = sh $(SCRIPT) $(<D)/.. $< > $@
+-$(GEN): $(intermediates)/va/%.h : $(LOCAL_PATH)/%.h.in $(LOCAL_PATH)/../configure.ac
+-	$(transform-generated-source)
+-LOCAL_GENERATED_SOURCES += $(GEN) 
+-
+-include $(BUILD_SHARED_LIBRARY)
+-
+-# For libva-android
+-# =====================================================
+-
+-include $(CLEAR_VARS)
+-
+-LOCAL_SRC_FILES := \
+-	android/va_android.cpp \
+-	drm/va_drm_utils.c
+-
+-LOCAL_CFLAGS += \
+-	-DLOG_TAG=\"libva-android\" \
+-	$(IGNORED_WARNNING)
+-
+-LOCAL_C_INCLUDES += \
+-	$(LOCAL_PATH)/drm
+-
+-LOCAL_MODULE_TAGS := optional
+-LOCAL_MODULE := libva-android
+-LOCAL_PROPRIETARY_MODULE := true
+-
+-LOCAL_SHARED_LIBRARIES := libva libdrm liblog
+-
+-include $(BUILD_SHARED_LIBRARY)
+diff --git a/va/va_version.h b/va/va_version.h
+new file mode 100644
+index 000000000..47983dae9
+--- /dev/null
++++ b/va/va_version.h
+@@ -0,0 +1,88 @@
++/*
++ * Copyright (C) 2009 Splitted-Desktop Systems. All Rights Reserved.
++ *
++ * Permission is hereby granted, free of charge, to any person obtaining a
++ * copy of this software and associated documentation files (the
++ * "Software"), to deal in the Software without restriction, including
++ * without limitation the rights to use, copy, modify, merge, publish,
++ * distribute, sub license, and/or sell copies of the Software, and to
++ * permit persons to whom the Software is furnished to do so, subject to
++ * the following conditions:
++ * 
++ * The above copyright notice and this permission notice (including the
++ * next paragraph) shall be included in all copies or substantial portions
++ * of the Software.
++ * 
++ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
++ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
++ * IN NO EVENT SHALL PRECISION INSIGHT AND/OR ITS SUPPLIERS BE LIABLE FOR
++ * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
++ */
++
++#ifndef VA_VERSION_H
++#define VA_VERSION_H
++
++/**
++ * VA_MAJOR_VERSION:
++ *
++ * The major version of VA-API (1, if %VA_VERSION is 1.2.3)
++ */
++#define VA_MAJOR_VERSION    2
++
++/**
++ * VA_MINOR_VERSION:
++ *
++ * The minor version of VA-API (2, if %VA_VERSION is 1.2.3)
++ */
++#define VA_MINOR_VERSION    21
++
++/**
++ * VA_MICRO_VERSION:
++ *
++ * The micro version of VA-API (3, if %VA_VERSION is 1.2.3)
++ */
++#define VA_MICRO_VERSION    0
++
++/**
++ * VA_VERSION:
++ *
++ * The full version of VA-API, like 1.2.3
++ */
++#define VA_VERSION          2.21.0
++
++/**
++ * VA_VERSION_S:
++ *
++ * The full version of VA-API, in string form (suited for string
++ * concatenation)
++ */
++#define VA_VERSION_S       "2.21.0"
++
++/**
++ * VA_VERSION_HEX:
++ *
++ * Numerically encoded version of VA-API, like 0x010203
++ */
++#define VA_VERSION_HEX     ((VA_MAJOR_VERSION << 24) | \
++                            (VA_MINOR_VERSION << 16) | \
++                            (VA_MICRO_VERSION << 8))
++
++/**
++ * VA_CHECK_VERSION:
++ * @major: major version, like 1 in 1.2.3
++ * @minor: minor version, like 2 in 1.2.3
++ * @micro: micro version, like 3 in 1.2.3
++ *
++ * Evaluates to %TRUE if the version of VA-API is greater than
++ * @major, @minor and @micro
++ */
++#define VA_CHECK_VERSION(major,minor,micro) \
++        (VA_MAJOR_VERSION > (major) || \
++         (VA_MAJOR_VERSION == (major) && VA_MINOR_VERSION > (minor)) || \
++         (VA_MAJOR_VERSION == (major) && VA_MINOR_VERSION == (minor) && VA_MICRO_VERSION >= (micro)))
++
++#endif /* VA_VERSION_H */
++
+
+From 25381db75af9ff7bb15eb08b4bda95d09cf669b0 Mon Sep 17 00:00:00 2001
+From: Jeevaka Prabu Badrappan <jeevaka.badrappan@intel.com>
+Date: Wed, 25 Sep 2024 08:25:55 +0000
+Subject: [PATCH 07/12] Update Android.bp to generate va_version.h and build
+ only for x86_64
+
+Changes include:
+- Updated Android.bp to add license package and enable it only for
+x86_64
+- Added genrule to generate the va_version.h.
+- Removed va_version.h
+
+Signed-off-by: JeevakaPrabu <jeevaka.badrappan@intel.com>
+Signed-off-by: Andreas Huber <andih@google.com>
+===
+ Android.bp      | 86 ++++++++++++++++++++++++++++++++++-------------
+ va/va_version.h | 88 -------------------------------------------------
+ 2 files changed, 63 insertions(+), 111 deletions(-)
+ delete mode 100644 va/va_version.h
+
+diff --git a/Android.bp b/Android.bp
+index 7dc8f10c1..68d43dc0c 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -18,6 +18,38 @@
+ // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ // SOFTWARE.
+ 
++package {
++    default_applicable_licenses: ["external_intel_libva_license"],
++}
++
++license {
++    name: "external_intel_libva_license",
++    visibility: [":__subpackages__"],
++    license_text: [
++        "COPYING",
++    ],
++}
++
++sh_binary_host {
++    name: "libva_gen_version_script",
++    src: "build/gen_version.sh",
++}
++
++genrule {
++    name: "libva_gen_version",
++    srcs: [
++        "configure.ac",
++        "va/va_version.h.in",
++    ],
++    tools: [
++        "libva_gen_version_script",
++    ],
++    out: ["va/va_version.h"],
++    cmd: "$(location libva_gen_version_script) " +
++         "$$(dirname $(location configure.ac)) " +
++         "$(location va/va_version.h.in) > $(out)",
++}
++
+ cc_library_headers {
+     name: "libva_headers",
+ 
+@@ -27,7 +59,20 @@ cc_library_headers {
+         "va/drm"
+     ],
+ 
++    generated_headers: [
++        "libva_gen_version",
++    ],
++    export_generated_headers: [
++        "libva_gen_version",
++    ],
++
+     vendor: true,
++    enabled: false,
++    arch: {
++        x86_64: {
++            enabled: true,
++        },
++    },
+ }
+ 
+ cc_library_shared {
+@@ -41,16 +86,18 @@ cc_library_shared {
+     ],
+ 
+     local_include_dirs: [
+-        ".",
+         "va"
+     ],
+ 
+-    header_libs: [
+-        "libutils_headers",
++    generated_headers: [
++        "libva_gen_version",
++    ],
++    export_generated_headers: [
++        "libva_gen_version",
+     ],
+ 
+-    export_include_dirs: [
+-        ".",
++    header_libs: [
++        "liblog_headers",
+     ],
+ 
+     srcs: [
+@@ -64,30 +111,25 @@ cc_library_shared {
+ 
+     cflags: [
+         "-Werror",
+-        "-Wno-error",
++        "-Winvalid-pch",
+         "-DSYSCONFDIR=\"/vendor/etc\"",
+         "-DLOG_TAG=\"libva\"",
+     ],
+ 
+     arch: {
+-        x86: {
+-            cflags: ["-DVA_DRIVERS_PATH=\"/vendor/lib\""],
+-        },
+         x86_64: {
+             cflags: ["-DVA_DRIVERS_PATH=\"/vendor/lib64\""],
++            enabled: true,
+         },
+     },
+ 
+     vendor: true,
++    enabled: false,
+ }
+ 
+ cc_library_shared {
+     name: "libva-android",
+ 
+-    static_libs: [
+-        "libarect",
+-    ],
+-
+     shared_libs: [
+         "libva",
+         "libdrm",
+@@ -99,24 +141,22 @@ cc_library_shared {
+         "va/drm",
+     ],
+ 
+-    header_libs: [
+-        "libnativebase_headers",
+-        "libutils_headers",
+-    ],
+-
+-    include_dirs: [
+-    ],
+-
+     srcs: [
+         "va/android/va_android.cpp",
+         "va/drm/va_drm_utils.c",
+     ],
+ 
+     cflags: [
+-        "-Wall",
+         "-Werror",
+-        "-Wno-error",
++        "-Winvalid-pch",
++        "-DLOG_TAG=\"libva-android\"",
+     ],
+ 
+     vendor: true,
++    enabled: false,
++    arch: {
++        x86_64: {
++            enabled: true,
++        },
++    },
+ }
+diff --git a/va/va_version.h b/va/va_version.h
+deleted file mode 100644
+index 47983dae9..000000000
+--- a/va/va_version.h
++++ /dev/null
+@@ -1,88 +0,0 @@
+-/*
+- * Copyright (C) 2009 Splitted-Desktop Systems. All Rights Reserved.
+- *
+- * Permission is hereby granted, free of charge, to any person obtaining a
+- * copy of this software and associated documentation files (the
+- * "Software"), to deal in the Software without restriction, including
+- * without limitation the rights to use, copy, modify, merge, publish,
+- * distribute, sub license, and/or sell copies of the Software, and to
+- * permit persons to whom the Software is furnished to do so, subject to
+- * the following conditions:
+- * 
+- * The above copyright notice and this permission notice (including the
+- * next paragraph) shall be included in all copies or substantial portions
+- * of the Software.
+- * 
+- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+- * IN NO EVENT SHALL PRECISION INSIGHT AND/OR ITS SUPPLIERS BE LIABLE FOR
+- * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+- */
+-
+-#ifndef VA_VERSION_H
+-#define VA_VERSION_H
+-
+-/**
+- * VA_MAJOR_VERSION:
+- *
+- * The major version of VA-API (1, if %VA_VERSION is 1.2.3)
+- */
+-#define VA_MAJOR_VERSION    2
+-
+-/**
+- * VA_MINOR_VERSION:
+- *
+- * The minor version of VA-API (2, if %VA_VERSION is 1.2.3)
+- */
+-#define VA_MINOR_VERSION    21
+-
+-/**
+- * VA_MICRO_VERSION:
+- *
+- * The micro version of VA-API (3, if %VA_VERSION is 1.2.3)
+- */
+-#define VA_MICRO_VERSION    0
+-
+-/**
+- * VA_VERSION:
+- *
+- * The full version of VA-API, like 1.2.3
+- */
+-#define VA_VERSION          2.21.0
+-
+-/**
+- * VA_VERSION_S:
+- *
+- * The full version of VA-API, in string form (suited for string
+- * concatenation)
+- */
+-#define VA_VERSION_S       "2.21.0"
+-
+-/**
+- * VA_VERSION_HEX:
+- *
+- * Numerically encoded version of VA-API, like 0x010203
+- */
+-#define VA_VERSION_HEX     ((VA_MAJOR_VERSION << 24) | \
+-                            (VA_MINOR_VERSION << 16) | \
+-                            (VA_MICRO_VERSION << 8))
+-
+-/**
+- * VA_CHECK_VERSION:
+- * @major: major version, like 1 in 1.2.3
+- * @minor: minor version, like 2 in 1.2.3
+- * @micro: micro version, like 3 in 1.2.3
+- *
+- * Evaluates to %TRUE if the version of VA-API is greater than
+- * @major, @minor and @micro
+- */
+-#define VA_CHECK_VERSION(major,minor,micro) \
+-        (VA_MAJOR_VERSION > (major) || \
+-         (VA_MAJOR_VERSION == (major) && VA_MINOR_VERSION > (minor)) || \
+-         (VA_MAJOR_VERSION == (major) && VA_MINOR_VERSION == (minor) && VA_MICRO_VERSION >= (micro)))
+-
+-#endif /* VA_VERSION_H */
+-
+
+From e4dc66b240d6d21e6546c9a21dbcfe455c8a6bff Mon Sep 17 00:00:00 2001
+From: Hirokazu Honda <hiroh@google.com>
+Date: Wed, 30 Oct 2024 09:44:30 +0000
+Subject: [PATCH 08/12] Fix include directories and generated header files in
+ Android.bp
+
+The build artifact of libva has va_drm.h in va/ directory. This
+is done by va/drm/Makefile.am in libva. Therefore, code typically
+includes va/va_drm.h. This CL modifies Android.bp so
+`libva_gen_headers` copy va_drm.h in va/ directory and `libva` sets
+include path to the generated headers.
+===
+ Android.bp | 37 +++++++++++++++++++++++++++----------
+ 1 file changed, 27 insertions(+), 10 deletions(-)
+
+diff --git a/Android.bp b/Android.bp
+index 68d43dc0c..5c6cae0af 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -36,18 +36,23 @@ sh_binary_host {
+ }
+ 
+ genrule {
+-    name: "libva_gen_version",
++    name: "libva_gen_headers",
+     srcs: [
+         "configure.ac",
+         "va/va_version.h.in",
++        "va/drm/va_drm.h",
+     ],
+     tools: [
+         "libva_gen_version_script",
+     ],
+-    out: ["va/va_version.h"],
++    out: [
++        "va/va_version.h",
++        "va/va_drm.h",
++    ],
+     cmd: "$(location libva_gen_version_script) " +
+-         "$$(dirname $(location configure.ac)) " +
+-         "$(location va/va_version.h.in) > $(out)",
++        "$$(dirname $(location configure.ac)) " +
++        "$(location va/va_version.h.in) > $(location va/va_version.h);" +
++        "cp $(location va/drm/va_drm.h) $(location va/va_drm.h)",
+ }
+ 
+ cc_library_headers {
+@@ -56,14 +61,14 @@ cc_library_headers {
+     export_include_dirs: [
+         ".",
+         "va",
+-        "va/drm"
++        "va/drm",
+     ],
+ 
+     generated_headers: [
+-        "libva_gen_version",
++        "libva_gen_headers",
+     ],
+     export_generated_headers: [
+-        "libva_gen_version",
++        "libva_gen_headers",
+     ],
+ 
+     vendor: true,
+@@ -86,14 +91,17 @@ cc_library_shared {
+     ],
+ 
+     local_include_dirs: [
+-        "va"
++        "va",
+     ],
+ 
+     generated_headers: [
+-        "libva_gen_version",
++        "libva_gen_headers",
+     ],
+     export_generated_headers: [
+-        "libva_gen_version",
++        "libva_gen_headers",
++    ],
++    export_include_dirs: [
++        ".",
+     ],
+ 
+     header_libs: [
+@@ -140,6 +148,15 @@ cc_library_shared {
+         "va",
+         "va/drm",
+     ],
++    generated_headers: [
++        "libva_gen_headers",
++    ],
++    export_generated_headers: [
++        "libva_gen_headers",
++    ],
++    export_include_dirs: [
++        ".",
++    ],
+ 
+     srcs: [
+         "va/android/va_android.cpp",
+
+From 3da1ba7e3cac635c6dc4d5d4cd1234d386926b49 Mon Sep 17 00:00:00 2001
+From: Hirokazu Honda <hiroh@chromium.org>
+Date: Tue, 3 Dec 2024 10:22:57 -0800
+Subject: [PATCH 09/12] Remove unnecessary Android code
+
+This patches deletes
+- vaGetDisplay() in va_android.h
+- VA_DISPLAY_ANDROID in va_backend.h
+- libva-android in Android.bp
+===
+ Android.bp                |  44 +------------
+ va/android/Makefile.am    |  24 -------
+ va/android/va_android.cpp | 134 --------------------------------------
+ va/va_android.h           |  15 -----
+ va/va_backend.h           |   2 +-
+ 5 files changed, 2 insertions(+), 217 deletions(-)
+ delete mode 100644 va/android/Makefile.am
+ delete mode 100644 va/android/va_android.cpp
+
+diff --git a/Android.bp b/Android.bp
+index 5c6cae0af..a6d962714 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -120,6 +120,7 @@ cc_library_shared {
+     cflags: [
+         "-Werror",
+         "-Winvalid-pch",
++        "-DANDROID",
+         "-DSYSCONFDIR=\"/vendor/etc\"",
+         "-DLOG_TAG=\"libva\"",
+     ],
+@@ -134,46 +135,3 @@ cc_library_shared {
+     vendor: true,
+     enabled: false,
+ }
+-
+-cc_library_shared {
+-    name: "libva-android",
+-
+-    shared_libs: [
+-        "libva",
+-        "libdrm",
+-        "liblog",
+-    ],
+-
+-    local_include_dirs: [
+-        "va",
+-        "va/drm",
+-    ],
+-    generated_headers: [
+-        "libva_gen_headers",
+-    ],
+-    export_generated_headers: [
+-        "libva_gen_headers",
+-    ],
+-    export_include_dirs: [
+-        ".",
+-    ],
+-
+-    srcs: [
+-        "va/android/va_android.cpp",
+-        "va/drm/va_drm_utils.c",
+-    ],
+-
+-    cflags: [
+-        "-Werror",
+-        "-Winvalid-pch",
+-        "-DLOG_TAG=\"libva-android\"",
+-    ],
+-
+-    vendor: true,
+-    enabled: false,
+-    arch: {
+-        x86_64: {
+-            enabled: true,
+-        },
+-    },
+-}
+diff --git a/va/android/Makefile.am b/va/android/Makefile.am
+deleted file mode 100644
+index 26f63dfb3..000000000
+--- a/va/android/Makefile.am
++++ /dev/null
+@@ -1,24 +0,0 @@
+-# Copyright (c) 2007 Intel Corporation. All Rights Reserved.
+-#
+-# Permission is hereby granted, free of charge, to any person obtaining a
+-# copy of this software and associated documentation files (the
+-# "Software"), to deal in the Software without restriction, including
+-# without limitation the rights to use, copy, modify, merge, publish,
+-# distribute, sub license, and/or sell copies of the Software, and to
+-# permit persons to whom the Software is furnished to do so, subject to
+-# the following conditions:
+-# 
+-# The above copyright notice and this permission notice (including the
+-# next paragraph) shall be included in all copies or substantial portions
+-# of the Software.
+-# 
+-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+-# IN NO EVENT SHALL PRECISION INSIGHT AND/OR ITS SUPPLIERS BE LIABLE FOR
+-# ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+-# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+-# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-
+-# Extra clean files so that maintainer-clean removes *everything*
+-MAINTAINERCLEANFILES = Makefile.in
+diff --git a/va/android/va_android.cpp b/va/android/va_android.cpp
+deleted file mode 100644
+index a16dc6a37..000000000
+--- a/va/android/va_android.cpp
++++ /dev/null
+@@ -1,134 +0,0 @@
+-/*
+- * Copyright (c) 2007 Intel Corporation. All Rights Reserved.
+- * Copyright (c) 2023 Emil Velikov
+- *
+- * Permission is hereby granted, free of charge, to any person obtaining a
+- * copy of this software and associated documentation files (the
+- * "Software"), to deal in the Software without restriction, including
+- * without limitation the rights to use, copy, modify, merge, publish,
+- * distribute, sub license, and/or sell copies of the Software, and to
+- * permit persons to whom the Software is furnished to do so, subject to
+- * the following conditions:
+- *
+- * The above copyright notice and this permission notice (including the
+- * next paragraph) shall be included in all copies or substantial portions
+- * of the Software.
+- *
+- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+- * IN NO EVENT SHALL PRECISION INSIGHT AND/OR ITS SUPPLIERS BE LIABLE FOR
+- * ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+- */
+-
+-#define _GNU_SOURCE 1
+-#include "sysdeps.h"
+-#include "va.h"
+-#include "va_backend.h"
+-#include "va_internal.h"
+-#include "va_trace.h"
+-#include "va_android.h"
+-#include "va_drmcommon.h"
+-#include "va_drm_utils.h"
+-#include <stdarg.h>
+-#include <unistd.h>
+-#include <sys/types.h>
+-#include <sys/stat.h>
+-#include <fcntl.h>
+-#include <dlfcn.h>
+-#include <errno.h>
+-
+-
+-#define CHECK_SYMBOL(func) { if (!func) printf("func %s not found\n", #func); return VA_STATUS_ERROR_UNKNOWN; }
+-#define DEVICE_NAME "/dev/dri/renderD128"
+-
+-static void va_DisplayContextDestroy(
+-    VADisplayContextP pDisplayContext
+-)
+-{
+-    struct drm_state *drm_state;
+-
+-    if (pDisplayContext == NULL)
+-        return;
+-
+-    /* close the open-ed DRM fd */
+-    drm_state = (struct drm_state *)pDisplayContext->pDriverContext->drm_state;
+-    close(drm_state->fd);
+-
+-    free(pDisplayContext->pDriverContext->drm_state);
+-    free(pDisplayContext->pDriverContext);
+-    free(pDisplayContext);
+-}
+-
+-static VAStatus va_DisplayContextConnect(
+-    VADisplayContextP pDisplayContext
+-)
+-{
+-    VADriverContextP const ctx = pDisplayContext->pDriverContext;
+-    struct drm_state * const drm_state = (struct drm_state *)ctx->drm_state;
+-
+-    drm_state->fd = open(DEVICE_NAME, O_RDWR | O_CLOEXEC);
+-    if (drm_state->fd < 0) {
+-        fprintf(stderr, "Cannot open DRM device '%s': %d, %s\n",
+-                DEVICE_NAME, errno, strerror(errno));
+-        return VA_STATUS_ERROR_UNKNOWN;
+-    }
+-    drm_state->auth_type = VA_DRM_AUTH_CUSTOM;
+-    return VA_STATUS_SUCCESS;
+-}
+-
+-static VAStatus
+-va_DisplayContextGetDriverNames(
+-    VADisplayContextP pDisplayContext,
+-    char            **drivers,
+-    unsigned         *num_drivers
+-)
+-{
+-    VADriverContextP const ctx = pDisplayContext->pDriverContext;
+-    VAStatus status = va_DisplayContextConnect(pDisplayContext);
+-    if (status != VA_STATUS_SUCCESS)
+-        return status;
+-
+-    return VA_DRM_GetDriverNames(ctx, drivers, num_drivers);
+-}
+-
+-VADisplay vaGetDisplay(
+-    void *native_dpy /* implementation specific */
+-)
+-{
+-    VADisplayContextP pDisplayContext;
+-    VADriverContextP  pDriverContext;
+-    struct drm_state *drm_state;
+-
+-    if (!native_dpy)
+-        return NULL;
+-
+-    pDisplayContext = va_newDisplayContext();
+-    if (!pDisplayContext)
+-        return NULL;
+-
+-    pDisplayContext->vaDestroy       = va_DisplayContextDestroy;
+-    pDisplayContext->vaGetDriverNames = va_DisplayContextGetDriverNames;
+-
+-    pDriverContext = va_newDriverContext(pDisplayContext);
+-    if (!pDriverContext) {
+-        free(pDisplayContext);
+-        return NULL;
+-    }
+-
+-    pDriverContext->native_dpy   = (void *)native_dpy;
+-    pDriverContext->display_type = VA_DISPLAY_ANDROID;
+-
+-    drm_state = (struct drm_state*)calloc(1, sizeof(*drm_state));
+-    if (!drm_state) {
+-        free(pDisplayContext);
+-        free(pDriverContext);
+-        return NULL;
+-    }
+-
+-    pDriverContext->drm_state = drm_state;
+-
+-    return (VADisplay)pDisplayContext;
+-}
+diff --git a/va/va_android.h b/va/va_android.h
+index dfed8fd83..5df76aa97 100644
+--- a/va/va_android.h
++++ b/va/va_android.h
+@@ -31,19 +31,4 @@
+ /** \brief Android ION buffer memory type. */
+ #define VA_SURFACE_ATTRIB_MEM_TYPE_ANDROID_ION      0x00200000
+ 
+-#ifdef __cplusplus
+-extern "C" {
+-#endif
+-
+-/*
+- * Returns a suitable VADisplay for VA API
+- */
+-VADisplay vaGetDisplay(
+-    void *android_dpy
+-);
+-
+-#ifdef __cplusplus
+-}
+-#endif
+-
+ #endif /* _VA_ANDROID_H_ */
+diff --git a/va/va_backend.h b/va/va_backend.h
+index d62e4ce75..3bbf08b4b 100644
+--- a/va/va_backend.h
++++ b/va/va_backend.h
+@@ -44,7 +44,7 @@ enum {
+     /** \brief VA/GLX API is used, through vaGetDisplayGLX() entry-point. */
+     VA_DISPLAY_GLX      = (VA_DISPLAY_X11 | (1 << 0)),
+     /** \brief VA/Android API is used, through vaGetDisplay() entry-point. */
+-    VA_DISPLAY_ANDROID  = 0x20,
++    VA_DISPLAY_ANDROID va_deprecated_enum = 0x20,
+     /** \brief VA/DRM API is used, through vaGetDisplayDRM() entry-point. */
+     VA_DISPLAY_DRM      = 0x30,
+     /** \brief VA/DRM API is used, with a render-node device path */
+
+From 7d1db8fc219074fd51f6d863be0cde93c9987319 Mon Sep 17 00:00:00 2001
+From: Carl Zhang <carl.zhang@intel.com>
+Date: Fri, 18 Apr 2025 14:59:33 +0800
+Subject: [PATCH 10/12] ci: enable ubuntu24.04 and deprecate 20.04
+
+also enable clang 18 on 24.04
+
+Signed-off-by: Carl Zhang <carl.zhang@intel.com>
+===
+ .github/workflows/install-clang.sh | 4 ++--
+ .github/workflows/ubuntu.yml       | 9 ++++++---
+ 2 files changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/.github/workflows/install-clang.sh b/.github/workflows/install-clang.sh
+index e172694fd..d9b9968f4 100755
+--- a/.github/workflows/install-clang.sh
++++ b/.github/workflows/install-clang.sh
+@@ -10,13 +10,13 @@ fi
+ if ! which $CC >/dev/null 2>&1; then
+ 	case $DISTRO in
+ 		"ubuntu-22.04") distro_name=jammy;;
+-		"ubuntu-20.04") distro_name=focal;;
++		"ubuntu-24.04") distro_name=noble;;
+ 		*)
+ 		echo "Unknown distribution $DISTRO"
+ 		exit 1
+ 	esac
+ 	case $1 in
+-		"14" | "15") llvm_version=$1;;
++		"18" | "15") llvm_version=$1;;
+ 		*)
+ 		echo "Unknown llvm version $1"
+ 		exit 1
+diff --git a/.github/workflows/ubuntu.yml b/.github/workflows/ubuntu.yml
+index f81a204ab..c67b40bc3 100644
+--- a/.github/workflows/ubuntu.yml
++++ b/.github/workflows/ubuntu.yml
+@@ -12,8 +12,8 @@ jobs:
+   test:
+     strategy:
+       matrix:
+-        compiler: [clang-15, gcc]
+-        os: [ubuntu-22.04, ubuntu-20.04]
++        compiler: [clang, gcc]
++        os: [ubuntu-24.04, ubuntu-22.04]
+         build: [meson, autotools]
+     runs-on: ${{ matrix.os }}
+     env:
+@@ -23,8 +23,11 @@ jobs:
+     - name: 'Checkout'
+       uses: actions/checkout@v4
+     - name: 'Install toolchain'
+-      if: ${{ (matrix.compiler == 'clang-15') }}
++      if: ${{ (matrix.compiler == 'clang') && (matrix.os == 'ubuntu-22.04') }}
+       run: .github/workflows/install-clang.sh 15
++    - name: 'Install toolchain'
++      if: ${{ (matrix.compiler == 'clang') && (matrix.os == 'ubuntu-24.04') }}
++      run: .github/workflows/install-clang.sh 18
+     - name: 'Install prerequisites'
+       run: |
+         sudo apt-get update
+
+From 0d1d3510c0a88dcc78f88981d60b525ed4dbb6ba Mon Sep 17 00:00:00 2001
+From: "Cheah, Vincent Beng Keat" <vincent.beng.keat.cheah@intel.com>
+Date: Wed, 16 Apr 2025 10:34:17 +0800
+Subject: [PATCH 11/12] va: add VAProfileH264High422
+
+Add new AVC High422P profile definition
+
+Signed-off-by: Cheah, Vincent Beng Keat vincent.beng.keat.cheah@intel.com>
+===
+ va/va.h       | 3 ++-
+ va/va_str.c   | 1 +
+ va/va_trace.c | 1 +
+ 3 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/va/va.h b/va/va.h
+index a4dda28a5..928703ee4 100644
+--- a/va/va.h
++++ b/va/va.h
+@@ -542,7 +542,8 @@ typedef enum {
+     VAProfileH264High10                 = 36,
+     VAProfileVVCMain10                  = 37,
+     VAProfileVVCMultilayerMain10        = 38,
+-    VAProfileAV1Profile2                = 39
++    VAProfileAV1Profile2                = 39,
++    VAProfileH264High422                = 40
+ } VAProfile;
+ 
+ /**
+diff --git a/va/va_str.c b/va/va_str.c
+index b47bf69a2..000d1166a 100644
+--- a/va/va_str.c
++++ b/va/va_str.c
+@@ -38,6 +38,7 @@ const char *vaProfileStr(VAProfile profile)
+         TOSTR(VAProfileH264Main);
+         TOSTR(VAProfileH264High);
+         TOSTR(VAProfileH264High10);
++        TOSTR(VAProfileH264High422);
+         TOSTR(VAProfileVC1Simple);
+         TOSTR(VAProfileVC1Main);
+         TOSTR(VAProfileVC1Advanced);
+diff --git a/va/va_trace.c b/va/va_trace.c
+index 6145f818d..93755392d 100644
+--- a/va/va_trace.c
++++ b/va/va_trace.c
+@@ -6688,6 +6688,7 @@ void va_TraceRenderPicture(
+             }
+             break;
+         case VAProfileH264High10:
++        case VAProfileH264High422:
+         case VAProfileH264Main:
+         case VAProfileH264High:
+         case VAProfileH264ConstrainedBaseline:
+
+From 29fbbd8a913b2529cef8e63548093aa25c2669b8 Mon Sep 17 00:00:00 2001
+From: Carl Zhang <carl.zhang@intel.com>
+Date: Fri, 25 Jul 2025 15:03:25 +0800
+Subject: [PATCH 12/12] doc: add backward compatibility declarison declaration
+
+Signed-off-by: Carl Zhang <carl.zhang@intel.com>
+===
+ README.md | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/README.md b/README.md
+index ac67ee49a..69324269c 100644
+--- a/README.md
++++ b/README.md
+@@ -14,6 +14,12 @@ Doxygen files are regularly updated through Github Pages and can be accessed dir
+ 
+ The libva development team can be reached via github issues.
+ 
++# Backward Compatibility
++No code changes may be introduced that would regress support for existing API.  All contributions must ensure continued compatibility and functionality. Failure to maintain API compatibility may result in the rejection or reversion of the contribution.
++
++Any deliberate modifications or removal of existing API will be transparently communicated in the release notes.
++
++API options are solely considered as a stable interface. Any debug parameters, environmental variables, and internal data structures, are not considered as an interface and may be changed or removed at any time.
+ 
+ # Build and Install Libva
+ *This build documentation was tested under clear Ubuntu Server 18.04 (with gcc-7.3.0, gcc-8.1.0 and clang-6.0 compilers) but it should work on another OS distributions with various versions of gcc and clang.*
