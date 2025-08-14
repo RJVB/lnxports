@@ -1,0 +1,33 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           cmake 1.1
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+
+github.setup        intel gmmlib 246fa363c772d90575357e08900a4431f1374673
+version             12.8.0
+
+checksums           rmd160  78fc2230cbf51bdd22e5b750768977e4ddc2071d \
+                    sha256  c30eae6305378709387de11fdf2f6244f909c23fd932717b89dcef07f19659dd
+#                     size    873502
+
+categories          devel
+platforms           linux
+maintainers         gmail.com:rjvbertin
+license             MIT
+
+description         Intel(R) Graphics Memory Management Library
+long_description \
+    The Intel(R) Graphics Memory Management Library provides device specific and buffer management for the Intel(R) Graphics Compute Runtime for OpenCL(TM) and the Intel(R) Media Driver for VAAPI.
+
+
+cmake.build_type macports
+
+configure.args-append \
+                -DBUILD_TYPE=${cmake.build_type}
+
+configure.save_configure_cmd "install log"
+
+test.run        yes
