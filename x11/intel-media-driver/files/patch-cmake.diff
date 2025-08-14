@@ -1,0 +1,19 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a35754d5c..9e5c89c2c 100755
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -19,7 +19,14 @@
+ # OTHER DEALINGS IN THE SOFTWARE.
+ 
+ cmake_minimum_required(VERSION 3.5)
++cmake_policy(SET CMP0069 NEW)
++
+ project(IntelMediaDriver)
++
++set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
++set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
++set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_MacPorts ON)
++
+ set(MEDIA_VERSION "25.3.3${MEDIA_VERSION_EXTRA}" CACHE STRING "" FORCE)
+ 
+ 

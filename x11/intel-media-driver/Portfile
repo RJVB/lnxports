@@ -1,0 +1,78 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           cmake 1.1
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+
+github.setup        intel media-driver eb51af235749f8d8e06dc113a3f1b51e81305d46
+name                intel-media-driver
+version             25.3.2.1
+distname            imd-git
+
+checksums           rmd160  082ee4a5cc32fa077430d0a3a711d15da4720cbd \
+                    sha256  5f10c2839e386be2ad73365bbea4ce70a0491b0c8751ab50c1847d4f61bbcc30
+#                     size    28434609
+
+categories          x11 multimedia
+platforms           linux
+maintainers         gmail.com:rjvbertin
+license             Permissive
+
+description         Intel Graphics Media Driver to support hardware decode, encode and video processing. 
+long_description \
+    The Intel(R) Media Driver for VAAPI is a new VA-API (Video Acceleration API) user mode driver supporting hardware accelerated decoding, encoding, and video post processing for GEN based graphics hardware.\n\
+    Supported Platforms:\n\
+    BDW (Broadwell)\n\
+    SKL (Skylake)\n\
+    BXTx (BXT: Broxton, APL: Apollo Lake, GLK: Gemini Lake)\n\
+    KBLx (KBL: Kaby Lake, CFL: Coffee Lake, WHL: Whiskey Lake, CML: Comet Lake, AML: Amber Lake)\n\
+    ICL (Ice Lake)\n\
+    JSL (Jasper Lake) / EHL (Elkhart Lake)\n\
+    TGLx (TGL: Tiger Lake, RKL: Rocket Lake, ADL-S/P/N: Alder Lake, RPL-S/P: Raptor Lake)\n\
+    DG1/SG1\n\
+    Alchemist(DG2)/ATSM\n\
+    MTLx (MTL: Meteor Lake, ARL-S/H: Arrow Lake)\n\
+    LNL (Lunar Lake)\n\
+    BMG (Battlemage)\n\
+    PTL (Panther Lake)
+
+
+depends_build-append \
+                port:pkgconfig \
+                port:xorg-libX11 \
+                port:xorg-libice
+
+depends_lib-append \
+                port:libva \
+                port:gmmlib
+
+cmake.build_type macports
+
+compiler.cxx_standard 2014
+
+configure.args-append \
+                -DBUILD_TYPE=${cmake.build_type} \
+                -DINSTALL_DRIVER_SYSCONF=ON
+
+configure.save_configure_cmd "install log"
+
+build.post_args -wk
+
+post-destroot {
+    system "strip ${destroot}${prefix}/lib/dri/iHD_drv_video.so"
+    xinstall -m 755 -d ${destroot}${prefix}/etc/profile.d
+    file rename ${destroot}/etc/opt/local/profile.d/intel-media.sh ${destroot}${prefix}/etc/profile.d/
+}
+
+test.run        yes
+
+notes-append \
+"The Intel Media driver (iHD_drv_video) has been installed under ${prefix}/lib/dri but be aware that \
+it may be ignored if the LIBVA_DRIVERS_PATH env. variable is set, instructing libva to \
+look in different location(s). If so, please update your .login or .profile (or whatever) to include\n\
+export LIBVA_DRIVERS_PATH=\"${prefix}/lib/dri:\${LIBVA_DRIVERS_PATH}\"\n\
+or\n\
+setenv LIBVA_DRIVERS_PATH \"${prefix}/lib/dri:\${LIBVA_DRIVERS_PATH}\"\n\
+"
