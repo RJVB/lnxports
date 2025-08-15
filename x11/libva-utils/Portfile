@@ -1,0 +1,48 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.0
+PortGroup           meson 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+
+github.setup        intel libva-utils 50f5f6b916290a2c2d310819e1a65ba0fad43a6d
+# after `git tag -a v2.22.0 -m "release 2.22.0" bbf09fa9f6a191eed504fd3d4d507ebcbdf51dd2`
+version             2.22.0.5
+distname            lvautils-git
+
+checksums           rmd160  870ae1cce6091be5289c86ceb14a983aab0f65ba \
+                    sha256  b510cb5a61ba72a174bb2b18ff2794d7df22bfcf13d72b6f592d88de49eaf407
+#                     size    1282036
+
+categories          x11 multimedia
+platforms           linux
+maintainers         gmail.com:rjvbertin
+license             Permissive
+
+description         Libva-utils is a collection of tests for VA-API (VIdeo Acceleration API) 
+long_description    libva-utils is a collection of utilities and examples to exercise VA-API in accordance with the libva project and provides a suite of unit-tests.
+
+depends_build-append \
+                port:xorg-libX11 \
+                port:gtest
+
+depends_lib-append \
+                port:libva
+
+meson.install_prefix \
+                ${prefix}/libexec/libva-utils
+
+configure.args-append \
+                -Ddrm=true \
+                -Dx11=true \
+                -Dwayland=true \
+                -Dtests=true
+
+configure.save_configure_cmd "install log"
+
+post-destroot {
+    file rename ${destroot}${meson.install_prefix}/bin/vainfo ${destroot}${prefix}/bin/
+}
+
+test.run        yes
