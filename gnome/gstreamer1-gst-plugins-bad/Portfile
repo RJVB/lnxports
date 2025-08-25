@@ -25,7 +25,7 @@ long_description    GStreamer Bad Plug-ins is a set of plug-ins that aren't up t
 license             GPL LGPL
 maintainers         nomaintainer
 categories          gnome
-platforms           darwin
+platforms           linux darwin
 homepage            https://gstreamer.freedesktop.org/modules/${upstr_name}.html
 master_sites        https://gstreamer.freedesktop.org/src/${upstr_name}/
 distname            ${upstr_name}-${version}
@@ -154,25 +154,27 @@ configure.cflags-append     -std=gnu11 -funroll-loops -fstrict-aliasing
 configure.cxxflags-append   -std=gnu++11
 configure.env-append        "HAVE_CXX=yes"
 
-post-configure {
-    # this build system can fall for the system libssl and libcrypto ... correct
-    # that for a number of usual locations!
-    reinplace "s|/usr/lib/${build_arch}-linux-gnu/libssl|[openssl::lib_dir]/libssl|g" \
+platform linux {
+    post-configure {
+        # this build system can fall for the system libssl and libcrypto ... correct
+        # that for a number of usual locations!
+        reinplace "s|/usr/lib/${build_arch}-linux-gnu/libssl|[openssl::lib_dir]/libssl|g" \
                     ${build.dir}/build.ninja \
                     ${build.dir}/meson-info/intro-targets.json \
                     ${build.dir}/meson-info/intro-dependencies.json
-    reinplace "s|/usr/lib/${build_arch}-linux-gnu/libcrypto|[openssl::lib_dir]/libcrypto|g" \
+        reinplace "s|/usr/lib/${build_arch}-linux-gnu/libcrypto|[openssl::lib_dir]/libcrypto|g" \
                     ${build.dir}/build.ninja \
                     ${build.dir}/meson-info/intro-targets.json \
                     ${build.dir}/meson-info/intro-dependencies.json
-    reinplace "s|/usr/lib/libssl|[openssl::lib_dir]/libssl|g" \
+        reinplace "s|/usr/lib/libssl|[openssl::lib_dir]/libssl|g" \
                     ${build.dir}/build.ninja \
                     ${build.dir}/meson-info/intro-targets.json \
                     ${build.dir}/meson-info/intro-dependencies.json
-    reinplace "s|/usr/lib/libcrypto|[openssl::lib_dir]/libcrypto|g" \
+        reinplace "s|/usr/lib/libcrypto|[openssl::lib_dir]/libcrypto|g" \
                     ${build.dir}/build.ninja \
                     ${build.dir}/meson-info/intro-targets.json \
                     ${build.dir}/meson-info/intro-dependencies.json
+    }
 }
 
 variant faac description {Enable faac AAC plugin} {

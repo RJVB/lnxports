@@ -12,6 +12,9 @@ PortGroup           app-wrapper 1.0
 name                gnome-keyring
 epoch               1
 version             3.36.0
+platform darwin {
+    revision        1
+}
 set branch          [join [lrange [split ${version} .] 0 1] .]
 maintainers         {devans @dbevans} openmaintainer
 categories          gnome
@@ -69,12 +72,14 @@ platform darwin {
 # activation of PAM modules in /usr/lib/pam by MacPorts to fail.
 # Disabling optional PAM support on this platform.
     if {${os.major} > 9 && ${os.major} < 15} {
+        depends_build port:cctools
         configure.args-delete --disable-pam
         configure.args-append --with-pam-dir=/usr/lib/pam
         # installs PAM modules into /usr/lib/pam
         destroot.violate_mtree yes
         post-destroot {
             file delete ${destroot}/usr/lib/pam/pam_gnome_keyring.la
+            system "install_name_tool -id /usr/lib/pam/pam_gnome_keyring.so ${destroot}/usr/lib/pam/pam_gnome_keyring.so"
         }
     }
 }
