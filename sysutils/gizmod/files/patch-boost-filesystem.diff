@@ -1,0 +1,71 @@
+diff --git libGizmod/orig.Processes.cpp libGizmod/Processes.cpp
+index 16168fd..52624b5 100644
+--- libGizmod/orig.Processes.cpp
++++ libGizmod/Processes.cpp
+@@ -154,7 +154,7 @@ void Processes::updateProcessTree() {
+ 	// get a file listing
+ 	directory_iterator endItr;
+ 	for (directory_iterator iter(PROC_PATH); iter != endItr; iter ++) {
+-		string StatPath = iter->string() + "/stat";
++		string StatPath = iter->path().string() + "/stat";
+ 		try {
+ 			if ( (filesystem::is_directory(*iter)) && (filesystem::exists(path(StatPath))) ) {
+ 				ifstream StatFile(StatPath.c_str());
+diff --git gizmod/orig.Main.cpp gizmod/Main.cpp
+index 3d9d09e..0cdd6e0 100644
+--- gizmod/orig.Main.cpp
++++ gizmod/Main.cpp
+@@ -53,8 +53,8 @@ using namespace boost::filesystem;
+  * Instantiate the main object, and run
+ **/
+ int main (int argc, char * argv []) {
+-	// set filesystem to native filesystem checking
+-	path::default_name_check(native);
++// 	// set filesystem to native filesystem checking
++// 	path::default_name_check(native);
+ 	
+ 	bool ReloadGizmod;
+ 	do {
+diff --git gizmod/orig.GizmoDaemon.cpp gizmod/GizmoDaemon.cpp
+index aa9835f..570e49b 100644
+--- gizmod/orig.GizmoDaemon.cpp
++++ gizmod/GizmoDaemon.cpp
+@@ -1106,7 +1106,7 @@ std::string GizmoDaemon::getUserScriptDirPaths() {
+ 	directory_iterator endItr;
+ 	for (directory_iterator iter(UserScriptDir); iter != endItr; iter ++) {
+ 		if (filesystem::is_directory(*iter))
+-			ret += "sys.path.insert(0, \"" + iter->string() + "\")\n";
++			ret += "sys.path.insert(0, \"" + iter->path().string() + "\")\n";
+ 	}
+ 	
+ 	return ret;
+@@ -1329,7 +1329,7 @@ void GizmoDaemon::initGizmod() {
+ void GizmoDaemon::initPython() {
+ 	try {
+ 		cdbg1 << "Embedding Python Interpreter..." << endl;
+-		PyImport_AppendInittab((char *) "GizmoDaemon", &initGizmoDaemon);
++		PyImport_AppendInittab((char *) "GizmoDaemon", &PyInit_GizmoDaemon);
+ 		
+ 		// initialize python and threads
+ 		Py_Initialize();
+@@ -1564,7 +1564,7 @@ void GizmoDaemon::loadUserScripts() {
+ 	directory_iterator endItr;
+ 	for (directory_iterator iter(mConfigDir + USER_SCRIPT_DIR); iter != endItr; iter ++) {
+ 		if ( (!filesystem::is_directory(*iter)) && (!filesystem::symbolic_link_exists(*iter)) ) {
+-			UserScripts.push_back(iter->path().leaf());
++			UserScripts.push_back(iter->path().leaf().string());
+ 		}
+ 	}
+ 	
+@@ -2189,9 +2189,9 @@ void GizmoDaemon::registerInputEventDevices() {
+ 	directory_iterator endItr;
+ 	for (directory_iterator iter(mEventsDir); iter != endItr; iter ++) {
+ 		if ( (!filesystem::is_directory(*iter)) && (!filesystem::symbolic_link_exists(*iter)) ) {
+-			if (iter->path().leaf().find("event") != 0)
++			if (iter->path().leaf().string().find("event") != 0)
+ 				continue;
+-			eventsFiles.push_back(mEventsDir + "/" + iter->path().leaf());
++			eventsFiles.push_back(mEventsDir + "/" + iter->path().leaf().string());
+ 		}
+ 	}
+ 	

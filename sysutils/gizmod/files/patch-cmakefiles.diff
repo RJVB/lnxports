@@ -1,0 +1,209 @@
+diff --git gizmod/orig.CMakeLists.txt gizmod/CMakeLists.txt
+index 08d826d..b72aeda 100644
+--- gizmod/orig.CMakeLists.txt
++++ gizmod/CMakeLists.txt
+@@ -31,10 +31,10 @@ endif(COMMAND cmake_policy)
+ # Dependencies
+ ##############
+ 
+-find_package(Boost REQUIRED)
+-	if (NOT BOOST_PROGRAM_OPTIONS_FOUND)
++find_package(Boost REQUIRED COMPONENTS program_options)
++	if (NOT Boost_PROGRAM_OPTIONS_FOUND)
+ 		message(FATAL_ERROR "Boost program_options was not found!\nPlease check your boost development library installation.")
+-	endif (NOT BOOST_PROGRAM_OPTIONS_FOUND)
++	endif (NOT Boost_PROGRAM_OPTIONS_FOUND)
+ find_package(PythonLibs REQUIRED)
+ 
+ #################################
+@@ -44,12 +44,12 @@ find_package(PythonLibs REQUIRED)
+ include_directories(
+ 	${includes} 
+ 	${CMAKE_BINARY_DIR}
+-	${BOOST_INCLUDE_DIRS} 
++	${Boost_INCLUDE_DIRS} 
+ 	${PYTHON_INCLUDE_PATH}
+ )
+ 
+ add_definitions(
+-	${BOOST_DEFINITIONS}
++	${Boost_DEFINITIONS}
+ )
+ 
+ #################################
+@@ -80,7 +80,7 @@ add_executable(gizmod
+ ##############
+ 
+ link_directories(
+-	${BOOST_LIBRARY_DIRS}
++	${Boost_LIBRARY_DIRS}
+ 	${GIZMOD_BINARY_DIR}/libH
+ 	${GIZMOD_BINARY_DIR}/libGizmod
+ )
+@@ -88,7 +88,7 @@ link_directories(
+ target_link_libraries(gizmod
+ 	H
+ 	Gizmod
+-	${BOOST_PROGRAM_OPTIONS_LIBRARY}
++	${Boost_PROGRAM_OPTIONS_LIBRARY}
+ 	${PYTHON_LIBRARIES}
+ )
+ 
+diff --git libGizmod/orig.CMakeLists.txt libGizmod/CMakeLists.txt
+index d1f893f..32b44b7 100644
+--- libGizmod/orig.CMakeLists.txt
++++ libGizmod/CMakeLists.txt
+@@ -31,19 +31,19 @@ endif(COMMAND cmake_policy)
+ # Dependencies
+ ##############
+ 
+-find_package(Boost REQUIRED QUIET)
+-	if (NOT BOOST_FILESYSTEM_FOUND)
++find_package(Boost REQUIRED COMPONENTS filesystem thread python serialization)
++	if (NOT Boost_FILESYSTEM_FOUND)
+ 		message(FATAL_ERROR "Boost filesystem was not found!\nPlease check your boost development library installation.")
+-	endif (NOT BOOST_FILESYSTEM_FOUND)
+-	if (NOT BOOST_THREAD-MT_FOUND)
++	endif (NOT Boost_FILESYSTEM_FOUND)
++	if (NOT Boost_THREAD_FOUND)
+ 		message(FATAL_ERROR "Boost thread was not found!\nPlease check your boost development library installation.")
+-	endif (NOT BOOST_THREAD-MT_FOUND)
+-	if (NOT BOOST_PYTHON_FOUND)
++	endif (NOT Boost_THREAD_FOUND)
++	if (NOT Boost_PYTHON_FOUND)
+ 		message(FATAL_ERROR "Boost python was not found!\nPlease check your boost development library installation.")
+-	endif (NOT BOOST_PYTHON_FOUND)
+-	if (NOT BOOST_SERIALIZATION_FOUND)
++	endif (NOT Boost_PYTHON_FOUND)
++	if (NOT Boost_SERIALIZATION_FOUND)
+ 		message(FATAL_ERROR "Boost serialization was not found!\nPlease check your boost development library installation.")
+-	endif (NOT BOOST_SERIALIZATION_FOUND)
++	endif (NOT Boost_SERIALIZATION_FOUND)
+ find_package(PythonLibs REQUIRED)
+ find_package(Alsa REQUIRED)
+ find_package(X11 REQUIRED)
+@@ -57,14 +57,14 @@ find_package(X11 REQUIRED)
+ include_directories(
+ 	${includes} 
+ 	${CMAKE_BINARY_DIR}
+-	${BOOST_INCLUDE_DIRS} 
++	${Boost_INCLUDE_DIRS} 
+ 	${X11_INCLUDE_DIR}
+ 	${ALSA_INCLUDES}
+ 	${PYTHON_INCLUDE_PATH}
+ )
+ 
+ add_definitions(
+-	${BOOST_DEFINITIONS}
++	${Boost_DEFINITIONS}
+ )
+ 
+ #################################
+@@ -112,16 +112,16 @@ set_target_properties(Gizmod PROPERTIES VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.
+ ##############
+ 
+ link_directories(
+-	${BOOST_LIBRARY_DIRS}
++	${Boost_LIBRARY_DIRS}
+ 	${GIZMOD_BINARY_DIR}/libH
+ )
+ 
+ target_link_libraries(Gizmod
+ 	H
+-	${BOOST_FILESYSTEM_LIBRARY}
+-	${BOOST_THREAD_LIBRARY}
+-	${BOOST_SERIALIZATION_LIBRARY}
+-	${BOOST_PYTHON_LIBRARY}
++	${Boost_FILESYSTEM_LIBRARY}
++	${Boost_THREAD_LIBRARY}
++	${Boost_SERIALIZATION_LIBRARY}
++	${Boost_PYTHON_LIBRARY}
+ 	${PYTHON_LIBRARIES}
+ 	${ASOUND_LIBRARY}
+ 	${X11_LIBRARIES}
+diff --git libH/orig.CMakeLists.txt libH/CMakeLists.txt
+index e402817..5a1a1d0 100644
+--- libH/orig.CMakeLists.txt
++++ libH/CMakeLists.txt
+@@ -31,13 +31,13 @@ endif(COMMAND cmake_policy)
+ # Dependencies
+ ##############
+ 
+-find_package(Boost REQUIRED)
+-	if (NOT BOOST_FILESYSTEM_FOUND)
++find_package(Boost REQUIRED COMPONENTS filesystem thread)
++	if (NOT Boost_FILESYSTEM_FOUND)
+ 		message(FATAL_ERROR "Boost filesystem was not found!\nPlease check your boost development library installation.")
+-	endif (NOT BOOST_FILESYSTEM_FOUND)
+-	if (NOT BOOST_THREAD-MT_FOUND)
++	endif (NOT Boost_FILESYSTEM_FOUND)
++	if (NOT Boost_THREAD_FOUND)
+ 		message(FATAL_ERROR "Boost thread was not found!\nPlease check your boost development library installation.")
+-	endif (NOT BOOST_THREAD-MT_FOUND)
++	endif()
+ 
+ #################################
+ # Compiler Switches
+@@ -46,11 +46,11 @@ find_package(Boost REQUIRED)
+ include_directories(
+ 	${includes} 
+ 	${CMAKE_BINARY_DIR}
+-	${BOOST_INCLUDE_DIRS}
++	${Boost_INCLUDE_DIRS}
+ )
+ 
+ add_definitions(
+-	${BOOST_DEFINITIONS}
++	${Boost_DEFINITIONS}
+ )
+ 
+ #################################
+@@ -81,12 +81,12 @@ add_library(H STATIC
+ ##############
+ 
+ link_directories(
+-	${BOOST_LIBRARY_DIRS}
++	${Boost_LIBRARY_DIRS}
+ )
+ 
+ target_link_libraries(H 
+-	${BOOST_FILESYSTEM_LIBRARY}
+-	${BOOST_THREAD_LIBRARY}
++	${Boost_FILESYSTEM_LIBRARY}
++	${Boost_THREAD_LIBRARY}
+ )
+ 
+ #################################
+diff --git orig.CMakeLists.txt CMakeLists.txt
+index a2f9abb..fd41d89 100644
+--- orig.CMakeLists.txt
++++ CMakeLists.txt
+@@ -40,6 +40,9 @@ set(APPLICATION_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_
+ # Preamble
+ ##############
+ 
++set(CMAKE_CXX_STANDARD 98)
++set(CMAKE_CXX_STANDARD_REQUIRED ON)
++
+ # where to look first for cmake modules, before ${CMAKE_ROOT}/Modules/ 
+ # is checked
+ set(CMAKE_MODULE_PATH
+@@ -69,7 +72,7 @@ configure_file(config.h.cmake ${CMAKE_CURRENT_BINARY_DIR}/config.h)
+ # Sub-directories
+ ##############
+ 
+-subdirs(libH libGizmod gizmod scripts visplugin)
++subdirs(libH libGizmod gizmod scripts)
+ 
+ #################################
+ # Information
+@@ -81,8 +84,7 @@ message(STATUS "Installation Variables:
+    Data Dir         (DATA_INSTALL_DIR):     ${DATA_INSTALL_DIR}
+    Lib Dir          (LIB_INSTALL_DIR):      ${LIB_INSTALL_DIR}
+    Plugin Dir       (PLUGIN_INSTALL_DIR):   ${PLUGIN_INSTALL_DIR}
+-   Config Dir       (SYSCONF_INSTALL_DIR):  ${SYSCONF_INSTALL_DIR}
+-   Build vis plugin (BUILD_VIS_PLUGIN):     ${BUILD_VIS_PLUGIN}"
++   Config Dir       (SYSCONF_INSTALL_DIR):  ${SYSCONF_INSTALL_DIR}"
+ )
+ 
+ #################################

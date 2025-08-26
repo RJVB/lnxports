@@ -1,0 +1,24 @@
+diff --git libH/orig.Average.hpp libH/Average.hpp
+index 14b8d37..6781ea1 100644
+--- libH/orig.Average.hpp
++++ libH/Average.hpp
+@@ -35,6 +35,7 @@
+ #include "config.h"
+ #endif
+ 
++#include <cstddef>
+ #include <vector>
+ 
+ //////////////////////////////////////////////////////////////////////////////
+diff --git libH/orig.DynamicBuffer.hpp libH/DynamicBuffer.hpp
+index d794055..143d353 100644
+--- libH/orig.DynamicBuffer.hpp
++++ libH/DynamicBuffer.hpp
+@@ -33,6 +33,7 @@
+ #include "config.h"
+ #endif
+ 
++#include <cstddef>
+ #include <vector>
+ 
+ //////////////////////////////////////////////////////////////////////////////
