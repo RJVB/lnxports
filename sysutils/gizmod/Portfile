@@ -16,7 +16,9 @@ maintainers         openmaintainer
 description         Gizmo Daemon
 long_description    Gizmod is a utility for enabling alternative input devices to be used in Linux. \
                     This includes such devices as the PowerMate USB dial, fancy keyboards and mice with \
-                    buttons not recognised or supported by X. Gizmod allows per application event mappings.
+                    buttons not recognised or supported by X. Gizmod allows per application event mappings.\n\
+                    See also https://wirefall.dyndns.org/powermate.html
+
 homepage            http://${name}.sourceforge.net
 master_sites        https://downloads.sourceforge.net/project/${name}/${name}/${version}
 
@@ -79,3 +81,9 @@ post-destroot {
         ${destroot}${prefix}/share/doc/${name}/
 }
 
+post-activate {
+    addgroup input
+    set gid [existsgroup input]
+    system "chgrp ${gid} ${prefix}/bin/gizmod"
+    system "chmod 2755 ${prefix}/bin/gizmod"
+}
