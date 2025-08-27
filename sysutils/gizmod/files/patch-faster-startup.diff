@@ -1,0 +1,32 @@
+diff --git libH/FileEventWatcher.cpp libH/FileEventWatcher.cpp
+index 26171be..d00df0f 100644
+--- libH/FileEventWatcher.cpp
++++ libH/FileEventWatcher.cpp
+@@ -42,6 +42,7 @@
+ #include <sys/inotify.h>
+ #include <unistd.h>
+ #include <errno.h>
++#include <string.h>
+ #include <sys/socket.h>
+ #include <sys/un.h>
+ 
+@@ -259,10 +260,16 @@ boost::shared_ptr<FileWatchee> FileEventWatcher::addFileToWatch(std::string File
+ 		// not a directory, open the device
+ 		int retry;
+ 		for (retry = 0; retry < MAX_RETRIES; retry ++) {
++			errno = 0;
+ 			if ((fd = open(FileName.c_str(), flags)) == -1) {
+-				cdbg1 << "New Device [" << FileName << "] Open Failed -- Retrying" << endl;
+-				UtilTime::nanoSleep(RETRY_FAIL_WAIT_NSECS);
+-				continue;
++				if (errno == EACCES) {
++					cdbg1 << "New Device [" << FileName << "] (" << strerror(errno) << ")" << endl;
++					retry = MAX_RETRIES;
++				} else {
++					cdbg1 << "New Device [" << FileName << "] (" << strerror(errno) << ") -- Retrying" << endl;
++					UtilTime::nanoSleep(RETRY_FAIL_WAIT_NSECS);
++					continue;
++				}
+ 			}
+ 			break;
+ 		}

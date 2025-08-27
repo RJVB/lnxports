@@ -30,8 +30,24 @@ checksums           rmd160  90bf061e759713cf24629016443fba09eb00131d \
 
 #conflicts_build     boost
 
-depends_lib-append  port:python310 \
-                    port:alsa-lib \
+if {![variant_isset python37] && ![variant_isset python310]} {
+    default_variants-append +python310
+}
+
+variant python37  description {build against Python 3.7} {}
+if {[variant_isset python37]} {
+    depends_lib-append \
+                    port:python37
+    set pyver       3.7
+}
+variant python310 description {build against Python 3.10} {}
+if {[variant_isset python310]} {
+    depends_lib-append \
+                    port:python310
+    set pyver       3.10
+}
+
+depends_lib-append  port:alsa-lib \
                     port:xorg-libX11 \
                     port:xorg-libXext \
                     port:xorg-libice \
@@ -44,12 +60,18 @@ post-extract {
 
 patchfiles          patch-cmakefiles.diff \
                     patch-missing-cstddef.diff \
-                    patch-boost-filesystem.diff
+                    patch-boost-filesystem.diff \
+                    patch-xdg-userconfdir.diff \
+                    patch-correct-version.diff \
+                    patch-fix-typo.diff
 
 # this is a combination of
 # `2to3-3.10 -w -n -f all -f buffer -f idioms -f set_literal -f ws_comma scripts`
 # and manual fixes to the indentation
 patchfiles-append   patch-py2to3.diff
+
+# faster startup by not retrying to open input devices to which we have no access
+patchfiles-append   patch-faster-startup.diff
 
 post-patch {
     reinplace -W ${worksrcpath} "s|BOOST_|Boost_|g" \
@@ -57,10 +79,12 @@ post-patch {
                     gizmod/CMakeLists.txt \
                     libGizmod/CMakeLists.txt \
                     libH/CMakeLists.txt
-    reinplace -W ${worksrcpath} "s|PythonLibs REQUIRED|PythonLibs 3.10 REQUIRED|g" \
+    reinplace -W ${worksrcpath} "s|PythonLibs REQUIRED|PythonLibs ${pyver} EXACT REQUIRED|g" \
                     visplugin/CMakeLists.txt \
                     gizmod/CMakeLists.txt \
                     libGizmod/CMakeLists.txt
+    reinplace "s|@VERSION@|${version}|g" \
+                    ${worksrcpath}/scripts/GizmoDeviceStrings.py
 }
 
 configure.env       "BOOST_ROOT=[boost::install_area]"
@@ -70,7 +94,7 @@ cmake.install_rpath-append \
                     [boost::lib_dir]
 
 configure.args-append \
-                    -DPYTHON_EXECUTABLE=${prefix}/bin/python27
+                    -DPYTHON_EXECUTABLE=${prefix}/bin/python${pyver}
 
 build.post_args-append -wk
 
@@ -78,6 +102,8 @@ post-destroot {
     xinstall -m 755 -d ${destroot}${prefix}/share/doc/${name}
     xinstall -W ${worksrcpath} -m 644 \
         COPYING INSTALL NOTICE README \
+        ${destroot}${prefix}/share/doc/${name}/
+    xinstall -m 644 ${filespath}/99-input.rules \
         ${destroot}${prefix}/share/doc/${name}/
 }
 
@@ -87,3 +113,8 @@ post-activate {
     system "chgrp ${gid} ${prefix}/bin/gizmod"
     system "chmod 2755 ${prefix}/bin/gizmod"
 }
+
+notes-append \
+"Add your account to the 'input' group and copy ${prefix}/share/doc/${name}/99-input.rules to '/etc/udev/rules.d' \
+(read 'https://wirefall.dyndns.org/powermate.html'!) to make gizmod work. Copy ${prefix}/etc/gizmod into \
+~/.config/gizmod in order to be able to modify rules/mappings or create your own."
