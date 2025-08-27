@@ -8,7 +8,7 @@ PortGroup           LTO 1.0
 PortGroup           locale_select 1.0
 
 name                gizmod
-version             3.5
+version             3.5 ; revision 1
 license             Apache-2
 categories          sysutils x11
 platforms           linux
@@ -28,7 +28,7 @@ checksums           rmd160  90bf061e759713cf24629016443fba09eb00131d \
 
 #conflicts_build     boost
 
-depends_lib-append  port:python27 \
+depends_lib-append  port:python310 \
                     port:alsa-lib \
                     port:xorg-libX11 \
                     port:xorg-libXext \
@@ -44,13 +44,18 @@ patchfiles          patch-cmakefiles.diff \
                     patch-missing-cstddef.diff \
                     patch-boost-filesystem.diff
 
+# this is a combination of
+# `2to3-3.10 -w -n -f all -f buffer -f idioms -f set_literal -f ws_comma scripts`
+# and manual fixes to the indentation
+patchfiles-append   patch-py2to3.diff
+
 post-patch {
     reinplace -W ${worksrcpath} "s|BOOST_|Boost_|g" \
                     visplugin/CMakeLists.txt \
                     gizmod/CMakeLists.txt \
                     libGizmod/CMakeLists.txt \
                     libH/CMakeLists.txt
-    reinplace -W ${worksrcpath} "s|PythonLibs REQUIRED|PythonLibs 2.7 REQUIRED|g" \
+    reinplace -W ${worksrcpath} "s|PythonLibs REQUIRED|PythonLibs 3.10 REQUIRED|g" \
                     visplugin/CMakeLists.txt \
                     gizmod/CMakeLists.txt \
                     libGizmod/CMakeLists.txt
@@ -66,4 +71,11 @@ configure.args-append \
                     -DPYTHON_EXECUTABLE=${prefix}/bin/python27
 
 build.post_args-append -wk
+
+post-destroot {
+    xinstall -m 755 -d ${destroot}${prefix}/share/doc/${name}
+    xinstall -W ${worksrcpath} -m 644 \
+        COPYING INSTALL NOTICE README \
+        ${destroot}${prefix}/share/doc/${name}/
+}
 
