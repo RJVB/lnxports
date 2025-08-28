@@ -39,15 +39,6 @@ index aa9835f..570e49b 100644
  	}
  	
  	return ret;
-@@ -1329,7 +1329,7 @@ void GizmoDaemon::initGizmod() {
- void GizmoDaemon::initPython() {
- 	try {
- 		cdbg1 << "Embedding Python Interpreter..." << endl;
--		PyImport_AppendInittab((char *) "GizmoDaemon", &initGizmoDaemon);
-+		PyImport_AppendInittab((char *) "GizmoDaemon", &PyInit_GizmoDaemon);
- 		
- 		// initialize python and threads
- 		Py_Initialize();
 @@ -1564,7 +1564,7 @@ void GizmoDaemon::loadUserScripts() {
  	directory_iterator endItr;
  	for (directory_iterator iter(mConfigDir + USER_SCRIPT_DIR); iter != endItr; iter ++) {

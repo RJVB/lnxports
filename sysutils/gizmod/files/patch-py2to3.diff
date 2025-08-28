@@ -1,3 +1,15 @@
+index aa9835f..570e49b 100644
+--- gizmod/orig.GizmoDaemon.cpp
++++ gizmod/GizmoDaemon.cpp
+@@ -1329,7 +1329,7 @@ void GizmoDaemon::initGizmod() {
+ void GizmoDaemon::initPython() {
+ 	try {
+ 		cdbg1 << "Embedding Python Interpreter..." << endl;
+-		PyImport_AppendInittab((char *) "GizmoDaemon", &initGizmoDaemon);
++		PyImport_AppendInittab((char *) "GizmoDaemon", &PyInit_GizmoDaemon);
+ 		
+ 		// initialize python and threads
+ 		Py_Initialize();
 diff --git scripts/GizmoDeviceClass.py scripts/GizmoDeviceClass.py
 index 0e1ea75..0a8eae5 100644
 --- scripts/GizmoDeviceClass.py

@@ -3,12 +3,13 @@
 PortSystem          1.0
 PortGroup           cmake 1.1
 PortGroup           boost 1.0
-#PortGroup           conflicts_build 1.0
+PortGroup           github 1.0
 PortGroup           LTO 1.0
 PortGroup           locale_select 1.0
 
-name                gizmod
-version             3.5 ; revision 1
+github.setup        RJVB gizmod 3.5.5 v
+fetch.type          git
+distname            gizmod-git
 license             Apache-2
 categories          sysutils x11
 platforms           linux
@@ -24,11 +25,9 @@ master_sites        https://downloads.sourceforge.net/project/${name}/${name}/${
 
 use_bzip2           yes
 
-checksums           rmd160  90bf061e759713cf24629016443fba09eb00131d \
-                    sha256  63c7620e14a43719be0302f44597ca6c38f263de1672b9bb58da63db48d6ecef
-#                     size    115721
-
-#conflicts_build     boost
+# checksums           rmd160  90bf061e759713cf24629016443fba09eb00131d \
+#                     sha256  63c7620e14a43719be0302f44597ca6c38f263de1672b9bb58da63db48d6ecef
+# #                     size    115721
 
 if {![variant_isset python37] && ![variant_isset python310]} {
     default_variants-append +python310
@@ -53,39 +52,40 @@ depends_lib-append  port:alsa-lib \
                     port:xorg-libice \
                     port:xorg-libsm
 
-post-extract {
-    file rename     ${worksrcpath}/cmake/Modules/FindBoost.cmake \
-                    ${worksrcpath}/cmake/Modules/FindBoost.obsolete
-}
+# development traces:
+# post-extract {
+#     file rename     ${worksrcpath}/cmake/Modules/FindBoost.cmake \
+#                     ${worksrcpath}/cmake/Modules/FindBoost.obsolete
+# }
 
-patchfiles          patch-cmakefiles.diff \
-                    patch-missing-cstddef.diff \
-                    patch-boost-filesystem.diff \
-                    patch-xdg-userconfdir.diff \
-                    patch-correct-version.diff \
-                    patch-fix-typo.diff
+# patchfiles          patch-cmakefiles.diff \
+#                     patch-missing-cstddef.diff \
+#                     patch-boost-filesystem.diff \
+#                     patch-xdg-userconfdir.diff \
+#                     patch-correct-version.diff \
+#                     patch-fix-typo.diff
+# 
+# # this is a combination of
+# # `2to3-3.10 -w -n -f all -f buffer -f idioms -f set_literal -f ws_comma scripts`
+# # and manual fixes to the indentation
+# patchfiles-append   patch-py2to3.diff
+# 
+# # faster startup by not retrying to open input devices to which we have no access
+# patchfiles-append   patch-faster-startup.diff
 
-# this is a combination of
-# `2to3-3.10 -w -n -f all -f buffer -f idioms -f set_literal -f ws_comma scripts`
-# and manual fixes to the indentation
-patchfiles-append   patch-py2to3.diff
-
-# faster startup by not retrying to open input devices to which we have no access
-patchfiles-append   patch-faster-startup.diff
-
-post-patch {
-    reinplace -W ${worksrcpath} "s|BOOST_|Boost_|g" \
-                    visplugin/CMakeLists.txt \
-                    gizmod/CMakeLists.txt \
-                    libGizmod/CMakeLists.txt \
-                    libH/CMakeLists.txt
-    reinplace -W ${worksrcpath} "s|PythonLibs REQUIRED|PythonLibs ${pyver} EXACT REQUIRED|g" \
-                    visplugin/CMakeLists.txt \
-                    gizmod/CMakeLists.txt \
-                    libGizmod/CMakeLists.txt
-    reinplace "s|@VERSION@|${version}|g" \
-                    ${worksrcpath}/scripts/GizmoDeviceStrings.py
-}
+# post-patch {
+#     reinplace -W ${worksrcpath} "s|BOOST_|Boost_|g" \
+#                     visplugin/CMakeLists.txt \
+#                     gizmod/CMakeLists.txt \
+#                     libGizmod/CMakeLists.txt \
+#                     libH/CMakeLists.txt
+#     reinplace -W ${worksrcpath} "s|PythonLibs REQUIRED|PythonLibs ${pyver} EXACT REQUIRED|g" \
+#                     visplugin/CMakeLists.txt \
+#                     gizmod/CMakeLists.txt \
+#                     libGizmod/CMakeLists.txt
+#     reinplace "s|@VERSION@|${version}|g" \
+#                     ${worksrcpath}/scripts/GizmoDeviceStrings.py
+# }
 
 configure.env       "BOOST_ROOT=[boost::install_area]"
 compiler.cxx_standard 1998
@@ -94,7 +94,8 @@ cmake.install_rpath-append \
                     [boost::lib_dir]
 
 configure.args-append \
-                    -DPYTHON_EXECUTABLE=${prefix}/bin/python${pyver}
+                    -DPYTHON_EXECUTABLE=${prefix}/bin/python${pyver} \
+                    -DPYTHON_VERSION=${pyver}
 
 build.post_args-append -wk
 
