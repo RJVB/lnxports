@@ -1,0 +1,43 @@
+diff --git CMakeLists.txt CMakeLists.txt
+index a2f9abb..e2a3935 100644
+--- CMakeLists.txt
++++ CMakeLists.txt
+@@ -32,7 +32,7 @@ cmake_minimum_required(VERSION 2.6)
+ # global needed variables
+ set(APPLICATION_NAME ${PROJECT_NAME})
+ set(CPACK_PACKAGE_VERSION_MAJOR "3")
+-set(CPACK_PACKAGE_VERSION_MINOR "4")
++set(CPACK_PACKAGE_VERSION_MINOR "5")
+ set(CPACK_PACKAGE_VERSION_PATCH "0")
+ set(APPLICATION_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
+ 
+diff --git scripts/GizmoDeviceStrings.py scripts/GizmoDeviceStrings.py
+index a634565..490bd72 100644
+--- scripts/GizmoDeviceStrings.py
++++ scripts/GizmoDeviceStrings.py
+@@ -38,7 +38,7 @@ from GizmoDaemon import *
+ 
+ # This covers all of the base scripts (ie those not in modules.d) users
+ # likely don't have to modify
+-VERSION_REQUIRED = 3.4
++VERSION_REQUIRED = @VERSION@
+ 
+ ############################
+ # Device Strings
+diff --git scripts/GizmodDispatcher.py scripts/GizmodDispatcher.py
+index 64e9a01..6e6915c 100644
+--- scripts/GizmodDispatcher.py
++++ scripts/GizmodDispatcher.py
+@@ -145,9 +145,9 @@ class GizmodDispatcher(GizmodEventHandler):
+ 		Default Constructor
+ 		"""
+ 
+-		# version check
+-		if not Gizmod.checkVersion(VERSION_REQUIRED, True):
+-			print "Script Version mismatch -- Gizmo Daemon v" + str(VERSION_REQUIRED) + " Required."
++		# version check - assume that we'll continue to work with newer versions
++		if not Gizmod.checkVersion(VERSION_REQUIRED, False):
++			print("Script Version mismatch -- Gizmo Daemon v" + str(VERSION_REQUIRED) + " Required.")
+ 			Gizmod.signalShutdown()
+ 
+ 		# Must explicitely call the base's constructor

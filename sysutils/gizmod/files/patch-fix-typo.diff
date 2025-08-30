@@ -1,0 +1,13 @@
+diff --git scripts/modules.d/499-ATIX10-Default.py scripts/modules.d/499-ATIX10-Default.py
+index 82bc527..dc6e567 100644
+--- scripts/modules.d/499-ATIX10-Default.py
++++ scripts/modules.d/499-ATIX10-Default.py
+@@ -61,7 +61,7 @@ class ATIX10Default(GizmoScriptDefault):
+ 		# process the key
+ 		if Event.Code == GizmoKey.BTN_LEFT:
+ 			# do mouse left click
+-			Gizmod.Mice[0].createEventRaw(GizmoEventType.EV_KEY, GizmoKey.BTN_LFT, Event.Value)
++			Gizmod.Mice[0].createEventRaw(GizmoEventType.EV_KEY, GizmoKey.BTN_LEFT, Event.Value)
+ 			return True
+ 		elif Event.Code == GizmoKey.BTN_RIGHT:
+ 			# do mouse right click

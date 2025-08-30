@@ -1,0 +1,121 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           cmake 1.1
+PortGroup           boost 1.0
+PortGroup           github 1.0
+PortGroup           LTO 1.0
+PortGroup           locale_select 1.0
+
+github.setup        RJVB gizmod 3.5.5 v
+fetch.type          git
+distname            gizmod-git
+license             Apache-2
+categories          sysutils x11
+platforms           linux
+maintainers         openmaintainer
+description         Gizmo Daemon
+long_description    Gizmod is a utility for enabling alternative input devices to be used in Linux. \
+                    This includes such devices as the PowerMate USB dial, fancy keyboards and mice with \
+                    buttons not recognised or supported by X. Gizmod allows per application event mappings.\n\
+                    See also https://wirefall.dyndns.org/powermate.html
+
+homepage            http://${name}.sourceforge.net
+master_sites        https://downloads.sourceforge.net/project/${name}/${name}/${version}
+
+use_bzip2           yes
+
+# checksums           rmd160  90bf061e759713cf24629016443fba09eb00131d \
+#                     sha256  63c7620e14a43719be0302f44597ca6c38f263de1672b9bb58da63db48d6ecef
+# #                     size    115721
+
+if {![variant_isset python37] && ![variant_isset python310]} {
+    default_variants-append +python310
+}
+
+variant python37  description {build against Python 3.7} {}
+if {[variant_isset python37]} {
+    depends_lib-append \
+                    port:python37
+    set pyver       3.7
+}
+variant python310 description {build against Python 3.10} {}
+if {[variant_isset python310]} {
+    depends_lib-append \
+                    port:python310
+    set pyver       3.10
+}
+
+depends_lib-append  port:alsa-lib \
+                    port:xorg-libX11 \
+                    port:xorg-libXext \
+                    port:xorg-libice \
+                    port:xorg-libsm
+
+# development traces:
+# post-extract {
+#     file rename     ${worksrcpath}/cmake/Modules/FindBoost.cmake \
+#                     ${worksrcpath}/cmake/Modules/FindBoost.obsolete
+# }
+
+# patchfiles          patch-cmakefiles.diff \
+#                     patch-missing-cstddef.diff \
+#                     patch-boost-filesystem.diff \
+#                     patch-xdg-userconfdir.diff \
+#                     patch-correct-version.diff \
+#                     patch-fix-typo.diff
+# 
+# # this is a combination of
+# # `2to3-3.10 -w -n -f all -f buffer -f idioms -f set_literal -f ws_comma scripts`
+# # and manual fixes to the indentation
+# patchfiles-append   patch-py2to3.diff
+# 
+# # faster startup by not retrying to open input devices to which we have no access
+# patchfiles-append   patch-faster-startup.diff
+
+# post-patch {
+#     reinplace -W ${worksrcpath} "s|BOOST_|Boost_|g" \
+#                     visplugin/CMakeLists.txt \
+#                     gizmod/CMakeLists.txt \
+#                     libGizmod/CMakeLists.txt \
+#                     libH/CMakeLists.txt
+#     reinplace -W ${worksrcpath} "s|PythonLibs REQUIRED|PythonLibs ${pyver} EXACT REQUIRED|g" \
+#                     visplugin/CMakeLists.txt \
+#                     gizmod/CMakeLists.txt \
+#                     libGizmod/CMakeLists.txt
+#     reinplace "s|@VERSION@|${version}|g" \
+#                     ${worksrcpath}/scripts/GizmoDeviceStrings.py
+# }
+
+configure.env       "BOOST_ROOT=[boost::install_area]"
+compiler.cxx_standard 1998
+
+cmake.install_rpath-append \
+                    [boost::lib_dir]
+
+configure.args-append \
+                    -DPYTHON_EXECUTABLE=${prefix}/bin/python${pyver} \
+                    -DPYTHON_VERSION=${pyver}
+
+build.post_args-append -wk
+
+post-destroot {
+    xinstall -m 755 -d ${destroot}${prefix}/share/doc/${name}
+    xinstall -W ${worksrcpath} -m 644 \
+        COPYING INSTALL NOTICE README \
+        ${destroot}${prefix}/share/doc/${name}/
+    xinstall -m 644 ${filespath}/99-input.rules \
+        ${destroot}${prefix}/share/doc/${name}/
+}
+
+post-activate {
+    addgroup input
+    set gid [existsgroup input]
+    system "chgrp ${gid} ${prefix}/bin/gizmod"
+    system "chmod 2755 ${prefix}/bin/gizmod"
+}
+
+notes-append \
+"Add your account to the 'input' group and copy ${prefix}/share/doc/${name}/99-input.rules to '/etc/udev/rules.d' \
+(read 'https://wirefall.dyndns.org/powermate.html'!) to make gizmod work. Copy ${prefix}/etc/gizmod into \
+~/.config/gizmod in order to be able to modify rules/mappings or create your own."

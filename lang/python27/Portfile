@@ -13,7 +13,7 @@ if {${os.platform} eq "linux" && [file exists /usr/bin/python2.7]} {
 #     our own site-packages directory to the path.
     maintainers     gmail.com:rjvbertin
     version         [exec /usr/bin/python2.7 -c "import sys ; print '%d.%d.%d' %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro)"]
-    revision        4
+    revision        5
     set is_wrapper  yes
 } else {
     # Remember to keep py27-tkinter and py27-gdbm's versions sync'd with this
@@ -69,6 +69,11 @@ if {[tbool is_wrapper]} {
         ln -s site-packages ${destroot}${python.libdir}/dist-packages
         ln -s site-packages ${destroot}${prefix}/lib/python${branch}/dist-packages
         system "ls -l ${destroot}${python.libdir}"
+        if {[file exists /usr/lib/x86_64-linux-gnu/libpython2.7.so]} {
+            ln -s /usr/lib/x86_64-linux-gnu/libpython2.7.so ${destroot}${prefix}/lib
+        } elseif {[file exist /usr/lib/libpython2.7.so]} {
+            ln -s /usr/lib/libpython2.7.so ${destroot}${prefix}/lib
+        }
     }
 } else {
 
