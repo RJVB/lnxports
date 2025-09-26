@@ -27,6 +27,8 @@ checksums           rmd160  24a7ae60b93efaedeee7e2e0aa318ca6afcaaf39 \
 # Source: https://code.videolan.org/videolan/libdca/-/issues/3#note_56339
 patchfiles-append   patch-libdts.a-symlink-fix.diff
 
+patchfiles-append   patch-fix-configureac.diff
+
 # v. 0.0.7 tarball does not include pre-processed configure script.
 use_autoreconf      yes
 pre-configure {
