@@ -69,13 +69,13 @@ depends_lib-append  port:aom \
                     port:soundtouch \
                     port:tiff \
                     port:webp \
+                    port:libdca \
                     port:x265
 
 if {${os.platform} eq "darwin"} {
                     #port:libgsm 
                     #port:libnice \
     depends_lib-append \
-                    port:libdca \
                     port:libmms \
                     port:libmpcdec \
                     port:neon \

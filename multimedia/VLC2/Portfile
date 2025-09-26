@@ -111,7 +111,6 @@ platform darwin {
                         port:libcddb \
                         port:libcdio \
                         port:libdc1394 \
-                        port:libdca \
                         port:libdvbpsi \
                         port:libdvdnav \
                         port:libdvdread \
@@ -190,6 +189,7 @@ platform linux {
                         port:libsndio \
                         port:portaudio \
                         port:libaacs \
+                        port:libdca \
                         port:libbdplus
     configure.ldflags-append \
                         -Wl,-rpath=${prefix}/lib \
