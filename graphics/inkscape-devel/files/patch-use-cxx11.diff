@@ -1,0 +1,21 @@
+diff --git CMakeScripts/ConfigEnv.cmake CMakeScripts/ConfigEnv.cmake
+index ca12f36f22..1ff870ce2c 100644
+--- CMakeScripts/ConfigEnv.cmake
++++ CMakeScripts/ConfigEnv.cmake
+@@ -1,6 +1,8 @@
+ # -----------------------------------------------------------------------------
+ # Set platform defaults (originally copied from darktable)
+ # -----------------------------------------------------------------------------
++set(CMAKE_CXX_STANDARD 11)
++
+ if(WIN32)
+   message("-- Windows build detected, setting default features")
+ 
+@@ -13,7 +15,6 @@ if(WIN32)
+   
+   set(CMAKE_C_COMPILER "${MINGW_BIN}/gcc.exe")
+   set(CMAKE_CXX_COMPILER "${MINGW_BIN}/g++.exe")
+-  set(CMAKE_CXX_STANDARD 11)
+   
+   # Setup Windows resource files compiler.
+   set(CMAKE_RC_COMPILER "${MINGW_BIN}/windres.exe")

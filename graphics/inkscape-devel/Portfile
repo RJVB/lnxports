@@ -6,7 +6,9 @@ platform darwin {
     PortGroup       cxx11 1.1
 }
 PortGroup           cmake 1.1
+PortGroup           LTO 1.0
 PortGroup           from_ports_variant 1.0
+PortGroup           conflicts_build 1.0
 
 cmake.generator     Ninja
 
@@ -62,10 +64,10 @@ depends_lib-append  port:popt \
                     port:gsl \
                     port:glibmm \
                     port:dbus-glib \
-                    port:ImageMagick \
+                    port:ImageMagick6 \
                     port:lcms2 \
                     port:libwpg-0.3 \
-                    port:poppler \
+                    port:poppler073 \
                     port:boost \
                     port:libexif \
                     port:libvisio-0.1 \
@@ -74,6 +76,8 @@ depends_lib-append  port:popt \
                     port:python${python_version} \
                     port:py${python_version}-lxml \
                     port:py${python_version}-numpy
+conflicts_build-append \
+                    poppler
 platform linux {
     depends_lib-append \
                     port:gettext
@@ -84,7 +88,8 @@ pre-fetch {
     ui_msg "--->  Fetching source from git repository: this will take a while"
 }
 
-patchfiles          patch-use-configured-perl.diff
+patchfiles          patch-use-configured-perl.diff \
+                    patch-use-cxx11.diff
 
 post-patch {
     reinplace "s|@@MP_PERL@@|${prefix}/bin/perl5|" ${worksrcpath}/Makefile.am
@@ -102,6 +107,9 @@ universal_variant no
 # allow build with more modern gcc on 10.5 and earlier
 compiler.blacklist-append {clang < 500} *gcc-3.* *gcc-4.*
 
+compiler.cxx_standard \
+                    2011
+
 configure.cppflags-append \
                     -I${worksrcpath}/src/extension/script
 
@@ -116,6 +124,10 @@ variant gtk3 description {Enable experimental GTK+ 3 build} {
                     port:gtkmm3 \
                     port:gdl3
 }
+
+configure.pkg_config_path-append \
+                    ${prefix}/libexec/ImageMagick-6/lib/pkgconfig \
+                    ${prefix}/libexec/poppler073/lib/pkgconfig
 
 configure.args-append \
                     -DWITH_GNOME_VFS=OFF \
@@ -155,7 +167,7 @@ if {[variant_isset gtk3]} {
     }
 }
 
-build.post_args-append -k 0
+build.pre_args-prepend -k 0
 
 
 livecheck.type      none
