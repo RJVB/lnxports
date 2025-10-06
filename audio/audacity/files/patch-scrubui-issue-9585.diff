@@ -1,0 +1,35 @@
+diff --git a/src/tracks/ui/ScrubUI.cpp b/src/tracks/ui/ScrubUI.cpp
+index b09e4de5..01a068c2 100644
+--- a/src/tracks/ui/ScrubUI.cpp
++++ b/src/tracks/ui/ScrubUI.cpp
+@@ -227,12 +227,17 @@ struct ScrubForwarder
+ 
+    ~ScrubForwarder()
+    {
+-      if ( mWindow )
+-         mWindow->PopEventHandler();
++//       fprintf(stderr, "%s(%p): mWindow=%p\n", __PRETTY_FUNCTION__, this,
++//               mWindow);
++//       fflush(stderr);
++      if ( mWindow ) {
++//          fprintf(stderr, "\tRemoving event handler!\n");
++         mWindow->RemoveEventHandler(this);
++      }
+    }
+ 
+    AudacityProject &mProject;
+-   wxWindowPtr<wxWindow> mWindow;
++   wxWindow *mWindow;
+    wxWeakRef<AdornedRulerPanel> mRuler;
+    std::weak_ptr<Scrubber> mScrubber;
+ 
+@@ -289,6 +294,9 @@ END_EVENT_TABLE()
+ 
+ static const AudacityProject::AttachedObjects::RegisteredFactory sForwarderKey{
+    []( AudacityProject &parent ){
++//       fprintf(stderr, "%s: making shared ScrubForwarder for parent %p, window %p\n",
++//               __PRETTY_FUNCTION__, &parent, &ProjectWindow::Get(parent));
++//       fflush(stderr);
+       return std::make_shared< ScrubForwarder >( parent );
+    }
+ };

@@ -1,0 +1,13 @@
+diff --git a/cmake-proxies/cmake-modules/AudacityFunctions.cmake b/cmake-proxies/cmake-modules/AudacityFunctions.cmake
+index 5dc9a502..58cfd270 100644
+--- a/cmake-proxies/cmake-modules/AudacityFunctions.cmake
++++ b/cmake-proxies/cmake-modules/AudacityFunctions.cmake
+@@ -549,7 +549,7 @@ function( audacity_module_fn NAME SOURCES IMPORT_TARGETS
+       if (CMAKE_BUILD_TYPE MATCHES "Debug|RelWithDebInfo")
+          set(nostrip 1)
+       else()
+-         set(nostrip 0)
++         set(nostrip 1)
+       endif()
+       add_custom_command(
+          TARGET "${TARGET}"
