@@ -120,6 +120,7 @@ if {${os.platform} eq "darwin"} {
     variant pulse64 conflicts pulse requires universal description {Hack: enable PulseAudio support in +universal builds but only in the native arch. slice. Non-universal builds can use the +pulse variant.} {}
 } else {
     variant pulse description {Enable PulseAudio support} {}
+    default_variants-append +pulse
 }
 if {[variant_isset pulse]} {
     depends_lib-append \
