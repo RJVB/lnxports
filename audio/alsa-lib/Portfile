@@ -6,6 +6,7 @@ set LTO.allow_ThinLTO no
 set LTO.gcc_lto_jobs  auto
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
+PortGroup           from_ports_variant 1.0
 
 set basename        alsa
 name                ${basename}-lib
@@ -73,7 +74,7 @@ switch ${subport} {
         test.target     check
     }
     alsa-plugins {
-        version         1.2.7.1 ; revision 3
+        version         1.2.7.1 ; revision 4
         description     alsa-plugins contains plugins for various ALSA needs (e.g. Jack).
         long_description-append \n${description}
         master_sites    ftp://ftp.alsa-project.org/pub/plugins/
@@ -87,7 +88,15 @@ switch ${subport} {
                         port:ffmpeg \
                         port:libsamplerate
         configure.args-append \
-                        --disable-dependency-tracking
+                        --disable-dependency-tracking \
+                        --disable-oss \
+                        --disable-jack
+        variant jack description {build the JACK plugin} {
+            configure.args-replace \
+                        --disable-jack \
+                        --enable-jack
+            fromPorts::depends lib-append port:jack
+        }
         post-destroot {
             # some plugins have an indirect dependency on the DRI3 library from port:xorg-libxcb
             # Make certain that (=our) library is picked up and not a copy from the host
