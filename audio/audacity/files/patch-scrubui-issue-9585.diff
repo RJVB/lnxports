@@ -1,5 +1,21 @@
+diff --git a/src/ProjectWindow.cpp b/src/ProjectWindow.cpp
+index 64853d09d365143ac71813ea60a88c676b858ed0..ad97363bc5f1fa6f83d4b51f8e2c9b89a4a6dae0 100644
+--- a/src/ProjectWindow.cpp
++++ b/src/ProjectWindow.cpp
+@@ -712,6 +712,11 @@ ProjectWindow::ProjectWindow(wxWindow * parent, wxWindowID id,
+ 
+ ProjectWindow::~ProjectWindow()
+ {
++   auto removed = PopEventHandler();
++   while (removed) {
++//       fprintf(stderr, "%s: popped event handler %p for window %p\n", __PRETTY_FUNCTION__, removed, this);
++      removed = PopEventHandler();
++   }
+    // Tool manager gives us capture sometimes
+    if(HasCapture())
+       ReleaseMouse();
 diff --git a/src/tracks/ui/ScrubUI.cpp b/src/tracks/ui/ScrubUI.cpp
-index b09e4de5..01a068c2 100644
+index b09e4de5..b53b635d 100644
 --- a/src/tracks/ui/ScrubUI.cpp
 +++ b/src/tracks/ui/ScrubUI.cpp
 @@ -227,12 +227,17 @@ struct ScrubForwarder
@@ -8,28 +24,30 @@ index b09e4de5..01a068c2 100644
     {
 -      if ( mWindow )
 -         mWindow->PopEventHandler();
-+//       fprintf(stderr, "%s(%p): mWindow=%p\n", __PRETTY_FUNCTION__, this,
-+//               mWindow);
++//       fprintf(stderr, "%s(%p): mWindow.get()=%p\n", __PRETTY_FUNCTION__, this,
++//               mWindow.get());
 +//       fflush(stderr);
 +      if ( mWindow ) {
-+//          fprintf(stderr, "\tRemoving event handler!\n");
-+         mWindow->RemoveEventHandler(this);
++         /*const auto removed = */mWindow->RemoveEventHandler(this);
++//          fprintf(stderr, "\t%s an event handler!\n", removed? "Removed us as " : "we were no longer");
 +      }
     }
  
     AudacityProject &mProject;
 -   wxWindowPtr<wxWindow> mWindow;
-+   wxWindow *mWindow;
++   wxWeakRef<wxWindow> mWindow;
     wxWeakRef<AdornedRulerPanel> mRuler;
     std::weak_ptr<Scrubber> mScrubber;
  
-@@ -289,6 +294,9 @@ END_EVENT_TABLE()
+@@ -289,6 +294,10 @@ END_EVENT_TABLE()
  
  static const AudacityProject::AttachedObjects::RegisteredFactory sForwarderKey{
     []( AudacityProject &parent ){
-+//       fprintf(stderr, "%s: making shared ScrubForwarder for parent %p, window %p\n",
-+//               __PRETTY_FUNCTION__, &parent, &ProjectWindow::Get(parent));
+-      return std::make_shared< ScrubForwarder >( parent );
++      auto ret = std::make_shared< ScrubForwarder >( parent );
++//       fprintf(stderr, "%s: made shared ScrubForwarder %p for parent %p, window %p\n",
++//               __PRETTY_FUNCTION__, ret.get(), &parent, &ProjectWindow::Get(parent));
 +//       fflush(stderr);
-       return std::make_shared< ScrubForwarder >( parent );
++      return ret;
     }
  };

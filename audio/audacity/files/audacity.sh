@@ -36,4 +36,4 @@ if [ -x @PREFIX@/lib/libwrapped_syscalls.so ] ;then
 fi
 
 unset GTK_IM_MODULE
-exec @PREFIX@/bin/audacity.bin "$@"
+exec -a audacity @PREFIX@/bin/audacity.bin "$@"
