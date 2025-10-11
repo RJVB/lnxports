@@ -1,8 +1,14 @@
+commit fb9d564b501d614b5383f4ca631d78cf23ae6d98
+Author: bertin <macportsuser@macports.org>
+Date:   Fri Oct 10 19:08:57 2025 +0200
+
+    /opt/local/linux-ports/audio/audacity/files/patch-rearrange-control-buttons.diff
+
 diff --git a/src/toolbars/ControlToolBar.cpp b/src/toolbars/ControlToolBar.cpp
-index 9f61d1e4..1639e973 100644
+index 8fa1193e8..355da6703 100644
 --- a/src/toolbars/ControlToolBar.cpp
 +++ b/src/toolbars/ControlToolBar.cpp
-@@ -330,6 +330,14 @@ void ControlToolBar::UpdatePrefs()
+@@ -327,6 +327,14 @@ void ControlToolBar::UpdatePrefs()
     ToolBar::UpdatePrefs();
  }
  
@@ -17,7 +23,7 @@ index 9f61d1e4..1639e973 100644
  void ControlToolBar::ArrangeButtons()
  {
     int flags = wxALIGN_CENTER | wxRIGHT;
-@@ -345,6 +353,7 @@ void ControlToolBar::ArrangeButtons()
+@@ -342,6 +350,7 @@ void ControlToolBar::ArrangeButtons()
  
     // Start with a little extra space
     mSizer->Add( 5, 55 );
@@ -25,7 +31,7 @@ index 9f61d1e4..1639e973 100644
  
     // Establish correct tab key sequence with mLoop last
     mPause->MoveBeforeInTabOrder( mLoop );
-@@ -355,11 +364,17 @@ void ControlToolBar::ArrangeButtons()
+@@ -352,11 +361,17 @@ void ControlToolBar::ArrangeButtons()
     mRecord->MoveBeforeInTabOrder( mLoop );
  
     mSizer->Add( mPause,  0, flags, 2 );

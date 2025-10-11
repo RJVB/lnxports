@@ -13,6 +13,8 @@ platform darwin {
 PortGroup           compress_workdir 1.0
 PortGroup           LTO 1.0
 PortGroup           from_ports_variant 1.0
+## only when upgrading the port version:
+## PortGroup           patch-updater 1.0
 #<< RJVB
 
 # placeholder name
@@ -89,18 +91,18 @@ if {${build.cmd} ne "ninja"} {
 cmake.save_configure_cmd "install log"
 #<< RJVB
 
-platform darwin {
-    compiler.blacklist *gcc* {clang < 602}
-    foreach clv {3.3 3.4 3.5 3.7 5.0 6.0 7.0 8.0} {
+# platform darwin {
+    compiler.blacklist {clang < 602}
+    foreach clv {3.3 3.4 3.5 3.7 5.0 6.0 7.0 8.0 9.0 10 11 12 13 14} {
         compiler.blacklist-append macports-clang-${clv}
     }
-    foreach clv {9.0 10 11 12 13 14 15} {
+    foreach clv {15 16} {
         if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
             compiler.whitelist-prepend macports-clang-${clv}
         }
         compiler.fallback-prepend macports-clang-${clv}
     }
-}
+# }
 
 # ensure pre-compiled headers and the possible use of ccache can co-exist
 configure.env-append \
@@ -133,10 +135,15 @@ long_description    Audacity is a free, easy-to-use, multi-track audio editor an
                     And more!
 
 conflicts           audacity2-legacy audacity3-legacy audacity-legacy audacity-gtk
-## pre-upgrade notice : last commit with with 3.3 source code layout: 2677399f41473fd1cd13f607018475741350c0e1
-github.setup        audacity audacity c8c17426f6723781a9adc88eb1e1b5b3c2fc1b96
+#github.setup        audacity audacity c8c17426f6723781a9adc88eb1e1b5b3c2fc1b96
+## last commit with with 3.3 source code layout: 2677399f41473fd1cd13f607018475741350c0e1
+# 2 commits after the 3.5.1 release:
+github.setup        audacity audacity 0ffa73b9f44acc339e12a350edadd96590dc4b17
+version             3.5.1.2
+## From the CMake file:
+# Set this value to 0 for alpha, 1 for beta, 2 for release builds
+set build_level     2
 
-version             3.3.3.748 ; revision 2
 # this port is intended to facilitate development efforts shared with "upstreams"
 # so using git instead of a tarball fetch type is more appropriate for the current maintainer
 fetch.type          git
@@ -226,7 +233,8 @@ if {${os.arch} ne "arm"} {
                     port:libmad
 }
 depends_lib-append  port:mpg123 \
-                    port:wavpack
+                    port:wavpack \
+                    port:util-linux
 # audacity could use port:lv2 and port:lilv but would also require a port:suil for that to be possible.
 
 patch.pre_args      -Np1
@@ -237,8 +245,8 @@ patch.pre_args      -Np1
 #
 patchfiles-append   patch-cmakefiles-@prefix@.diff \
                     patch-build-preparations.diff \
-                    patch-fix_bundlepy-@prefix@.diff \
-                    patch-build-pre-1014.diff
+                    patch-fix_bundlepy-@prefix@.diff
+#                     patch-build-pre-1014.diff
 
 platform darwin {
     if {[variant_isset wxsystem]} {
@@ -296,28 +304,6 @@ platform darwin {
     }
 }
 
-# if {${subport} eq "${name}"} {
-# #>> RJVB
-#     ## uncomment only when intending to regenerate the patchfiles
-#     ## Prerequisites:
-#     ## - git-unpatch
-#     ## - checkout -b <some scratch branch>
-#     ## Or use the patch-updater 1.0 PortGroup !!
-#     patch {
-#         foreach p ${patchfiles} {
-#             set pf [file join ${filespath} ${p}]
-#             ui_info "--> applying patch ${p} (${pf})"
-#             system -W ${worksrcpath} "${patch.cmd} ${patch.pre_args} -i ${pf}"
-#             if {${p} eq "add_enGB_translation.diff"} {
-#                 system -W ${worksrcpath} "git add locale/en_GB.po"
-#             }
-#             system -W ${worksrcpath} "git diff --no-ext-diff HEAD -- . > ${pf}"
-#             system -W ${worksrcpath} "git commit -v -a -m \"${pf}\""
-#         }
-#     }
-# #<< RJVB
-# }
-
 if {${os.platform} eq "darwin"} {
     if {${os.major} >= 17} {
         # Audacity builds "normally" from 10.7 to 10.13, but will request the 10.13 SDK
@@ -344,10 +330,36 @@ patchfiles-append   patch-cmake-dont-strip.diff
 # avoid a race-like condition when quitting:
 patchfiles-append   patch-scrubui-issue-9585.diff
 
+patchfiles-append   patch-fix-@version@.diff \
+                    patch-conan-@cxx_stdlib@.diff \
+                    patch-viewport-racelike-condition.diff
+
 # quelch a huge number of warnings
 configure.cxxflags-append \
                     -Wno-inconsistent-missing-override \
                     -Wno-overloaded-virtual
+
+# if {${subport} eq "${name}"} {
+# #>> RJVB
+#     ## uncomment only when intending to regenerate the patchfiles
+#     ## Prerequisites:
+#     ## - git-unpatch
+#     ## - checkout -b <some scratch branch>
+#     ## Or use the patch-updater 1.0 PortGroup !!
+#     patch {
+#         foreach p ${patchfiles} {
+#             set pf [file join ${filespath} ${p}]
+#             ui_info "--> applying patch ${p} (${pf})"
+#             system -W ${worksrcpath} "${patch.cmd} ${patch.pre_args} -i ${pf}"
+#             if {${p} eq "add_enGB_translation.diff"} {
+#                 system -W ${worksrcpath} "git add locale/en_GB.po"
+#             }
+#             system -W ${worksrcpath} "git diff --no-ext-diff HEAD -- . > ${pf}"
+#             system -W ${worksrcpath} "git commit -v -a -m \"${pf}\""
+#         }
+#     }
+# #<< RJVB
+# }
 
 platform darwin {
     # set the install_rpath first
@@ -390,6 +402,7 @@ platform linux {
 
 set _OPT "audacity_"
 configure.args-append \
+                    -DAUDACITY_BUILD_LEVEL=${build_level} \
                     -DCMAKE_MACOSX_RPATH=ON \
                     -DCMAKE_STRIP=/bin/echo \
                     -D${_OPT}lib_preference=system \
@@ -453,11 +466,12 @@ if {${configure.cxx_stdlib} ne "" && [string match *clang* ${configure.cxx}]} {
                     -stdlib=${configure.cxx_stdlib}
 }
 
-# platform darwin {
-#     post-configure {
-#         reinplace -q "s|compiler.libcxx=libstdc++|compiler.libcxx=libc++|g" ${build.dir}/.conan/profiles/default
-#     }
-# }
+pre-configure {
+    if {![file exists ${build.dir}/conan]} {
+        ui_warn "The Conan build environment needs to be set up. It's as barbarian as the name suggests \
+            so this will take some time!"
+    }
+}
 
 # with everything defined/declared as intended we can now
 # handle the post-patch step with its reinplace statements.
@@ -465,17 +479,25 @@ post-patch {
     reinplace -W ${worksrcpath} "s|/usr/local|${prefix}|g" \
                                 src/effects/ladspa/LadspaEffect.cpp \
                                 src/effects/VST/VSTEffect.cpp \
-                                modules/mod-mp3/ExportMP3.cpp \
+                                modules/import-export/mod-mp3/ExportMP3.cpp \
                                 lib-src/lv2/lilv/wscript \
                                 lib-src/lv2/lilv/test/lilv_test.c
     reinplace -W ${worksrcpath} "s|/Library/Audio/Plug-Ins/Vamp|/Library/Audio/Plug-Ins/Vamp:${prefix}/lib/vamp|g" \
                                 lib-src/libvamp/src/vamp-hostsdk/PluginHostAdapter.cpp
     reinplace -W ${worksrcpath} "s|/Library/Application Support/audacity/libs|${prefix}/lib|g" \
-                                modules/mod-ffmpeg/FFmpeg.h
+                                modules/import-export/mod-ffmpeg/FFmpeg.h
     reinplace -W ${worksrcpath} "s|@PREFIX@|/opt/local|g" \
                                 cmake-proxies/lv2/CMakeLists.txt \
                                 scripts/build/macOS/fix_bundle.py \
-                                modules/mod-ffmpeg/lib-ffmpeg-support/FFmpegFunctions.cpp
+                                modules/import-export/mod-ffmpeg/lib-ffmpeg-support/FFmpegFunctions.cpp
+    set varray [split ${version} "."]
+    reinplace -W ${worksrcpath} "s|@VERSION_MINOR@|[lindex ${varray} 1]|g" CMakeLists.txt
+    reinplace -W ${worksrcpath} "s|@VERSION_PATCH@|[lindex ${varray} 2]|g" CMakeLists.txt
+    if {${configure.cxx_stdlib} eq "" || [string match *libstdc* ${configure.cxx_stdlib}]} {
+        reinplace -W ${worksrcpath} "s|@CXX_STDLIB@|libstdc++11|g" conan/helpers/profiles.py
+    } else {
+        reinplace -W ${worksrcpath} "s|@CXX_STDLIB@|libc++|g" conan/helpers/profiles.py
+    }
 }
 
 pre-build {
@@ -486,6 +508,11 @@ pre-build {
     } else {
         system "echo '#define GIT_DESC \"${version}\"' > ${worksrcpath}/src/GitDesc.h"
     }
+}
+if {[info exists PatchUpdater::ignore_files]} {
+    PatchUpdater::ignore_files \
+            src/RevisionIdent.h \
+            src/GitDesc.h
 }
 
 platform darwin {
