@@ -2,20 +2,7 @@
 
 PortSystem          1.0
 
-PortGroup           github 1.0
-# PortGroups for the main ports
-PortGroup           wxWidgets 1.0
-PortGroup           active_variants 1.1
-PortGroup           cmake 1.1
-platform darwin {
-}
-#>> RJVB
-PortGroup           compress_workdir 1.0
-PortGroup           LTO 1.0
-PortGroup           from_ports_variant 1.0
-## only when upgrading the port version:
-## PortGroup           patch-updater 1.0
-#<< RJVB
+PortGroup           github 1.1
 
 # placeholder name
 name                audacity
@@ -26,6 +13,8 @@ license             GPL-2+
 universal_variant   no
 
 set aud_app_path    ${prefix}/bin/audacity
+
+patch.pre_args      -p1
 
 # The manual subport is defined first since it doesn't require a lot of setting up
 subport "${name}-manual" {}
@@ -57,6 +46,69 @@ if {${subport} eq "${name}-manual"} {
     }
     return          0
 }
+
+set VST3VERSION     3.7.7
+
+subport vst3sdk-src {}
+if {${subport} eq "vst3sdk-src"} {
+    description     VST 3 Plug-In SDK (sources)
+    long_description \
+                    VST 3 is a general rework of the long-serving VST plug-in interface. \
+                    It is not compatible with the older VST versions, but it includes some \
+                    new features and possibilities. We have redesigned the API to make it \
+                    not only far easier and more reliable for developers to work with, but \
+                    have also provided completely new possibilities for plug-ins.\n\
+                    This port installs the sources, patched for use by Audacity!
+    license         Steinberg-VST3
+    github.tarball_from \
+                    archive
+    github.setup    steinbergmedia vst3sdk ${VST3VERSION} v _build_19
+    # the interesting things are all in submodules, so we need to git-fetch...
+    fetch.type      git
+    distname        vst3sdk
+
+    depends_build   port:coreutils \
+                    port:bzip2 \
+                    port:libarchive
+
+    # patch applied by Audacity:
+    patchfiles-append \
+                    vst3/disable-validator.diff
+    # don't build Jack support:
+    patchfiles-append \
+                    vst3/patch-disable-jack.diff
+
+    use_configure   no
+    installs_libs   no
+    supported_archs noarch
+    platforms       any
+
+    set dest        ${prefix}/src/vst3sdk/
+    build           {
+        system -W ${workpath} "bsdtar -cvj --exclude .git --exclude .gitmodules -f ${version}.tar.bz2 vst3sdk"
+    }
+    destroot {
+        xinstall -m 755 -d ${destroot}${dest}
+        xinstall -m 644 ${workpath}/${version}.tar.bz2 ${destroot}${dest}/
+    }
+    return          0
+}
+
+# Now we can load the PortGroups for the main ports
+PortGroup           wxWidgets 1.0
+PortGroup           active_variants 1.1
+PortGroup           cmake 1.1
+platform darwin {
+}
+#>> RJVB
+PortGroup           compress_workdir 1.0
+PortGroup           LTO 1.0
+PortGroup           from_ports_variant 1.0
+## only when upgrading the port version:
+## PortGroup           patch-updater 1.0
+#<< RJVB
+
+patch.pre_args      -Np1
 
 subport audacity-wxWidgets {}
 
@@ -236,8 +288,6 @@ depends_lib-append  port:mpg123 \
                     port:wavpack \
                     port:util-linux
 # audacity could use port:lv2 and port:lilv but would also require a port:suil for that to be possible.
-
-patch.pre_args      -Np1
 
 # 4 lines of Mac-specific comments
 #
@@ -423,7 +473,7 @@ configure.args-append \
                     -D${_OPT}use_soundtouch=system \
                     -D${_OPT}use_twolame=system \
                     -D${_OPT}use_midi=system \
-                    -D${_OPT}has_vst3=off \
+                    -D${_OPT}has_vst3=OFF \
                     -D${_OPT}use_sqlite=system \
                     -D${_OPT}use_pch=[if_not_ccache] \
                     -DCMAKE_DISABLE_FIND_PACKAGE_JACK=On
@@ -434,15 +484,15 @@ configure.args-append \
 #                     -D${_OPT}use_id3tag=off
 # }
 
-    # in this port implementation we always get wxWidgets from the system
-    # (but we embed the libraries if building -wxsystem)
-    configure.args-append \
+# in this port implementation we always get wxWidgets from the system
+# (but we embed the libraries if building -wxsystem)
+configure.args-append \
                     -DwxWidgets_CONFIG_EXECUTABLE=${wxWidgets.wxconfig} \
                     -D${_OPT}use_wxwidgets=system
-    configure.env-append \
+configure.env-append \
                     WX_CONFIG=${wxWidgets.wxconfig}
 
-if {[variant_isset suil]} {
+if {[variant_exists suil] && [variant_isset suil]} {
     configure.args-replace \
                     -D${_OPT}use_suil_qt5=OFF \
                     -D${_OPT}use_suil_qt5=ON
@@ -459,6 +509,21 @@ platform linux {
         require_active_variants portaudio jack
     } else {
         require_active_variants portaudio "" jack
+    }
+
+    variant vst3 description {enable support for VST3 plugins} {}
+    if {[variant_exists vst3] && [variant_isset vst3]} {
+        depends_build-append \
+                    port:vst3sdk-src \
+                    port:libarchive
+        pre-configure {
+            if {![file exists ${worksrcpath}/vst3sdk]} {
+                system -W ${worksrcpath} "bsdtar -x --exclude doc -f ${prefix}/src/vst3sdk/${VST3VERSION}.tar.bz2"
+            }
+        }
+        configure.args-replace \
+                    -D${_OPT}has_vst3=OFF \
+                    -D${_OPT}use_vst3sdk=system
     }
 }
 
