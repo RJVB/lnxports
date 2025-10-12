@@ -33,11 +33,11 @@ if {${subport} eq "${name}-manual"} {
     description     The manual for audacity
     long_description {*}${description}. Users of port:audacity2-legacy may prefer to use the \
                     online manual instead of installing this port.
-    github.setup    audacity audacity-manual 3.4.0 v
+    github.setup    audacity audacity-manual 3.5.1 v
     homepage        https://manual.audacityteam.org/
-    checksums       rmd160  082d6db9b4309fc1b1d25ac48197d0e935ef3acb \
-                    sha256  57b5257da4508c2bf434030b8ab65565c8428b804cbc0dfc4bff6adabbc44827
-#                     size    23256554
+    checksums       rmd160  a2394c21f7b5d27cc45208b226c743051278a41b \
+                    sha256  a87f9bdd774ee7ce5a4a4e5e0783ffa7cb28913dcffe7310efc065471a14cf93
+#                     size    22377404
     depends_run     path:${aud_app_path}:audacity
     worksrcdir      help
     use_configure   no
@@ -139,7 +139,7 @@ conflicts           audacity2-legacy audacity3-legacy audacity-legacy audacity-g
 ## last commit with with 3.3 source code layout: 2677399f41473fd1cd13f607018475741350c0e1
 # 2 commits after the 3.5.1 release:
 github.setup        audacity audacity 0ffa73b9f44acc339e12a350edadd96590dc4b17
-version             3.5.1.2
+version             3.5.1.2 ; revision 1
 ## From the CMake file:
 # Set this value to 0 for alpha, 1 for beta, 2 for release builds
 set build_level     2
@@ -333,6 +333,8 @@ patchfiles-append   patch-scrubui-issue-9585.diff
 patchfiles-append   patch-fix-@version@.diff \
                     patch-conan-@cxx_stdlib@.diff \
                     patch-viewport-racelike-condition.diff
+# restore theme blending to avoid psychedelic colours
+patchfiles-append   patch-restore-theme-blending.diff
 
 # quelch a huge number of warnings
 configure.cxxflags-append \
