@@ -187,11 +187,12 @@ long_description    Audacity is a free, easy-to-use, multi-track audio editor an
                     And more!
 
 conflicts           audacity2-legacy audacity3-legacy audacity-legacy audacity-gtk
-#github.setup        audacity audacity c8c17426f6723781a9adc88eb1e1b5b3c2fc1b96
+## # 2 commits after the 3.5.1 release:
+## github.setup        audacity audacity 0ffa73b9f44acc339e12a350edadd96590dc4b17
+## version             3.5.1.2 ; revision 1
 ## last commit with with 3.3 source code layout: 2677399f41473fd1cd13f607018475741350c0e1
-# 2 commits after the 3.5.1 release:
-github.setup        audacity audacity 0ffa73b9f44acc339e12a350edadd96590dc4b17
-version             3.5.1.2 ; revision 1
+github.setup        audacity audacity 2677399f41473fd1cd13f607018475741350c0e1
+version             3.5.1.409
 ## From the CMake file:
 # Set this value to 0 for alpha, 1 for beta, 2 for release builds
 set build_level     2
@@ -670,8 +671,26 @@ post-destroot {
 notes "
     In case Audacity complains about finding FFmpeg or Lame, please locate these libraries\
     under ${prefix}/lib in the Libraries section of the Preferences dialog (see\
-    https://manual.audacityteam.org/man/installing_and_updating_audacity_on_linux.html#locate)
+    https://manual.audacityteam.org/man/installing_and_updating_audacity_on_linux.html#locate).
+
+    In case you observe colours that seem off in Audacity's user interface after updating, find\
+    the text of this note in `port file ${subport}` and read the suggestions below on how you\
+    might be able to fix that.
 "
+
+## about weird colours appearing in the Audacity user interface:
+# Audacity uses bitmaps to define how buttons look (theming), and had a colour blend function (that
+# I bring back in this port). For this, it invokes an "image-compiler" utility during the build
+# process, which uses the lib-theme.so *shared* library Audacity will itself use too. The problem is
+# that this step is not well shielded from lib-theme.so libraries elsewhere on the system where the
+# loader can find them, in particular the one in the destination prefix. This can lead to weird
+# "glitches" and the aforementioned weird colours appearing in the user interface.
+# See https://forum.audacityteam.org/t/which-wxwidgets-version-and-gtk-engine-on-linux/149541/4?u=rjvb
+# If this happens, do `sudo port deactivate audacity` and rebuild the port. If you still have the
+# build directory you can do
+# > rm -rf `port work audacity`/build/libraries/lib-theme*
+# > touch `port work audacity`/build/CMakeCache.txt
+# followed by your usual build command (after deactivating the port, of course)..
 
 platform darwin {
     if {![variant_isset wxsystem]} {
