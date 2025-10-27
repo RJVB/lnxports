@@ -17,10 +17,11 @@ version             5.26.3
 categories          lang
 platforms           darwin freebsd linux
 license             {Artistic-1 GPL}
-maintainers         {mojca @mojca} openmaintainer
+maintainers         nomaintainer
 
 homepage            https://www.perl.org/
-master_sites        https://www.cpan.org/src/5.0/
+master_sites        https://www.cpan.org/src/5.0/ \
+                    https://cpan.metacpan.org/authors/id/S/SH/SHAY/
 
 # current Perl versions
 #
@@ -43,17 +44,22 @@ set perl5.versions_info {
     5.32 1  3 ad9013fa389e3e73940c90b7d4ffd542a0cafc70  57cc47c735c8300a8ce2fa0643507b44c4ae59012bfdad0121313db639e02309  12610988
     5.34 3  1 092d75196ffa236528075c73bac365e1df9edb41  0b15c830a9a295c9f9439b6cda389300f0b18092686eaef47fbc9c92f5930ee1  12866356
     5.36 3  1 96c867d175fb54b631dbe9237e3d7df2c96ec8cb  45a228daef66d02fdccc820e71f87e40d8e3df1fc4431f8d4580ec08033866bd  13141248
-    5.38 2  0 febb7a0e281e16f217259441da1fa1d1b8dfe33f  d91115e90b896520e83d4de6b52f8254ef2b70a8d545ffab33200ea9f1cf29e8  13679524
+    5.38 5  0 eafc0c90904d507421e8b8d9abd4aa6ff66319b1  293efd3c7d100c470624a56a18f85fd656207bf124460e76709d94b8bae14422  13715856
+    5.40 3  0 6e3d0b73f951bcfa09e9a8a7d9cc3f7c9f6a38fe  65f63b4763ab6cb9bb3d5731dd10369e1705be3c59be9847d453eb60b349ab43  13933584
 }
 
-## NB: +1 revbump for forcing -Dcc{,p}=${configure.cc}, which (hopefully) ensures Errno.pm gets generated properly
-## +1 revbump for platform-specific post-build config editing, and the tsa_mutex patch
 foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5.size} ${perl5.versions_info} {
     subport perl${perl5.v} {
         set perl5.major     ${perl5.v}
         version             ${perl5.major}.[string range ${perl5.subversion} 0 0]
         set minor           [lrange [split ${version} .] 1 1]
-        revision            ${perl5.revision} ; revision [expr ${revision} +2]
+        if {${perl5.major} < 5.38} {
+            ## NB: +1 revbump for forcing -Dcc{,p}=${configure.cc}, which (hopefully) ensures Errno.pm gets generated properly
+            ## +1 revbump for platform-specific post-build config editing, and the tsa_mutex patch
+            revision        ${perl5.revision} ; revision [expr ${revision} +2]
+        } else {
+            revision        ${perl5.revision}
+        }
         checksums           rmd160 ${perl5.rmd160} sha256 ${perl5.sha256} size ${perl5.size}
 
         description         Perl ${version} - Practical Extraction and Report Language
@@ -65,7 +71,8 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
 
         depends_build-append \
                             port:gdbm-dev
-        depends_lib-append  port:gdbm
+        depends_lib-append  port:gdbm \
+                            port:gettext
         platform darwin {
             depends_lib-append port:db48
         }
@@ -92,6 +99,9 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
         } else {
            use_bzip2        yes
         }
+        post-extract {
+            system "chmod -R u+w ${worksrcpath}"
+        }
 
         # TODO: revise patch naming scheme
         patchfiles          ${perl5.major}/clean-up-paths.patch \
@@ -112,9 +122,9 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             # possibly mixing versions?
             variant gdbm_compat description {expose the GNU database compatibility library} {}
             if {[variant_isset gdbm_compat]} {
-                require_active_variants gdbm compat
+                require_active_variants gdbm-dev compat
             } else {
-                require_active_variants gdbm "" compat
+                require_active_variants gdbm-dev "" compat
             }
         }
 
@@ -164,6 +174,11 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             patchfiles-append \
                             ${perl5.major}/adjust-dependency-paths-PR126706.patch
         }
+        if {${perl5.major} >= 5.24} {
+            # Fix the library path fix
+            patchfiles-append \
+                            ${perl5.major}/resolve-install_name-symlink.patch
+        }
         if {${perl5.major} == 5.26} {
             # Avoid rebuilding DB_File in the destroot phase
             patchfiles-append \
@@ -195,6 +210,12 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             patchfiles-append \
                             ${perl5.major}/patch-want-implicit-errors.diff
         }
+        if {${perl5.major} >= 5.36} {
+            # Do not override deployment target
+            # https://trac.macports.org/ticket/71152
+            patchfiles-append \
+                            ${perl5.major}/remove-deployment-target-override.diff
+        }
 
         post-patch {
             reinplace -W ${worksrcpath} "s|__PREFIX__|${prefix}|g" \
@@ -206,11 +227,20 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             # always tell $CPP to suppress #line markers
             reinplace -W ${worksrcpath} "s|my \$inhibit_linemarkers = '';|my \$inhibit_linemarkers = ' -P';|g" \
                     ext/Errno/Errno_pm.PL
-            if {[catch {system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-always-provide-tsa_mutex-fncs.diff"}]} {
-                ui_info "Patching failure ignored"
+            if {${perl5.major} < 5.34} {
+                ui_info "--->  Applying patch-always-provide-tsa_mutex-fncs.diff"
+                if {[catch {system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-always-provide-tsa_mutex-fncs.diff"}]} {
+                    ui_info "Patching failure ignored"
+                }
             }
-            if {[catch {system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-verboser-Configure.diff"}]} {
-                ui_info "Patching failure ignored"
+            if {${perl5.major} < 5.30} {
+                if {[catch {system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-verboser-Configure.diff"}]} {
+                    ui_info "Patching failure ignored"
+                }
+            } else {
+                if {[catch {system -W ${worksrcpath} "patch -Np0 -i ${filespath}/patch-verboser-Configure2.diff"}]} {
+                    ui_info "Patching failure ignored"
+                }
             }
         }
 
@@ -222,7 +252,9 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             set mandirsuffix ""
         }
 
-        configure.ccache    no
+        platform darwin {
+            configure.ccache no
+        }
         configure.distcc    no
         configure.env       LC_ALL=C
         configure.cmd       sh Configure
@@ -235,8 +267,15 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                             -Dvendorprefix='${prefix}' \
                             -Dusemultiplicity=y \
                             -Dusethreads \
-                            -Duseshrplib \
-                            -Dcc="${configure.cc}" \
+                            -Duseshrplib
+        if {${configure.ccache} || ${configureccache}} {
+            configure.post_args-append \
+                            -Dcc="ccache ${configure.cc}"
+        } else {
+            configure.post_args-append \
+                            -Dcc="${configure.cc}"
+        }
+        configure.post_args-append \
                             -Dcpp="${configure.cpp}" \
                             -Dld="${configure.cc}" \
                             -Dman1ext=${man1ext} \
@@ -255,8 +294,8 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                             -Dstartperl="#!${perl5.bin}" \
                            {-A append:cppflags=" $CPPFLAGS "} \
                            {-A append:ccflags=" $CFLAGS "} \
-                           {-A append:lddlflags=" $LDFLAGS -shared "} \
-                           {-A append:ldflags=" $LDFLAGS "}
+                           {-A append:lddlflags=" $LDFLAGS -shared -lintl"} \
+                           {-A append:ldflags=" $LDFLAGS -lintl"}
         # Note the use of "append:" in the -A options, which is to ensure that OS-specific flags
         # are not overwritten. That could lead to errors like "undefined reference to `main'" when
         # linking libperl.so ... because the linker tries to build an executable.
@@ -326,12 +365,19 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                 ${worksrcpath}/config.h
             reinplace -E {s|-Wl,-syslibroot,[^[:space:]]+\.sdk||g} \
                 ${worksrcpath}/lib/Config_heavy.pl
+            # remove the potential traces of building with ccache
+            reinplace "s|ccache ||g" \
+                ${worksrcpath}/config.h \
+                ${worksrcpath}/lib/Config_heavy.pl
 
             foreach f $mtime_files {
                 file mtime ${worksrcpath}/${f} $oldmtimes($f)
+                ui_debug "Resetting mtime for ${worksrcpath}/${f} back to $oldmtimes($f)"
             }
         }
 
+        # the destroot step rebuilds, so please use parallellism!
+        destroot.pre_args-append -j${build.jobs}
         destroot.env-append "CC=${configure.cc}" \
                             "LD=${configure.cc}"
         pre-destroot {
@@ -346,7 +392,22 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             configure.args-append   -Dusedtrace
         }
 
+        destroot.target     install_verbose
+
         post-destroot {
+            # pure curiosity; have the following files been changed since the post-build?
+            set mtime_files [list config.h lib/Config_heavy.pl lib/Config.pm]
+            foreach f $mtime_files {
+                ui_debug "File \"${f}\" mtime is now [file mtime ${worksrcpath}/${f}]"
+            }
+            # store the current mtimes of two of them:
+            set mtime_files [list \
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/CORE/config.h] \
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Config_heavy.pl] \
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Errno.pm]]
+            foreach f $mtime_files {
+                set oldmtimes($f) [file mtime ${f}]
+            }
             # avoid conflicting with other perl versions
             # perl5 creates unversioned symlinks
             delete ${destroot}${prefix}/bin/perl
@@ -379,6 +440,16 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                         return -code error "Please fix ${errnopm}"
                     }
                 }
+            }
+
+            # just in case these were rewritten (which does seem to happen):
+            reinplace -q "s|ccache ||g" \
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/CORE/config.h] \
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Config_heavy.pl]
+
+            foreach f $mtime_files {
+                file mtime ${f} $oldmtimes($f)
+                ui_debug "Resetting mtime for ${f} back to $oldmtimes($f)"
             }
         }
 

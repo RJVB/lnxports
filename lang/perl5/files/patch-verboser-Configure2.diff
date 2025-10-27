@@ -1,0 +1,13 @@
+diff --git Configure.orig Configure
+index 361824f..fc31ef6 100755
+--- Configure.orig
++++ Configure
+@@ -5792,7 +5792,7 @@ $cc -o ${mc_file} $optimize $ccflags $ldflags $* ${mc_file}.c $libs > /dev/null
+ compile_ok='
+ mc_file=$1;
+ shift;
+-$cc -o ${mc_file} $optimize $ccflags $ldflags $* ${mc_file}.c $libs > /dev/null 2>&1;'
++set -x ; $cc -o ${mc_file} $optimize $ccflags $ldflags $* ${mc_file}.c $libs; set +x;'
+ 
+ : stub, used only to satisfy other units
+ i_stdlib='define'
