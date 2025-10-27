@@ -5,7 +5,7 @@ PortGroup           perl5 1.0
 
 #perl5.branches      5.26
 perl5.branch_range  26
-perl5.setup         Net-LibIDN2 1.00
+perl5.setup         Net-LibIDN2 1.02
 license             {Artistic-1 GPL}
 maintainers         {devans @dbevans} openmaintainer
 description         Net::LibIDN2 - Perl bindings for GNU Libidn2
@@ -13,16 +13,26 @@ long_description    ${description}
 
 platforms           darwin
 
-checksums           rmd160  eff75562e560881b54576b578179900726562bf4 \
-                    sha256  f85f3aa96f87ccf5e1600379991fb0e10bea50ac1e1ccd95dfab24aa851b5a19
+checksums           rmd160  2d1c2c9255fc35978786ca353944d0d9302841ac \
+                    sha256  d1f30afc6acfa6541b00c09a7e4c74e7d8e4ba49e3277c0bbc41ae35c1390d07
+#                     size    24518
 
 if {${perl5.major} != ""} {
+    if {${perl5.major} > 5.26} {
+        depends_build-append \
+                    port:p${perl5.major}-extutils-cbuilder \
+                    port:p${perl5.major}-test-simple
+    }
+
     depends_lib-append \
                     port:libidn2
+
+    patchfiles      _findcc.patch
 
     perl5.use_module_build
 
     platform linux {
+        # if the configure step fails because of libidn2 not being found, try the system gcc...!
         configure.args-append \
                     --extra_compiler_flags=-I${prefix}/include \
                     --extra_linker_flags="-L${prefix}/lib -lidn2 -Wl,-rpath=${prefix}/lib"
