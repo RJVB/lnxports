@@ -7,6 +7,7 @@ PortGroup           clang_dependency 1.0
 # will likely generate LTO bitcode the selected compiler can't grok.
 # set LTO.disable_LTO yes
 set LTO.LTO.maybe_ForceLD no
+set LTO.fat_LTO_Objects yes
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 PortGroup           conflicts_configure 1.0
@@ -60,6 +61,9 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
         } else {
             revision        ${perl5.revision}
         }
+        # extra revbump for removing our LTO build flags from Config_heavy.pl
+        revision            [expr ${revision} +1]
+
         checksums           rmd160 ${perl5.rmd160} sha256 ${perl5.sha256} size ${perl5.size}
 
         description         Perl ${version} - Practical Extraction and Report Language
@@ -445,6 +449,9 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             # just in case these were rewritten (which does seem to happen):
             reinplace -q "s|ccache ||g" \
                 {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/CORE/config.h] \
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Config_heavy.pl]
+            # don't propagate our LTO build flags to modules:
+            reinplace "s|${lto_flags}||g" \
                 {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Config_heavy.pl]
 
             foreach f $mtime_files {
