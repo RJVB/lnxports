@@ -1,0 +1,49 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.1
+
+
+github.setup        spamhaus spamassassin-dqs f1baa2597443bc99b2777050383717de50eca2ce
+fetch.type          git
+name                spamassassin-dqs-plugin
+version             1.5.1.6
+distname            ${name}-git
+
+description         Spamhaus code for the Spamassassin plugin.
+long_description    A SpamAssassin plugin for use with Spamhaus Technology Data Query Service (DQS) product.\n\
+                    This port aids in the installation of the free version of the plugin\; manual configuration \
+                    will be required to make it functional!
+
+homepage            https://docs.spamhaustech.com/40-real-world-usage/SpamAssassin/000-intro.html
+license             Apache-2
+
+platforms           darwin linux
+installs_libs       no
+supported_archs     noarch
+
+depends_run         path:bin/spamassassin:p5-mail-spamassassin
+
+use_configure       no
+build               {}
+
+set dest            ${prefix}/etc/mail/spamassassin
+destroot {
+    xinstall -m 755 -d ${destroot}${dest}
+    xinstall -m 644 ${worksrcpath}/4.0.0+/sh.cf ${destroot}${dest}/sh.cf.${version}
+    xinstall -m 644 ${worksrcpath}/4.0.0+/sh_scores.cf ${destroot}${dest}/sh_scores.cf.${version}
+}
+
+post-activate {
+    if {[file exists ${dest}/sh.cf]} {
+        ui_warn "${subport} was updated, please compare [glob ${dest}/sh.cf*] and [glob ${dest}/sh_scores.cf*]!"
+    } else {
+        xinstall -m 644 ${dest}/sh.cf.${version} ${dest}/sh.cf
+        xinstall -m 644 ${dest}/sh_scores.cf.${version} ${dest}/sh_scores.cf
+        ui_warn "You need to replace 'your_DQS_key' with your actual (free!) SpamHaus DQS key in the file ${dest}/sh.cf"
+    }
+    ui_msg "Checking your spamassassin installation now:"
+    if {![catch {system "spamassassin --lint"}]} {
+        ui_msg "All OK!"
+    }
+}
