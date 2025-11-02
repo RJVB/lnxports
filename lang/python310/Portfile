@@ -47,11 +47,13 @@ if {${os.platform} eq "darwin" && ${os.major} <= 10} {
     patchfiles-append  patch-threadid-older-systems.diff
 }
 
-depends_build       path:bin/pkg-config:pkgconfig \
+depends_build       path:bin/pkg-config:pkgconfig
+platform linux {
+    depends_build-append \
                     port:ncurses-dev \
                     port:gettext-dev \
-                    port:ncurses-dev \
                     port:patchelf
+}
 
 depends_lib         port:bzip2 \
                     port:expat \
