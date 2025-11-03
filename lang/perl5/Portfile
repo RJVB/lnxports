@@ -297,9 +297,16 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                             -Dperlpath="${perl5.bin}" \
                             -Dstartperl="#!${perl5.bin}" \
                            {-A append:cppflags=" $CPPFLAGS "} \
-                           {-A append:ccflags=" $CFLAGS "} \
+                           {-A append:ccflags=" $CFLAGS "}
+        if {${os.platform} eq "darwin"} {
+            configure.post_args-append \
+                           {-A append:lddlflags=" $LDFLAGS"} \
+                           {-A append:ldflags=" $LDFLAGS"}
+        } else {
+            configure.post_args-append \
                            {-A append:lddlflags=" $LDFLAGS -shared -lintl"} \
                            {-A append:ldflags=" $LDFLAGS -lintl"}
+        }
         # Note the use of "append:" in the -A options, which is to ensure that OS-specific flags
         # are not overwritten. That could lead to errors like "undefined reference to `main'" when
         # linking libperl.so ... because the linker tries to build an executable.
@@ -404,11 +411,16 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
             foreach f $mtime_files {
                 ui_debug "File \"${f}\" mtime is now [file mtime ${worksrcpath}/${f}]"
             }
+            if {${os.platform} eq "darwin"} {
+                set archdir "darwin-*"
+            } else {
+                set archdir "${build_arch}-*"
+            }
             # store the current mtimes of two of them:
             set mtime_files [list \
-                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/CORE/config.h] \
-                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Config_heavy.pl] \
-                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Errno.pm]]
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${archdir}/CORE/config.h] \
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${archdir}/Config_heavy.pl] \
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${archdir}/Errno.pm]]
             foreach f $mtime_files {
                 set oldmtimes($f) [file mtime ${f}]
             }
@@ -431,7 +443,7 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
                 move ${man3File} ${program}-${perl5.major}${suffix}
             }
 
-            set errnopm [glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Errno.pm]
+            set errnopm [glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${archdir}/Errno.pm]
             if {[file exists ${errnopm}]} {
                 ui_debug "Verifying ${errnopm}"
                 if {[catch {exec fgrep EAGAIN ${errnopm} >/dev/null}]} {
@@ -448,11 +460,11 @@ foreach {perl5.v perl5.subversion perl5.revision perl5.rmd160 perl5.sha256 perl5
 
             # just in case these were rewritten (which does seem to happen):
             reinplace -q "s|ccache ||g" \
-                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/CORE/config.h] \
-                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Config_heavy.pl]
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${archdir}/CORE/config.h] \
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${archdir}/Config_heavy.pl]
             # don't propagate our LTO build flags to modules:
             reinplace "s|${lto_flags}||g" \
-                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${build_arch}-*/Config_heavy.pl]
+                {*}[glob -nocomplain ${destroot}${prefix}/lib/perl5/${perl5.major}/${archdir}/Config_heavy.pl]
 
             foreach f $mtime_files {
                 file mtime ${f} $oldmtimes($f)
