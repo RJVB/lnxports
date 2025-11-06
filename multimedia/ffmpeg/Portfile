@@ -59,7 +59,7 @@ long_description    FFmpeg is a complete solution to record, convert and \
                     generators for all common audio/video formats.
 homepage            https://ffmpeg.org/
 
-platforms           darwin
+platforms           linux
 master_sites        ${homepage}releases/
 distname            ${my_name}-${version}
 dist_subdir         ${my_name}
