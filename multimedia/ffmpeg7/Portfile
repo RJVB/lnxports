@@ -135,6 +135,8 @@ platform darwin {
     }
 }
 
+patchfiles-append  patch-ladspa-path-@PREFIX@.diff
+
 # enable auto configure of asm optimizations
 # requires Xcode 3.1 or better on Leopard
 #
@@ -260,10 +262,11 @@ post-extract {
 #     }
 # }
 
-platform darwin 8 {
-    post-patch {
+post-patch {
+    platform darwin 8 {
         reinplace "s:,-compatibility_version,$\(LIBMAJOR\)::" ${worksrcpath}/configure
     }
+    reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/libavfilter/af_ladspa.c
 }
 
 platform darwin {
