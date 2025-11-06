@@ -11,7 +11,7 @@ PortGroup save_configure_cmd 1.0
 name                python311
 
 # Remember to keep py311-tkinter and py311-gdbm's versions sync'd with this
-version             3.11.12
+version             3.11.12 ; revision 1
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          lang
@@ -38,8 +38,12 @@ patchfiles          patch-setup.py.diff \
                     patch-configure.diff \
                     patch-Lib-ctypes-macholib-dyld.py.diff \
                     sysconfig.py.patch \
+                    patch-use-system-libmpdec.diff
+platform darwin {
+    patchfiles-append \
                     configure-disable-libb2.patch \
                     configure-disable-libuuid.patch
+}
 
 if {${os.platform} eq "darwin" && ${os.major} <= 10} {
     # work around no copyfile and/or pthread_threadid_np on older systems
@@ -61,9 +65,12 @@ platform linux {
                     port:ncurses-dev \
                     port:gettext-dev \
                     port:patchelf
+    depends_lib-append \
+                    port:libb2 \
+                    path:lib/libuuid.so:util-linux
 }
 
-depends_lib         port:bzip2 \
+depends_lib-append  port:bzip2 \
                     port:expat \
                     port:gettext-runtime \
                     port:libedit \
@@ -114,6 +121,13 @@ build.env           SETUPTOOLS_USE_DISTUTILS=stdlib
 destroot.env        SETUPTOOLS_USE_DISTUTILS=stdlib
 
 use_parallel_build  yes
+
+post-extract {
+    if {[file exists ${prefix}/include/ncursesw/ncurses.h] && ![file exists ${worksrcpath}/Include/ncurses.h]} {
+        # without this the _curses* modules don't build...
+        ln -s ${prefix}/include/ncursesw/ncurses.h ${worksrcpath}/Include/
+    }
+}
 
 post-patch {
     reinplace "s|@@PREFIX@@|${prefix}|g" \
@@ -245,20 +259,17 @@ post-destroot {
             file delete ${destroot}${prefix}/${b}
         }
 
-#         reinplace "s|python${version}\$|python${version}.gz|g" \
-#            ${destroot}${prefix}/etc/select/python/python39 \
-#            ${destroot}${prefix}/etc/select/python3/python39
-
         if {[file exists ${prefix}/lib/libuuid.so.1] &&
-            [file exists ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu_failed.so]
+            [file exists ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-${branch}-${build_arch}-linux-gnu_failed.so]
         } {
             # the build didn't pick up our libuuid.so; fix that.
-            ln -s _uuid.cpython-39-${build_arch}-linux-gnu_failed.so \
-                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu.so
+            ln -s _uuid.cpython-${branch}-${build_arch}-linux-gnu_failed.so \
+                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-${branch}-${build_arch}-linux-gnu.so
             system "patchelf --add-needed libuuid.so.1 \
-                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu.so"
+                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-${branch}-${build_arch}-linux-gnu.so"
         }
     }
+    file delete -force ${destroot}${prefix}/include/python${branch}/ncurses.h
 }
 
 notes "
