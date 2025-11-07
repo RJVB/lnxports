@@ -24,7 +24,7 @@ platform darwin {
 name                ffmpeg6
 set my_name         ffmpeg
 
-version             6.1.2 ; revision 7
+version             6.1.3
 
 license             LGPL-2.1+
 categories          multimedia
@@ -32,7 +32,6 @@ maintainers         {mascguy @mascguy} openmaintainer
 
 description         FFmpeg is a complete solution to play, record, convert and \
                     stream audio and video.
-
 long_description    FFmpeg is a complete solution to record, convert and \
                     stream audio and video. It includes libavcodec, the \
                     leading audio/video codec library. \
@@ -68,13 +67,14 @@ distname            ${my_name}-${version}
 dist_subdir         ${my_name}
 use_xz              yes
 
-checksums           rmd160  0c31b4f9a5c0d8c8c6d5e6bba1ae4ce65deaeb45 \
-                    sha256  3b624649725ecdc565c903ca6643d41f33bd49239922e45c9b1442c63dca4e38
-#                     size    10466152
+checksums           rmd160  7ec65753e1e7a97a7a1e7f5bddc76831a8a4b364 \
+                    sha256  bc5f1e4a4d283a6492354684ee1124129c52293bcfc6a9169193539fbece3487
+#                     size    10473704
 
 depends_build-append \
                     port:gmake \
                     path:bin/pkg-config:pkgconfig \
+                    port:ladspa-sdk \
                     port:libvpx-dev
 
 depends_lib-append \
@@ -134,6 +134,8 @@ patchfiles-append   patch-svt-av1-v3.diff
 # doc/t2h: Support texinfo 7.1 and 7.2 pretest
 # https://trac.macports.org/ticket/72110
 patchfiles-append   patch-texinfo7x-pretest-support.diff
+
+patchfiles-append   patch-ladspa-path-@PREFIX@.diff
 
 # enable auto configure of asm optimizations
 # requires Xcode 3.1 or better on Leopard
@@ -199,10 +201,12 @@ configure.args-append \
                     --disable-outdev=xv \
                     --disable-opencl \
                     --disable-sdl2 \
+                    --disable-securetransport \
                     --disable-videotoolbox \
                     --disable-xlib \
                     --disable-stripping \
                     --enable-avfilter \
+                    --enable-ladspa \
                     --enable-fontconfig \
                     --enable-gnutls \
                     --enable-libass \
@@ -255,10 +259,11 @@ post-extract {
 #     }
 # }
 
-platform darwin 8 {
-    post-patch {
+post-patch {
+    platform darwin 8 {
         reinplace "s:,-compatibility_version,$\(LIBMAJOR\)::" ${worksrcpath}/configure
     }
+    reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/libavfilter/af_ladspa.c
 }
 
 platform darwin {
@@ -721,7 +726,10 @@ variant novulkan description {Disable support for Vulkan-accelerated decoding (f
 }
 
 variant static description {install the static libraries} {}
-default_variants-append +static
+# building with LTO can generate huge and/or unusable static libraries, so do not build them by default in that case
+if {![variant_isset LTO]} {
+    default_variants-append +static
+}
 
 livecheck.type      regex
 livecheck.url       ${master_sites}
