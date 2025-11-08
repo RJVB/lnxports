@@ -1,9 +1,17 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem 1.0
+PortGroup clang_dependency 1.0
 PortGroup openssl 1.0
 
-set LTO.configure_option --with-lto
+if {${os.platform} eq "darwin"} {
+    set LTO.configure_option --with-lto=full
+} else {
+    set LTO.configure_option --with-lto
+}
+platform darwin {
+    set LTO.allow_UseLLD no
+}
 PortGroup LTO 1.0
 PortGroup save_configure_cmd 1.0
 
@@ -186,7 +194,7 @@ platform darwin {
 }
 
 set framewpath  ${frameworks_dir}/Python.framework
-set framewdir   ${framewpath}/Versions/${branch}
+set framewdir   ${framewpath}/Versions/${branch}${abiflags}
 
 post-destroot {
 
@@ -361,21 +369,25 @@ variant readline description {Use readline instead of libedit} {
     depends_lib-append      port:readline
     depends_lib-delete      port:libedit
 }
-default_variants            +readline
+if {${os.platform} ne "darwin"} {
+    default_variants        +readline
+}
 
 variant optimizations description {enable expensive, stable optimisations (including PGO)} {
     configure.args-append   --enable-optimizations
 }
 
 if {${os.platform} eq "darwin"} {
-    # Build failures on 10.10 and older
+    # Build failures on 10.10 and older (with LTO, symbol visibility issues arise)
     if {${os.major} > 11} {
-        if {${os.major} > 14 || ((${os.major} == 14 || $subport eq $name)
-            && !($universal_possible && [variant_isset universal]))
+        if {${os.major} > 14 || ((${os.major} == 14 && $subport eq $name)
+            && !($universal_possible && [variant_isset universal]) && ![variant_isset freethreading])
         } then {
             default_variants-append +LTO
         }
         if {${os.major} > 14} {
+            # this actually just requires a recent enough (clang) compiler
+            # clang-9.0 allowed PGO for me on 10.9.5
             default_variants-append +optimizations
         }
     }
@@ -388,16 +400,17 @@ variant dtrace description {enable DTrace support} {
 }
 
 variant jit description {enable the experimental JIT compiler} {
+    depends_lib-append      port:clang-18
     configure.args-replace  --enable-experimental-jit=no \
                             --enable-experimental-jit=yes
 }
 
 configure.save_configure_cmd "install log"
 
-if {${subport} ne "${name}-freethreading"} {
+if {${subport} ne "${name}-freethreading" && ![variant_isset freethreading]} {
     post-activate {
-        if {![file exists "${framewdir}/lib/python${branch}/site-packages/__Previous_Pythons__.pth"]} {
-            set pthname "${framewdir}/lib/python${branch}/site-packages/__Previous_Pythons__.pth"
+        if {![file exists "${framewdir}/lib/python${branch}${abiflags}/site-packages/__Previous_Pythons__.pth"]} {
+            set pthname "${framewdir}/lib/python${branch}${abiflags}/site-packages/__Previous_Pythons__.pth"
             if {![catch {set fp [open ${pthname} "w"]}]} {
                 set minor [expr [lindex [split ${branch} .] 1] -1]
                 set curdir [pwd]
@@ -412,8 +425,8 @@ if {${subport} ne "${name}-freethreading"} {
                     incr minor -1
                 }
                 close ${fp}
+                notes-append "A file ${pthname} has been created that tells python${branch} where to find packages installed for older 3.x versions."
             }
-            notes-append "A file ${pthname} has been created that tells python${branch} where to find packages installed for older 3.x versions."
         }
     }
 }

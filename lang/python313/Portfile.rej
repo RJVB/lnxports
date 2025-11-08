@@ -1,0 +1,36 @@
+***************
+*** 45,60 ****
+      patchfiles-append  patch-no-copyfile-on-Tiger.diff \
+                         patch-threadid-older-systems.diff
+  }
+  platform linux {
+      patchfiles-append \
+                      patch-test_sqlite3.diff
+- }
+  
+- depends_build       path:bin/pkg-config:pkgconfig \
+                      port:ncurses-dev \
+                      port:gettext-dev \
+-                     port:ncurses-dev \
+                      port:patchelf
+  
+  depends_lib         port:bzip2 \
+                      port:expat \
+--- 49,65 ----
+      patchfiles-append  patch-no-copyfile-on-Tiger.diff \
+                         patch-threadid-older-systems.diff
+  }
++ 
++ depends_build       path:bin/pkg-config:pkgconfig
+  platform linux {
+      patchfiles-append \
+                      patch-test_sqlite3.diff
+  
++     depends_build-append \
+                      port:ncurses-dev \
+                      port:gettext-dev \
+                      port:patchelf
++ }
+  
+  depends_lib         port:bzip2 \
+                      port:expat \
