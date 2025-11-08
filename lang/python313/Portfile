@@ -19,6 +19,9 @@ name                python313
 
 # Remember to keep py313-tkinter and py313-gdbm's versions sync'd with this
 version             3.13.9
+platform linux {
+    revision        1
+}
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          lang
@@ -195,6 +198,7 @@ platform darwin {
 
 set framewpath  ${frameworks_dir}/Python.framework
 set framewdir   ${framewpath}/Versions/${branch}${abiflags}
+set fwdirnoabi  ${framewpath}/Versions/${branch}
 
 post-destroot {
 
@@ -290,6 +294,15 @@ post-destroot {
             system "patchelf --add-needed libuuid.so.1 \
                 ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-${branch}-${build_arch}-linux-gnu.so"
         }
+    }
+
+    if {[file exists ${destroot}${framewdir}] && ![file exists ${destroot}${fwdirnoabi}]} {
+        # ${fwdirnoabi} is what's expected by the python PG. We're going to be naughty:
+        # rename ${framewdir} to what it's expected to be by the rest of MacPorts, and
+        # then make certain its contents are exposed the way Python expects it.
+        ## (this is the only way that doesn't require reinstalling all py313-* ports)
+        file rename ${destroot}/${framewdir} ${destroot}${fwdirnoabi}
+        ln -s [file tail ${fwdirnoabi}] ${destroot}${framewdir}
     }
 }
 
