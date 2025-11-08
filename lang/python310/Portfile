@@ -5,6 +5,9 @@ PortGroup clang_dependency 1.0
 PortGroup openssl 1.0
 
 set LTO.configure_option --with-lto
+platform darwin {
+    set LTO.allow_UseLLD no
+}
 PortGroup LTO 1.0
 PortGroup save_configure_cmd 1.0
 
