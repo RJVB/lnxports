@@ -2,9 +2,9 @@
 
 PortSystem          1.0
 PortGroup           active_variants 1.1
-platform darwin {
-    PortGroup       gobject_introspection 1.0
-}
+PortGroup           gobject_introspection 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
 PortGroup           locale_select 1.0
 
 name                gnome-desktop
@@ -47,11 +47,12 @@ platform darwin {
     gobject_introspection yes
 }
 platform linux {
+    gobject_introspection no
     configure.env-append \
                     ACLOCAL_PATH=${prefix}/share/aclocal:/usr/share/aclocal \
                     "LIBS=-L${prefix}/lib -lintl"
     configure.args-append \
-                    --enable-introspection=no \
+                    --enable-compile-warnings=minimum \
                     --disable-nls \
                     --enable-udev
 }
@@ -70,10 +71,11 @@ configure.args-append \
                     --disable-maintainer-mode \
                     --disable-silent-rules \
                     --disable-desktop-docs \
-                    --enable-compile-warnings=minimum \
                     --with-gnome-distributor=MacPorts \
                     --x-includes=${prefix}/include \
-                    --x-libraries=${prefix}/lib
+                    --x-libraries=${prefix}/lib \
+                    --disable-gtk-doc \
+                    --disable-gtk-doc-html
 
 #
 #  portions of this port are strictly X11 specific
