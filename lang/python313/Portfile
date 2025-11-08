@@ -10,7 +10,7 @@ PortGroup save_configure_cmd 1.0
 name                python313
 
 # Remember to keep py313-tkinter and py313-gdbm's versions sync'd with this
-version             3.13.5
+version             3.13.9
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          lang
@@ -28,35 +28,39 @@ platforms           linux darwin
 
 distname            Python-${version}
 use_xz              yes
-checksums           md5 dbaa8833aa736eddbb18a6a6ae0c10fa \
-                    rmd160 f28fd984a09c4948413d4a92eedbf11314fc3adb \
-                    sha256 93e583f243454e6e9e4588ca2c2662206ad961659863277afcdb96801647d640
+checksums           md5 516aabdf3de01eeefb6de1aacf9df810 \
+                    rmd160 19d545e3fb13c7d8e83833f6870653c668c6c725 \
+                    sha256 ed5ef34cda36cfa2f3a340f07cac7e7814f91c7f3c411f6d3562323a866c5c66
 
 patchfiles          patch-configure.diff \
                     Makefile.pre.in.patch \
                     patch-Lib-ctypes-macholib-dyld.py.diff \
-                    configure-disable-libb2.patch \
-                    configure-disable-libuuid.patch \
                     configure-disable-tkinter.patch \
                     configure-disable-system-libffi.patch
 
-if {${os.platform} eq "darwin" && ${os.major} <= 10} {
-    # work around no copyfile and/or pthread_threadid_np on older systems
-    patchfiles-append  patch-no-copyfile-on-Tiger.diff \
-                       patch-threadid-older-systems.diff
+if {${os.platform} eq "darwin"} {
+    patchfiles-append \
+                    configure-disable-libb2.patch \
+                    configure-disable-libuuid.patch
 }
 platform linux {
+    # disable tests that have been known to fail (on ZFS?)
     patchfiles-append \
                     patch-test_sqlite3.diff
-}
-
-depends_build       path:bin/pkg-config:pkgconfig \
+    depends_build-append \
                     port:ncurses-dev \
                     port:gettext-dev \
                     port:ncurses-dev \
                     port:patchelf
+    depends_lib-append \
+                    port:libb2 \
+                    path:lib/libuuid.so:util-linux
+}
 
-depends_lib         port:bzip2 \
+depends_build-append \
+                    path:bin/pkg-config:pkgconfig
+
+depends_lib-append  port:bzip2 \
                     port:expat \
                     port:gettext-runtime \
                     port:libedit \
@@ -166,11 +170,8 @@ platform darwin {
         configure.args-append   --without-mimalloc
     }
     if {[vercmp $macosx_deployment_target <= 10.5]} {
+        patchfiles-append  patch-threadid-older-systems.diff
         configure.cppflags-append -D_DARWIN_USE_64_BIT_INODE
-    }
-    if {${os.major} < 9} {
-        # Fixes the return type of `ttyname_r`
-        configure.cppflags-append -D__DARWIN_UNIX03=1
     }
 
     post-configure {
@@ -262,7 +263,7 @@ post-destroot {
     }
     platform linux {
         xinstall -m 755 -d ${destroot}${framewdir}/lib
-        ln -s ../../../../../../lib/python${branch} ${destroot}${framewdir}/lib/python${branch}
+        ln -s ../../../../../../lib/python${branch}${abiflags} ${destroot}${framewdir}/lib/python${branch}
         xinstall -m 755 -d ${destroot}${framewdir}/bin
         foreach b [glob -nocomplain ${destroot}${prefix}/bin/*] {
             ln -s ${prefix}/bin/[file tail ${b}] ${destroot}${framewdir}/bin
@@ -272,18 +273,14 @@ post-destroot {
             file delete ${destroot}${prefix}/${b}
         }
 
-#         reinplace "s|python${version}\$|python${version}.gz|g" \
-#            ${destroot}${prefix}/etc/select/python/python39 \
-#            ${destroot}${prefix}/etc/select/python3/python39
-
         if {[file exists ${prefix}/lib/libuuid.so.1] &&
-            [file exists ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu_failed.so]
+            [file exists ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-${branch}-${build_arch}-linux-gnu_failed.so]
         } {
             # the build didn't pick up our libuuid.so; fix that.
-            ln -s _uuid.cpython-39-${build_arch}-linux-gnu_failed.so \
-                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu.so
+            ln -s _uuid.cpython-${branch}-${build_arch}-linux-gnu_failed.so \
+                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-${branch}-${build_arch}-linux-gnu.so
             system "patchelf --add-needed libuuid.so.1 \
-                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-39-${build_arch}-linux-gnu.so"
+                ${destroot}${prefix}/lib/python${branch}/lib-dynload/_uuid.cpython-${branch}-${build_arch}-linux-gnu.so"
         }
     }
 }
@@ -373,8 +370,10 @@ variant optimizations description {enable expensive, stable optimisations (inclu
 if {${os.platform} eq "darwin"} {
     # Build failures on 10.10 and older
     if {${os.major} > 11} {
-        if {${os.major} > 14 || !($universal_possible && [variant_isset universal])} {
-            default_variants +LTO
+        if {${os.major} > 14 || ((${os.major} == 14 || $subport eq $name)
+            && !($universal_possible && [variant_isset universal]))
+        } then {
+            default_variants-append +LTO
         }
         if {${os.major} > 14} {
             default_variants-append +optimizations
