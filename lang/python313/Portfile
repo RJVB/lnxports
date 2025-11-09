@@ -18,9 +18,9 @@ PortGroup save_configure_cmd 1.0
 name                python313
 
 # Remember to keep py313-tkinter and py313-gdbm's versions sync'd with this
-version             3.13.9
+version             3.13.9 ; revision 1
 platform linux {
-    revision        1
+    revision        [expr ${revision} +1]
 }
 
 set branch          [join [lrange [split ${version} .] 0 1] .]
@@ -297,13 +297,28 @@ post-destroot {
     }
 
     if {[file exists ${destroot}${framewdir}] && ![file exists ${destroot}${fwdirnoabi}]} {
-        # ${fwdirnoabi} is what's expected by the python PG. We're going to be naughty:
-        # rename ${framewdir} to what it's expected to be by the rest of MacPorts, and
-        # then make certain its contents are exposed the way Python expects it.
-        ## (this is the only way that doesn't require reinstalling all py313-* ports)
-        file rename ${destroot}/${framewdir} ${destroot}${fwdirnoabi}
-        ln -s [file tail ${fwdirnoabi}] ${destroot}${framewdir}
+        # ${fwdirnoabi} is what's expected by the python PG, but a directory with abiflags
+        # exists (${framewdir}). This will only happen on Mac/Darwin, where we have our
+        # custom python PG that can take this into account so our py*-??? dependencies
+        # can install correctly.
+        # Therefore, we can just expose the actual python.prefix (framewdir) as $fwdirnoabi
+        # via a simple symlink.
+        ln -s [file tail ${framewdir}] ${destroot}${fwdirnoabi}
     }
+}
+if {[variant_isset freethreading]} {
+    #pre-activate {
+        if {[file type ${fwdirnoabi}] eq "directory"} {
+            ui_error    "A directory called ${fwdirnoabi} already exists and will be replaced \
+                        with a symlink. It can probably be renamed to ${framewdir} \
+                        without need for further actions\n\
+                        > sudo mv ${fwdirnoabi} ${framewdir}\n\
+                        but double-check if that is indeed where the already installed py313-* \
+                        ports install their files."
+            ui_warn     "Deactivate port:${subport} first if it's still active!!"
+            return -code error "manual intervention required"
+        }
+    #}
 }
 
 if {$subport ne "${name}-freethreading"} {
