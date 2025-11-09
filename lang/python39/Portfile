@@ -2,6 +2,7 @@
 
 PortSystem 1.0
 PortGroup openssl 1.0
+PortGroup active_variants 1.1
 
 set LTO.configure_option --with-lto
 PortGroup LTO 1.0
@@ -62,7 +63,10 @@ depends_lib         port:bzip2 \
                     port:ncurses \
                     port:sqlite3 \
                     port:xz \
-                    port:zlib
+                    port:zlib \
+                    port:gdbm
+require_active_variants gdbm compat
+require_active_variants gdbm-dev compat
 
 set pythonVerNoDot  [string map {. {}} $branch]
 depends_run         port:python_select-${pythonVerNoDot} \
