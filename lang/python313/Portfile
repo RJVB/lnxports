@@ -307,7 +307,7 @@ post-destroot {
     }
 }
 if {[variant_isset freethreading]} {
-    #pre-activate {
+    pre-activate {
         if {[file type ${fwdirnoabi}] eq "directory"} {
             ui_error    "A directory called ${fwdirnoabi} already exists and will be replaced \
                         with a symlink. It can probably be renamed to ${framewdir} \
@@ -318,7 +318,7 @@ if {[variant_isset freethreading]} {
             ui_warn     "Deactivate port:${subport} first if it's still active!!"
             return -code error "manual intervention required"
         }
-    #}
+    }
 }
 
 if {$subport ne "${name}-freethreading"} {
