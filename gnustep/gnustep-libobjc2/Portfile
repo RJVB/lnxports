@@ -1,0 +1,91 @@
+# -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
+PortSystem 1.0
+
+PortGroup       github 1.1
+PortGroup       libstdcxxabi 1.0
+
+pre-configure {
+    # this pre-configure needs to be defined before we load the cmake PG!
+    cmake.install_rpath-append \
+                [exec ${prefix}/bin/gnustep-config --variable=GNUSTEP_SYSTEM_LIBRARIES]
+}
+
+PortGroup       cmake 1.1
+# prevent build failures (clang 12 crashes when building the tests)
+set LTO.disable_LTO yes
+PortGroup       LTO 1.0
+PortGroup       save_configure_cmd 1.0
+PortGroup       devport 1.0
+
+github.setup    gnustep libobjc2 7a5114deff221c58b19ce2b18245ab13aac33295
+fetch.type      git
+name            gnustep-libobjc2
+# after `git tag -a 2.3 -m "release 2.3" 0030d01bc7456503f176c0df371fe8e246623564`
+version         2.3.5
+distname        ${name}-git
+
+categories      gnustep devel cross
+platforms       linux
+license         MIT
+maintainers     gmail.com:rjvbertin openmaintainer
+installs_libs   yes
+
+homepage        http://www.gnustep.org/
+description     GNUstep Objective-C runtime library (intended for use with Clang!)
+long_description \
+                {*}${description}. The GNUstep Objective-C runtime was designed as \
+                a drop-in replacement for the GCC runtime.
+
+master_sites    gnustep:core
+
+compiler.blacklist  gcc* macports-gcc*
+
+####################
+    create_devport port:${name}
+
+    if {${subport} eq "${name}-dev"} {
+        conflicts \
+                libdispatch-dev libdispatch-devel-dev
+        # we don't care about anything that follows,
+        # return here to avoid having to add more subport checks.
+        return
+    }
+####################
+
+depends_build-append \
+                port:gnustep-make
+
+default_variants-append +use_lld
+
+if {${configure.cxx_stdlib} eq "macports-libstdc++"} {
+    ui_warn     "Using macports-libstdc++ has not been tested!"
+    configure.ldflags-append \
+                -stdlib=${configure.cxx_stdlib} \
+                ${prefix}/lib/libgcc/libstdc++.so
+}
+
+configure.args-append \
+                -DGNUSTEP_INSTALL_TYPE=SYSTEM \
+                -DTESTS=ON
+
+post-destroot {
+    if {[info procs create_devport_content_archive] ne ""} {
+        devport_lib_dir [exec ${prefix}/bin/gnustep-config --variable=GNUSTEP_SYSTEM_LIBRARIES]
+        register_devport_standard_content
+        create_devport_content_archive
+    }
+}
+if {[catch {set baselibs [exec ${prefix}/bin/gnustep-config --base-libs]}]} {
+    set baselibs "none"
+}
+if {![string match *libobjc.so* ${baselibs}]} {
+    notes-append "You can now install port:gnustep-make with the +libobjc2 variant, if you want."
+}
+
+test.run        yes
+pre-test {
+    if {![file exists [exec ${prefix}/bin/gnustep-config --variable=GNUSTEP_SYSTEM_LIBRARIES]/libobjc.so.4.6]} {
+        ui_error "Testing port:${subport} only works when it is installed and active!"
+        return -code error "Please install/activate the port before running its tests"
+    }
+}
