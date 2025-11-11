@@ -1,0 +1,145 @@
+# -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
+PortSystem 1.0
+
+PortGroup       github 1.1
+set LTO.disable_LTO yes
+PortGroup       LTO 1.0
+PortGroup       save_configure_cmd 1.0
+
+github.setup    gnustep tools-make 677264e7ee96f787bd1a1d9823ab43c6c4922750
+fetch.type      git
+name            gnustep-make
+version         2.9.3.24
+distname        ${name}-git
+
+categories      gnustep devel cross
+platforms       darwin linux
+license         GPL-3+
+maintainers     nomaintainer
+supported_archs noarch
+installs_libs   no
+
+homepage        http://www.gnustep.org/
+description     GNUstep makefile package
+long_description \
+    The GNUstep makefile package is a simple, powerful and extensible way to \
+    write makefiles for a GNUstep-based project.  It allows the user to \
+    write a project without having to deal with the complex issues \
+    associated with configuration, building, installation, and packaging. \
+    It also allows the user to easily create cross-compiled binaries.
+
+master_sites        gnustep:core
+
+
+if {[variant_exists libobjc2] && [variant_isset libobjc2]} {
+    compiler.blacklist *gcc*
+} else {
+    compiler.blacklist gcc-4.0
+}
+
+configure.args      CC=${configure.cc} \
+                    --enable-multi-platform \
+
+variant gnustep_layout conflicts fhs_layout description {Use standard GNUstep layout} {}
+
+if {${os.platform} eq "darwin"} {
+    configure.args-append \
+                    --disable-flattened \
+                    --with-library-combo=gnu-gnu-gnu \
+                    --with-objc-lib-flag=-lobjc-gnu
+
+    # for the curious only, not really supported by MacPorts
+    variant fhs_layout conflicts gnustep_layout description {Use FHS layout (unsupported)} {}
+
+    if {![variant_isset fhs_layout]} {
+        default_variants +gnustep_layout
+    }
+
+    destroot.violate_mtree yes
+} else {
+    # LinuxPorts assumes that ld.so does NOT know about it by default!
+    configure.args-append \
+                    --disable-install-ld-so-conf
+
+    variant fhs_layout conflicts gnustep_layout description {Use FHS layout (standard on Linux)} {}
+    if {![variant_isset gnustep_layout]} {
+        default_variants +fhs_layout
+    }
+
+    if {[variant_isset fhs_layout]} {
+        configure.args-append \
+                    --libdir=${prefix}/lib/GNUstep
+        post-destroot {
+            reinplace \
+                    "s|GNUSTEP_SYSTEM_LIBRARIES=${prefix}/lib\$|GNUSTEP_SYSTEM_LIBRARIES=${prefix}/lib/GNUstep|g" \
+                    ${destroot}${prefix}/etc/GNUstep/GNUstep.conf
+        }
+    }
+
+    if {[glob -nocomplain ${prefix}/lib/GNUstep/libobjc.so*] ne ""} {
+        variant libobjc2 description description {enable modern ObjC features} {}
+        default_variants-append +libobjc2
+        if {[variant_isset libobjc2]} {
+            depends_build-append \
+                port:gnustep-libobjc2-dev
+            depends_lib-append \
+                port:gnustep-libobjc2
+            configure.pkg_config_path-append \
+                ${prefix}/lib/GNUstep/pkgconfig
+            configure.args-append \
+                --enable-native-objc-exceptions \
+                --enable-objc-arc \
+                --with-runtime-abi=gnustep-2.2 \
+                --with-objc-lib-flag=${prefix}/lib/GNUstep/libobjc.so \
+                --with-library-combo=ng-gnu-gnu
+            post-destroot {
+                reinplace -W ${destroot}${prefix} "s|-lobjc|${prefix}/lib/GNUstep/libobjc.so|g" \
+                    share/GNUstep/Makefiles/target.make \
+                    share/GNUstep/Makefiles/config.make
+            }
+        }
+    }
+}
+
+if {[variant_isset fhs_layout]} {
+    configure.args-append   --with-layout=fhs
+    platform darwin {
+        configure.args-appendd \
+                            --with-config-file=${prefix}/etc/GNUstep.conf
+    }
+    post-patch {
+        reinplace "s|=/man|=/share/man|g" \
+            ${worksrcpath}/FilesystemLayouts/fhs
+        reinplace "s|=/info|=/share/info|g" \
+            ${worksrcpath}/FilesystemLayouts/fhs
+    }
+}
+
+if {[variant_isset gnustep_layout]} {
+    configure.pre_args      --prefix=${prefix}/GNUstep
+    configure.args-append   \
+        --with-config-file=${prefix}/GNUstep/System/Library/GNUstep.conf
+
+    destroot.keepdirs       ${destroot}${prefix}/GNUstep/Local
+
+        notes "\
+##########################################################
+To have a fully working GNUstep make system, please add
+'. ${prefix}/GNUstep/share/GNUstep/Makefiles/GNUstep.sh'
+to your shell login (in ~/.profile)
+
+You may also want to set up your MANPATH :
+export MANPATH=\$GNUSTEP_LOCAL_ROOT/Library/Documentation/man:\$GNUSTEP_SYSTEM_ROOT/Library/Documentation/man:${prefix}/share/man:/usr/share/man
+##########################################################
+"
+}
+
+platform darwin {
+    post-patch {
+        reinplace "s|/home|/Users|g" \
+            ${worksrcpath}/FilesystemLayouts/gnustep \
+            ${worksrcpath}/FilesystemLayouts/fhs
+    }
+}
+
+destroot.args       messages=yes
