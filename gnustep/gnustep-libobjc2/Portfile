@@ -21,7 +21,7 @@ github.setup    gnustep libobjc2 7a5114deff221c58b19ce2b18245ab13aac33295
 fetch.type      git
 name            gnustep-libobjc2
 # after `git tag -a 2.3 -m "release 2.3" 0030d01bc7456503f176c0df371fe8e246623564`
-version         2.3.5
+version         2.3.5 ; revision 1
 distname        ${name}-git
 
 categories      gnustep devel cross
@@ -54,6 +54,11 @@ compiler.blacklist  gcc* macports-gcc*
 
 depends_build-append \
                 port:gnustep-make
+
+patch.pre_args  -Np1
+# add some obvious nullptr checks
+patchfiles-append \
+                patch-temp-fixes.diff
 
 default_variants-append +use_lld
 

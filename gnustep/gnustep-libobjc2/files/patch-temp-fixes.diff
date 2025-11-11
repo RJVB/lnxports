@@ -1,0 +1,37 @@
+diff --git a/selector_table.cc b/selector_table.cc
+index 3723ad5..d01f25d 100644
+--- a/selector_table.cc
++++ b/selector_table.cc
+@@ -120,7 +120,7 @@ inline TypeList *selLookup(uint32_t idx)
+ 
+ BOOL isSelRegistered(SEL sel)
+ {
+-	if (sel->index < selector_list->size())
++	if (sel && sel->index < selector_list->size())
+ 	{
+ 		return YES;
+ 	}
+@@ -130,8 +130,12 @@ BOOL isSelRegistered(SEL sel)
+ /// Gets the name of a registered selector.
+ const char *sel_getNameRegistered(SEL sel)
+ {
+-	const char *name = sel->name;
+-	return selLookup_locked(sel->index)->name();
++	if (sel) {
++// 		const char *name = sel->name;
++		return selLookup_locked(sel->index)->name();
++	} else {
++		return "";
++	}
+ }
+ 
+ /**
+@@ -140,7 +144,7 @@ const char *sel_getNameRegistered(SEL sel)
+  */
+ const char *sel_getNameNonUnique(SEL sel)
+ {
+-	const char *name = sel->name;
++	const char *name = sel? sel->name : nullptr;
+ 	if (isSelRegistered(sel))
+ 	{
+ 		auto* list = selLookup_locked(sel->index);
