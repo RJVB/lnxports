@@ -13,6 +13,7 @@ pre-configure {
 PortGroup       cmake 1.1
 # prevent build failures (clang 12 crashes when building the tests)
 set LTO.disable_LTO yes
+set LTO.allow_ThinLTO no
 PortGroup       LTO 1.0
 PortGroup       save_configure_cmd 1.0
 PortGroup       devport 1.0
@@ -21,7 +22,7 @@ github.setup    gnustep libobjc2 7a5114deff221c58b19ce2b18245ab13aac33295
 fetch.type      git
 name            gnustep-libobjc2
 # after `git tag -a 2.3 -m "release 2.3" 0030d01bc7456503f176c0df371fe8e246623564`
-version         2.3.5 ; revision 1
+version         2.3.5 ; revision 2
 distname        ${name}-git
 
 categories      gnustep devel cross
@@ -44,8 +45,10 @@ compiler.blacklist  gcc* macports-gcc*
     create_devport port:${name}
 
     if {${subport} eq "${name}-dev"} {
+        depends_run-append \
+                port:libdispatch-devel-dev
         conflicts \
-                libdispatch-dev libdispatch-devel-dev
+                libdispatch-dev
         # we don't care about anything that follows,
         # return here to avoid having to add more subport checks.
         return
@@ -54,6 +57,9 @@ compiler.blacklist  gcc* macports-gcc*
 
 depends_build-append \
                 port:gnustep-make
+
+depends_lib-append \
+                port:libdispatch-devel
 
 patch.pre_args  -Np1
 # add some obvious nullptr checks
@@ -70,6 +76,7 @@ if {${configure.cxx_stdlib} eq "macports-libstdc++"} {
 }
 
 configure.args-append \
+                -DEMBEDDED_BLOCKS_RUNTIME=OFF \
                 -DGNUSTEP_INSTALL_TYPE=SYSTEM \
                 -DTESTS=ON
 
