@@ -90,7 +90,7 @@ post-destroot {
 if {[catch {set baselibs [exec ${prefix}/bin/gnustep-config --base-libs]}]} {
     set baselibs "none"
 }
-if {![string match *libobjc.so* ${baselibs}]} {
+if {![string match "*-lobjc -Wl,-rpath*" ${baselibs}]} {
     notes-append "You can now install port:gnustep-make with the +libobjc2 variant, if you want."
 }
 

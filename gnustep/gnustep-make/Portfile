@@ -9,7 +9,7 @@ PortGroup       save_configure_cmd 1.0
 github.setup    gnustep tools-make 677264e7ee96f787bd1a1d9823ab43c6c4922750
 fetch.type      git
 name            gnustep-make
-version         2.9.3.24
+version         2.9.3.24 ; revision 1
 distname        ${name}-git
 
 categories      gnustep devel cross
@@ -90,12 +90,16 @@ if {${os.platform} eq "darwin"} {
                 --enable-native-objc-exceptions \
                 --enable-objc-arc \
                 --with-runtime-abi=gnustep-2.2 \
-                --with-objc-lib-flag=${prefix}/lib/GNUstep/libobjc.so \
                 --with-library-combo=ng-gnu-gnu
             post-destroot {
-                reinplace -W ${destroot}${prefix} "s|-lobjc|${prefix}/lib/GNUstep/libobjc.so|g" \
+                reinplace -W ${destroot}${prefix} "s|-lobjc|-L${prefix}/lib/GNUstep -lobjc -Wl,-rpath,${prefix}/lib/GNUstep|g" \
                     share/GNUstep/Makefiles/target.make \
                     share/GNUstep/Makefiles/config.make
+## normally we don't want to have ccache show up in config files, but
+## if we apply that rule here no gnustep port can be built with ccache support...
+#                 reinplace -W ${destroot}${prefix} "s|ccache ||g" \
+#                     bin/gnustep-config \
+#                     share/GNUstep/Makefiles/config.make
             }
         }
     }
