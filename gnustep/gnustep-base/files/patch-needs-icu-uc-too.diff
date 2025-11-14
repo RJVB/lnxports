@@ -1,0 +1,34 @@
+diff --git configure configure
+index 195748700..f6274f264 100755
+--- configure
++++ configure
+@@ -14933,7 +14933,7 @@ if test -n "$ICU_CFLAGS"; then
+   ac_status=$?
+   printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+   test $ac_status = 0; }; then
+-  pkg_cv_ICU_CFLAGS=`$PKG_CONFIG --cflags "icu-i18n > 49.0" icu-uc 2>/dev/null`
++  pkg_cv_ICU_CFLAGS=`$PKG_CONFIG --cflags "icu-i18n > 49.0" 2>/dev/null`
+ 		      test "x$?" != "x0" && pkg_failed=yes
+ else
+   pkg_failed=yes
+@@ -14950,7 +14950,7 @@ if test -n "$ICU_LIBS"; then
+   ac_status=$?
+   printf "%s\n" "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+   test $ac_status = 0; }; then
+-  pkg_cv_ICU_LIBS=`$PKG_CONFIG --libs "icu-i18n > 49.0" icu-uc 2>/dev/null`
++  pkg_cv_ICU_LIBS=`$PKG_CONFIG --libs "icu-i18n > 49.0" 2>/dev/null`
+ 		      test "x$?" != "x0" && pkg_failed=yes
+ else
+   pkg_failed=yes
+@@ -14971,9 +14971,9 @@ else
+         _pkg_short_errors_supported=no
+ fi
+         if test $_pkg_short_errors_supported = yes; then
+-	        ICU_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "icu-i18n > 49.0" icu-uc 2>&1`
++	        ICU_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "icu-i18n > 49.0" 2>&1`
+         else
+-	        ICU_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "icu-i18n > 49.0" icu-uc 2>&1`
++	        ICU_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "icu-i18n > 49.0" 2>&1`
+         fi
+ 	# Put the nasty error message in config.log where it belongs
+ 	echo "$ICU_PKG_ERRORS" >&5

@@ -13,7 +13,7 @@ github.setup        gnustep libs-base 4028b584043fd2d88fc3c5432296020cc3e902a4
 fetch.type          git
 name                gnustep-base
 distname            ${name}-git
-version             1.31.1.226
+version             1.31.1.226 ; revision 1
 platforms           linux darwin
 # libs are LGPL, tools are GPL
 license             {LGPL-2.1 GPL-2.0}
@@ -67,6 +67,13 @@ if {${os.platform} ne "darwin"} {
                         port:libiconv \
                         port:curl
 
+    patchfiles-append   patch-needs-icu-uc-too.diff
+
+    pre-configure {
+        if {[string match *Ofast* ${configure.cflags}]} {
+            ui_warn "Using -Ofast optimisation will cause errors in the NSNumber classes!"
+        }
+    }
     configure.args-append \
                         --with-installation-domain=SYSTEM \
                         --enable-libffi \
