@@ -49,7 +49,7 @@ use_xz                  yes
 
 name                    llvm-${llvm_version}
 
-subport                 clang-${llvm_version} {revision [expr ${revision} +1]}
+subport                 clang-${llvm_version} {revision [expr ${revision} +2]}
 subport                 lldb-${llvm_version} {
     PortGroup           code_sign 1.0
 }
@@ -341,9 +341,11 @@ if {${subport} eq "clang-${llvm_version}"} {
         configure.args-append   \
             -DLIBCXX_CXX_ABI=libstdc++ \
             -DLIBCXX_CXX_ABI_INCLUDE_PATHS="${abi_header_dirs}"
-        # don't build flang on Linux to save some time. Maybe make this a separate port
+        # don't build flang on Linux to save some time. Should add the dedicated subport as on Darwin...
         post-extract {
             file delete -force ${worksrcpath}/flang
+            file delete -force ${worksrcpath}/lld
+            file delete -force ${worksrcpath}/lldb
         }
         configure.args-append   \
             -DLLVM_EXTRA_PROJECTS="" \
@@ -374,10 +376,10 @@ if {${subport} eq "clang-${llvm_version}"} {
     }
     if {${os.platform} eq "darwin"} {
         configure.args-append   \
-            -DLLVM_ENABLE_PROJECTS="clang\;clang-tools-extra\;compiler-rt\;libcxx\;libcxxabi\;flang\;mlir\;lld"
+            -DLLVM_ENABLE_PROJECTS="clang\;clang-tools-extra\;compiler-rt\;libcxx\;libcxxabi"
     } else {
         configure.args-append   \
-            -DLLVM_ENABLE_PROJECTS="clang\;clang-tools-extra\;compiler-rt\;libcxx\;mlir\;lld"
+            -DLLVM_ENABLE_PROJECTS="clang\;clang-tools-extra\;compiler-rt\;libcxx"
     }
 
     platform darwin {
@@ -505,8 +507,6 @@ if {${subport} ne "lldb-${llvm_version}"} {
 
 if {${subport} eq "clang-${llvm_version}"} {
     destroot.pre_args tools/clang/install \
-            tools/lld/install \
-            tools/mlir/install \
             projects/compiler-rt/install
     platform darwin {
         destroot.pre_args-append \
@@ -573,6 +573,8 @@ post-destroot {
             # http://trac.macports.org/ticket/33207
             ln -s ${prefix}/libexec/ld64/ld ${destroot}${sub_prefix}/bin/ld
         }
+        # from MacStrop's port:lld-17 :
+        ln -s ${prefix}/bin/ld.lld ${destroot}${sub_prefix}/bin/
     }
     
     if {${subport} eq "lldb-${llvm_version}"} {
@@ -601,10 +603,6 @@ if {${subport} eq "clang-${llvm_version}"} {
         default_variants-append +full_cxx
     }
 
-    variant lld description "configure to use lld-${suffix} as the default linker" {
-        configure.args-append \
-            -DCLANG_DEFAULT_LINKER=lld
-    }
 
     variant analyzer description {Install clang static analyser} {
         # these have to be switched on or off together
@@ -622,6 +620,17 @@ if {${subport} eq "clang-${llvm_version}"} {
                 ${patch.dir}/clang/tools/scan-build/bin/scan-build
        }
     }
+
+    variant lld description "configure to use lld as the default linker" {}
+    if {[variant_isset lld]} {
+        configure.args-append \
+            -DCLANG_DEFAULT_LINKER=lld
+    } else {
+        configure.args-append \
+            -UCLANG_DEFAULT_LINKER
+    }
+    # MacStrop provides a current lld via port:llb-17
+    depends_run-append path:bin/ld.lld:lld-17
 
     # Avoid requiring a bootstrap version of perl5 on 10.6.
     if {{os.platform} ne "darwin" || ${os.major} >= 11} {
