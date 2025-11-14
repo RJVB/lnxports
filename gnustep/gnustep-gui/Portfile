@@ -1,0 +1,103 @@
+# -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       gnustep 1.0
+
+
+PortGroup       github 1.1
+set LTO.disable_LTO yes
+set LTO.allow_ThinLTO no
+PortGroup       LTO 1.0
+PortGroup       save_configure_cmd 1.0
+
+github.setup    gnustep libs-gui 5809b86dee42610871d4f7e66677f40d61f6b598
+fetch.type      git
+name            gnustep-gui
+distname        ${name}-git
+version         0.32.0.261
+platforms       linux darwin
+# libs are LGPL, tools are GPL
+license         {LGPL-2.1 GPL-3+}
+maintainers     gmail.com:rjvbertin maintainer
+
+description     A library of graphical user interface classes written completely in the Objective-C language
+long_description \
+    The GNUstep gui library is a library of graphical user interface classes \
+    written completely in the Objective-C language\; the classes are based \
+    upon Apple's Cocoa framework (which came from the OpenStep specification). \
+    These classes include graphical objects such as buttons, text fields, popup \
+    lists, browser lists, and windows\; there are also many associated \
+    classes for handling events, colours, fonts, pasteboards and images.
+
+# reset the depends_lib list!
+depends_lib     port:aspell \
+                port:audiofile \
+                port:gnustep-base \
+                path:lib/pkgconfig/gnutls.pc:gnutls \
+                port:libpng \
+                port:giflib \
+                port:tiff \
+                port:libicns \
+                port:ImageMagick
+
+use_configure   yes
+
+configure.args-append \
+                --enable-libgif \
+                --enable-imagemagick \
+                --disable-speech \
+                --disable-speech-recognizer \
+                --disable-movie
+
+proc select_ffmpeg {fvers} {
+    global prefix configure.args
+    PortGroup       conflicts_build 1.0
+    depends_lib-append \
+                    port:${fvers}
+    configure.pkg_config_path-append \
+                    ${prefix}/libexec/${fvers}/lib/pkgconfig
+    configure.cppflags-append \
+                    -I${prefix}/libexec/${fvers}/include
+    configure.ldflags-append \
+                    -L${prefix}/libexec/${fvers}/lib \
+                    -Wl,-rpath,${prefix}/libexec/${fvers}/lib
+    conflicts_build ffmpeg-dev
+
+    configure.args-replace \
+                --disable-movie \
+                --enable-movie
+}
+
+variant ffmpeg6 conflicts ffmpeg7 description {use ffmpeg6 for movie support} {
+    select_ffmpeg   ffmpeg6
+}
+
+variant ffmpeg7 conflicts ffmpeg6 description {use ffmpeg7 for movie support} {
+    select_ffmpeg   ffmpeg7
+}
+
+platform linux {
+    configure.args-append \
+                --with-x
+    post-destroot {
+        set libdir [exec ${prefix}/bin/gnustep-config --variable=GNUSTEP_SYSTEM_LIBRARIES]
+        file rename {*}[glob ${destroot}${prefix}/lib/libgnustep*] ${destroot}${libdir}/
+        file rename ${destroot}${prefix}/lib/pkgconfig ${destroot}${libdir}/
+        reinplace "s|Libs: -L|Libs: -lgnustep-gui -L|g" ${destroot}${libdir}/pkgconfig/gnustep-gui.pc
+        reinplace "s|-L${workpath}\[^ \]*||g" ${destroot}${libdir}/pkgconfig/gnustep-gui.pc
+        reinplace "s|-I${workpath}\[^ \]*||g" ${destroot}${libdir}/pkgconfig/gnustep-gui.pc
+    }
+}
+
+post-destroot {
+    xinstall -d ${destroot}${system_library}/Images
+    system "cp -f ${filespath}/common_*.tiff \
+        ${destroot}${system_library}/Images"
+}
+
+platform darwin {
+    # no audio support
+    depends_lib-delete      port:audiofile
+    configure.args-append   --disable-gsnd \
+                            --disable-cups
+}
