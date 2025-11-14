@@ -1,0 +1,145 @@
+# -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
+
+PortSystem 1.0
+PortGroup           gnustep 1.0
+
+PortGroup           github 1.1
+set LTO.disable_LTO yes
+set LTO.allow_ThinLTO no
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+
+github.setup        gnustep libs-base 4028b584043fd2d88fc3c5432296020cc3e902a4
+fetch.type          git
+name                gnustep-base
+distname            ${name}-git
+version             1.31.1.226
+platforms           linux darwin
+# libs are LGPL, tools are GPL
+license             {LGPL-2.1 GPL-2.0}
+maintainers         gmail.com:rjvbertin openmaintainer
+
+description         A library of general-purpose Objective C objects.
+long_description \
+    The GNUstep Base Library is a library of general-purpose, non-graphical \
+    Objective C objects. For example, it includes classes for strings, \
+    object collections, byte streams, typed coders, invocations, \
+    notifications, notification dispatchers, moments in time, network ports, \
+    remote object messaging support (distributed objects), and event loops. \
+    \
+    It provides functionality that aims to implement the non-graphical \
+    portion of the Apple's Cocoa frameworks (the Foundation library) \
+    which came from the OpenStep standard.
+
+depends_lib         port:gnustep-make \
+                    port:libxslt
+
+universal_variant   no
+
+use_configure       yes
+platform darwin {
+    configure.env-append    LIBOBJC=-lobjc-gnu
+    configure.args-append   --disable-tls
+}
+
+destroot.keepdirs   ${destroot}${prefix}/var/run
+
+pre-extract {
+    if { [variant_isset with_docs] &&
+            [catch {set ilist [registry_installed ${name}]} result ]            
+    } then {
+        return -code error "
+        
+            gnustep-base documentation depends on gnustep-base ...
+            You must install gnustep-base before trying to install\
+            gnustep-base +with_docs
+        "
+    }
+}
+
+if {${os.platform} ne "darwin"} {
+    depends_lib-append  port:libffi \
+                        port:icu \
+                        port:gnutls \
+                        port:libxml2 \
+                        port:avahi \
+                        port:zlib \
+                        port:libiconv \
+                        port:curl
+
+    configure.args-append \
+                        --with-installation-domain=SYSTEM \
+                        --enable-libffi \
+                        --enable-setuid-gdomap \
+                        --enable-year2038
+    pre-configure {
+        set libdir [exec ${prefix}/bin/gnustep-config --variable=GNUSTEP_SYSTEM_LIBRARIES]
+        configure.args-append \
+                        --libdir=${libdir}
+        configure.ldflags-append \
+                        -Wl,-rpath,${libdir}
+    }
+    post-destroot {
+        set libdir [exec ${prefix}/bin/gnustep-config --variable=GNUSTEP_SYSTEM_LIBRARIES]
+        file rename {*}[glob ${destroot}${prefix}/lib/libgnustep*] ${destroot}${libdir}/
+        file rename ${destroot}${prefix}/lib/pkgconfig ${destroot}${libdir}/
+        reinplace "s|Libs: -L|Libs: -lgnustep-base -L|g" ${destroot}${libdir}/pkgconfig/gnustep-base.pc
+        reinplace "s|-L${workpath}\[^ \]*||g" ${destroot}${libdir}/pkgconfig/gnustep-base.pc
+        reinplace "s|-I${workpath}\[^ \]*||g" ${destroot}${libdir}/pkgconfig/gnustep-base.pc
+    }
+
+    test.run            yes
+    test.target         check
+    test.post_args      -wkj${build.jobs}
+} else {
+    post-patch {
+        reinplace "s|CODING-STANDARDS|GS-CODING-STANDARDS|g" \
+            ${worksrcpath}/Documentation/GNUmakefile
+    }
+
+    startupitem.create  yes
+    startupitem.name    gdomap
+    set my_pid          ${prefix}/var/run/gdomap.pid
+    startupitem.start   \
+        "GNUSTEP_SYSTEM_ROOT=${prefix}/GNUstep/System" \
+        "\[ -f \$GNUSTEP_SYSTEM_ROOT/Tools/gdomap \] && \\" \
+        "rm -f ${my_pid} && \\" \
+        "\$GNUSTEP_SYSTEM_ROOT/Tools/gdomap -p -I ${my_pid}"
+    startupitem.stop    \
+        "\[ -r ${prefix}/var/run/gdomap.pid \] && \\" \
+        "kill -9 `cat ${my_pid}` && \\" \
+        "rm -f ${my_pid}"
+
+    if { ![variant_isset ffcall] } {
+        default_variants +ffi
+    }
+
+    variant ffi description conflicts ffcall description {Build with ffi} {
+        depends_lib-append port:libffi
+        configure.args-append \
+            --enable-libffi \
+            --with-ffi-include=${prefix}/include/gcc42 \
+            --with-ffi-library=${prefix}/lib/gcc42
+    }
+
+    variant ffcall conflicts ffi description {Build with ffcall} {
+        depends_lib-append port:ffcall
+        configure.args-append \
+            --enable-ffcall
+    }
+
+    patchfiles-append       patch-SSL-GNUMakefile.diff
+
+    post-destroot {
+        set system_dir ${destroot}${prefix}/GNUstep/Local
+        move ${system_dir}/Tools/defaults ${system_dir}/Tools/gdefaults
+        move ${system_dir}/Library/Documentation/man/man1/defaults.1.gz \
+            ${system_dir}/Library/Documentation/man/man1/gdefaults.1.gz
+    }
+    post-install { 
+        ui_msg "
+            **** GNUstep 'defaults' tool is renamed 'gdefaults' to avoid\
+            overriding Apple's defaults tool. *****
+        "
+    }
+}
