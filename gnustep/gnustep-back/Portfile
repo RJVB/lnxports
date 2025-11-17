@@ -1,0 +1,77 @@
+# -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       gnustep 1.0
+
+
+PortGroup       github 1.1
+set LTO.disable_LTO yes
+set LTO.allow_ThinLTO no
+PortGroup       LTO 1.0
+PortGroup       save_configure_cmd 1.0
+
+github.setup    gnustep back b701d521d5c1876015402b7f9e251dcf7e927b66
+fetch.type      git
+name            gnustep-back
+distname        ${name}-git
+version         0.32.0.13
+platforms       linux darwin
+# libs are LGPL, tools are GPL
+license         {LGPL-2.1 GPL-3+}
+maintainers     gmail.com:rjvbertin openmaintainer
+
+description A back-end component for the GNUstep GUI Library.
+long_description \
+    The implementation of the GNUstep GUI Library is designed \
+    in two parts.  The first part is the front-end component \
+    which is independent of platform and display system.  \
+    This front-end is combined with a back-end component \
+    which handles all of the display system dependent \
+    such as specific calls to the X Window System.
+
+depends_lib     port:gnustep-gui \
+                path:lib/pkgconfig/cairo.pc:cairo \
+                port:Xft2
+
+use_configure   yes
+configure.args  --enable-graphics=cairo \
+                --with-name=cairo \
+                --enable-server=x11 \
+                --with-x \
+                --disable-glitz
+
+post-install {
+	ui_msg "
+	        In order to have a working GNUstep environment,
+	        copy these lines at the top of your ~/.xinitrc file :"
+	if {[file exists ${prefix}/GNUstep/System/Library/Makefiles/GNUstep.sh]} {
+	    ui_msg ". ${prefix}/GNUstep/System/Library/Makefiles/GNUstep.sh"
+	}
+    ui_msg "
+gdnc
+gpbs
+make_services
+
+            For more information on setting the GNUstep environment, see
+            http://gnustep.made-it.com/BuildGuide/#CONFIG.GNUSTEP"
+}
+
+platform macosx {
+    ui_warn "Obsolete!"
+    patchfiles-append   patch-ftfont.m \
+                        patch-CairoFaceInfo.h
+
+    # works better in quartz-wm
+    variant quartzwm {
+        patchfiles-append patch-Source-x11-XGServerWindow.m
+    }
+}
+
+variant art description {install the deprecated libart instead of the Cairo backend} {
+    depends_lib-append      port:libart_lgpl
+    depends_lib-delete      path:lib/pkgconfig/cairo.pc:cairo
+    configure.args-replace  --enable-graphics=cairo \
+                            --enable-graphics=art
+    configure.args-replace  --with-name=cairo \
+                            --with-name=art
+}
