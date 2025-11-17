@@ -18,7 +18,7 @@ version         0.32.0.261
 platforms       linux darwin
 # libs are LGPL, tools are GPL
 license         {LGPL-2.1 GPL-3+}
-maintainers     gmail.com:rjvbertin maintainer
+maintainers     gmail.com:rjvbertin openmaintainer
 
 description     A library of graphical user interface classes written completely in the Objective-C language
 long_description \
