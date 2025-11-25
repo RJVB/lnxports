@@ -15,8 +15,16 @@ license             public-domain
 # Stealth update, remove on the next version update
 # # https://trac.macports.org/ticket/73203
 # dist_subdir         ${name}/${version}_1
-pre-fetch {
-    delete -force {*}[glob -nocomplain ${distpath}/${distfiles}]
+## RJVB : if there were no MP caching distfile servers, we could just do this:
+# pre-fetch {
+#     delete -force {*}[glob -nocomplain ${distpath}/${distfiles}]
+# }
+## RJVB : but as it is, we can also just do an unconditional download from upstream:
+fetch {
+    # distfiles is just a single file
+    curl fetch --remote-time --progress ui_progress_download \
+        "${master_sites}/${distfiles}" \
+        ${distpath}/${distfiles}
 }
 
 maintainers         {mps @Schamschula} openmaintainer
