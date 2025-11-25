@@ -90,16 +90,17 @@ index 727282f..3912d25 100644
  do-compare3 = $(do-compare)
  
  # -----------------------------------------------
-diff --git gcc/cp/orig.g++spec.cc gcc/cp/g++spec.cc
-index 2e1e06e..d7aec02 100644
---- gcc/cp/orig.g++spec.cc
+diff --git gcc/cp/g++spec.cc.orig gcc/cp/g++spec.cc
+index 7584f8c..47f87d7 100644
+--- gcc/cp/g++spec.cc.orig
 +++ gcc/cp/g++spec.cc
-@@ -60,8 +60,12 @@ along with GCC; see the file COPYING3.  If not see
+@@ -62,8 +62,13 @@ along with GCC; see the file COPYING3.  If not see
  #endif
  
  #ifndef LIBCXXABI
 +#ifdef linux
 +#define LIBCXXABI NULL
++#define NO_LIBCXXABI
 +#else
  #define LIBCXXABI "c++abi"
  #endif
@@ -107,16 +108,44 @@ index 2e1e06e..d7aec02 100644
  #ifndef LIBCXXABI_PROFILE
  #define LIBCXXABI_PROFILE LIBCXXABI
  #endif
+@@ -308,8 +313,10 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+      However, a platform might have the ability to forward the ABI library
+      from libc++, or combine it in some other way; in that case, LIBCXXABI
+      should be set to NULL to signal that it need not be appended.  */
++#ifndef NO_LIBCXXABI
+   if (which_library == USE_LIBCXX && LIBCXXABI != NULL)
+     num_args += 4;
++#endif
+   new_decoded_options = XNEWVEC (struct cl_decoded_option, num_args);
+ 
+   i = 0;
+@@ -394,6 +401,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 	  generate_option (OPT_l,
+ 			 saw_profile_flag ? LIBCXX_PROFILE : LIBCXX, 1,
+ 			 CL_DRIVER, &new_decoded_options[j]);
++#ifndef NO_LIBCXXABI
+ 	  if (LIBCXXABI != NULL)
+ 	    {
+ 	      j++;
+@@ -403,6 +411,7 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 						: LIBCXXABI, 1,
+ 			       CL_DRIVER, &new_decoded_options[j]);
+ 	    }
++#endif
+ 	}
+       else
+ 	generate_option (OPT_l,
 diff --git gcc/m2/orig.gm2spec.cc gcc/m2/gm2spec.cc
-index 75a6ed3..2e75132 100644
+index 75a6ed3..8aa3ade 100644
 --- gcc/m2/orig.gm2spec.cc
 +++ gcc/m2/gm2spec.cc
-@@ -89,8 +89,12 @@ along with GNU Modula-2; see the file COPYING3.  If not see
+@@ -89,8 +89,13 @@ along with GNU Modula-2; see the file COPYING3.  If not see
  #endif
  
  #ifndef LIBCXXABI
 +#ifdef linux
 +#define LIBCXXABI NULL
++#define NO_LIBCXXABI
 +#else
  #define LIBCXXABI "c++abi"
  #endif
@@ -124,3 +153,18 @@ index 75a6ed3..2e75132 100644
  #ifndef LIBCXXABI_PROFILE
  #define LIBCXXABI_PROFILE LIBCXXABI
  #endif
+@@ -873,12 +878,14 @@ lang_specific_driver (struct cl_decoded_option **in_decoded_options,
+ 	{
+ 	  append_option (OPT_l, saw_profile_flag ? LIBCXX_PROFILE : LIBCXX, 1);
+ 	  added_libraries++;
++#ifndef NO_LIBCXXABI
+ 	  if (LIBCXXABI != NULL)
+ 	    {
+ 	      append_option (OPT_l, saw_profile_flag ? LIBCXXABI_PROFILE
+ 			     : LIBCXXABI, 1);
+ 	      added_libraries++;
+ 	    }
++#endif
+ 	}
+       else
+ 	{

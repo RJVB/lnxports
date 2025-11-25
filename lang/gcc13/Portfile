@@ -5,6 +5,7 @@ PortGroup           select                       1.0
 PortGroup           active_variants              1.1
 PortGroup           conflicts_build              1.1
 
+# bump to 1 when moving to libgcc14
 epoch               0
 name                gcc13
 
@@ -21,16 +22,16 @@ long_description    {*}${description}, including front ends for \
                     C, C++, Objective-C, Objective-C++ and Fortran.
 
 # Remember to reset all revision increments below to 0 on new versions
-version             13.3.0 ; revision 2
+version             13.4.0 ; revision 1
 
 set libgccname      lib${name}
-subport             ${libgccname} { revision [ expr ${revision} + 1 ] }
+subport             ${libgccname} { revision [ expr ${revision} + 0 ] }
 
 set libcxxname      ${name}-libcxx
 
-checksums           rmd160  a01df0d39af53b8bef8ff42f87469212589984ec \
-                    sha256  0845e9621c9543a13f484e94584a49ffc0129970e9914624235fc1d061a0c083
-#                     size    87909952
+checksums           rmd160  db87d281d0623f56b808b4e28c99f17d955f0524 \
+                    sha256  9c4ce6dbb040568fdc545588ac03c5cbc95a8dbf0c7aa490170843afb59ca8f5
+#                     size    88530720
 
 # Primary releases
 master_sites        https://ftpmirror.gnu.org/gcc/gcc-${version}/ \
@@ -76,8 +77,18 @@ license_noconflict  gmp mpfr ppl libmpc zlib
 
 set major           [lindex [split ${version} .-] 0]
 
+proc gcc_arch {arch} {
+    switch ${arch} {
+        arm64       {return aarch64}
+        ppc64       {return powerpc64}
+        ppc         {return powerpc}
+        default     {return ${arch}}
+    }
+}
+
 platform darwin {
-    configure.pre_args-append --build=${build_arch}-apple-darwin${os.major}
+    set gcc_triple [gcc_arch ${build_arch}]-apple-darwin${os.major}
+    configure.pre_args-append --build=${gcc_triple}
 }
 
 platform linux {
@@ -101,21 +112,32 @@ if {${subport} eq ${name} && ${build_arch} ne "i386"} {
     lappend gcc_configure_langs jit
 }
 
-#if { ${subport} ne ${libcxxname} } {
-#    if {${subport} eq "${name}"} {
-#        variant m2 conflicts quick description {build the GNU Modula-2 compiler} {}
-#    } else {
-#        variant m2 description {support the GNU Modula-2 compiler} {}
-#    }
-#}
+if { ${subport} ne ${libcxxname} } {
+    if {${subport} eq "${name}"} {
+        variant m2 conflicts quick description {build the GNU Modula-2 compiler} {}
+    } else {
+        variant m2 description {support the GNU Modula-2 compiler} {}
+    }
+}
 if {[variant_exists m2] && [variant_isset m2]} {
     lappend gcc_configure_langs m2
 }
 
 proc get_clean_sysroot {} {
-    global configure.sdkroot
-    # if the sdkroot is one of the current, rapidly changing SDKS, use the generic one
-    return [regsub {MacOSX1[1-9]\.[0-9]+\.sdk} ${configure.sdkroot} {MacOSX.sdk}]
+    global configure.sdkroot configure.sdk_version
+    set new_sdk ${configure.sdkroot}
+    if { [regexp {MacOSX(.*).sdk} ${configure.sdkroot} -> sdk_v] } {
+        if { ${sdk_v} != "" } {
+            # If present strip minor version from SDK version
+            set sdk_major [lindex [split $sdk_v .] 0]
+            ui_debug "Detected versioned SDK ${sdk_v} ${sdk_major} ${configure.sdkroot}"
+            set new_sdk [regsub {MacOSX1[1-9]\.[0-9]+\.sdk} ${configure.sdkroot} MacOSX${sdk_major}.sdk]
+            if { ${new_sdk} != ${configure.sdkroot} } {
+                ui_debug " New SDK ${new_sdk}"
+            }
+        }
+    }
+    return ${new_sdk}
 }
 
 set mp_extra_rpath  ${prefix}/lib/libgcc
@@ -124,7 +146,6 @@ configure.dir       ${workpath}/build
 configure.cmd       ${worksrcpath}/configure
 configure.args      --enable-languages=[join ${gcc_configure_langs} ","] \
                     --libdir=${prefix}/lib/${name} \
-                    --includedir=${prefix}/include/${name} \
                     --infodir=${prefix}/share/info \
                     --mandir=${prefix}/share/man \
                     --datarootdir=${prefix}/share/gcc-${major} \
@@ -175,40 +196,30 @@ if { ${subport} ne ${libcxxname} && ${os.platform} eq "darwin" } {
     # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=100340
     # https://trac.macports.org/ticket/62775
     # Update for gcc13 - Similar issues on macOS 10.6, 10.13 ...
-    if { ([vercmp ${xcodeversion}, 12.5] >= 0 && [vercmp ${xcodeversion}, 13] < 0) || \
-         ([vercmp ${xcodecltversion}, 12.5] >= 0 && [vercmp ${xcodecltversion}, 13] < 0) || \
+    if { ([vercmp ${xcodeversion} >= 12.5] && [vercmp ${xcodeversion} < 13]) || \
+         ([vercmp ${xcodecltversion} >= 12.5] && [vercmp ${xcodecltversion} < 13]) || \
              ${os.major} < 11 || ${os.major} == 17 } \
     {
         # Skip bootstrap comparison entirely
         configure.args-replace --with-build-config=bootstrap-Os --without-build-config
-        post-patch {
-            reinplace {s|^do-compare =|do-compare = /usr/bin/true|g} \
-                ${worksrcpath}/Makefile.in \
-                ${worksrcpath}/config/bootstrap-debug.mk \
-                ${worksrcpath}/config/bootstrap-debug-lean.mk \
-                ${worksrcpath}/config/bootstrap-debug-lib.mk
-        }
     }
-}
-
-configure.env-append \
-                    AR_FOR_TARGET=${prefix}/bin/ar \
-                    AS_FOR_TARGET=${prefix}/bin/as \
-                    LD_FOR_TARGET=${prefix}/bin/ld \
-                    NM_FOR_TARGET=${prefix}/bin/nm \
-                    OBJDUMP_FOR_TARGET=${prefix}/bin/objdump \
-                    RANLIB_FOR_TARGET=${prefix}/bin/ranlib \
-                    STRIP_FOR_TARGET=${prefix}/bin/strip
-platform darwin {
-    configure.env-append \
-                    OTOOL=${prefix}/bin/otool \
-                    OTOOL64=${prefix}/bin/otool
+    # RJVB : always do this:
+    post-patch {
+        pre-configure {
+            ui_warn "No comparisons are made between the bootstrap stages!"
+        }
+        reinplace {s|^do-compare =|do-compare = /usr/bin/true|g} \
+            ${worksrcpath}/Makefile.in \
+            ${worksrcpath}/config/bootstrap-debug.mk \
+            ${worksrcpath}/config/bootstrap-debug-lean.mk \
+            ${worksrcpath}/config/bootstrap-debug-lib.mk
+    }
 }
 
 #if { ${os.platform} eq "darwin" } {
     # Patch generated from https://github.com/iains/gcc-13-branch
-    # git diff --no-prefix releases/gcc-13.1.0 gcc-13.1-darwin-r0
-    patchfiles-append       patch-darwin-gcc-${version}.diff
+    # git diff --no-prefix releases/gcc-13.4.0 gcc-13.4-darwin-r0
+    patchfiles-append      patch-darwin-gcc-${version}.diff
     # Do not abort if 'system' headers in /opt/local/include/gcc are missing
     patchfiles-append       darwin/patch-disable-sys-header-missing-abort.diff
     # GCC fixinc work-around for sys/ucred.h on OSX10.14.4 no longer seems to work ???
@@ -241,12 +252,32 @@ platform darwin {
     patchfiles-append   darwin/patch-gcc10-disable-macports-cctools-as-changes.diff
 }
 
+#RJVB : let's display a simple progress bar for bootstrap builds
+if {![variant_isset quick]} {
+    patchfiles-append \
+                    patch-simple-mp-build-progress-display.diff
+}
+
 configure.env-append \
                     DISABLE_MACPORTS_AS_CLANG_SEARCH=1 \
                     DISABLE_XCODE_AS_CLANG_SEARCH=1
 
 build.env-append    DISABLE_MACPORTS_AS_CLANG_SEARCH=1 \
                     DISABLE_XCODE_AS_CLANG_SEARCH=1
+
+configure.env-append \
+                    AR_FOR_TARGET=${prefix}/bin/ar \
+                    AS_FOR_TARGET=${prefix}/bin/as \
+                    LD_FOR_TARGET=${prefix}/bin/ld \
+                    NM_FOR_TARGET=${prefix}/bin/nm \
+                    OBJDUMP_FOR_TARGET=${prefix}/bin/objdump \
+                    RANLIB_FOR_TARGET=${prefix}/bin/ranlib \
+                    STRIP_FOR_TARGET=${prefix}/bin/strip
+platform darwin {
+    configure.env-append \
+                    OTOOL=${prefix}/bin/otool \
+                    OTOOL64=${prefix}/bin/otool
+}
 
 if {${os.platform} eq "darwin" && ${os.major} >= 22} {
     if { [vercmp ${xcodeversion}, 15.0] >= 0 || [vercmp ${xcodecltversion}, 15.0] >= 0 } {
@@ -282,9 +313,7 @@ pre-configure {
 
 }
 
-# if {${subport} ne ${libgccname}} {
-    variant libcxx conflicts stdlib_flag description {enable -stdlib=libc++ using headers from port:libcxx-dev} {}
-# }
+variant libcxx conflicts stdlib_flag description {enable -stdlib=libc++ as a default, using headers from port:libcxx-dev} {}
 
 proc libcxx_incpath {} {
     global prefix name
@@ -296,59 +325,69 @@ proc libcxx_incpath {} {
     }
 }
 
-#subport ${libcxxname} {
-#    PortGroup compilers     1.0
-#
-#    compilers.choose        cxx
-#    compilers.setup         -gcc -fortran -clangdevel -clang34 -clang35 -clang36 \
-#                            -clang37 -clang50 -clang60 -clang70 -clang80 -clang90
-#    if { ![clang_variant_isset] } {
-#        if { ${os.platform} eq "darwin" && ${os.major} < 11 } {
-#            default_variants-append +clang11
-#        } else {
-#            default_variants-append +clang16
-#        }
-#    }
-#    revision                [ expr ${revision} + 0 ]
-#    description             libc++ header implementation to be used by ${name}+stdlib_flag
-#    long_description        {*}${description}.
-#    homepage                https://llvm.org/
-#    license                 NCSA
-#    depends_build
-#    depends_extract
-#    depends_run
-#    depends_lib
-#    distfiles
-#    patchfiles
-#    use_configure           no
-#    supported_archs         noarch
-#    platforms               any
-#    
-#    if {[variant_exists libcxx] && [variant_isset libcxx]} {
-#        PortGroup stub 1.0
-#        long_description-append "\nIn +libcxx mode this is just a stub that depends on libcxx-dev"
-#        depends_run-append port:libcxx-dev
-#    } else {
-#        # Find clang/llvm version to use from active variant
-#        proc getClangVersion {} {
-#            if { [regexp {clang(.*)} [clang_variant_name] -> clang_v] } {
-#                return ${clang_v}
-#            }
-#            return ""
-#        }
-#        set mp_clang_ver [getClangVersion]
-#        build {
-#            # Copy headers from clang-N during build
-#            file mkdir ${worksrcpath}/headers
-#            file copy ${prefix}/libexec/llvm-${mp_clang_ver}/include/c++/v1 ${worksrcpath}/headers/
-#        }
-#        destroot {
-#            set base_dir [file dirname [libcxx_incpath]]
-#            file mkdir ${destroot}${base_dir}
-#            file copy ${worksrcpath}/headers/v1 ${destroot}${base_dir}
-#        }
-#    }
-#}
+# subport ${libcxxname} {
+#     PortGroup compilers     1.0
+# 
+#     compilers.choose        cxx
+#     compilers.setup         -gcc -fortran -clangdevel -clang34 -clang35 -clang36 \
+#                             -clang37 -clang50 -clang60 -clang70 -clang80 -clang90
+#     if { ![clang_variant_isset] && ![variant_exists libcxx] && ![variant_isset libcxx]} {
+#         if { ${os.platform} eq "darwin" && ${os.major} < 11 } {
+#             default_variants-append +clang11
+#         } else {
+#             if { ${os.major} < 25 } {
+#                 default_variants-append +clang16
+#             } else {
+#                 default_variants-append +clang17
+#             }
+#         }
+#     }
+#     revision                [ expr ${revision} + 0 ]
+#     description             libc++ header implementation to be used by ${name}+stdlib_flag
+#     long_description        {*}${description}.
+#     homepage                https://llvm.org/
+#     license                 NCSA
+#     depends_build
+#     depends_extract
+#     depends_run
+#     depends_lib
+#     distfiles
+#     patchfiles
+#     extract.rename          no
+#     use_configure           no
+#     supported_archs         noarch
+#     platforms               any
+#     
+#     if {[variant_exists libcxx] && [variant_isset libcxx]} {
+#         PortGroup stub 1.0
+#         long_description-append "\nIn +libcxx mode this is just a stub that depends on libcxx-dev"
+#         if {[clang_variant_isset]} {
+#             ui_warn "Variant +libcxx conflicts with +[clang_variant_name] (ignoring)!"
+#             depends_build
+#             set variations([clang_variant_name]) "-"
+#         }
+#         depends_run-append port:libcxx-dev
+#     } else {
+#         # Find clang/llvm version to use from active variant
+#         proc getClangVersion {} {
+#             if { [regexp {clang(.*)} [clang_variant_name] -> clang_v] } {
+#                 return ${clang_v}
+#             }
+#             return ""
+#         }
+#         set mp_clang_ver [getClangVersion]
+#         build {
+#             # Copy headers from clang-N during build
+#             file mkdir ${worksrcpath}/headers
+#             file copy ${prefix}/libexec/llvm-${mp_clang_ver}/include/c++/v1 ${worksrcpath}/headers/
+#         }
+#         destroot {
+#             set base_dir [file dirname [libcxx_incpath]]
+#             file mkdir ${destroot}${base_dir}
+#             file copy ${worksrcpath}/headers/v1 ${destroot}${base_dir}
+#         }
+#     }
+# }
 
 if { ${subport} ne ${libcxxname} } {
 ### MacStrop private
@@ -362,34 +401,49 @@ if { ${subport} ne ${libcxxname} } {
 ### MacStrop private
 
     # the quick variant simplifies gcc patch development but also decreases the build time by a factor > 4.
-    variant quick description "Build ${name} without the usual 3-stage bootstrap. Much faster but not recommended" {}
+    variant quick description "Build ${name} without the usual 3-stage bootstrap. Much faster but not recommended except for debugging" {}
     if {![variant_exists quick] || ![variant_isset quick]} {
         configure.ccache no
     } else {
         ui_debug "Allowing +quick builds with ccache"
+        configure.cflags-append "-g"
+        configure.cxxflags-append "-g"
+        configure.ldflags-append "-g"
     }
 
     variant no_sanit description {don't include the sanitiser libraries} {
         post-patch {
-            file delete -force ${worksrcpath}/libsanitizer.moved
-            file rename ${worksrcpath}/libsanitizer ${worksrcpath}/libsanitizer.moved
+            if {[file exists ${worksrcpath}/libsanitizer]} {
+                file delete -force ${worksrcpath}/libsanitizer.moved
+                file rename ${worksrcpath}/libsanitizer ${worksrcpath}/libsanitizer.moved
+            }
         }
     }
 
-#    variant stdlib_flag conflicts libcxx description {Enable stdlib command line flag to select c++ runtime} {
-#        # Enables support for specifying the c++ runtime via `-stdlib=` in a similar
-#        # way to clang. For more details see the later comments in
-#        #   https://www.mail-archive.com/gcc-patches@gcc.gnu.org/msg257385.html
-#        # Note : This 'bakes' the libc++ include directory into gcc,
-#        # which is then used as the default search location when `-stdlib=libc++`
-#        # is given. Therefore to have consistency across various OS versions, and to enable
-#        # modern c++ standards, use a recent macports clang port to provide this.
-#        if {${subport} eq ${name}} {
-#            depends_run-append port:${libcxxname}
-#            require_active_variants port:${libcxxname} {} libcxx
-#        }
-#        configure.args-append --with-gxx-libcxx-include-dir="[libcxx_incpath]"
-#    }
+# rolled into libcxx on Linux
+#     variant stdlib_flag conflicts libcxx description {Enable stdlib command line flag to select c++ runtime} {
+#         # Enables support for specifying the c++ runtime via `-stdlib=` in a similar
+#         # way to clang. For more details see the later comments in
+#         #   https://www.mail-archive.com/gcc-patches@gcc.gnu.org/msg257385.html
+#         # Note : This 'bakes' the libc++ include directory into gcc,
+#         # which is then used as the default search location when `-stdlib=libc++`
+#         # is given. Therefore to have consistency across various OS versions, and to enable
+#         # modern c++ standards, use a recent macports clang port to provide this.
+#         if {${subport} eq ${name}} {
+#             depends_run-append port:${libcxxname}
+#             require_active_variants port:${libcxxname} {} libcxx
+#         }
+#         configure.args-append --with-gxx-libcxx-include-dir="[libcxx_incpath]"
+#     }
+
+    # libcxx is unavailable on PPC
+    if {${build_arch} ni [list ppc ppc64]} {
+        #default_variants-append +stdlib_flag
+        if {![variant_isset stdlib_flag]} {
+            default_variants-append +libcxx
+        }
+    }
+
     if {[variant_exists libcxx] && [variant_isset libcxx]} {
         if {${subport} eq ${name}} {
             depends_build-append \
@@ -410,15 +464,6 @@ if { ${subport} ne ${libcxxname} } {
                     patch-use-libcxx-on-linux.diff
         configure.args-append --with-gxx-libcxx-include-dir="[libcxx_incpath]"
     }
-
-    # libcxx is unavailable on PPC
-    if {${build_arch} ni [list ppc ppc64]} {
-        #default_variants-append +stdlib_flag
-        if {![variant_isset stdlib_flag]} {
-            default_variants-append +libcxx
-        }
-    }
-
 }
 
 # https://trac.macports.org/ticket/29067
@@ -518,6 +563,16 @@ if {${subport} eq ${libgccname}} {
         }
     }
 
+## RJVB: I cannot find any difference between destroot'ing with and without deactivating
+## ourselves, other than that it breaks the preserve_runtime_libraries variant.
+#     # Need to deactivate current libgcc before destrooting the new build otherwise
+#     # the right libs are not picked up to be included
+#     pre-destroot {
+#         if {![catch {registry_active ${libgccname}}]} {
+#             registry_deactivate_composite ${libgccname} "" [list ports_nodepcheck 1]
+#         }
+#     }
+
     # http://trac.macports.org/ticket/35770
     # http://trac.macports.org/ticket/38814
     # While there can be multiple versions of these runtimes in a single
@@ -530,19 +585,25 @@ if {${subport} eq ${libgccname}} {
     # version should continue to provide a subport for that and older gcc
     # versions.
 
+# Pre-libgcc14:
     depends_run
     depends_lib-delete   port:zlib port:libiconv
     depends_build-append {*}${depends_lib}
     depends_lib          port:zlib port:libiconv
+# Prepare libgcc14:
+#     depends_build-append  {*}${depends_lib}
+#     depends_lib           port:zlib port:libiconv port:libgcc14
+#     depends_build-delete  {*}${depends_lib}
 
     configure.args-replace \
         --libdir=${prefix}/lib/${name} \
         --libdir=${prefix}/lib/libgcc
 
-    # see https://trac.macports.org/ticket/54766
-    configure.args-replace \
-        --includedir=${prefix}/include/${name} \
-        --includedir=${prefix}/include/gcc
+# RJVB: keep this for now
+#     # see https://trac.macports.org/ticket/54766
+#     configure.args-replace \
+#         --includedir=${prefix}/include/${name} \
+#         --includedir=${prefix}/include/gcc
 
     configure.args-replace \
         --with-gxx-include-dir=${prefix}/include/${name}/c++/ \
@@ -573,9 +634,43 @@ if {${subport} eq ${libgccname}} {
         set dylibs [dylib_list ${destroot}${prefix}/lib/libgcc]
         foreach dylib ${dylibs} {
 
+            # Different OS versions (e.g. Leopard) or architectures (e.g. PPC) don't produce all the dylibs
+            # https://trac.macports.org/ticket/40098
+            # https://trac.macports.org/ticket/40100
+            # use a catch+file_type trick to determine if each file exists, because of
+            # the [file exist] return value for dangling symlinks.
+            set filetype "ENOEXIST"
+            catch {set filetype [file type ${destroot}${prefix}/lib/libgcc/${dylib}]}
+            if { !(${filetype} ne "ENOEXIST") } {
+                ui_debug "Skipping non-existing file ${destroot}${prefix}/lib/libgcc/${dylib}"
+                catch {ui_debug "\t([exec ls -ld ${destroot}${prefix}/lib/libgcc/${dylib}])"}
+                continue
+            }
+
+# Prepare libgcc14 
+#             # Skip anything provided by a newer libgcc version (i.e. already installed in prefix)
+#             if { [file exists ${prefix}/lib/libgcc/${dylib}] } {
+#                 continue
+#             }
+
             # Move dylib to temp area
             ui_debug "${destroot}${prefix}/lib/libgcc/${dylib} -> ${destroot}${prefix}/lib/libgcc.merged/"
             file rename ${destroot}${prefix}/lib/libgcc/${dylib} ${destroot}${prefix}/lib/libgcc.merged/
+
+            # Problematic on Linux as the unversioned symlinks are probably moved first, thus become
+            # dangling, and [file exists ${dylib_nover}] will thus return 0 ... There's no easy way
+            # around that which does not involve the use of catch. Easiest would be to handle this in
+            # a 2nd loop over ${dylibs}, when everything has been copied into libgcc.merged .
+            platform darwin {
+                # If needed create versionless sym link to dylib
+                set dylib_split [split ${dylib} "."]
+                # darwin: set dylib_nover ${destroot}${prefix}/lib/libgcc.merged/[lindex ${dylib_split} 0].[lindex ${dylib_split} end]
+                set dylib_nover ${destroot}${prefix}/lib/libgcc.merged/[lindex ${dylib_split} 0].[lindex ${dylib_split} 1]
+                if { ![file exists ${dylib_nover}]  } {
+                    ui_debug "Creating versionless symlink \"${dylib_nover}\" to \"[file tail ${dylib}]\""
+                    ln -s ${dylib} ${dylib_nover}
+                }
+            }
 
 #             platform darwin {
 #                 # Universal support
@@ -602,15 +697,25 @@ if {${subport} eq ${libgccname}} {
         system "ls -l ${destroot}${prefix}/lib/libgcc.merged"
         # install the LTO linker plugin for use by `nm`:
         xinstall -m 755 -d ${destroot}${prefix}/lib/bfd-plugins
-        file rename ${destroot}${prefix}/libexec/gcc/x86_64-pc-linux-gnu/13.3.0/liblto_plugin.so \
+        file rename ${destroot}${prefix}/libexec/gcc/x86_64-pc-linux-gnu/${version}/liblto_plugin.so \
                     ${destroot}${prefix}/lib/bfd-plugins/
 
+        # Remove stuff not provided by libgccX ports
         file delete -force ${destroot}${prefix}/bin
         file delete -force ${destroot}${prefix}/share
         file delete -force ${destroot}${prefix}/lib/libgcc
         file delete -force ${destroot}${prefix}/libexec
 
+        # Move temporary lib dir back in place
         move ${destroot}${prefix}/lib/libgcc.merged ${destroot}${prefix}/lib/libgcc
+
+# prepare libgcc14
+#         # Remove includes. Provided by newer libgcc.
+#         file delete -force ${destroot}${prefix}/include
+
+        set doc_dir ${destroot}${prefix}/share/doc/${subport}
+        xinstall -m 755 -d ${doc_dir}
+        system "echo ${subport} provides additional runtime libraries > ${doc_dir}/README"
 
         # For binary compatibility with binaries that linked against the old libstdcxx port
         if {${os.platform} eq "darwin"} {
@@ -627,6 +732,25 @@ if {${subport} eq ${libgccname}} {
         xinstall -m 755 -d ${destroot}${prefix}/libexec/libgcc
         xinstall -m 755 ${filespath}/get_GLIBCXX_USE_CXX11_ABI.sh ${destroot}${prefix}/libexec/libgcc
 
+        platform darwin {
+#             # in case someone uses our libc++-enabled version to generate a binary that doesn't store the full path
+#             # to the required libc++ but does (of course) have the RPATH info for the libgcc directory:
+#             if {[variant_isset libcxx]} {
+#                 # install symlinks to the libc++ linker interfaces in a place where GCC's runtime libraries are stored:
+#                 ln -s ${prefix}/lib/libc++.1.dylib ${destroot}${prefix}/lib/libgcc/
+#                 ln -s ${prefix}/lib/libc++abi.1.dylib ${destroot}${prefix}/lib/libgcc/
+#             }
+            ## sneaky way around stripping
+            foreach rlib {libstdc++-v3/src/.libs/libstdc++.6 libgcc/libgcc_s.1.1} {
+                set rlib ${build.dir}/${gcc_triple}/${rlib}.dylib
+                set dlib "${destroot}${prefix}/lib/libgcc/[file tail ${rlib}]"
+                if {[file size ${rlib}] > [file size ${dlib}]} {
+                    ui_debug "Replacing ${dlib} with the bigger (non-stripped?!) ${rlib}"
+                    xinstall -m 755 ${rlib} ${dlib}
+                }
+            }
+        }
+
         ### MacStrop private
         # user might want to preserve runtime libraries currently installed by previous libgccX ports:
         preserve_runtime_libraries_ports gcc7 libgcc8
@@ -638,8 +762,10 @@ if {${subport} eq ${libgccname}} {
 
 if {${subport} eq ${name}} {
 
-    # RJVB : should we add an explicit depends_run on port:${libgccname}?
     require_active_variants libgcc {} {gcc7 gcc8 gcc9 gcc10 gcc11 gcc12}
+    # RJVB : we use depends_run instead of mainstream's depends_lib; it'll be required once
+    # we upgrade to libgcc14 but shouldn't do any harm in the meantime.
+    depends_run-append  port:${libgccname}
 
     stdcxxabi.dependencies_concerned_by_ABI port:libgcc${major}
 
@@ -675,13 +801,26 @@ if {${subport} eq ${name}} {
             }
         }
 
+        # Ensure all headers are in versioned dir
+        # Required after we stopped using the option the --includedir option
+        # See https://github.com/iains/gcc-13-branch/issues/20 for more details.
+        foreach h [glob -nocomplain ${destroot}${prefix}/include/*.h] {
+            set f [file tail ${h}]
+            set newh ${destroot}${prefix}/include/${name}/${f}
+            ui_debug "Moving ${h} to ${newh}"
+            file rename ${h} ${newh}
+        }
+
         # the MacPorts activation process breaks hardlinks on Linux; avoid that
         set target [exec ${worksrcpath}/config.guess]
         if {[file exists ${destroot}${prefix}/bin/${target}-c++-mp-${major}]} {
             ln -sf ${target}-g++-mp-${major} ${destroot}${prefix}/bin/${target}-c++-mp-${major}
             ln -sf ${target}-g++-mp-${major} ${destroot}${prefix}/bin/g++-mp-${major}
             ln -sf ${target}-g++-mp-${major} ${destroot}${prefix}/bin/c++-mp-${major}
-            ln -sf ${target}-gcc-${major}.3.0 ${destroot}${prefix}/bin/gcc-mp-${major}
+            ln -sf ${target}-gcc-mp-${major} ${destroot}${prefix}/bin/gcc-mp-${major}
+            if {[variant_isset m2]} {
+                ln -sf ${target}-gm2-mp-${major} ${destroot}${prefix}/bin/gm2-mp-${major}
+            }
             foreach b {gcc-ar gcc-nm gcc-ranlib gfortran} {
                 ln -sf ${target}-${b}-mp-${major} ${destroot}${prefix}/bin/${b}-mp-${major}
             }
@@ -698,6 +837,7 @@ if {${subport} eq ${name}} {
 
     select.group        gcc
     select.file         ${filespath}/mp-${name}
+
 }
 
 if { ${subport} ne ${libcxxname} } {
@@ -739,19 +879,16 @@ if { ${subport} ne ${libcxxname} } {
     configure.ldflags-append \
         -Wl,-rpath,${prefix}/lib/libgcc
 
-    platform powerpc {
-        configure.universal_archs ppc ppc64
-    }
-    if { ${os.platform} eq "darwin" && ${os.major} >= 20 } {
-        platform i386 {
-            configure.universal_archs x86_64 arm64
-        }
-        platform arm {
-            configure.universal_archs x86_64 arm64
-        }
-    } else {
-        platform i386 {
-            configure.universal_archs i386 x86_64
+    if {${os.platform} eq "darwin" && ${os.major} <= 18} {
+        switch -- $build_arch {
+            i386 -
+            x86_64 {
+                configure.universal_archs i386 x86_64
+            }
+            ppc -
+            ppc64 {
+                configure.universal_archs ppc ppc64
+            }
         }
     }
     if {${os.platform} eq "darwin"} {
@@ -803,6 +940,7 @@ if { ${subport} ne ${libcxxname} } {
             "STAGE3_CXXFLAGS=\"${configure.cxxflags} ${LTO.cpuflags}\"" \
             "CFLAGS_FOR_TARGET=\"-g ${configure.cflags} ${LTO.cpuflags}\"" \
             "CXXFLAGS_FOR_TARGET=\"-g ${configure.cxxflags} ${LTO.cpuflags}\"" \
+            "LDFLAGS_FOR_TARGET=-g" \
             "do-compare=/bin/true" \
             {*}${preargs}
         depends_build-append port:gmake
@@ -817,6 +955,7 @@ if { ${subport} ne ${libcxxname} } {
             --disable-bootstrap
         build.target all
     } else {
+        configure.cc-append [get_canonical_archflags]
         configure.cc_archflags
         configure.cxx-append ${configure.cxx_archflags}
         configure.cxx_archflags
