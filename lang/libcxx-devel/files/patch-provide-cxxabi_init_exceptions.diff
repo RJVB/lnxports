@@ -7,7 +7,7 @@ index 34e9a67..f78b66f 100644
    add_library(libcxx-abi-headers INTERFACE)
    import_private_headers(libcxx-abi-headers "${LIBCXX_CXX_ABI_INCLUDE_PATHS}"
 -    "cxxabi.h;bits/c++config.h;bits/os_defines.h;bits/cpu_defines.h;bits/cxxabi_tweaks.h;bits/cxxabi_forced.h")
-+    "cxxabi.h;bits/c++config.h;bits/os_defines.h;bits/cpu_defines.h;bits/cxxabi_tweaks.h;bits/cxxabi_forced.h bits/cxxabi_init_exception.h")
++    "cxxabi.h;bits/c++config.h;bits/os_defines.h;bits/cpu_defines.h;bits/cxxabi_tweaks.h;bits/cxxabi_forced.h;bits/cxxabi_init_exception.h")
    target_compile_definitions(libcxx-abi-headers INTERFACE "-DLIBSTDCXX" "-D__GLIBCXX__")
  
    import_shared_library(libcxx-abi-shared stdc++)
@@ -16,7 +16,7 @@ index 34e9a67..f78b66f 100644
    add_library(libcxx-abi-headers INTERFACE)
    import_private_headers(libcxx-abi-headers "${LIBCXX_CXX_ABI_INCLUDE_PATHS}"
 -    "cxxabi.h;bits/c++config.h;bits/os_defines.h;bits/cpu_defines.h;bits/cxxabi_tweaks.h;bits/cxxabi_forced.h")
-+    "cxxabi.h;bits/c++config.h;bits/os_defines.h;bits/cpu_defines.h;bits/cxxabi_tweaks.h;bits/cxxabi_forced.h bits/cxxabi_init_exception.h")
++    "cxxabi.h;bits/c++config.h;bits/os_defines.h;bits/cpu_defines.h;bits/cxxabi_tweaks.h;bits/cxxabi_forced.h;bits/cxxabi_init_exception.h")
    target_compile_definitions(libcxx-abi-headers INTERFACE "-D__GLIBCXX__")
  
    import_shared_library(libcxx-abi-shared supc++)

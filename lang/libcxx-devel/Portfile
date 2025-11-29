@@ -4,6 +4,8 @@ PortSystem              1.0
 set LTO.allow_ThinLTO no
 PortGroup               LTO 1.0
 PortGroup               cmake 1.1
+PortGroup               python-required 1.0
+
 # Do not propagate c/c++ standards as set by base
 cmake.set_c_standard    no
 cmake.set_cxx_standard  no
@@ -19,7 +21,7 @@ platform darwin {
 name                    libcxx-devel
 epoch                   1
 set llvm_version        17
-version                 17.0.6 ; revision 1
+version                 17.0.6 ; revision 2
 categories              lang
 platforms               darwin linux
 license                 MIT NCSA
@@ -95,6 +97,12 @@ if {![is_mainport]} {
     return
 }
 
+find_new_enough_python3 7
+depends_build-append    port:python${py_ver_nodot}
+depends_skip_archcheck-append python${py_ver_nodot}
+set pythonfullpath      ${prefix}/bin/python${py_ver}
+configure.args-append   -DPython3_EXECUTABLE=${pythonfullpath}
+
 if {${os.platform} eq "linux"} {
     worksrcdir          ${distname}
     depends_build-append port:libedit
@@ -105,7 +113,7 @@ if {${os.platform} eq "linux"} {
 #     }
 
     patch.pre_args -p1
-    patchfiles-append \
+     patchfiles-append \
 		0010-compiler-rt-cmake-config-ix.cmake-was-Leopard-No-ASA.patch \
 		0011-Fix-missing-long-long-math-prototypes-when-using-the.patch \
 		0012-compiler-rt-add-some-defs-missing-in-older-SDKs.patch
@@ -185,8 +193,30 @@ post-patch {
                         On Linux, this installs libc++ to ${cmake.install_prefix} \
                         regardless of where MacPorts is installed.
 
+    variant gcc12abi conflicts gcc13abi description {obtain the libstdc++ ABI headers from g++-mp-12} {}
+    variant gcc13abi conflicts gcc12abi description {obtain the libstdc++ ABI headers from g++-mp-13} {}
+    # by default we will get the libstdc++ ABI header paths from the system C++ compiler
+    set abi_gxx "/usr/bin/c++"
+    foreach gver {12 13} {
+        if {[variant_isset gcc${gver}abi]} {
+            set abi_gxx "${prefix}/bin/g++-mp-${gver}"
+            # annoyingly there is no easy way currently to get G++ ABI include paths
+            # directly from libgcc, other than by guessing. So we query a designated
+            # compiler (which will point to its own copy of said headers!!) and then
+            # post-process the result to get the paths where the current libstdc++
+            # provider port installs these headers.
+            set gdirname "gcc${gver}"
+            depends_lib-append port:libgcc
+            cmake.install_rpath-append \
+                        ${prefix}/lib/libgcc
+        }
+    }
+
     if {[file exists ${filespath}/find_abi_headers.sh]} {
-        set abi_header_dirs [exec ${filespath}/find_abi_headers.sh ${configure.cxx}]
+        set abi_header_dirs [exec ${filespath}/find_abi_headers.sh ${abi_gxx}]
+        if {[info exists gdirname]} {
+            set abi_header_dirs [string map [list ${gdirname} gcc] ${abi_header_dirs}]
+        }
         pre-configure {
             ui_info "abi_header_dirs=${abi_header_dirs}"
         }
@@ -195,17 +225,25 @@ post-patch {
         set abi_header_dirs {}
     }
 
+    pre-configure {
+        configure.args-prepend \
+                        -DLLVM_ENABLE_RUNTIMES="${LLVM_ENABLE_RUNTIMES}"
+    }
+    set LLVM_ENABLE_RUNTIMES "libcxx\;libcxxabi"
     configure.args-append \
-                        -DLLVM_ENABLE_RUNTIMES=libcxx \
-                        -DLLVM_TARGETS_TO_BUILD="X86\;AMDGPU" \
-                        -DLIBCXXABI_ENABLE_STATIC=OFF \
+                        -DLLVM_TARGETS_TO_BUILD="X86\;AMDGPU\;ARM" \
                         -DLIBCXX_ENABLE_STATIC=OFF \
                         -DLIBCXX_CXX_ABI=libstdc++ \
                         -DLIBCXX_CXX_ABI_INCLUDE_PATHS="${abi_header_dirs}" \
                         -DLIBCXX_ENABLE_ASSERTIONS=OFF \
                         -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++ \
                         -DLIBCXX_LINK_TESTS_WITH_SHARED_LIBCXXABI=ON \
-                        -DLIBCXX_INSTALL_LIBRARY=ON
+                        -DLIBCXX_INSTALL_LIBRARY=ON \
+                        -DLIBCXXABI_ENABLE_STATIC=ON \
+                        -DLIBCXXABI_ENABLE_SHARED=OFF \
+                        -DLIBCXXABI_INSTALL_LIBRARY=OFF \
+                        -DLIBCXXABI_USE_LLVM_UNWINDER=OFF \
+                        -DLIBCXXABI_INSTALL_HEADERS=ON
 
     cmake.save_configure_cmd "install log"
     if {${build.jobs} ne 1} {
@@ -215,9 +253,10 @@ post-patch {
     if {[variant_isset pstl]} {
         depends_lib-append \
                         port:onetbb
-        configure.args-replace \
-                        -DLLVM_ENABLE_RUNTIMES=libcxx \
-                        -DLLVM_ENABLE_RUNTIMES="pstl\;libcxx"
+#         configure.args-replace \
+#                         -DLLVM_ENABLE_RUNTIMES=libcxx \
+#                         -DLLVM_ENABLE_RUNTIMES="pstl\;libcxx"
+        set LLVM_ENABLE_RUNTIMES "${LLVM_ENABLE_RUNTIMES}\;pstl"
         configure.args-append \
                         -DPSTL_PARALLEL_BACKEND=tbb \
                         -DLIBCXX_ENABLE_PARALLEL_ALGORITHMS=ON \
