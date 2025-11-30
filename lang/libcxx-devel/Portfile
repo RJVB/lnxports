@@ -21,7 +21,7 @@ platform darwin {
 name                    libcxx-devel
 epoch                   1
 set llvm_version        17
-version                 17.0.6 ; revision 3
+version                 17.0.6 ; revision 4
 categories              lang
 platforms               darwin linux
 license                 MIT NCSA
@@ -166,6 +166,10 @@ if {${os.platform} eq "linux"} {
     		patchfiles-append b98da4c71edda3df0a0555b1ab63ec52e92252b4-inverse.patch
 	}
 
+    # backport a patch from 18.0.1
+    patchfiles-append \
+        patch-make-pointer_traits-sfinae-friendly.diff
+
 if {${os.platform} eq "darwin" && ${os.major} < 12} {
     # On OSX10.7 and older revert call to add_security_warnings as fails with
     #   add_security_warnings Function invoked with incorrect arguments
@@ -211,6 +215,12 @@ post-patch {
                         ${prefix}/lib/libgcc
         }
     }
+    if {${configure.cxx_stdlib} eq "macports-libstdc++" && ![string match *lib/libgcc* ${cmake.install_rpath}]} {
+        # libc++ is linked using -nostdlib++, and compilers may then ignore the -stdlib=XXX instruction
+        # completely, including any rpaths it may add.
+        cmake.install_rpath-append \
+                        ${prefix}/lib/libgcc
+    }
 
     if {[file exists ${filespath}/find_abi_headers.sh]} {
         set abi_header_dirs [exec ${filespath}/find_abi_headers.sh ${abi_gxx}]
@@ -223,6 +233,10 @@ post-patch {
     } else {
         # we're probably executed from the registry, e.g. while deactivating the port
         set abi_header_dirs {}
+    }
+    if {[string match macports-gcc* ${configure.compiler}]} {
+        configure.ldflags-append \
+                        -pthread
     }
 
     pre-configure {
