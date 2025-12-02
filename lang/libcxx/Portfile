@@ -4,6 +4,8 @@ PortSystem              1.0
 set LTO.allow_ThinLTO no
 PortGroup               LTO 1.0
 PortGroup               cmake 1.1
+PortGroup               python-required 1.0
+
 # Do not propagate c/c++ standards as set by base
 cmake.set_c_standard    no
 cmake.set_cxx_standard  no
@@ -18,10 +20,10 @@ platform darwin {
 
 name                    libcxx
 epoch                   1
-set llvm_version        13
-version                 13.0.1 ; revision 3
+set llvm_version        17
+version                 17.0.6
 categories              lang
-platforms               darwin
+platforms               linux
 license                 MIT NCSA
 maintainers             gmail.com:rjvbertin
 description             libc++ is the LLVM Project's implementation of the C++ standard library with support for C++11 and later.
@@ -38,16 +40,15 @@ livecheck.regex         download.html\#(\\d+\\.\\d+(\\.\\d+)+)
 use_xz                  yes
 distname                llvm-project-${version}.src
 
-checksums               rmd160  ae542658ad0e97b4bf088b1cfba66fa10b9b52d8 \
-                        sha256  326335a830f2e32d06d0a36393b5455d17dc73e0bd1211065227ee014f92cbf8
-#                         size    97584928
-
+checksums               rmd160  10f44d5a8e3d0d5fc1a1961a8adaac945733ec07 \
+                        sha256  58a8818c60e6627064f312dbf46c02d9949956558340938b71cf731ad8bc0813
+#                         size    127838860
 
 set suffix              mp-${llvm_version}
 
 compiler.blacklist-append clang
 # pick the newest available (= installed) port:clang-XY compiler:
-foreach clv {8.0 9.0 10 11 12 13 14 15 16 17 18 19 20} {
+foreach clv {14 15 16 17 18 19 20} {
     if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
         compiler.whitelist-prepend macports-clang-${clv}
     }
@@ -55,14 +56,14 @@ foreach clv {8.0 9.0 10 11 12 13 14 15 16 17 18 19 20} {
 }
 
 if {[string match *clang++-mp-* ${configure.cxx}]} {
-    compiler.blacklist-append {clang < 1204} {macports-clang-[5-7].0}
-    compiler.fallback         clang macports-clang-11 macports-clang-10 macports-clang-9.0 macports-clang-8.0
+    compiler.blacklist-append {clang < 1204} {macports-clang-[5-9].0} {macports-clang-1[0-3]}
+    compiler.fallback       clang macports-clang-14 macports-clang-15
     set clangversion [lindex [split ${configure.cc} -] 2]
     if {${clangversion} ne ""} {
         depends_build-append port:clang-${clangversion}
-        if {${clangversion} < 8} {
+        if {${clangversion} < 14} {
             pre-configure {
-                ui_error "This port requires at least clang 8 to be built!"
+                ui_error "This port requires at least clang 14 to be built!"
                 return -code error "Please install or specify a sufficiently recent compiler"
             }
         }
@@ -96,21 +97,47 @@ if {![is_mainport]} {
     return
 }
 
+find_new_enough_python3 7
+depends_build-append    port:python${py_ver_nodot}
+depends_skip_archcheck-append python${py_ver_nodot}
+set pythonfullpath      ${prefix}/bin/python${py_ver}
+configure.args-append   -DPython3_EXECUTABLE=${pythonfullpath}
+
 if {${os.platform} eq "linux"} {
     worksrcdir          ${distname}
-    # depends_build-append port:libedit
-    # depends_lib-append  port:libffi port:ncurses port:zlib
+    depends_build-append port:libedit
+    depends_lib-append  port:libffi port:ncurses port:zlib
 
-    patch.pre_args -Np1
+    patch.pre_args -p1
     patchfiles-append \
-        0010-compiler-rt-cmake-config-ix.cmake-was-Leopard-No-ASA.patch \
-        0011-Fix-missing-long-long-math-prototypes-when-using-the.patch \
-        0012-compiler-rt-add-some-defs-missing-in-older-SDKs.patch \
-        0016-10.10-and-less-compiler-rt-find-macosx-sdk.patch \
-        0017-10.6-and-less-libcxxabi-work-around-no-reexported_symbo.patch \
-        0017-10.6-and-less-libcxx-work-around-no-reexported_symbo.patch \
-        0021-10.6-and-less-libcxx-disable-Availability-tests.patch \
-        0024-10.5-and-less-compiler-rt-work-around-no-libdispatch.patch \
+		0010-compiler-rt-cmake-config-ix.cmake-was-Leopard-No-ASA.patch \
+		0011-Fix-missing-long-long-math-prototypes-when-using-the.patch \
+		0012-compiler-rt-add-some-defs-missing-in-older-SDKs.patch
+	if {${os.platform} eq "darwin"} {
+	  if {${os.major} < 14} {
+		  patchfiles-append \
+			0016-10.10-and-less-compiler-rt-find-macosx-sdk.patch
+	  }
+	  if {${os.major} < 11} {
+		  patchfiles-append \
+			0017-10.6-and-less-libcxxabi-work-around-no-reexported_symbo.patch \
+			0017-10.6-and-less-libcxx-work-around-no-reexported_symbo.patch \
+			0021-10.6-and-less-libcxx-disable-Availability-tests.patch
+	  }
+	  if {${os.major} < 10} {
+		  patchfiles-append \
+			0024-10.5-and-less-compiler-rt-work-around-no-libdispatch.patch \
+			0027-libcxx-link-gcc_s.1-on-macOS-before-10.6.patch \
+			0028-libcxx-use-malloc-free-only-on-macOS-before-10.6.patch \
+			49d2071572d484a2b5dc356f59050bb173c8c77c-inverse.patch
+	  }
+	  if {${os.major} <= 16} {
+		  # https://github.com/llvm/llvm-project/issues/64226
+		  patchfiles-append \
+			0042-mbstate_t-not-defined.patch
+	  }
+    }
+    patchfiles-append \
         patch-accept-build_types.diff \
         patch-config-availability+ABIhiding.diff \
         patch-experimental-no-lto.diff
@@ -122,12 +149,6 @@ if {${os.platform} eq "linux"} {
     #     _LIBCPP_CONSTEXPR_AFTER_CXX17 ~__optional_destruct_base()
     patchfiles-append patch-no-const_expr_dtor.diff
 
-    # let's see what we gain from supporting ParellelSTL
-    # see https://reviews.llvm.org/D129452
-    patchfiles-append \
-        patch-use-pstl.diff \
-        patch-no_result_of.diff
-
     # provide bits/cxxabi_init_exceptions.h
     # see https://discourse.llvm.org/t/libc-compiled-with-libstdc-abi-and-cxxabi-h-std-typeinfo/56553
     patchfiles-append \
@@ -137,26 +158,25 @@ if {${os.platform} eq "linux"} {
     patchfiles-append \
         patch-benchmark_mplibstdcxx.diff
 
-#if {${os.platform} eq "darwin" && ${os.major} < 12} {
-#    # On OSX10.7 and older revert call to add_security_warnings as fails with
-#    #   add_security_warnings Function invoked with incorrect arguments
-#    post-patch {
-#        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
-#            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
-#            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
-#    }
-#
-#    # On OSX10.7 and older revert call to add_security_warnings as fails with
-#    #   add_security_warnings Function invoked with incorrect arguments
-#    post-patch {
-#        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
-#            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
-#            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
-#    }
-#}
+	# https://trac.macports.org/ticket/67686
+	# revert commit that breaks rpath linkages in clang runtime
+	if {${os.platform} eq "darwin"} {
+    		patchfiles-append b98da4c71edda3df0a0555b1ab63ec52e92252b4-inverse.patch
+	}
 
-# allow building with compilers that don't support -nostdlib++ (like GCC 12)
-patchfiles-append patch-allow-builds-with-gcc.diff
+    # backport a patch from 18.0.1
+    patchfiles-append \
+        patch-make-pointer_traits-sfinae-friendly.diff
+
+if {${os.platform} eq "darwin" && ${os.major} < 12} {
+    # On OSX10.7 and older revert call to add_security_warnings as fails with
+    #   add_security_warnings Function invoked with incorrect arguments
+    post-patch {
+        reinplace "s|add_security_warnings\(|\#add_security_warnings\(|" \
+            ${patch.dir}/compiler-rt/lib/builtins/CMakeLists.txt \
+            ${patch.dir}/compiler-rt/cmake/Modules/CompilerRTDarwinUtils.cmake
+    }
+}
 
 # make some space, but only after the patching so it's easier to share
 # patchfiles with the main llvm ports.
@@ -175,8 +195,36 @@ post-patch {
                         On Linux, this installs libc++ to ${cmake.install_prefix} \
                         regardless of where MacPorts is installed.
 
+    variant gcc12abi conflicts gcc13abi description {obtain the libstdc++ ABI headers from g++-mp-12} {}
+    variant gcc13abi conflicts gcc12abi description {obtain the libstdc++ ABI headers from g++-mp-13} {}
+    # by default we will get the libstdc++ ABI header paths from the system C++ compiler
+    set abi_gxx "/usr/bin/c++"
+    foreach gver {12 13} {
+        if {[variant_isset gcc${gver}abi]} {
+            set abi_gxx "${prefix}/bin/g++-mp-${gver}"
+            # annoyingly there is no easy way currently to get G++ ABI include paths
+            # directly from libgcc, other than by guessing. So we query a designated
+            # compiler (which will point to its own copy of said headers!!) and then
+            # post-process the result to get the paths where the current libstdc++
+            # provider port installs these headers.
+            set gdirname "gcc${gver}"
+            depends_lib-append port:libgcc
+            cmake.install_rpath-append \
+                        ${prefix}/lib/libgcc
+        }
+    }
+    if {${configure.cxx_stdlib} eq "macports-libstdc++" && ![string match *lib/libgcc* ${cmake.install_rpath}]} {
+        # libc++ is linked using -nostdlib++, and compilers may then ignore the -stdlib=XXX instruction
+        # completely, including any rpaths it may add.
+        cmake.install_rpath-append \
+                        ${prefix}/lib/libgcc
+    }
+
     if {[file exists ${filespath}/find_abi_headers.sh]} {
-        set abi_header_dirs [exec ${filespath}/find_abi_headers.sh ${configure.cxx}]
+        set abi_header_dirs [exec ${filespath}/find_abi_headers.sh ${abi_gxx}]
+        if {[info exists gdirname]} {
+            set abi_header_dirs [string map [list ${gdirname} gcc] ${abi_header_dirs}]
+        }
         pre-configure {
             ui_info "abi_header_dirs=${abi_header_dirs}"
         }
@@ -184,18 +232,30 @@ post-patch {
         # we're probably executed from the registry, e.g. while deactivating the port
         set abi_header_dirs {}
     }
+    if {[string match macports-gcc* ${configure.compiler}]} {
+        configure.ldflags-append \
+                        -pthread
+    }
 
+    pre-configure {
+        configure.args-prepend \
+                        -DLLVM_ENABLE_RUNTIMES="${LLVM_ENABLE_RUNTIMES}"
+    }
+    set LLVM_ENABLE_RUNTIMES "libcxx\;libcxxabi"
     configure.args-append \
-                        -DLLVM_ENABLE_RUNTIMES=libcxx \
-                        -DLLVM_TARGETS_TO_BUILD="X86\;AMDGPU" \
-                        -DLIBCXXABI_ENABLE_STATIC=OFF \
+                        -DLLVM_TARGETS_TO_BUILD="X86\;AMDGPU\;ARM" \
                         -DLIBCXX_ENABLE_STATIC=OFF \
                         -DLIBCXX_CXX_ABI=libstdc++ \
                         -DLIBCXX_CXX_ABI_INCLUDE_PATHS="${abi_header_dirs}" \
                         -DLIBCXX_ENABLE_ASSERTIONS=OFF \
                         -DLIBCXX_BENCHMARK_NATIVE_STDLIB=libstdc++ \
                         -DLIBCXX_LINK_TESTS_WITH_SHARED_LIBCXXABI=ON \
-                        -DLIBCXX_INSTALL_LIBRARY=ON
+                        -DLIBCXX_INSTALL_LIBRARY=ON \
+                        -DLIBCXXABI_ENABLE_STATIC=ON \
+                        -DLIBCXXABI_ENABLE_SHARED=OFF \
+                        -DLIBCXXABI_INSTALL_LIBRARY=OFF \
+                        -DLIBCXXABI_USE_LLVM_UNWINDER=OFF \
+                        -DLIBCXXABI_INSTALL_HEADERS=ON
 
     cmake.save_configure_cmd "install log"
     if {${build.jobs} ne 1} {
@@ -205,15 +265,14 @@ post-patch {
     if {[variant_isset pstl]} {
         depends_lib-append \
                         port:onetbb
-        configure.args-replace \
-                        -DLLVM_ENABLE_RUNTIMES=libcxx \
-                        -DLLVM_ENABLE_RUNTIMES="pstl\;libcxx"
+        set LLVM_ENABLE_RUNTIMES "${LLVM_ENABLE_RUNTIMES}\;pstl"
         configure.args-append \
                         -DPSTL_PARALLEL_BACKEND=tbb \
                         -DLIBCXX_ENABLE_PARALLEL_ALGORITHMS=ON \
                         -DPSTL_HIDE_FROM_ABI_PER_TU=ON
         cmake.install_rpath-append \
                         ${prefix}/libexec/onetbb/lib
+        notes-append "Using pstl will require -fexperimental-library or -D_LIBCPP_ENABLE_EXPERIMENTAL, and does not appear to generate parallel code at all!"
     }
 
     variant benchmark_libcxx conflicts benchmark_mplibstdcxx description {build the benchmark against libc++ (no need to install with this variant!)} {
@@ -235,14 +294,17 @@ post-patch {
     destroot.violate_mtree yes
 
     post-destroot {
-        if {[variant_isset pstl]} {
-            foreach i [glob ${destroot}/usr/include/*pstl*] {
-                # move the ParellelSTL headers into the libc++ include dir so they're found when
-                # that directory is added to the compiler's header search path. Upstream appear to
-                # be making this same merger.
-                file rename ${i} ${destroot}/usr/include/c++/v1
-            }
-        }
+## With libc++ v13 we moved the pstl headers into the libc++ header dir but somewhere after that
+## version upstream put a modified subsection of the pstl headers there, and kept a larger selection
+## in the toplevel include dir. Seems best not to meddle with that anymore.
+#         if {[variant_isset pstl]} {
+#             foreach i [glob ${destroot}/usr/include/*pstl*] {
+#                 # move the ParellelSTL headers into the libc++ include dir so they're found when
+#                 # that directory is added to the compiler's header search path. Upstream appear to
+#                 # be making this same merger.
+#                 file rename ${i} ${destroot}/usr/include/c++/v1
+#             }
+#         }
         # be somewhat naughty: install system-wide links to the crucial OneTBB dependencies: without
         # those, using ParallelSTL would require pointing the build to the port:onetbb resources
         set otbpref ${prefix}/libexec/onetbb
@@ -266,6 +328,15 @@ post-patch {
         reinplace "s|@VERSION@|${version}|g" ${destroot}${prefix}/lib/pkgconfig/libcxx.pc
         ln -s libcxx.pc ${destroot}${prefix}/lib/pkgconfig/libc++.pc
 
+        # also expose our payload in the places where the mainstream & MacStrop libcxx
+        # ports install:
+        xinstall -m 755 -d ${destroot}${prefix}/include/libcxx
+        ln -s ${cmake.install_prefix}/include/c++/v1 ${destroot}${prefix}/include/libcxx/
+        xinstall -m 755 -d ${destroot}${prefix}/lib/libcxx
+        foreach f [glob ${destroot}${cmake.install_prefix}/lib/libc*] {
+            ln -s [string map [list ${destroot} ""] ${f}] ${destroot}${prefix}/lib/libcxx/
+        }
+
         # idem, allow path-style depspecs on ourselves
         xinstall -m 755 -d ${destroot}${prefix}/share/doc/libcxx
         exec echo "port:${subport}" > ${destroot}${prefix}/share/doc/libcxx/provider
@@ -276,6 +347,8 @@ post-patch {
         append_to_devport_standard_content ${cmake.install_prefix}/lib/*.so
         append_to_devport_standard_content ${cmake.install_prefix}/lib/*.a
         append_to_devport_standard_content ${cmake.install_prefix}/lib/cmake
+        append_to_devport_standard_content ${prefix}/lib/libcxx/*.so
+        append_to_devport_standard_content ${prefix}/lib/libcxx/*.a
         create_devport_content_archive
     }
 

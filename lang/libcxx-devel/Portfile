@@ -21,13 +21,16 @@ platform darwin {
 name                    libcxx-devel
 epoch                   1
 set llvm_version        17
-version                 17.0.6 ; revision 4
+version                 17.0.6 ; revision 5
 categories              lang
-platforms               darwin linux
+platforms               linux
 license                 MIT NCSA
 maintainers             gmail.com:rjvbertin
 description             libc++ is the LLVM Project's implementation of the C++ standard library with support for C++11 and later.
 long_description        ${description}
+
+replaced_by             libcxx
+PortGroup               obsolete 1.0
 
 homepage                http://libcxx.llvm.org/
 
@@ -94,6 +97,7 @@ create_devport          port:${name}
 
 if {![is_mainport]} {
     # nothing else to be done
+    replaced_by         libcxx-dev
     return
 }
 
@@ -109,32 +113,34 @@ if {${os.platform} eq "linux"} {
     depends_lib-append  port:libffi port:ncurses port:zlib
 
     patch.pre_args -p1
-     patchfiles-append \
+    patchfiles-append \
 		0010-compiler-rt-cmake-config-ix.cmake-was-Leopard-No-ASA.patch \
 		0011-Fix-missing-long-long-math-prototypes-when-using-the.patch \
 		0012-compiler-rt-add-some-defs-missing-in-older-SDKs.patch
-	if {${os.platform} eq "darwin" && ${os.major} < 14} {
-		patchfiles-append \
+	if {${os.platform} eq "darwin"} {
+	  if {${os.major} < 14} {
+		  patchfiles-append \
 			0016-10.10-and-less-compiler-rt-find-macosx-sdk.patch
-	}
-	if {${os.platform} eq "darwin" && ${os.major} < 11} {
-		patchfiles-append \
+	  }
+	  if {${os.major} < 11} {
+		  patchfiles-append \
 			0017-10.6-and-less-libcxxabi-work-around-no-reexported_symbo.patch \
 			0017-10.6-and-less-libcxx-work-around-no-reexported_symbo.patch \
 			0021-10.6-and-less-libcxx-disable-Availability-tests.patch
-	}
-	if {${os.platform} eq "darwin" && ${os.major} < 10} {
-		patchfiles-append \
+	  }
+	  if {${os.major} < 10} {
+		  patchfiles-append \
 			0024-10.5-and-less-compiler-rt-work-around-no-libdispatch.patch \
 			0027-libcxx-link-gcc_s.1-on-macOS-before-10.6.patch \
 			0028-libcxx-use-malloc-free-only-on-macOS-before-10.6.patch \
 			49d2071572d484a2b5dc356f59050bb173c8c77c-inverse.patch
-	}
-	if {${os.platform} eq "darwin" && ${os.major} <= 16} {
-		# https://github.com/llvm/llvm-project/issues/64226
-		patchfiles-append \
+	  }
+	  if {${os.major} <= 16} {
+		  # https://github.com/llvm/llvm-project/issues/64226
+		  patchfiles-append \
 			0042-mbstate_t-not-defined.patch
-	}
+	  }
+    }
     patchfiles-append \
         patch-accept-build_types.diff \
         patch-config-availability+ABIhiding.diff \

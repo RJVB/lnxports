@@ -1,0 +1,47 @@
+diff --git b/libcxx/benchmarks/orig3.CMakeLists.txt a/libcxx/benchmarks/CMakeLists.txt
+index 0ee0b0b..116ddd9 100644
+--- b/libcxx/benchmarks/orig3.CMakeLists.txt
++++ a/libcxx/benchmarks/CMakeLists.txt
+@@ -9,6 +9,11 @@ option(LIBCXX_BENCHMARK_NATIVE_STDLIB_FROM_MACPORTS "Build against the libstdc++
+ 
+ set(CMAKE_FOLDER "${CMAKE_FOLDER}/Benchmarks")
+ 
++if(APPLE)
++    set(CMAKE_OSX_ARCHITECTURES ${CMAKE_SYSTEM_PROCESSOR})
++    message(STATUS "Building benchmarks only for architecture ${CMAKE_SYSTEM_PROCESSOR}")
++endif()
++
+ set(BENCHMARK_LIBCXX_COMPILE_FLAGS
+     -Wno-unused-command-line-argument
+     -nostdinc++
+@@ -105,7 +110,7 @@ if (LIBCXX_BENCHMARK_NATIVE_STDLIB STREQUAL "libstdc++")
+     target_link_libraries(cxx-benchmarks-flags-native INTERFACE -lstdc++fs)
+   endif()
+ else()
+-  target_link_libraries(cxx-benchmarks-flags-native INTERFACE -lc++fs -lc++experimental)
++  target_link_libraries(cxx-benchmarks-flags-native INTERFACE -lc++experimental)
+ endif()
+ 
+ add_library(           cxx-benchmarks-flags-libcxx INTERFACE)
+@@ -213,12 +218,16 @@ set(BENCHMARK_TESTS
+ foreach(test_path ${BENCHMARK_TESTS})
+   get_filename_component(test_file "${test_path}" NAME)
+   string(REPLACE ".bench.cpp" "" test_name "${test_file}")
+-  if (NOT DEFINED ${test_name}_REPORTED)
+-    message(STATUS "Adding Benchmark: ${test_file}")
+-    # Only report the adding of the benchmark once.
+-    set(${test_name}_REPORTED ON CACHE INTERNAL "")
++  if ("${test_name}" STREQUAL "filesystem")
++    message(STATUS "Skipping benchmark: ${test_file}")
++  else()
++    if (NOT DEFINED ${test_name}_REPORTED)
++      message(STATUS "Adding Benchmark: ${test_file}")
++      # Only report the adding of the benchmark once.
++      set(${test_name}_REPORTED ON CACHE INTERNAL "")
++    endif()
++    add_benchmark_test(${test_name} ${test_path})
+   endif()
+-  add_benchmark_test(${test_name} ${test_path})
+ endforeach()
+ 
+ if (LIBCXX_INCLUDE_TESTS)
