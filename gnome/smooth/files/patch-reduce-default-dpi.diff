@@ -1,0 +1,78 @@
+diff --git classes/graphics/backends/cairo/surfacecairo.cpp classes/graphics/backends/cairo/surfacecairo.cpp
+index 9f01e91f..3ac94207 100755
+--- classes/graphics/backends/cairo/surfacecairo.cpp
++++ classes/graphics/backends/cairo/surfacecairo.cpp
+@@ -205,7 +205,7 @@ S::Short S::GUI::SurfaceCairo::GetSurfaceDPI() const
+ 
+ 	if (surfaceDPI != -1) return surfaceDPI;
+ 
+-	Float	 dpi = 96.0;
++	Float	 dpi = 86.0;
+ 
+ 	if (display != NIL)
+ 	{
+diff --git classes/graphics/backends/cocoa/surfacecocoa.mm classes/graphics/backends/cocoa/surfacecocoa.mm
+index 704e2b85..7acc9b44 100644
+--- classes/graphics/backends/cocoa/surfacecocoa.mm
++++ classes/graphics/backends/cocoa/surfacecocoa.mm
+@@ -280,7 +280,7 @@ S::Short S::GUI::SurfaceCocoa::GetSurfaceDPI() const
+ 
+ 	if (surfaceDPI != -1) return surfaceDPI;
+ 
+-	Float	 dpi = 96.0;
++	Float	 dpi = 86.0;
+ 
+ 	surfaceDPI = Math::Round(dpi * Setup::FontSize);
+ 
+diff --git classes/graphics/backends/gdi/surfacegdi.cpp classes/graphics/backends/gdi/surfacegdi.cpp
+index a04dbb90..4f25396b 100755
+--- classes/graphics/backends/gdi/surfacegdi.cpp
++++ classes/graphics/backends/gdi/surfacegdi.cpp
+@@ -173,7 +173,7 @@ S::Short S::GUI::SurfaceGDI::GetSurfaceDPI() const
+ 
+ 	if (surfaceDPI != -1) return surfaceDPI;
+ 
+-	Float	 dpi = 96.0;
++	Float	 dpi = 86.0;
+ 
+ 	surfaceDPI = Math::Round(dpi * Setup::FontSize);
+ 
+diff --git classes/graphics/backends/gdiplus/surfacegdiplus.cpp classes/graphics/backends/gdiplus/surfacegdiplus.cpp
+index 28d9e8cc..ca4d32d6 100755
+--- classes/graphics/backends/gdiplus/surfacegdiplus.cpp
++++ classes/graphics/backends/gdiplus/surfacegdiplus.cpp
+@@ -178,7 +178,7 @@ S::Short S::GUI::SurfaceGDIPlus::GetSurfaceDPI() const
+ 
+ 	if (surfaceDPI != -1) return surfaceDPI;
+ 
+-	Float	 dpi = 96.0;
++	Float	 dpi = 86.0;
+ 
+ 	surfaceDPI = Math::Round(dpi * Setup::FontSize);
+ 
+diff --git classes/graphics/backends/haiku/surfacehaiku.cpp classes/graphics/backends/haiku/surfacehaiku.cpp
+index 36285943..f325e3f7 100644
+--- classes/graphics/backends/haiku/surfacehaiku.cpp
++++ classes/graphics/backends/haiku/surfacehaiku.cpp
+@@ -212,7 +212,7 @@ S::Short S::GUI::SurfaceHaiku::GetSurfaceDPI() const
+ 
+ 	if (surfaceDPI != -1) return surfaceDPI;
+ 
+-	Float	 dpi = 96.0;
++	Float	 dpi = 86.0;
+ 
+ 	surfaceDPI = Math::Round(dpi * Setup::FontSize);
+ 
+diff --git classes/graphics/backends/xlib/surfacexlib.cpp classes/graphics/backends/xlib/surfacexlib.cpp
+index ee7f60a3..b28d90f5 100755
+--- classes/graphics/backends/xlib/surfacexlib.cpp
++++ classes/graphics/backends/xlib/surfacexlib.cpp
+@@ -192,7 +192,7 @@ S::Short S::GUI::SurfaceXLib::GetSurfaceDPI() const
+ 
+ 	/* Evaluate GDK_SCALE setting.
+ 	 */
+-	Float	 dpi   = 96.0;
++	Float	 dpi   = 86.0;
+ 	Int	 scale = (Int64) Number::FromIntString(getenv("GDK_SCALE"));
+ 
+ 	if (scale > 0) dpi *= scale;

@@ -9,7 +9,7 @@ PortGroup           save_configure_cmd 1.0
 
 github.setup        enzo1982 smooth a7e64e52f73c9cf4a95f8d98284a0375b70d3bd3
 fetch.type          git
-version             0.9.10.42
+version             0.9.10.42 ; revision 1
 distname            ${name}-git
 
 categories          gnome graphics x11
@@ -42,6 +42,7 @@ depends_lib-append  path:lib/pkgconfig/gtk+-3.0.pc:gtk3 \
                     port:gettext
 
 patchfiles          patch-fix-libxml2-includes.diff \
-                    patch-fix-dylib-install-path.diff
+                    patch-fix-dylib-install-path.diff \
+                    patch-reduce-default-dpi.diff
 
 makefile.prefix_name prefix
