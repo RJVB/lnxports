@@ -42,7 +42,21 @@ depends_lib-append  path:lib/pkgconfig/gtk+-3.0.pc:gtk3 \
                     port:gettext
 
 patchfiles          patch-fix-libxml2-includes.diff \
-                    patch-fix-dylib-install-path.diff \
-                    patch-reduce-default-dpi.diff
+                    patch-fix-dylib-install-path.diff
+
+variant compact86 conflicts compact72 description {make the UI more compact by assuming a 86DPI display} {
+    patchfiles-append \
+                    patch-reduce-default-dpi-to-86.diff
+}
+
+variant compact72 conflicts compact86 description {make the UI more compact by assuming a 72DPI display} {
+    patchfiles-append \
+                    patch-reduce-default-dpi-to-72.diff
+}
+
+if {![variant_isset compact72]} {
+    default_variants-append \
+                    +compact86
+}
 
 makefile.prefix_name prefix
