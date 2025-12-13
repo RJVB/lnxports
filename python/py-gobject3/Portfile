@@ -37,6 +37,12 @@ if {${name} ne ${subport}} {
     if {${python.version} ne 27} {
         depends_lib-append \
                             port:py${python.version}-cairo
+        if {${python.version} >= 39} {
+            # somewhere after 3.8 the _PyUnicode_AsStringAndSize macro was removed,
+            # so replace it with the function that it pointed to.
+            patchfiles-append \
+                            patch-compat_h.diff
+        }
     }
 
     depends_test            port:py${python.version}-pytest
