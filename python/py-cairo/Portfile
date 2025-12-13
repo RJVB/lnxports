@@ -7,7 +7,6 @@ PortGroup               python 1.0
 
 github.setup            pygobject pycairo 1.19.1 v
 github.tarball_from     releases
-revision                0
 
 name                    py-cairo
 categories-append       graphics
@@ -22,7 +21,7 @@ checksums           rmd160  db531fc2fa3baaf71f635f960e2782ed6a0a6317 \
                     sha256  2c143183280feb67f5beb4e543fd49990c28e7df427301ede04fc550d3562e84
 #                     size    205196
 
-python.versions         27 34 35 36 37
+python.versions         27 34 35 36 37 38 39 310 311 312 313
 
 if {${name} ne ${subport}} {
     depends_build-append    port:pkgconfig
@@ -55,6 +54,26 @@ if {${name} ne ${subport}} {
 
     if {[catch {set result [active_variants cairo x11]}]} {
         default_variants-append +x11
+    }
+
+    post-destroot {
+        if {![file exists ${destroot}${python.prefix}/lib/pkgconfig/py3cairo.pc]} {
+            xinstall -m 755 -d ${destroot}${python.prefix}/lib/pkgconfig
+            xinstall -m 644 ${filespath}/py3cairo.pc ${destroot}${python.prefix}/lib/pkgconfig/py3cairo.pc
+            reinplace "s|@PYTHONPREFIX@|${python.prefix}|g" ${destroot}${python.prefix}/lib/pkgconfig/py3cairo.pc
+            reinplace "s|@VERSION@|${version}|g" ${destroot}${python.prefix}/lib/pkgconfig/py3cairo.pc
+        }
+        if {![file exists ${destroot}${python.prefix}/include/pycairo]} {
+            xinstall -m 755 -d ${destroot}${python.prefix}/include/pycairo
+            if {[file exists \
+                    ${destroot}${prefix}/lib/python${python.branch}/site-packages/cairo/include/py3cairo.h]} {
+                ln -s ${prefix}/lib/python${python.branch}/site-packages/cairo/include/py3cairo.h \
+                    ${destroot}${python.prefix}/include/pycairo/
+            } else {
+                ui_error "py3cairo.h header is not in the expected location"
+                return -code error "internal Portfile error"
+            }
+        }
     }
 
     livecheck.type      none
