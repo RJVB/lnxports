@@ -7,6 +7,7 @@ set LTO.gcc_lto_jobs  auto
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 PortGroup           from_ports_variant 1.0
+PortGroup           conflicts_build 1.0
 
 set basename        alsa
 name                ${basename}-lib
@@ -96,6 +97,23 @@ switch ${subport} {
                         --disable-jack \
                         --enable-jack
             fromPorts::depends lib-append port:jack
+        }
+        variant ffmpeg6 conflicts ffmpeg7 ffmpeg8 description {build against FFmpeg6} {}
+# currently ffmpeg6 is the latest supported version
+#         variant ffmpeg7 conflicts ffmpeg6 ffmpeg8 description {build against FFmpeg7} {}
+#         variant ffmpeg8 conflicts ffmpeg6 ffmpeg7 description {build against FFmpeg8} {}
+        foreach fv {6 7 8} {
+            if {[variant_exists ffmpeg${fv}] && [variant_isset ffmpeg${fv}]} {
+                depends_lib-replace \
+                        port:ffmpeg \
+                        port:ffmpeg${fv}
+                conflicts_build-append \
+                        ffmpeg-dev
+                configure.pkg_config_path-append \
+                        ${prefix}/libexec/ffmpeg${fv}/lib/pkgconfig
+                configure.ldflags-append \
+                        -Wl,-rpath,${prefix}/libexec/ffmpeg${fv}/lib
+            }
         }
         post-destroot {
             # some plugins have an indirect dependency on the DRI3 library from port:xorg-libxcb
