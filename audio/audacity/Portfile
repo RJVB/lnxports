@@ -192,7 +192,7 @@ conflicts           audacity2-legacy audacity3-legacy audacity-legacy audacity-g
 ## version             3.5.1.2 ; revision 1
 ## last commit with with 3.3 source code layout: 2677399f41473fd1cd13f607018475741350c0e1
 github.setup        audacity audacity 2677399f41473fd1cd13f607018475741350c0e1
-version             3.5.1.409
+version             3.5.1.409 ; revision 1
 ## From the CMake file:
 # Set this value to 0 for alpha, 1 for beta, 2 for release builds
 set build_level     2
@@ -331,7 +331,6 @@ platform linux {
     patchfiles-append \
                     patch-rearrange-control-buttons.diff
     # use lame from MacPorts (partial revert of ae431bc5)
-    # load ffmpeg libs from MacPorts (reverts of 1d40f33e)
     patchfiles-append \
                     patch-use-MPlame.diff
     # I've begun to be hit by a known bug in libstdc++ and/or glibc, causing std::call_once
@@ -517,11 +516,17 @@ platform linux {
         depends_build-append \
                     port:vst3sdk-src \
                     port:libarchive
+        patchfiles-append \
+                    patch-parallel-vst3-build.diff
         pre-configure {
             if {![file exists ${worksrcpath}/vst3sdk]} {
                 system -W ${worksrcpath} "bsdtar -x --exclude doc -f ${prefix}/src/vst3sdk/${VST3VERSION}.tar.bz2"
             }
         }
+        # The build system will build the vst3 sdk during the configure step
+        configure.env-append \
+                    CMAKE_BUILD_PARALLEL_LEVEL=${build.jobs} \
+                    BUILD_JOBS=${build.jobs}
         configure.args-replace \
                     -D${_OPT}has_vst3=OFF \
                     -D${_OPT}use_vst3sdk=system
@@ -532,6 +537,31 @@ platform linux {
 if {${configure.cxx_stdlib} ne "" && [string match *clang* ${configure.cxx}]} {
     configure.ldflags-append \
                     -stdlib=${configure.cxx_stdlib}
+}
+
+proc select_newer_ffmpeg {fvers} {
+    global prefix configure.args cmake.module_path cmake.install_rpath
+    PortGroup       conflicts_build 1.0
+    depends_lib-replace \
+                    port:ffmpeg \
+                    port:${fvers}
+    cmake.module_path-append \
+                    ${prefix}/libexec/${fvers}
+    cmake.install_rpath-append \
+                    ${prefix}/libexec/${fvers}/lib
+    conflicts_build ffmpeg-dev
+}
+
+variant ffmpeg6 conflicts ffmpeg7 description {build against ffmpeg6} {}
+variant ffmpeg7 conflicts ffmpeg6 description {build against ffmpeg7} {}
+if {[variant_isset ffmpeg7]} {
+    select_newer_ffmpeg ffmpeg7
+} elseif {[variant_isset ffmpeg6]} {
+    select_newer_ffmpeg ffmpeg6
+} else {
+    cmake.module_path
+    depends_build-append \
+                port:ffmpeg-dev
 }
 
 pre-configure {
@@ -552,8 +582,8 @@ post-patch {
                                 lib-src/lv2/lilv/test/lilv_test.c
     reinplace -W ${worksrcpath} "s|/Library/Audio/Plug-Ins/Vamp|/Library/Audio/Plug-Ins/Vamp:${prefix}/lib/vamp|g" \
                                 lib-src/libvamp/src/vamp-hostsdk/PluginHostAdapter.cpp
-    reinplace -W ${worksrcpath} "s|/Library/Application Support/audacity/libs|${prefix}/lib|g" \
-                                modules/import-export/mod-ffmpeg/FFmpeg.h
+#     reinplace -W ${worksrcpath} "s|/Library/Application Support/audacity/libs|${prefix}/lib|g" \
+#                                 modules/import-export/mod-ffmpeg/FFmpeg.h
     reinplace -W ${worksrcpath} "s|@PREFIX@|/opt/local|g" \
                                 cmake-proxies/lv2/CMakeLists.txt \
                                 scripts/build/macOS/fix_bundle.py \

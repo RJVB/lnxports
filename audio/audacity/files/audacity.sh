@@ -4,7 +4,7 @@ DIRS="@PREFIX@"
 LIBDIRS=""
 
 for d in ${DIRS} ;do
-	for sd in lib lib/x86_64-linux-gnu libexec/qt5/lib ;do
+	for sd in lib lib/x86_64-linux-gnu libexec/qt5/lib libexec/ffmpeg8/lib libexec/ffmpeg7/lib libexec/ffmpeg6/lib ;do
 		if [ -d ${d}/${sd} ] ;then
 			case ${LD_LIBRARY_PATH} in
 				*${d}/${sd}*)
