@@ -386,6 +386,9 @@ patchfiles-append   patch-fix-@version@.diff \
 # restore theme blending to avoid psychedelic colours
 patchfiles-append   patch-restore-theme-blending.diff
 
+# backport FFmpeg8 support
+patchfiles-append   patch-ffmpeg8-support.diff
+
 # quelch a huge number of warnings
 configure.cxxflags-append \
                     -Wno-inconsistent-missing-override \
@@ -543,7 +546,7 @@ proc select_newer_ffmpeg {fvers} {
     global prefix configure.args cmake.module_path cmake.install_rpath
     PortGroup       conflicts_build 1.0
     depends_lib-replace \
-                    port:ffmpeg \
+                    path:bin/ffmpeg:ffmpeg \
                     port:${fvers}
     cmake.module_path-append \
                     ${prefix}/libexec/${fvers}
@@ -552,9 +555,12 @@ proc select_newer_ffmpeg {fvers} {
     conflicts_build ffmpeg-dev
 }
 
-variant ffmpeg6 conflicts ffmpeg7 description {build against ffmpeg6} {}
-variant ffmpeg7 conflicts ffmpeg6 description {build against ffmpeg7} {}
-if {[variant_isset ffmpeg7]} {
+variant ffmpeg6 conflicts ffmpeg7 ffmpeg8 description {build against ffmpeg6} {}
+variant ffmpeg7 conflicts ffmpeg6 ffmpeg8 description {build against ffmpeg7} {}
+variant ffmpeg8 conflicts ffmpeg6 ffmpeg7 description {build against ffmpeg8} {}
+if {[variant_isset ffmpeg8]} {
+    select_newer_ffmpeg ffmpeg8
+} elseif {[variant_isset ffmpeg7]} {
     select_newer_ffmpeg ffmpeg7
 } elseif {[variant_isset ffmpeg6]} {
     select_newer_ffmpeg ffmpeg6
