@@ -12,7 +12,11 @@ platforms           darwin
 license             GPL-2+
 universal_variant   no
 
-set aud_app_path    ${prefix}/bin/audacity
+if {${os.platform} eq "darwin"} {
+    set aud_app_path ${applications_dir}/Audacity.app
+} else {
+    set aud_app_path ${prefix}/bin/audacity
+}
 
 patch.pre_args      -p1
 
@@ -47,59 +51,60 @@ if {${subport} eq "${name}-manual"} {
     return          0
 }
 
-set VST3VERSION     3.7.7
+platform linux {
+    set VST3VERSION 3.7.7
 
-subport vst3sdk-src {}
-if {${subport} eq "vst3sdk-src"} {
-    description     VST 3 Plug-In SDK (sources)
-    long_description \
+    subport vst3sdk-src {}
+    if {${subport} eq "vst3sdk-src"} {
+        description     VST 3 Plug-In SDK (sources)
+        long_description \
                     VST 3 is a general rework of the long-serving VST plug-in interface. \
                     It is not compatible with the older VST versions, but it includes some \
                     new features and possibilities. We have redesigned the API to make it \
                     not only far easier and more reliable for developers to work with, but \
                     have also provided completely new possibilities for plug-ins.\n\
                     This port installs the sources, patched for use by Audacity!
-    license         Steinberg-VST3
-    github.tarball_from \
+        license         Steinberg-VST3
+        github.tarball_from \
                     archive
-    github.setup    steinbergmedia vst3sdk ${VST3VERSION} v _build_19
-    # the interesting things are all in submodules, so we need to git-fetch...
-    fetch.type      git
-    distname        vst3sdk
+        github.setup steinbergmedia vst3sdk ${VST3VERSION} v _build_19
+        # the interesting things are all in submodules, so we need to git-fetch...
+        fetch.type  git
+        distname    vst3sdk
 
-    depends_build   port:coreutils \
-                    port:bzip2 \
-                    port:libarchive
+        depends_build port:bzip2 \
+                    port:libarchive \
+                    port:coreutils
 
-    # patch applied by Audacity:
-    patchfiles-append \
+        # patch applied by Audacity:
+        patchfiles-append \
                     vst3/disable-validator.diff
-    # don't build Jack support:
-    patchfiles-append \
+        # don't build Jack support:
+        patchfiles-append \
                     vst3/patch-disable-jack.diff
 
-    use_configure   no
-    installs_libs   no
-    supported_archs noarch
-    platforms       any
+        use_configure no
+        installs_libs no
+        supported_archs noarch
+        platforms   any
 
-    set dest        ${prefix}/src/vst3sdk/
-    build           {
-        system -W ${workpath} "bsdtar -cvj --exclude .git --exclude .gitmodules -f ${version}.tar.bz2 vst3sdk"
+        set dest    ${prefix}/src/vst3sdk/
+        build       {
+            system -W ${workpath} "bsdtar -cvj --exclude .git --exclude .gitmodules -f ${version}.tar.bz2 vst3sdk"
+        }
+        destroot {
+            xinstall -m 755 -d ${destroot}${dest}
+            xinstall -m 644 ${workpath}/${version}.tar.bz2 ${destroot}${dest}/
+        }
+        return      0
     }
-    destroot {
-        xinstall -m 755 -d ${destroot}${dest}
-        xinstall -m 644 ${workpath}/${version}.tar.bz2 ${destroot}${dest}/
-    }
-    return          0
 }
 
 # Now we can load the PortGroups for the main ports
 PortGroup           wxWidgets 1.0
 PortGroup           active_variants 1.1
 PortGroup           cmake 1.1
-platform darwin {
-}
+
 #>> RJVB
 PortGroup           compress_workdir 1.0
 PortGroup           LTO 1.0
@@ -191,6 +196,7 @@ conflicts           audacity2-legacy audacity3-legacy audacity-legacy audacity-g
 ## github.setup        audacity audacity 0ffa73b9f44acc339e12a350edadd96590dc4b17
 ## version             3.5.1.2 ; revision 1
 ## last commit with with 3.3 source code layout: 2677399f41473fd1cd13f607018475741350c0e1
+git.shallow_since   2024-01-01
 github.setup        audacity audacity 2677399f41473fd1cd13f607018475741350c0e1
 version             3.5.1.409 ; revision 1
 ## From the CMake file:
@@ -265,6 +271,10 @@ depends_build-append \
                     port:pkgconfig \
                     port:rapidjson \
                     port:nasm
+platform darwin {
+    depends_build-append \
+                    port:cctools
+}
 
 depends_lib-append  port:freetype \
                     path:lib/pkgconfig/harfbuzz.pc:harfbuzz \
@@ -286,8 +296,11 @@ if {${os.arch} ne "arm"} {
                     port:libmad
 }
 depends_lib-append  port:mpg123 \
-                    port:wavpack \
+                    port:wavpack
+platform linux {
+    depends_lib-append \
                     port:util-linux
+}
 # audacity could use port:lv2 and port:lilv but would also require a port:suil for that to be possible.
 
 # 4 lines of Mac-specific comments
@@ -297,7 +310,6 @@ depends_lib-append  port:mpg123 \
 patchfiles-append   patch-cmakefiles-@prefix@.diff \
                     patch-build-preparations.diff \
                     patch-fix_bundlepy-@prefix@.diff
-#                     patch-build-pre-1014.diff
 
 platform darwin {
     if {[variant_isset wxsystem]} {
@@ -321,11 +333,8 @@ platform darwin {
     patchfiles-append \
                     patch-more-decent-font-sizes.diff \
                     patch-use-MPlame.diff
-    # work around a missing implementation in wxCocoa's wxSound class
-    patchfiles-append \
-                    patch-implement-progdial=beep.diff
-    add_patchfile_ifexists \
-                    patch-no-sdk1013.diff
+#     add_patchfile_ifexists \
+#                     patch-no-sdk1013.diff
 }
 platform linux {
     patchfiles-append \
@@ -347,8 +356,6 @@ add_patchfile_ifexists \
                     ${PPREFIX}patch-temp-fixes.diff
 
 platform darwin {
-    add_patchfile_ifexists \
-                    ${PPREFIX}patch-cursor-fixes.diff
     variant suil description {Build the GUI library for LV2 plugins\; requires Qt5} {
         PortGroup   qt5 1.0
     }
@@ -436,6 +443,7 @@ platform darwin {
     configure.pre_args-replace \
                     -DCMAKE_INSTALL_NAME_DIR="${cmake.install_prefix}/lib" \
                     -DCMAKE_INSTALL_NAME_DIR="${aud_app_path}/Contents/Frameworks"
+    set AUDIOUNITS  on
 }
 platform linux {
     cmake.install_rpath-append \
@@ -453,6 +461,7 @@ platform linux {
                     ${prefix}/libexec/qt5/lib
     configure.ldflags-append \
                     -Wl,-rpath,${prefix}/libexec/qt5/lib
+    set AUDIOUNITS  off
 }
 
 set _OPT "audacity_"
@@ -466,7 +475,7 @@ configure.args-append \
                     -D${_OPT}has_crashreports=off \
                     -D${_OPT}has_updates_check=off \
                     -D${_OPT}conan_allow_prebuilt_binaries=off \
-                    -D${_OPT}use_audio_units=off \
+                    -D${_OPT}use_audio_units=${AUDIOUNITS} \
                     -D${_OPT}use_ffmpeg=loaded \
                     -D${_OPT}use_soxr=system \
                     -D${_OPT}use_vamp=local \
@@ -704,10 +713,16 @@ post-destroot {
     }
 }
 
+if {${os.platform} eq "darwin"} {
+    set seedoc "installing_and_updating_audacity_on_mac_os_x"
+} else {
+    set seedoc "installing_and_updating_audacity_on_linux"
+}
+
 notes "
     In case Audacity complains about finding FFmpeg or Lame, please locate these libraries\
     under ${prefix}/lib in the Libraries section of the Preferences dialog (see\
-    https://manual.audacityteam.org/man/installing_and_updating_audacity_on_linux.html#locate).
+    https://manual.audacityteam.org/man/${seedoc}.html#locate).
 
     In case you observe colours that seem off in Audacity's user interface after updating, find\
     the text of this note in `port file ${subport}` and read the suggestions below on how you\
@@ -775,10 +790,14 @@ platform darwin {
                         wxW/patch-fix-cocoa-process.diff \
                         wxW/patch-cocoa-build.diff
 
-    set wxtype      gtk2
-    # we take GTk2 deps from the system, preferably
-    fromPorts::depends  lib-append \
+    if {${os.platform} eq "darwin"} {
+        set wxtype      osx_cocoa
+    } else {
+        set wxtype      gtk2
+        # we take GTk2 deps from the system, preferably
+        fromPorts::depends lib-append \
                         port:gtk2
+    }
     compiler.c_standard 2011
     compiler.cxx_standard 2014
 
