@@ -68,6 +68,7 @@ platform linux {
         github.tarball_from \
                     archive
         github.setup steinbergmedia vst3sdk ${VST3VERSION} v _build_19
+        version     ${VST3VERSION}
         # the interesting things are all in submodules, so we need to git-fetch...
         fetch.type  git
         distname    vst3sdk
@@ -148,18 +149,19 @@ if {${build.cmd} ne "ninja"} {
 cmake.save_configure_cmd "install log"
 #<< RJVB
 
-# platform darwin {
+if {${subport} eq "audacity" || ${subport} eq "audacity-wxWidgets"} {
     compiler.blacklist {clang < 602}
     foreach clv {3.3 3.4 3.5 3.7 5.0 6.0 7.0 8.0 9.0 10 11 12 13 14} {
         compiler.blacklist-append macports-clang-${clv}
     }
-    foreach clv {15 16} {
+    foreach clv {15 16 17 18 19 20} {
         if {[file exists ${prefix}/bin/clang-mp-${clv}]} {
             compiler.whitelist-prepend macports-clang-${clv}
         }
         compiler.fallback-prepend macports-clang-${clv}
     }
-# }
+    compiler.fallback-prepend macports-gcc*
+}
 
 # ensure pre-compiled headers and the possible use of ccache can co-exist
 configure.env-append \
@@ -175,7 +177,7 @@ proc if_not_ccache {} {
     }
 }
 
-if {${subport} ne "audacity-wxWidgets"} {
+if {${subport} eq "audacity"} {
     ######### main port #########
 
 description         A Free, Cross-Platform Digital Audio Editor.
@@ -522,27 +524,26 @@ platform linux {
     } else {
         require_active_variants portaudio "" jack
     }
+}
 
-    variant vst3 description {enable support for VST3 plugins} {}
-    if {[variant_exists vst3] && [variant_isset vst3]} {
-        depends_build-append \
+patchfiles-append   patch-parallel-vst3-build.diff
+variant vst3 description {enable support for VST3 plugins} {}
+if {[variant_exists vst3] && [variant_isset vst3]} {
+    depends_build-append \
                     port:vst3sdk-src \
                     port:libarchive
-        patchfiles-append \
-                    patch-parallel-vst3-build.diff
-        pre-configure {
-            if {![file exists ${worksrcpath}/vst3sdk]} {
-                system -W ${worksrcpath} "bsdtar -x --exclude doc -f ${prefix}/src/vst3sdk/${VST3VERSION}.tar.bz2"
-            }
+    pre-configure {
+        if {![file exists ${worksrcpath}/vst3sdk]} {
+            system -W ${worksrcpath} "bsdtar -x --exclude doc -f ${prefix}/src/vst3sdk/${VST3VERSION}.tar.bz2"
         }
-        # The build system will build the vst3 sdk during the configure step
-        configure.env-append \
+    }
+    # The build system will build the vst3 sdk during the configure step
+    configure.env-append \
                     CMAKE_BUILD_PARALLEL_LEVEL=${build.jobs} \
                     BUILD_JOBS=${build.jobs}
-        configure.args-replace \
+    configure.args-replace \
                     -D${_OPT}has_vst3=OFF \
                     -D${_OPT}use_vst3sdk=system
-    }
 }
 
 # make sure the C++ stdlib argument is added to the LDFLAGS too
@@ -760,7 +761,7 @@ platform darwin {
 #<< RJVB
 
     ######### end main port #########
-} else {
+} elseif {${subport} eq "audacity-wxWidgets"} {
     ######### wxWidgets #########
     github.setup        audacity wxWidgets 837669d
 
