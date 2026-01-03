@@ -76,6 +76,9 @@ platform linux {
         depends_build port:bzip2 \
                     port:libarchive \
                     port:coreutils
+        post-extract {
+            system -W ${worksrcpath} "dos2unix cmake/modules/*"
+        }
 
         # patch applied by Audacity:
         patchfiles-append \
@@ -527,6 +530,7 @@ platform linux {
 }
 
 patchfiles-append   patch-parallel-vst3-build.diff
+
 variant vst3 description {enable support for VST3 plugins} {}
 if {[variant_exists vst3] && [variant_isset vst3]} {
     depends_build-append \
@@ -584,6 +588,9 @@ pre-configure {
     if {![file exists ${build.dir}/conan]} {
         ui_warn "The Conan build environment needs to be set up. It's as barbarian as the name suggests \
             so this will take some time!"
+    }
+    if {[variant_isset vst3] && ![file exists ${build.dir}/vst3sdk]} {
+        ui_warn "The VST3 SDK will be built during the configure step ... patience required!"
     }
 }
 
