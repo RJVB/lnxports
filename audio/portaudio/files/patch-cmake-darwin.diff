@@ -1,8 +1,8 @@
 diff --git CMakeLists.txt CMakeLists.txt
-index 77e5388..3b5a86a 100644
+index 427e9e1..ed75794 100644
 --- CMakeLists.txt
 +++ CMakeLists.txt
-@@ -373,9 +373,20 @@ elseif(UNIX)
+@@ -386,9 +386,20 @@ elseif(UNIX)
        set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DPA_USE_AUDIOIO=1")
      endif()
  
@@ -11,9 +11,9 @@ index 77e5388..3b5a86a 100644
 +    pkg_check_modules(SNDIO sndio)
 +    cmake_dependent_option(PA_USE_SNDIO "Enable support for sndio" ON SNDIO_FOUND OFF)
 +    if(PA_USE_SNDIO)
-+      target_link_libraries(PortAudio PRIVATE "${SNDIO_LIBRARIES}")
-+      target_sources(PortAudio PRIVATE src/hostapi/sndio/pa_sndio.c)
-+      target_compile_definitions(PortAudio PUBLIC PA_USE_SNDIO=1)
++      target_link_libraries(portaudio PRIVATE "${SNDIO_LIBRARIES}")
++      target_sources(portaudio PRIVATE src/hostapi/sndio/pa_sndio.c)
++      target_compile_definitions(portaudio PUBLIC PA_USE_SNDIO=1)
 +      set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DPA_USE_SNDIO=1")
 +      set(PKGCONFIG_REQUIRES_PRIVATE "${PKGCONFIG_REQUIRES_PRIVATE} sndio")
 +    endif()
@@ -22,16 +22,16 @@ index 77e5388..3b5a86a 100644
 +    option(PA_USE_PULSEAUDIO "Enable support for PulseAudio general purpose sound server" OFF)
      if(PA_USE_PULSEAUDIO)
 +      find_package(PulseAudio REQUIRED)
-       target_link_libraries(PortAudio PRIVATE PulseAudio::PulseAudio)
-       target_sources(PortAudio PRIVATE
+       target_link_libraries(portaudio PRIVATE PulseAudio::PulseAudio)
+       target_sources(portaudio PRIVATE
          src/hostapi/pulseaudio/pa_linux_pulseaudio_block.c
-@@ -383,24 +394,15 @@ elseif(UNIX)
+@@ -396,24 +407,15 @@ elseif(UNIX)
          src/hostapi/pulseaudio/pa_linux_pulseaudio_cb.c)
  
-       target_compile_definitions(PortAudio PUBLIC PA_USE_PULSEAUDIO=1)
+       target_compile_definitions(portaudio PUBLIC PA_USE_PULSEAUDIO=1)
 -      set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DPA_USE_PULSEAUDIO=1")
 -      set(PKGCONFIG_REQUIRES_PRIVATE "${PKGCONFIG_REQUIRES_PRIVATE} libpulse")
-+	 if (NOT APPLE)
++      if (NOT APPLE)
 +        set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DPA_USE_PULSEAUDIO=1")
 +        set(PKGCONFIG_REQUIRES_PRIVATE "${PKGCONFIG_REQUIRES_PRIVATE} libpulse")
 +      endif()
@@ -43,9 +43,9 @@ index 77e5388..3b5a86a 100644
 -    pkg_check_modules(SNDIO sndio)
 -    cmake_dependent_option(PA_USE_SNDIO "Enable support for sndio" ON SNDIO_FOUND OFF)
 -    if(PA_USE_SNDIO)
--      target_link_libraries(PortAudio PRIVATE "${SNDIO_LIBRARIES}")
--      target_sources(PortAudio PRIVATE src/hostapi/sndio/pa_sndio.c)
--      target_compile_definitions(PortAudio PUBLIC PA_USE_SNDIO=1)
+-      target_link_libraries(portaudio PRIVATE "${SNDIO_LIBRARIES}")
+-      target_sources(portaudio PRIVATE src/hostapi/sndio/pa_sndio.c)
+-      target_compile_definitions(portaudio PUBLIC PA_USE_SNDIO=1)
 -      set(PKGCONFIG_CFLAGS "${PKGCONFIG_CFLAGS} -DPA_USE_SNDIO=1")
 -      set(PKGCONFIG_REQUIRES_PRIVATE "${PKGCONFIG_REQUIRES_PRIVATE} sndio")
 -    endif()
@@ -54,11 +54,11 @@ index 77e5388..3b5a86a 100644
  
  # Make sure PA_USE_ALSA is available as it is used for PortAudioConfig.cmake configuration
  if (NOT PA_USE_ALSA)
-@@ -461,6 +463,7 @@ set_target_properties(PortAudio PROPERTIES
-   WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+@@ -474,6 +476,7 @@ set_target_properties(portaudio PROPERTIES
+   WINDOWS_EXPORT_ALL_SYMBOLS FALSE
    VERSION ${PROJECT_VERSION}
    SOVERSION 2
 +  MACHO_COMPATIBILITY_VERSION 3
  )
- install(TARGETS PortAudio
+ install(TARGETS portaudio
    EXPORT PortAudio-targets
