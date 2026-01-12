@@ -11,8 +11,7 @@ PortGroup           conflicts_build 1.0
 
 set basename        alsa
 name                ${basename}-lib
-version             1.2.11
-set branch          [join [lrange [split ${version} .] 0 1] .]
+version             1.2.12
 categories          audio
 license             LGPL-2.1
 maintainers         gmail.com:rjvbertin
@@ -43,13 +42,14 @@ configure.save_configure_cmd "install log"
 
 switch ${subport} {
     alsa-lib {
+        version         1.2.15.2
+        set branch      [join [lrange [split ${version} .] 0 1] .]
         description     alsa-lib contains the user space library that developers compile ALSA applications against.
         long_description-append \n${description}
-        master_sites    ftp://ftp.alsa-project.org/pub/lib/
-        checksums       rmd160  08d9212c883d75f2fabe36886ca00590919733fa \
-                        sha256  9f3f2f69b995f9ad37359072fbc69a3a88bfba081fc83e9be30e14662795bb4d
-#                         size    1107150
-
+        master_sites    https://www.alsa-project.org/files/pub/lib/
+        checksums       rmd160  8db08f61d4f4cc1ba482efc333eba047ecf05128 \
+                        sha256  637eefd4966ce738da44464494df2b2894e19778fac2f9e7c47277e2af9297f4
+#                         size    1126565
         configure.args-append \
                         --disable-dependency-tracking \
                         --disable-silent-rules \
@@ -61,12 +61,25 @@ switch ${subport} {
             file rename ${destroot}${prefix}/share/alsa/alsa.conf ${destroot}${prefix}/share/alsa/alsa.conf.stock
             reinplace "s|/usr/etc/alsa|${prefix}/etc/alsa|g" ${destroot}${prefix}/share/alsa/alsa.conf.stock
             reinplace "s|  ALSA library configuration file|  ALSA library v${branch}.x configuration file|g" ${destroot}${prefix}/share/alsa/alsa.conf.stock
+            foreach d [glob -nocomplain -type d ${destroot}${prefix}/share/alsa/*] {
+                foreach c [glob -nocomplain ${d}/*.conf] {
+                    file rename ${c} ${c}.stock
+                }
+            }
         }
         post-activate {
+            foreach d [glob -nocomplain -type d ${prefix}/share/alsa/*] {
+                foreach cs [glob -nocomplain ${d}/*.conf.stock] {
+                    set c [file rootname ${cs}]
+                    if {![file exists ${c}]} {
+                        xinstall -m 644 ${cs} ${c}
+                    }
+                }
+            }
             if {![file exists ${prefix}/share/alsa/alsa.conf]} {
                 xinstall -m 644 ${prefix}/share/alsa/alsa.conf.stock ${prefix}/share/alsa/alsa.conf
             } elseif {[catch {exec grep -F v${branch}.x ${prefix}/share/alsa/alsa.conf}]} {
-                ui_warn "You may need to upgrade your ${prefix}/share/alsa/alsa.conf file"
+                ui_warn "You may need to upgrade your ${prefix}/share/alsa/alsa.conf file (idem for the other .conf files in that directory)"
                 notes-append "Please compare ${prefix}/share/alsa/alsa.conf with the .stock configuration \
                         file in the same directory; functionality may not be complete with an old configuration!"
             }
@@ -75,13 +88,13 @@ switch ${subport} {
         test.target     check
     }
     alsa-plugins {
-        version         1.2.7.1 ; revision 4
+        version         1.2.12
         description     alsa-plugins contains plugins for various ALSA needs (e.g. Jack).
         long_description-append \n${description}
-        master_sites    ftp://ftp.alsa-project.org/pub/plugins/
+        master_sites    https://www.alsa-project.org/files/pub/plugins/
         distname        ${subport}-${version}
-        checksums       rmd160  2bcb01e76245cdf6b20ed6a7f8c0bcc95ec5b5db \
-                        sha256  8c337814954bb7c167456733a6046142a2931f12eccba3ec2a4ae618a3432511
+        checksums       rmd160  1cf439c6d2db0c098d80298d9e592328f6af1ebd \
+                        sha256  7bd8a83d304e8e2d86a25895d8dcb0ef0245a8df32e271959cdbdc6af39b66f2
 
         depends_build-append \
                         port:patchelf
@@ -99,9 +112,8 @@ switch ${subport} {
             fromPorts::depends lib-append port:jack
         }
         variant ffmpeg6 conflicts ffmpeg7 ffmpeg8 description {build against FFmpeg6} {}
-# currently ffmpeg6 is the latest supported version
-#         variant ffmpeg7 conflicts ffmpeg6 ffmpeg8 description {build against FFmpeg7} {}
-#         variant ffmpeg8 conflicts ffmpeg6 ffmpeg7 description {build against FFmpeg8} {}
+        variant ffmpeg7 conflicts ffmpeg6 ffmpeg8 description {build against FFmpeg7} {}
+        variant ffmpeg8 conflicts ffmpeg6 ffmpeg7 description {build against FFmpeg8} {}
         foreach fv {6 7 8} {
             if {[variant_exists ffmpeg${fv}] && [variant_isset ffmpeg${fv}]} {
                 depends_lib-replace \
@@ -124,24 +136,27 @@ switch ${subport} {
         }
     }
     alsa-tools {
+        version         1.2.15
         description     alsa-tools contains various more obscure tools and loaders.
         long_description-append \n${description}
-        master_sites    ftp://ftp.alsa-project.org/pub/tools/
+        master_sites    https://www.alsa-project.org/files/pub/tools/
         distname        ${subport}-${version}
-        checksums       rmd160  ba9f1c38e909ed9c542f505a5dbf3a367745eb8b \
-                        sha256  0915c9634a502fd3655ca9c574d259bc9e79983d91d45aeacff6f3c00f8ae3e9
-#                         size    1882262
+        checksums       rmd160  48fdabec706a8da0e64ead698a896c81cfffb011 \
+                        sha256  800498d35233672ef67f4bf74cc6e1d37e1fe70c0540e2d2e062f2319e7b5df7
 
         post-extract {
             # remove an extra indirection that causes our --prefix to get lost:
             file rename ${worksrcpath}/seq/sbiload ${worksrcpath}/sbiload
+            # envycontrol24 has migrated to GTk4; let's bump it down to a previous version
+            # that still supports GTk3 for now.
+            file delete -force ${worksrcpath}/envy24control
+            system -W ${worksrcpath} "tar -xf ${filespath}/atools-envy24control-1.2.11.tar.xz"
         }
 
         depends_lib     port:${basename}-lib
         depends_run     port:${basename}-plugins
         patchfiles-append \
                         patch-atools-makefile.diff \
-                        patch-atools-hdajackretask.diff \
                         patch-atools-opl3dir-location.diff
         post-patch {
             reinplace "s|@PREFIX@|${prefix}|g" ${worksrcpath}/sbiload/sbiload.c
@@ -169,14 +184,14 @@ switch ${subport} {
     }
     alsa-utils {
         PortGroup       locale_select 1.0
+        version         1.2.15.2
         description     alsa-utils contains various generic ALSA command line tools, \
                         such as amixer, aplay, alsaconf, etc.
         long_description-append \n${description}
-        master_sites    ftp://ftp.alsa-project.org/pub/utils/
+        master_sites    https://www.alsa-project.org/files/pub/utils/
         distname        ${subport}-${version}
-        checksums       rmd160  78a65cfdb8a59901d554d9631bd1a4108f4aa321 \
-                        sha256  9ac6ca3a883f151e568dcf979b8d2e5cbecc51b819bb0e6bb8a2e9b34cc428a7
-#                         size    1627148
+        checksums       rmd160  74148f780898216de38b60aa0c4de061292158ac \
+                        sha256  7aaaafbfb01942113ec0c31e51f705910e81079205088ca2f8f137a3869e1a3a
 
         depends_build-append \
                         port:gettext-dev
