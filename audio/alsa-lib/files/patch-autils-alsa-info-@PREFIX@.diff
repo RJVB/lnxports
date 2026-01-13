@@ -1,0 +1,13 @@
+diff --git alsa-info/orig.alsa-info.sh alsa-info/alsa-info.sh
+index 77ca624..7f1d863 100755
+--- alsa-info/orig.alsa-info.sh
++++ alsa-info/alsa-info.sh
+@@ -271,7 +271,7 @@ withall() {
+ }
+ 
+ get_alsa_library_version() {
+-	ALSA_LIB_VERSION="$(grep VERSION_STR /usr/include/alsa/version.h 2>/dev/null | awk '{ print $3 }' | sed 's/"//g')"
++	ALSA_LIB_VERSION="$(grep VERSION_STR @PREFIX@/include/alsa/version.h 2>/dev/null | awk '{ print $3 }' | sed 's/"//g')"
+ 
+ 	if [ -z "$ALSA_LIB_VERSION" ]; then
+ 		if [ -f /etc/lsb-release ]; then
