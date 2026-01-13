@@ -36,4 +36,6 @@ if [ -x @PREFIX@/lib/libwrapped_syscalls.so ] ;then
 fi
 
 unset GTK_IM_MODULE
-exec -a audacity @PREFIX@/bin/audacity.bin "$@"
+mkdir -p $HOME/.audacity-data
+#exec gdb --args @PREFIX@/bin/audacity.bin "$@"
+exec -a audacity @PREFIX@/bin/audacity.bin "$@" 2>$HOME/.audacity-data/errors.log
