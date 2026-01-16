@@ -38,4 +38,4 @@ fi
 unset GTK_IM_MODULE
 mkdir -p $HOME/.audacity-data
 #exec gdb --args @PREFIX@/bin/audacity.bin "$@"
-exec -a audacity @PREFIX@/bin/audacity.bin "$@" 2>$HOME/.audacity-data/errors.log
+exec -a audacity @PREFIX@/bin/audacity.bin "$@" 2>>$HOME/.audacity-data/errors.log
