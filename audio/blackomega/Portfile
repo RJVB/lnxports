@@ -12,7 +12,7 @@ fetch.type          git
 set upstream_gitrev 0
 # after `git tag -a -m "release 2.5.0" 2.5.0 db94e00333bbe938f865fb14935c71d282fc11c0`
 set backport_gitrev 67
-version             2.5.0.${upstream_gitrev}.${backport_gitrev}
+version             2.5.0.${upstream_gitrev}.${backport_gitrev} ; revision 1
 distname            ${name}-git
 
 categories          audio
@@ -53,12 +53,15 @@ patchfiles-append   patch-for-qt5.diff \
                     patch-use-system-plugindir.diff \
                     patch-use-our-buildtype.diff \
                     patch-build-no-playerapps.diff \
-                    patch-install-no-tests.diff
+                    patch-install-no-tests.diff \
+                    patch-ogg-fix.diff
 
 post-patch {
     # https://github.com/bonezuk/blackomega/issues/9
     if {${os.platform} eq "darwin" && ${os.major} < 11} {
         reinplace "s|CMAKE_CXX_STANDARD 14|CMAKE_CXX_STANDARD 98|" ${worksrcpath}/CMakeLists.txt
+    } else {
+        reinplace "s|CMAKE_CXX_STANDARD 14|CMAKE_CXX_STANDARD 17|" ${worksrcpath}/CMakeLists.txt
     }
 }
 
@@ -87,9 +90,9 @@ if {${os.platform} eq "darwin" && ${os.major} < 11} {
     compiler.cxx_standard       1998
     configure.cxxflags-append   -std=gnu++98
 } else {
-    compiler.cxx_standard       2014
+    compiler.cxx_standard       2017
     # Due to gtest:
-    configure.cxxflags-append   -std=gnu++14
+    configure.cxxflags-append   -std=gnu++17
 }
 
 build.pre_args      -w

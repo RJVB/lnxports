@@ -1,0 +1,14 @@
+diff --git a/source/engine/silveromega/src/VSilverFrameSynthesis.cxx b/source/engine/silveromega/src/VSilverFrameSynthesis.cxx
+index 1ca1f3f..0d44c50 100644
+--- a/source/engine/silveromega/src/VSilverFrameSynthesis.cxx
++++ b/source/engine/silveromega/src/VSilverFrameSynthesis.cxx
+@@ -27,7 +27,8 @@ void frameSynthesis(VSilverContainer *data,engine::Sequence *seq,VSilverWindow *
+     tint *zerobundle = reinterpret_cast<tint *>(::malloc(data->m_information->m_audioChannels * sizeof(tint)));
+     tfloat32 **pcmbundle = reinterpret_cast<tfloat32 **>(::malloc(data->m_information->m_audioChannels * sizeof(tfloat32 *)));
+ 
+-    VSilverMapData *map = data->m_data->m_mappings[window->m_mode];
++    const auto maxMapping = data->m_data->m_numMappings - 1;
++    VSilverMapData *map = data->m_data->m_mappings[std::min(maxMapping, window->m_mode)];
+ 
+     // floor curve decode
+     {
