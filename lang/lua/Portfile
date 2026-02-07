@@ -4,7 +4,7 @@ PortSystem          1.0
 
 name                lua
 conflicts           lua50
-version             5.3.4
+version             5.3.4 ;
 revision            1
 categories          lang
 license             MIT
@@ -28,7 +28,7 @@ patchfiles          patch-Makefile.diff \
 # TODO: also add lua50 and lua51 here
 subport             lua52 {
     version         5.2.4
-    revision        1
+    revision        2
     checksums       rmd160  3bad2da85f354132da6a53b45882006f0a451b5c \
                     sha256  b9e2e4aad6789b3b63a056d442f7b39f0ecfca3ae0f1fc0ae4e9614401b69f4b
 
@@ -50,58 +50,63 @@ build.target        linux
 test.run            yes
 test.env            LD_LIBRARY_PATH=./lib
 
-post-patch {
-    reinplace "s|@PREFIX@|${prefix}|g"   ${worksrcpath}/lua.pc ${worksrcpath}/Makefile ${worksrcpath}/src/Makefile ${worksrcpath}/src/luaconf.h
-    reinplace "s|@VERSION@|${version}|g" ${worksrcpath}/lua.pc ${worksrcpath}/Makefile ${worksrcpath}/src/Makefile
-    reinplace "s|@BRANCH@|${branch}|g"   ${worksrcpath}/lua.pc ${worksrcpath}/Makefile ${worksrcpath}/src/Makefile
-}
-
-configure.cflags-append -fPIC
-configure {
-    reinplace -E "/^MYLDFLAGS=/s|\$| ${configure.ldflags} [get_canonical_archflags]|" ${worksrcpath}/src/Makefile
-    reinplace -E "/^CFLAGS=/s|\$| ${configure.cflags} ${configure.cppflags} [get_canonical_archflags]|" ${worksrcpath}/src/Makefile
-    reinplace "s|CC= .*\$|CC= ${configure.cc}|" ${worksrcpath}/src/Makefile
-}
-
-use_parallel_build  no
-
-destroot.target install INSTALL_TOP=${destroot}${prefix}
-post-destroot {
-    # documentation
-    set docdir ${prefix}/share/doc/${subport}
-    xinstall -d -m 0755 ${destroot}${docdir}/html
-    xinstall -m 0644 -W ${worksrcpath} COPYRIGHT README ${destroot}${docdir}
-    foreach html [glob ${worksrcpath}/doc/*.html ${worksrcpath}/doc/*.css ${worksrcpath}/doc/*.gif ${worksrcpath}/doc/*.png] {
-        xinstall -m 0644 ${html} ${destroot}${docdir}/html
-    }
-}
-
-if {$subport eq $name} {
-    post-extract {
-       xinstall -m 0644 -W ${filespath} COPYRIGHT lua.pc ${worksrcpath}
+if {![variant_isset fromHost]} {
+    post-patch {
+        reinplace "s|@PREFIX@|${prefix}|g" \
+            ${worksrcpath}/lua.pc ${worksrcpath}/Makefile ${worksrcpath}/src/Makefile ${worksrcpath}/src/luaconf.h
+        reinplace "s|@VERSION@|${version}|g" \
+            ${worksrcpath}/lua.pc ${worksrcpath}/Makefile ${worksrcpath}/src/Makefile
+        reinplace "s|@BRANCH@|${branch}|g" \
+            ${worksrcpath}/lua.pc ${worksrcpath}/Makefile ${worksrcpath}/src/Makefile
     }
 
+    configure.cflags-append -fPIC
+    configure {
+        reinplace -E "/^MYLDFLAGS=/s|\$| ${configure.ldflags} [get_canonical_archflags]|" ${worksrcpath}/src/Makefile
+        reinplace -E "/^CFLAGS=/s|\$| ${configure.cflags} ${configure.cppflags} [get_canonical_archflags]|" ${worksrcpath}/src/Makefile
+        reinplace "s|CC= .*\$|CC= ${configure.cc}|" ${worksrcpath}/src/Makefile
+    }
+
+    use_parallel_build  no
+
+    destroot.target install INSTALL_TOP=${destroot}${prefix}
     post-destroot {
-        xinstall -W ${worksrcpath} -m 0644 lua.pc ${destroot}${prefix}/lib/pkgconfig/
-    }
-} else {
-    post-extract {
-       xinstall -m 0644 -W ${filespath}/${branch} COPYRIGHT lua.pc ${worksrcpath}
-    }
-    configure.ldflags-append -Wl,-R,${prefix}/lib/${name}-${branch}
-
-    post-destroot {
-        #  version executable and man pages files
-        foreach f [glob ${destroot}${prefix}/bin/*] {
-            move $f ${f}${branch}
+        # documentation
+        set docdir ${prefix}/share/doc/${subport}
+        xinstall -d -m 0755 ${destroot}${docdir}/html
+        xinstall -m 0644 -W ${worksrcpath} COPYRIGHT README ${destroot}${docdir}
+        foreach html [glob ${worksrcpath}/doc/*.html ${worksrcpath}/doc/*.css ${worksrcpath}/doc/*.gif ${worksrcpath}/doc/*.png] {
+            xinstall -m 0644 ${html} ${destroot}${docdir}/html
         }
-        foreach f [glob ${destroot}${prefix}/share/man/man1/*] {
-            move $f [file rootname $f]-${branch}[file extension $f]
+    }
+
+    if {$subport eq $name} {
+        post-extract {
+           xinstall -m 0644 -W ${filespath} COPYRIGHT lua.pc ${worksrcpath}
         }
 
-        #  install versioned pkgconfig file
-        xinstall -d -m 0755 ${destroot}${prefix}/lib/pkgconfig
-        xinstall -m 0644 ${worksrcpath}/lua.pc ${destroot}${prefix}/lib/pkgconfig/lua-${branch}.pc
+        post-destroot {
+            xinstall -W ${worksrcpath} -m 0644 lua.pc ${destroot}${prefix}/lib/pkgconfig/
+        }
+    } else {
+        post-extract {
+           xinstall -m 0644 -W ${filespath}/${branch} COPYRIGHT lua.pc ${worksrcpath}
+        }
+        configure.ldflags-append -Wl,-R,${prefix}/lib/${name}-${branch}
+
+        post-destroot {
+            #  version executable and man pages files
+            foreach f [glob ${destroot}${prefix}/bin/*] {
+                move $f ${f}${branch}
+            }
+            foreach f [glob ${destroot}${prefix}/share/man/man1/*] {
+                move $f [file rootname $f]-${branch}[file extension $f]
+            }
+
+            #  install versioned pkgconfig file
+            xinstall -d -m 0755 ${destroot}${prefix}/lib/pkgconfig
+            xinstall -m 0644 ${worksrcpath}/lua.pc ${destroot}${prefix}/lib/pkgconfig/lua-${branch}.pc
+        }
     }
 }
 
