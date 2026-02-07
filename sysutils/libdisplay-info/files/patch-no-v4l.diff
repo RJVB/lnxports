@@ -1,0 +1,13 @@
+diff --git test/orig.meson.build test/meson.build
+index 1148bdb..75002c3 100644
+--- test/orig.meson.build
++++ test/meson.build
+@@ -73,7 +73,7 @@ foreach tc : test_cases
+ 	gen_targets += files('data/' + tc + '.edid')
+ endforeach
+ 
+-subproject('v4l-utils', required: false)
++# subproject('v4l-utils', required: false)
+ ref_edid_decode = find_program('edid-decode', native: true, required: false)
+ if ref_edid_decode.found()
+ 	test_env += 'REF_EDID_DECODE=' + ref_edid_decode.full_path()
