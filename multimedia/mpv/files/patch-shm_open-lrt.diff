@@ -1,0 +1,19 @@
+diff --git orig.meson.build meson.build
+index fb10be5..cdc1c1f 100644
+--- orig.meson.build
++++ meson.build
+@@ -1012,7 +1012,13 @@ endif
+ 
+ features += {'posix-shm': false}
+ if features['posix']
+-    features += {'posix-shm': cc.has_function('shm_open', prefix: '#include <sys/mman.h>')}
++    if librt.found()
++        features += {'posix-shm': cc.has_function('shm_open',
++                                                  dependencies: librt,
++                                                  prefix: '#include <sys/mman.h>')}
++    else
++        features += {'posix-shm': cc.has_function('shm_open', prefix: '#include <sys/mman.h>')}
++    endif
+ endif
+ 
+ spirv_cross = dependency('spirv-cross-c-shared', required:
