@@ -34,11 +34,14 @@ build.cmd           gmake
 build.pre_args-delete all
 
 depends_lib-append  port:libnfs \
-                    port:xnvme \
                     port:curl \
                     port:gperftools \
                     port:flex \
                     port:zlib
+if {${os.platform} eq "darwin" && ${os.major} >= 15} {
+    depends_lib-append \
+                    port:xnvme
+}
 
 configure.args-append \
                     --cc=${configure.cc}
