@@ -1,0 +1,64 @@
+diff --git a/tls/ktls.c b/tls/ktls.c
+index cb88a78..b96b5f9 100644
+--- a/tls/ktls.c
++++ b/tls/ktls.c
+@@ -53,6 +53,12 @@
+  */
+ static bool tls_is_ktls_enabled(gnutls_session_t session, bool read)
+ {
++#ifndef SOL_TLS
++	TLS_LOG(1, "gnutls version %s has kTLS support the running kernel does not.",
++		gnutls_check_version("0.0.0"));
++	return false;
++#endif
++
+ 	const int ret = gnutls_transport_is_ktls_enabled(session);
+ 
+ 	if (ret == GNUTLS_E_UNIMPLEMENTED_FEATURE) {
+@@ -99,11 +105,17 @@ static bool tls_is_ktls_enabled(gnutls_session_t session _U_, bool read _U_)
+ 
+ static int ktls_setsockopt(int sock, bool read, const void *info, socklen_t infolen)
+ {
++#ifdef SOL_TLS
+ 	const int ret = setsockopt(sock, SOL_TLS, read ? TLS_RX : TLS_TX, info, infolen);
+ 	if (!ret) {
+ 		TLS_LOG(2, "setsockopt(%s) success", read ? "TLS_RX" : "TLS_TX");
+ 		return 0;
+ 	}
++#else
++	// let's not take chances that our the value for SOL_TLS does something else,
++	// but just set the appropriate errno directly.
++	errno = ENOPROTOOPT;
++#endif
+ 
+ 	if (errno == EBUSY) {
+ 		/*
+@@ -222,11 +234,16 @@ GENERATE_SET_CRYPTO_INFO(CHACHA20_POLY1305)
+ 
+ int setup_ktls(gnutls_session_t session)
+ {
++	if (!tls_is_ktls_enabled(session, true) || !tls_is_ktls_enabled(session, false)) {
++		return -1;
++	}
++
+ 	const gnutls_cipher_algorithm_t cipher = gnutls_cipher_get(session);
+ 
+ 	TLS_LOG(2, "setup_ktls(session=%p, fd=%d)",
+ 		session, gnutls_transport_get_int(session));
+ 
++#ifdef TCP_ULP
+ 	/*
+ 	 * Before we can set crypto info, need to set ULP=TLS.
+ 	 */
+@@ -235,6 +252,11 @@ int setup_ktls(gnutls_session_t session)
+ 		TLS_LOG(1, "setsockopt(TLS_ULP) failed(%d): %s", errno, strerror(errno));
+ 		return -1;
+ 	}
++#else
++	// a priori we should not be here
++	TLS_LOG(1, "setsockopt(TLS_ULP) failed: optname not defined for the running kernel");
++	return -1;
++#endif
+ 
+ 	switch (cipher) {
+ #if defined(TLS_CIPHER_AES_GCM_128)
