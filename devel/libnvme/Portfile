@@ -1,13 +1,14 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem      1.0
-PortGroup       github 1.0
+PortGroup       github 1.1
 PortGroup       LTO 1.0
 PortGroup       meson 1.0
 PortGroup       openssl 1.0
 
 name            libnvme
 subport nvme    {}
+subport xnvme   {}
 
 if {${subport} eq "libnvme"} {
     github.setup    linux-nvme libnvme 18b3316c502f229a5339d2c283510ec8008ec3b9
@@ -33,7 +34,8 @@ if {${subport} eq "libnvme"} {
                     -Dpython=disabled
 
     meson.save_configure_cmd "install log"
-} else {
+}
+if {${subport} eq "nvmw"} {
     github.setup    linux-nvme nvme-cli 9e532bbc0952b6689e0db4c6cce90be9b3f6d0d2
     name            nvme
     version         2.5.50
@@ -66,5 +68,38 @@ if {${subport} eq "libnvme"} {
 
     post-destroot {
         file delete -force ${destroot}${prefix}/lib/dracut
+    }
+}
+if {${subport} eq "xnvme"} {
+    github.setup    xnvme xnvme HEAD
+    name            xnvme
+    version         0.7.5
+    distname        ${name}-git
+
+    fetch.type      git
+
+    categories      sysutils
+    platforms       linux
+    license         BSD-3
+    maintainers     gmail.com:rjvbertin openmaintainer
+    platforms       linux darwin
+    description     cross-platform libraries and tools for NVMe devices 
+    long_description \
+                    {*}${description}
+#     # TODO:
+#     depends_lib-append \
+#                     port:libaio
+
+    # SPDK is a Storage Performance Development Kit. I don't think we need that
+    # (And it fails to configure on my Linux platform anyway.)
+    configure.args-append \
+                    -Dwith-spdk=disabled \
+                    -Dexamples=false
+    build.pre_args-prepend \
+                    -k 0
+    post-destroot {
+        xinstall -m 755 -d ${destroot}${prefix}/share/bash-completion/
+        file rename ${destroot}/usr/share/bash-completion/completions ${destroot}${prefix}/share/bash-completion/
+        file delete {*}[glob ${destroot}${prefix}/bin/xnvme_tests*]
     }
 }
