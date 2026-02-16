@@ -1,0 +1,61 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# Copyright (c) 2026 R.J.V. Bertin
+
+PortSystem          1.0
+
+PortGroup           github 1.1
+PortGroup           legacysupport 1.1
+legacysupport.newest_darwin_requires_legacy 15
+
+PortGroup           openssl 1.0
+
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+PortGroup           locale_select 1.0
+
+description         Flexible I/O Tester
+long_description    Fio is a tool that is able to simulate a given I/O workload without \
+                    resorting to writing a tailored test case again and again. \
+                    It spawns a number of threads or processes doing a particular type \
+                    of I/O action as specified by the user. It can be used for \
+                    benchmarking disk I/O.
+maintainers         gmail.com:rjvbertin openmaintainer
+
+github.setup        axboe fio 1a04e5746c28316bd8a64825bf2b5739dc01c589
+fetch.type          git
+name                fio
+distname            ${name}-git
+version             3.41.110
+platforms           linux darwin
+
+depends_build-append \
+                    port:gmake
+build.cmd           gmake
+build.pre_args-delete all
+
+depends_lib-append  port:curl \
+                    port:gperftools \
+                    port:flex \
+                    port:zlib
+
+# libnfs
+
+configure.args-append \
+                    --cc=${configure.cc}
+
+if {![variant_isset cputuned]} {
+    configure.args-append \
+                    --disable-native
+}
+
+variant gfio description {build the GUI} {
+    depends_lib-append \
+                    port:gtk2 \
+                    port:glib2 \
+                    port:cairo
+    configure.args-append \
+                    --enable-gfio
+}
+
+build.post_args-append -wk
+
