@@ -37,9 +37,13 @@ if {${os.platform} ne "darwin"} {
 
 depends_lib-append  port:gnutls
 
+patchfiles-append   patch-build-without-ktls-in-kernel.diff \
+                    patch-test-ld_timeout.diff
+
 configure.args-append \
                     -DBUILD_SHARED_LIBS=ON \
                     -DENABLE_UTILS=ON \
                     -DENABLE_MULTITHREADING=ON \
                     -DENABLE_TESTS=ON
 
+build.post_args     -wk
