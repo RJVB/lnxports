@@ -19,6 +19,7 @@ long_description    Fio is a tool that is able to simulate a given I/O workload 
                     It spawns a number of threads or processes doing a particular type \
                     of I/O action as specified by the user. It can be used for \
                     benchmarking disk I/O.
+license             GPL-2.0
 maintainers         gmail.com:rjvbertin openmaintainer
 
 github.setup        axboe fio 1a04e5746c28316bd8a64825bf2b5739dc01c589
