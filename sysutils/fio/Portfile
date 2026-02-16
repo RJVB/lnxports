@@ -25,7 +25,7 @@ github.setup        axboe fio 1a04e5746c28316bd8a64825bf2b5739dc01c589
 fetch.type          git
 name                fio
 distname            ${name}-git
-version             3.41.110
+version             3.41.110 ; revision 1
 platforms           linux darwin
 
 depends_build-append \
@@ -33,12 +33,12 @@ depends_build-append \
 build.cmd           gmake
 build.pre_args-delete all
 
-depends_lib-append  port:curl \
+depends_lib-append  port:libnfs \
+                    port:xnvme \
+                    port:curl \
                     port:gperftools \
                     port:flex \
                     port:zlib
-
-# libnfs
 
 configure.args-append \
                     --cc=${configure.cc}
