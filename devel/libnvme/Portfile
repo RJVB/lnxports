@@ -79,7 +79,18 @@ if {${subport} eq "xnvme"} {
     fetch.type      git
 
     categories      sysutils
-    platforms       linux
+    if {${os.platform} eq "darwin"} {
+        if {${os.major} >= 15} {
+            platforms linux darwin
+        } else {
+            pre-fetch {
+                ui_error "This port requires Darwin 15 (10.13) or newer!"
+                return -code error "Not supported on this OS version"
+            }
+        }
+    } else {
+        platforms   linux
+    }
     license         BSD-3
     maintainers     gmail.com:rjvbertin openmaintainer
     platforms       linux darwin
