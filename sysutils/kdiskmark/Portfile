@@ -24,22 +24,29 @@ version             3.2.0.4
 
 depends_build-append \
                     path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
+qt5.depends_build_component \
+                    qttools
 
 compiler.cxx_standard \
                     2017
 
+patch.pre_args      -Np1
 patchfiles-append   patch-allow-non-privileged.diff
 
 configure.args-append \
                     -DUSE_QT5=ON \
                     -DUSE_PRIVILEGED_HELPER=OFF
 
-variant asroot description {run the benchmarking helper with root privileges} {
-    depends_lib-append \
+if {${os.platform} ne "darwin"} {
+    variant asroot description {run the benchmarking helper with root privileges} {
+        depends_lib-append \
                     path:lib/pkgconfig/polkit-qt5-1.pc:polkit-qt5
-    configure.args-replace \
+        configure.args-replace \
                     -DUSE_PRIVILEGED_HELPER=OFF \
                     -DUSE_PRIVILEGED_HELPER=ON
+    }
+
+    destroot.violate_mtree yes
 }
 
 build.post_args-append -wk
@@ -47,24 +54,25 @@ build.post_args-append -wk
 langselect_qm_dir   ${destroot}${prefix}/share/${name}/${name}/translations
 langselect_qm_basename ${name}_
 
-destroot.violate_mtree yes
 post-destroot {
-    # we need to install stuff for the root/system DBus daemon and/or systemd...
-    if {[file exists /etc/dbus-1/system.d]} {
-        xinstall -m 755 -d ${destroot}/etc/dbus-1/system.d
-        xinstall -m 644 ${destroot}${prefix}/share/dbus-1/system.d/dev.jonmagon.kdiskmark.helperinterface.conf \
-            ${destroot}/etc/dbus-1/system.d
-    }
-    if {[variant_isset asroot]} {
-        xinstall -m 755 -d ${destroot}/usr/share/dbus-1/system-services/
-        xinstall -m 644 ${destroot}${prefix}/share/dbus-1/system-services/dev.jonmagon.kdiskmark.helperinterface.service \
-            ${destroot}/usr/share/dbus-1/system-services/
-        xinstall -m 755 -d ${destroot}/usr/share/polkit-1/actions/
-        ln -s ${prefix}/share/polkit-1/actions/dev.jonmagon.kdiskmark.helper.policy ${destroot}/usr/share/polkit-1/actions/
-    } else {
-        xinstall -m 755 -d ${destroot}/usr/share/dbus-1/services/
-        ln -s ${prefix}/share/dbus-1/services/dev.jonmagon.kdiskmark.helperinterface.service \
-            ${destroot}/usr/share/dbus-1/services/
+    if {${os.platform} ne "darwin"} {
+        # we need to install stuff for the root/system DBus daemon and/or systemd...
+        if {[file exists /etc/dbus-1/system.d]} {
+            xinstall -m 755 -d ${destroot}/etc/dbus-1/system.d
+            xinstall -m 644 ${destroot}${prefix}/share/dbus-1/system.d/dev.jonmagon.kdiskmark.helperinterface.conf \
+                ${destroot}/etc/dbus-1/system.d
+        }
+        if {[variant_isset asroot]} {
+            xinstall -m 755 -d ${destroot}/usr/share/dbus-1/system-services/
+            xinstall -m 644 ${destroot}${prefix}/share/dbus-1/system-services/dev.jonmagon.kdiskmark.helperinterface.service \
+                ${destroot}/usr/share/dbus-1/system-services/
+            xinstall -m 755 -d ${destroot}/usr/share/polkit-1/actions/
+            ln -s ${prefix}/share/polkit-1/actions/dev.jonmagon.kdiskmark.helper.policy ${destroot}/usr/share/polkit-1/actions/
+        } else {
+            xinstall -m 755 -d ${destroot}/usr/share/dbus-1/services/
+            ln -s ${prefix}/share/dbus-1/services/dev.jonmagon.kdiskmark.helperinterface.service \
+                ${destroot}/usr/share/dbus-1/services/
+        }
     }
     file rename ${destroot}${prefix}/bin/kdiskmark ${destroot}${prefix}/bin/kdiskmark.bin
     qt5.add_app_wrapper kdiskmark kdiskmark.bin "" ${prefix}/bin
