@@ -1,0 +1,39 @@
+commit 5816d7f620c90095a3aa69eda114e931565e66e4
+Author: Jens Axboe <axboe@kernel.dk>
+Date:   Thu Aug 21 08:06:41 2025 -0600
+
+    engines/libaio: enable libaio fsync
+    
+    libaio has supported async fsync for a long time, enable it rather
+    than drain the queue depth to zero and do a sync fsync. This may be
+    slower than the previous approach, but the libaio engine should be
+    using the libaio fsync support.
+    
+    Link: https://github.com/axboe/fio/discussions/1967
+    Signed-off-by: Jens Axboe <axboe@kernel.dk>
+
+diff --git b/engines/libaio.c a/engines/libaio.c
+index 165f541d..aff4025e 100644
+--- b/engines/libaio.c
++++ a/engines/libaio.c
+@@ -274,6 +274,20 @@ static enum fio_q_status fio_libaio_queue(struct thread_data *td,
+ 	if (ld->queued == td->o.iodepth)
+ 		return FIO_Q_BUSY;
+ 
++	/*
++	 * fsync is tricky, since it can fail and we need to do it
++	 * serialized with other io. the reason is that linux doesn't
++	 * support aio fsync yet. So return busy for the case where we
++	 * have pending io, to let fio complete those first.
++	 */
++	if (ddir_sync(io_u->ddir)) {
++		if (ld->queued)
++			return FIO_Q_BUSY;
++
++		do_io_u_sync(td, io_u);
++		return FIO_Q_COMPLETED;
++	}
++
+ 	if (io_u->ddir == DDIR_TRIM) {
+ 		if (ld->queued)
+ 			return FIO_Q_BUSY;
