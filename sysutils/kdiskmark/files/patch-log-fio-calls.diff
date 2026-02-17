@@ -1,0 +1,112 @@
+diff --git a/src/helper.cpp b/src/helper.cpp
+index 734b0c4..a12027d 100644
+--- a/src/helper.cpp
++++ b/src/helper.cpp
+@@ -14,6 +18,57 @@
+ #include <fcntl.h>
+ #include <unistd.h>
+ 
++#include <QLoggingCategory>
++#include <syslog.h>
++
++static QtMessageHandler oldHandler = nullptr;
++static QFile *logFile = nullptr;
++
++void theMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
++{
++    QString lMsg;
++    switch (type) {
++        case QtDebugMsg:
++            lMsg = "Debug: " + msg;
++            break;
++        case QtInfoMsg:
++            lMsg = "Info: " + msg;
++            break;
++        case QtWarningMsg:
++            lMsg = "Warning: " + msg;
++            break;
++        case QtCriticalMsg:
++            lMsg = "Critical: " + msg;
++            break;
++        default:
++            if (oldHandler) {
++                oldHandler(type, context, msg);
++            }
++            return;
++            break;
++    }
++    if (type != QtInfoMsg) {
++        lMsg += " (";
++        lMsg += (context.file && strlen(context.file))? context.file : __FILE__;
++        if (context.line) {
++            lMsg += QString::asprintf(":%d", context.line);
++        }
++        if (context.function && strlen(context.function)) {
++            lMsg += QString::asprintf(" \"%s\"", context.function);
++        }
++        lMsg += ")";
++    }
++    errno = 0;
++    if (logFile->write(qPrintable(lMsg + "\n")) < 0 || !logFile->flush()) {
++        char *smsg = strdup(qPrintable(lMsg));
++        if (smsg && strlen(smsg)) {
++            syslog(LOG_ERR, "%s failed to write message \"%s\" (errno=%d)",
++                   __PRETTY_FUNCTION__, smsg, errno);
++            free(smsg);
++        }
++    }
++}
++
+ HelperAdaptor::HelperAdaptor(Helper *parent) :
+     QDBusAbstractAdaptor(parent)
+ {
+@@ -88,6 +143,15 @@ Helper::Helper() : m_helperAdaptor(new HelperAdaptor(this))
+     });
+ 
+     QObject::connect(this, &Helper::taskFinished, m_helperAdaptor, &HelperAdaptor::taskFinished);
++    auto configLocation = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/kdiskmark/";
++    if (!configLocation.isEmpty()) {
++        logFile = new QFile(configLocation + "kdiskmark_helper.log");
++        if (logFile->open(QFile::Append)) {
++            oldHandler = qInstallMessageHandler(theMessageOutput);
++            QLoggingCategory::defaultCategory()->setEnabled(QtInfoMsg, true);
++            QLoggingCategory::defaultCategory()->setEnabled(QtWarningMsg, true);
++        }
++    }
+ }
+ 
+ QVariantMap Helper::initSession()
+@@ -199,9 +269,16 @@ QVariantMap Helper::prepareBenchmarkFile(const QString &benchmarkPath, int fileS
+ 
+     connect(m_process, static_cast<void(QProcess::*)(int, QProcess::ExitStatus)>(&QProcess::finished),
+             [=] (int exitCode, QProcess::ExitStatus exitStatus) {
+-        emit taskFinished(exitStatus == QProcess::NormalExit, QString(m_process->readAllStandardOutput()), QString(m_process->readAllStandardError()));
++        const auto allStdout = QString(m_process->readAllStandardOutput());
++        const auto allStderr = QString(m_process->readAllStandardError());
++        if (exitStatus != QProcess::NormalExit || exitCode != 0) {
++            qWarning() << "prepareBenchmarkFile() failed, stderr=" << allStderr << ", stdout=" << allStdout;
++        }
++        emit taskFinished(exitStatus == QProcess::NormalExit, allStdout, allStderr);
+     });
+ 
++    qInfo() << Q_FUNC_INFO << m_process->program() + " " + m_process->arguments().join(" ");
++
+     return {{"success", true}};
+ }
+ 
+@@ -237,7 +314,14 @@ QVariantMap Helper::startBenchmarkTest(int measuringTime, int fileSize, int rand
+ 
+     connect(m_process, static_cast<void(QProcess::*)(int, QProcess::ExitStatus)>(&QProcess::finished),
+             [=] (int exitCode, QProcess::ExitStatus exitStatus) {
+-        emit taskFinished(exitStatus == QProcess::NormalExit, QString(m_process->readAllStandardOutput()), QString(m_process->readAllStandardError()));
++        const auto allStdout = QString(m_process->readAllStandardOutput());
++        const auto allStderr = QString(m_process->readAllStandardError());
++        if (exitStatus != QProcess::NormalExit || exitCode != 0) {
++            qInfo() << "startBenchmarkTest:" << m_process->program() + " " + m_process->arguments().join(" ");
++
++            qWarning() << "\tfailed, stderr=" << allStderr << ", stdout=" << allStdout;
++        }
++        emit taskFinished(exitStatus == QProcess::NormalExit, allStdout, allStderr);
+     });
+ 
+     return {{"success", true}};

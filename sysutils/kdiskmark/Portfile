@@ -31,7 +31,8 @@ compiler.cxx_standard \
                     2017
 
 patch.pre_args      -Np1
-patchfiles-append   patch-allow-non-privileged.diff
+patchfiles-append   patch-allow-non-privileged.diff \
+                    patch-log-fio-calls.diff
 
 configure.args-append \
                     -DUSE_QT5=ON \
