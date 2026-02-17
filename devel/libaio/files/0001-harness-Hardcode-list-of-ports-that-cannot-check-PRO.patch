@@ -1,0 +1,38 @@
+From afa90d85822f61da49a5bcddb74fc89ac314fb8a Mon Sep 17 00:00:00 2001
+From: Guillem Jover <guillem@hadrons.org>
+Date: Wed, 6 Mar 2024 03:08:15 +0100
+Subject: [PATCH libaio] harness: Hardcode list of ports that cannot check
+ PROT_WRITE is readable
+
+On these ports, the write() check does not work, so we need to hardcode
+the list.
+---
+ harness/cases/5.t | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/harness/cases/5.t b/harness/cases/5.t
+index b0a7c56..ae8b57a 100644
+--- a/harness/cases/5.t
++++ b/harness/cases/5.t
+@@ -41,10 +41,17 @@ int test_main(void)
+ 	assert(buf != (char *)-1);
+ 
+ 	/* Whether PROT_WRITE is readable is arch-dependent.  So compare
+-	 * against write() result (to make the kernel read from buf). */
++	 * against write() result (to make the kernel read from buf), and
++	 * use a hard-coded list for the systems where this does not work. */
++#if defined(__hppa__) || \
++    defined(__loongarch__) || \
++    defined(__sparc__)
++	res = SIZE;
++#else
+ 	res = write(rwfd, buf, SIZE);
+ 	if (res < 0)
+ 		res = -errno;
++#endif
+ 	status |= attempt_rw(rwfd, buf, SIZE,  0,  READ, SIZE);
+ 	status |= attempt_rw(rwfd, buf, SIZE,  0, WRITE, res);
+ 
+-- 
+2.43.0
+

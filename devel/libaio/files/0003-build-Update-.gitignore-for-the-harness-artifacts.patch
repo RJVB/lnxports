@@ -1,0 +1,27 @@
+From b6927a26ce1524a583139ef2e9e414ce5a700e27 Mon Sep 17 00:00:00 2001
+From: Guillem Jover <guillem@hadrons.org>
+Date: Tue, 5 Mar 2024 10:12:32 +0100
+Subject: [PATCH libaio 03/26] build: Update .gitignore for the harness
+ artifacts
+
+Signed-off-by: Guillem Jover <guillem@hadrons.org>
+---
+ .gitignore | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/.gitignore b/.gitignore
+index d4a4309..8e2d7ba 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -8,3 +8,8 @@
+ 
+ /src/libaio.a
+ /src/libaio.so*
++
++/harness/cases/*.p
++/harness/tempfile
++/harness/testdir/
++/harness/testfile
+-- 
+2.43.0
+

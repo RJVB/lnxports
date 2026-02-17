@@ -1,0 +1,32 @@
+From 1859031a47b56a13db2e181902e53691edd4d08b Mon Sep 17 00:00:00 2001
+From: Guillem Jover <guillem@hadrons.org>
+Date: Sun, 6 Aug 2023 20:56:10 +0200
+Subject: [PATCH libaio 06/26] build: Remove all test artifacts on clean
+
+We create these artifacts when running the test suite, so should remove
+them when running the clean target.
+
+Reported-by: Lucas Nussbaum <lucas@debian.org>
+Signed-off-by: Guillem Jover <guillem@hadrons.org>
+---
+ harness/Makefile | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/harness/Makefile b/harness/Makefile
+index 8cb27fa..ae4e45e 100644
+--- a/harness/Makefile
++++ b/harness/Makefile
+@@ -27,7 +27,9 @@ $(PROGS): %.p: %.t $(HARNESS_SRCS)
+ 	$(CC) $(MK_CPPFLAGS) $(MK_CFLAGS) -DTEST_NAME=\"$<\" -o $@ $(MK_LDFLAGS)
+ 
+ clean:
+-	rm -f $(PROGS) *.o runtests.out rofile wofile rwfile
++	rm -f $(PROGS) *.o runtests.out tempfile testfile
++	rm -f testdir/rofile testdir/wofile testdir/rwfile
++	rmdir testdir || true
+ 
+ .PHONY:
+ 
+-- 
+2.43.0
+

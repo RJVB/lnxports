@@ -1,0 +1,93 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+# Copyright (c) 2026 R.J.V. Bertin
+
+PortSystem          1.0
+
+set LTO.fat_LTO_Objects yes
+PortGroup           LTO 1.0
+PortGroup           makefile 1.0
+compwrap.add_compiler_flags yes
+PortGroup           save_configure_cmd 1.0
+
+description         The Linux-native asynchronous I/O library - experimental!
+long_description    EXPERIMENTAL!\n\
+                    The Linux-native asynchronous I/O facility ('async I/O', or 'aio') \
+                    has a richer API and capability set than the simple POSIX async I/O \
+                    facility. This library, libaio, provides the Linux-native API for \
+                    async I/O. The POSIX async I/O facility requires this library in order \
+                    to provide kernel-accelerated async I/O capabilities, as do applications \
+                    which require the Linux-native async I/O API.\n\
+                    This port is based on the latest Ubuntu package.
+license             LGPL-2.1
+maintainers         gmail.com:rjvbertin openmaintainer
+
+name                libaio
+set urevision       8
+set uversion        0.3.113
+version             ${uversion}.${urevision}
+platforms           linux
+master_sites        https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/${name}/${uversion}-${urevision}
+distname            ${name}_${uversion}
+extract.suffix      .orig.tar.gz
+worksrcdir          ${name}-${uversion}
+
+checksums           rmd160  042622efcb6bc5127a93b6a9ef84f0b4fae80603 \
+                    sha256  2c44d1c5fd0d43752287c9ae1eb9c023f04ef848ea8d4aafa46e9aedb678200b
+#                    size    49980
+
+####################
+    # libaio is a system library so it seems wise to create a devport
+    # so that we can be a pure runtime upgrade for non-MacPorts and they
+    # do not inadvertently pull us in during building.
+    PortGroup devport 1.0
+
+    create_devport port:${name} auto
+
+    if {${subport} eq "${name}-dev"} {
+        # we don't care about anything that follows,
+        # return here to avoid having to add more subport checks.
+        return
+    }
+####################
+
+patch.pre_args      -Np1
+# Upstream changes
+patchfiles-append   0001-harness-use-off64_t-instead-of-off_t-in-test-23.t-EI.patch
+# Local changes, pending submission
+patchfiles-append   0002-man-Fix-typos.patch \
+                    0003-build-Update-.gitignore-for-the-harness-artifacts.patch \
+                    0004-build-Fix-DESTDIR-and-pathname-variables-handling.patch \
+                    0005-build-Honor-user-build-flags.patch \
+                    0006-build-Remove-all-test-artifacts-on-clean.patch \
+                    0007-Move-semicolon-to-SYMVER-and-DEFSYMVER-call-sites.patch \
+                    0008-Use-new-symver-function-attribute-to-support-LTO-bui.patch \
+                    0009-Remove-unused-vsys_def.h.patch \
+                    0010-Remove-unused-raw_syscall.c.patch \
+                    0011-Wrap-long-declarations-exceeding-80-columns.patch \
+                    0012-syscall-Fix-ARM-definitions-to-match-exactly-the-ker.patch \
+                    0013-syscall-Fix-ia64-definitions-to-match-exactly-the-ke.patch \
+                    0014-harness-Add-KERNEL_RW_POINTER-for-various-32-bit-arc.patch \
+                    0015-Fix-and-improve-MIPS-support.patch \
+                    0016-Add-PARISC-support.patch \
+                    0017-Add-m68k-support.patch \
+                    0018-Add-SH-support.patch \
+                    0019-Add-x32-support.patch \
+                    0020-Rename-sigset-struct-from-data-to-aio_sigset.patch \
+                    0021-Add-time64-syscall-support.patch \
+                    0022-Add-time64-public-functions-on-32-bit-architectures.patch
+# Local changes, not for upstream
+## NB: we do not apply the change in soname (0025-build-Use-a-temporary-SONAME-bump-to-avoid-stomping-.patch)!
+patchfiles-append   0023-Fix-io_pgetevents-syscall-wrapper-on-32-bit-userland.patch \
+                    0024-Disable-io_pgetevents_time64-as-it-is-broken-on-64-b.patch \
+                    0026-harness-Disable-failing-test-23.patch \
+                    0001-harness-Hardcode-list-of-ports-that-cannot-check-PRO.patch
+
+
+use_configure       no
+configure.save_configure_cmd ""
+configure.save_build_cmd "install"
+
+build.post_args-append -wk
+
+# no support for DESTDIR:
+destroot.post_args  prefix=${destroot}${prefix}

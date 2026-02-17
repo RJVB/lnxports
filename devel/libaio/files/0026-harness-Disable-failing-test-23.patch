@@ -1,0 +1,38 @@
+From 175f859658d2bab463ed65532fd88a1541ad9912 Mon Sep 17 00:00:00 2001
+From: Guillem Jover <guillem@hadrons.org>
+Date: Tue, 19 Apr 2022 15:45:39 +0200
+Subject: [PATCH libaio 26/26] harness: Disable failing test 23
+
+This new test fails on several architectures. But it is a new test
+intended to check for a Linux kernel regression, so we are not worse
+off than were before. Add it to the EXTRACASES variables, which has
+currently the side effect of disabling it, as it is not handled
+explicitly in the make target responsible for that variable.
+
+This is probably not needed anymore with the off64_t fix in upstream,
+but let's not try to revert this now while the time64 transition is
+ongoing.
+
+Origin: vendor
+Forwarded: not-needed
+Sent-Upstream: not-relevant
+Signed-off-by: Guillem Jover <guillem@hadrons.org>
+---
+ harness/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/harness/Makefile b/harness/Makefile
+index 3f97650..a96bcfc 100644
+--- a/harness/Makefile
++++ b/harness/Makefile
+@@ -1,6 +1,6 @@
+ # foo.
+ TEST_SRCS:=$(shell find cases/ -name \*.t | sort -n -t/ -k2)
+-EXTRAPROGS:=cases/8.p cases/10.p
++EXTRAPROGS:=cases/8.p cases/10.p cases/23.p
+ PARTPROGS:=$(filter-out $(EXTRAPROGS), $(patsubst %.t,%.p,$(TEST_SRCS)))
+ PROGS:=$(PARTPROGS) $(EXTRAPROGS)
+ HARNESS_SRCS:=main.c
+-- 
+2.43.0
+

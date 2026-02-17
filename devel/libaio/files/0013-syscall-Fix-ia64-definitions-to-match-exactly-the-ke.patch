@@ -1,0 +1,32 @@
+From 43593f5c7f2d142409e0aed8c1f1c72ed9ac719a Mon Sep 17 00:00:00 2001
+From: Guillem Jover <guillem@hadrons.org>
+Date: Sun, 12 Apr 2020 03:44:43 +0200
+Subject: [PATCH libaio 13/26] syscall: Fix ia64 definitions to match exactly
+ the kernel
+
+Otherwise we get preprocessor warnings due to the redefinitions.
+
+Signed-off-by: Guillem Jover <guillem@hadrons.org>
+---
+ src/syscall-ia64.h | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/src/syscall-ia64.h b/src/syscall-ia64.h
+index a21e93b..765c423 100644
+--- a/src/syscall-ia64.h
++++ b/src/syscall-ia64.h
+@@ -1,5 +1,6 @@
+-#define __NR_io_setup		1238
+-#define __NR_io_destroy		1239
+-#define __NR_io_getevents	1240
+-#define __NR_io_submit		1241
+-#define __NR_io_cancel		1242
++#define __NR_Linux		1024
++#define __NR_io_setup		(__NR_Linux + 214)
++#define __NR_io_destroy		(__NR_Linux + 215)
++#define __NR_io_getevents	(__NR_Linux + 216)
++#define __NR_io_submit		(__NR_Linux + 217)
++#define __NR_io_cancel		(__NR_Linux + 218)
+-- 
+2.43.0
+
