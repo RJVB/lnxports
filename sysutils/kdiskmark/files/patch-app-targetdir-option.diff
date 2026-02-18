@@ -1,0 +1,83 @@
+diff --git a/src/main.cpp b/src/main.cpp
+index 3621203..6f58804 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -1,8 +1,10 @@
+ #include "mainwindow.h"
+ 
+ #include <QApplication>
++#include <QCommandLineParser>
++#include <QStorageInfo>
+ 
+-#include "singleapplication.h"
++// #include "singleapplication.h"
+ #include "cmake.h"
+ 
+ int main(int argc, char *argv[])
+@@ -16,12 +18,24 @@ int main(int argc, char *argv[])
+     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+ #endif
+ 
+-    SingleApplication a(argc, argv);
++    QApplication a(argc, argv);
++
++    QCommandLineParser parser;
++    parser.setApplicationDescription("Disk benchmark application");
++    parser.addHelpOption();
++    parser.addVersionOption();
++    parser.addPositionalArgument("<benchmark directory>", "the directory to test in");
++
++    parser.process(a);
++    const QStringList args = parser.positionalArguments();
+ 
+     AppSettings().setupLocalization();
+ 
+     MainWindow w;
+     w.setFixedSize(w.size());
++    if (!args.isEmpty() && !args.at(0).isEmpty()) {
++        w.setTargetDirectory(args.at(0));
++    }
+     w.show();
+ 
+     return a.exec();
+diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+index a332d4a..c40f869 100644
+--- a/src/mainwindow.cpp
++++ b/src/mainwindow.cpp
+@@ -209,6 +278,23 @@ MainWindow::~MainWindow()
+     delete ui;
+ }
+ 
++void MainWindow::setTargetDirectory(const QString &dir)
++{
++    QStorageInfo volume(dir);
++
++    Global::Storage storage {
++        .path = dir,
++        .bytesTotal = volume.bytesTotal(),
++        .bytesOccupied = volume.bytesTotal() - volume.bytesFree(),
++        .formatedSize = formatSize(storage.bytesOccupied, storage.bytesTotal),
++        .permanentInList = true
++    };
++    addItemToStoragesList(storage);
++    resizeComboBoxItemsPopup(ui->comboBox_Storages);
++
++    ui->comboBox_Storages->setCurrentIndex(ui->comboBox_Storages->count() - 1);
++}
++
+ void MainWindow::closeEvent(QCloseEvent *)
+ {
+     if (m_benchmark->isRunning()) {
+diff --git a/src/mainwindow.h b/src/mainwindow.h
+index 1538003..41c8d58 100644
+--- a/src/mainwindow.h
++++ b/src/mainwindow.h
+@@ -22,6 +22,8 @@ public:
+     MainWindow(QWidget *parent = nullptr);
+     ~MainWindow();
+ 
++    void setTargetDirectory(const QString &dir);
++
+ private slots:
+     void on_pushButton_Test_1_clicked();
+ 

@@ -34,6 +34,7 @@ patch.pre_args      -Np1
 patchfiles-append   patch-allow-non-privileged.diff \
                     patch-log-fio-calls.diff \
                     patch-ioengine-selection.diff \
+                    patch-app-targetdir-option.diff \
                     patch-darwin-port.diff
 
 configure.args-append \
