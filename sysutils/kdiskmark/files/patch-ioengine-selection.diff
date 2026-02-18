@@ -1,20 +1,167 @@
+commit 220ab97eea6d711fb1dc2f113100964407a95222
+Author: René Bertin <rjvbertin@gmail.com>
+Date:   Wed Feb 18 16:34:57 2026 +0100
+
+    Add a menu for selection which I/O engine fio should use
+    
+    This is populated dynamically as a function of the platform
+    we're running on, but the last used value is store in the prefs.
+    
+    Committed from host : Bola
+
+diff --git a/src/appsettings.cpp b/src/appsettings.cpp
+index 0acf5e0..570ae52 100644
+--- a/src/appsettings.cpp
++++ b/src/appsettings.cpp
+@@ -208,6 +208,16 @@ int AppSettings::defaultRandomReadPercentage()
+     return 70;
+ }
+ 
++QString AppSettings::getIOEngineName() const
++{
++    return m_settings->value(QStringLiteral("Benchmark/IOEngine"), QStringLiteral("")).toString();
++}
++
++void AppSettings::setIOEngineName(const QString &engineName)
++{
++    m_settings->setValue(QStringLiteral("Benchmark/IOEngine"), engineName);
++}
++
+ bool AppSettings::getCacheBypassState() const
+ {
+     return m_settings->value(QStringLiteral("Benchmark/BypassCache"), defaultCacheBypassState()).toBool();
+diff --git a/src/appsettings.h b/src/appsettings.h
+index 7711448..34eecc6 100644
+--- a/src/appsettings.h
++++ b/src/appsettings.h
+@@ -63,6 +63,9 @@ public:
+     void setRandomReadPercentage(int randomReadPercentage);
+     static int defaultRandomReadPercentage();
+ 
++    QString getIOEngineName() const;
++    void setIOEngineName(const QString &engineName);
++
+     bool getCacheBypassState() const;
+     void setCacheBypassState(bool cacheBypassState);
+     static bool defaultCacheBypassState();
+diff --git a/src/benchmark.cpp b/src/benchmark.cpp
+index d0ee665..504848b 100644
+--- a/src/benchmark.cpp
++++ b/src/benchmark.cpp
+@@ -77,7 +77,8 @@ void Benchmark::startTest(int blockSize, int queueDepth, int threads, const QStr
+                                                             settings.getBenchmarkTestData() == Global::BenchmarkTestData::Zeros,
+                                                             settings.getCacheBypassState(),
+                                                             settings.getContinuousGenerationState(),
+-                                                            blockSize, queueDepth, threads, rw));
++                                                            blockSize, queueDepth, threads, rw,
++                                                            settings.getIOEngineName()));
+ 
+         if (!isRunning()) return;
+ 
+diff --git a/src/helper.cpp b/src/helper.cpp
+index 4c5ed77..9abdc65 100644
+--- a/src/helper.cpp
++++ b/src/helper.cpp
+@@ -91,11 +91,11 @@ QVariantMap HelperAdaptor::prepareBenchmarkFile(const QString &benchmarkFile, in
+ }
+ 
+ QVariantMap HelperAdaptor::startBenchmarkTest(int measuringTime, int fileSize, int randomReadPercentage, bool fillZeros, bool cacheBypass, bool continuousGeneration,
+-                                              int blockSize, int queueDepth, int threads, const QString &rw)
++                                              int blockSize, int queueDepth, int threads, const QString &rw, const QString &engine)
+ {
+     return m_parentHelper->startBenchmarkTest(
+       measuringTime, fileSize, randomReadPercentage, fillZeros, cacheBypass,
+-      continuousGeneration, blockSize, queueDepth, threads, rw);
++      continuousGeneration, blockSize, queueDepth, threads, rw, engine);
+ }
+ 
+ QVariantMap HelperAdaptor::flushPageCache()
+@@ -284,7 +284,7 @@ QVariantMap Helper::prepareBenchmarkFile(const QString &benchmarkPath, int fileS
+ }
+ 
+ QVariantMap Helper::startBenchmarkTest(int measuringTime, int fileSize, int randomReadPercentage, bool fillZeros, bool cacheBypass, bool continuousGeneration,
+-                                       int blockSize, int queueDepth, int threads, const QString &rw)
++                                       int blockSize, int queueDepth, int threads, const QString &rw, const QString &engine)
+ {
+     if (!isCallerAuthorized()) {
+         return {};
+@@ -294,10 +294,13 @@ QVariantMap Helper::startBenchmarkTest(int measuringTime, int fileSize, int rand
+         return {{"success", false}, {"error", "The benchmark file was not pre-created."}};
+     }
+ 
++    QStringList arguments = {QStringLiteral("--output-format=json")};
++    if (engine != "fio-default") {
++        arguments << QStringLiteral("--ioengine=") + engine;
++    }
++
+     m_process = new QProcess();
+-    m_process->start("fio", QStringList()
+-                     << QStringLiteral("--output-format=json")
+-                     << QStringLiteral("--ioengine=libaio")
++    m_process->start("fio", arguments
+                      << QStringLiteral("--randrepeat=0")
+                      << QStringLiteral("--refill_buffers=%1").arg(continuousGeneration)
+                      << QStringLiteral("--end_fsync=1")
+diff --git a/src/helper.h b/src/helper.h
+index 62dd4c9..d693cec 100644
+--- a/src/helper.h
++++ b/src/helper.h
+@@ -24,7 +24,7 @@ public slots:
+     Q_SCRIPTABLE QVariantMap startBenchmarkTest(
+         int measuringTime, int fileSize, int randomReadPercentage,
+         bool fillZeros, bool cacheBypass, bool continuousGeneration,
+-        int blockSize, int queueDepth, int threads, const QString &rw);
++        int blockSize, int queueDepth, int threads, const QString &rw, const QString &engine);
+     Q_SCRIPTABLE QVariantMap flushPageCache();
+     Q_SCRIPTABLE QVariantMap removeBenchmarkFile();
+     Q_SCRIPTABLE QVariantMap stopCurrentTask();
+@@ -53,7 +53,7 @@ public:
+                                    int randomReadPercentage, bool fillZeros,
+                                    bool cacheBypass, bool continuousGeneration,
+                                    int blockSize, int queueDepth, int threads,
+-                                   const QString &rw);
++                                   const QString &rw, const QString &engine);
+     QVariantMap flushPageCache();
+     QVariantMap removeBenchmarkFile();
+     QVariantMap stopCurrentTask();
 diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
-index a332d4a..e77dcef 100644
+index 7b35a0a..460395e 100644
 --- a/src/mainwindow.cpp
 +++ b/src/mainwindow.cpp
-@@ -178,6 +188,36 @@ MainWindow::MainWindow(QWidget *parent)
+@@ -1,6 +1,9 @@
+ #include "mainwindow.h"
+ #include "ui_mainwindow.h"
+ 
++#ifdef __linux__
++#include <sys/utsname.h>
++#endif
+ #include <QMessageBox>
+ #include <QStorageInfo>
+ #include <QMetaEnum>
+@@ -188,6 +191,62 @@ MainWindow::MainWindow(QWidget *parent)
      ui->actionTheme_Stylesheet_Dark->setChecked(settings.getTheme() ==Global::Theme::StyleSheetDark);
      ui->actionTheme_Do_not_apply->setChecked(settings.getTheme() == Global::Theme::DoNotApply);
  
 +    QActionGroup *engineGroup = new QActionGroup(this);
 +    QAction *ioAction, *defaultIOAction = nullptr;
-+    ui->menuIOEngines->setToolTip("The I/O engine to be used by fio");
++    ui->menuIOEngines->setToolTip("The I/O engine to be used by fio\nSee `man fio`");
 +#ifdef __linux__
 +    ioAction = ui->menuIOEngines->addAction("libaio");
 +    ioAction->setActionGroup(engineGroup);
 +    ioAction->setCheckable(true);
 +    ioAction->setWhatsThis("Linux-native asynchronous I/O");
 +    defaultIOAction = ioAction;
++    struct utsname u;
++    uname(&u);
++    auto kversion = QString::fromLatin1(u.version).split(".").mid(0,1).join(".").toDouble();
++    ioAction = ui->menuIOEngines->addAction("io_uring");
++    ioAction->setActionGroup(engineGroup);
++    if (kversion >= 5.1) {
++        ioAction->setCheckable(true);
++    } else {
++        ioAction->setEnabled(false);
++    }
++    ioAction->setWhatsThis("Fast Linux-native asynchronous I/O (5.1+ kernels)");
 +#endif
 +#if defined(__APPLE__) || defined(__unix__) || defined(_POSIX_C_SOURCE)
 +    ioAction = ui->menuIOEngines->addAction("posixaio");
@@ -32,9 +179,24 @@ index a332d4a..e77dcef 100644
 +    if (!defaultIOAction) {
 +        defaultIOAction = ioAction;
 +    }
-+    // TODO: store in settings?
-+    defaultIOAction->setChecked(true);
-+//     connect(engineGroup, SIGNAL(triggered(QAction*)), this, SLOT(engineSelected(QAction*)));
++    // restore the previous setting
++    if (!settings.getIOEngineName().isEmpty()) {
++        const auto actions = engineGroup->actions();
++        const QString name = settings.getIOEngineName();
++        for (QAction *act : actions) {
++            if (act->text() == name && act->isEnabled()) {
++                defaultIOAction = act;
++                break;
++            }
++        }
++    }
++    connect(engineGroup, &QActionGroup::triggered, this, [=](QAction *act) {
++        AppSettings settings;
++        settings.setIOEngineName(act->text());
++    });
++    // this will set the default IOEngine in the settings without
++    // having to duplicate any platform-specific code.
++    defaultIOAction->trigger();
 +
      updateProgressBarsStyle();
  

@@ -1,0 +1,13 @@
+diff --git a/src/diskdriveinfo.cpp b/src/diskdriveinfo.cpp
+index 9245769..e17ee57 100644
+--- a/src/diskdriveinfo.cpp
++++ b/src/diskdriveinfo.cpp
+@@ -43,6 +43,8 @@ QString DiskDriveInfo::getModelName(const QString &volume)
+     QString model(arg.value.str);
+ 
+     close(fd);
++#else
++    QString model(volume);
+ #endif
+ 
+     return model;

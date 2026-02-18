@@ -1,3 +1,13 @@
+commit fe26a80e665f88b6713db6bfbb3e9bda98d0eb62
+Author: René Bertin <rjvbertin@gmail.com>
+Date:   Wed Feb 18 16:24:31 2026 +0100
+
+    Provide a build option to run in non-privileged mode
+    
+    The user can take care of ensuring that s/he has write access.
+    
+    Committed from host : Bola
+
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 4da934d..70bb8da 100644
 --- a/CMakeLists.txt
