@@ -1,0 +1,58 @@
+diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+index a332d4a..e77dcef 100644
+--- a/src/mainwindow.cpp
++++ b/src/mainwindow.cpp
+@@ -178,6 +188,36 @@ MainWindow::MainWindow(QWidget *parent)
+     ui->actionTheme_Stylesheet_Dark->setChecked(settings.getTheme() ==Global::Theme::StyleSheetDark);
+     ui->actionTheme_Do_not_apply->setChecked(settings.getTheme() == Global::Theme::DoNotApply);
+ 
++    QActionGroup *engineGroup = new QActionGroup(this);
++    QAction *ioAction, *defaultIOAction = nullptr;
++    ui->menuIOEngines->setToolTip("The I/O engine to be used by fio");
++#ifdef __linux__
++    ioAction = ui->menuIOEngines->addAction("libaio");
++    ioAction->setActionGroup(engineGroup);
++    ioAction->setCheckable(true);
++    ioAction->setWhatsThis("Linux-native asynchronous I/O");
++    defaultIOAction = ioAction;
++#endif
++#if defined(__APPLE__) || defined(__unix__) || defined(_POSIX_C_SOURCE)
++    ioAction = ui->menuIOEngines->addAction("posixaio");
++    ioAction->setActionGroup(engineGroup);
++    ioAction->setCheckable(true);
++    ioAction->setWhatsThis("POSIX (cross-platform) asynchronous I/O");
++    if (!defaultIOAction) {
++        defaultIOAction = ioAction;
++    }
++#endif
++    ioAction = ui->menuIOEngines->addAction("fio-default");
++    ioAction->setActionGroup(engineGroup);
++    ioAction->setCheckable(true);
++    ioAction->setWhatsThis("Let fio use its default ioengine");
++    if (!defaultIOAction) {
++        defaultIOAction = ioAction;
++    }
++    // TODO: store in settings?
++    defaultIOAction->setChecked(true);
++//     connect(engineGroup, SIGNAL(triggered(QAction*)), this, SLOT(engineSelected(QAction*)));
++
+     updateProgressBarsStyle();
+ 
+     updatePresetsSelection();
+diff --git a/src/mainwindow.ui b/src/mainwindow.ui
+index a0e2f92..0a7c121 100644
+--- a/src/mainwindow.ui
++++ b/src/mainwindow.ui
+@@ -1040,6 +1040,12 @@
+     <addaction name="separator"/>
+     <addaction name="actionQueues_Threads"/>
+     <addaction name="separator"/>
++    <widget class="QMenu" name="menuIOEngines">
++     <property name="title">
++      <string>I/O Engine</string>
++     </property>
++    </widget>
++    <addaction name="menuIOEngines"/>
+     <addaction name="actionUse_O_DIRECT"/>
+     <addaction name="actionFlush_Pagecache"/>
+     <addaction name="actionCoW_detection"/>
