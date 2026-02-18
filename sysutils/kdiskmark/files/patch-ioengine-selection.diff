@@ -1,4 +1,4 @@
-commit 220ab97eea6d711fb1dc2f113100964407a95222
+commit 3224f2cf88f25a38ec834f04742917f75c0d33f6
 Author: René Bertin <rjvbertin@gmail.com>
 Date:   Wed Feb 18 16:34:57 2026 +0100
 
@@ -6,6 +6,7 @@ Date:   Wed Feb 18 16:34:57 2026 +0100
     
     This is populated dynamically as a function of the platform
     we're running on, but the last used value is store in the prefs.
+    Also show the selected engine in the title, and in the saved output.
     
     Committed from host : Bola
 
@@ -125,7 +126,7 @@ index 62dd4c9..d693cec 100644
      QVariantMap removeBenchmarkFile();
      QVariantMap stopCurrentTask();
 diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
-index 7b35a0a..460395e 100644
+index 7b35a0a..ce10f4d 100644
 --- a/src/mainwindow.cpp
 +++ b/src/mainwindow.cpp
 @@ -1,6 +1,9 @@
@@ -201,6 +202,36 @@ index 7b35a0a..460395e 100644
      updateProgressBarsStyle();
  
      updatePresetsSelection();
+@@ -654,9 +713,14 @@ QString MainWindow::getTextBenchmarkResult()
+ 
+     QString profiles[] = { "Default", "Peak Performance", "Real World Performance", "Demo" };
+ 
++    auto ioengine = settings.getIOEngineName();
++    if (ioengine != "fio-default") {
++        ioengine = QStringLiteral("fio-") + ioengine;
++    }
+     output << QString()
+            << QStringLiteral("Profile: %1%2")
+               .arg(profiles[(int)settings.getPerformanceProfile()]).arg(settings.getMixedState() ? " [+Mix]" : QString())
++           << QStringLiteral(" Engine: %1").arg(ioengine)
+            << QStringLiteral("   Test: %1")
+               .arg("%1 %2 (x%3) [Measure: %4 %5 / Interval: %6 %7]")
+               .arg(settings.getFileSize() >= 1024 ? settings.getFileSize() / 1024 : settings.getFileSize())
+@@ -983,7 +1047,13 @@ void MainWindow::benchmarkFailed(const QString &error)
+ 
+ void MainWindow::benchmarkStatusUpdate(const QString &name)
+ {
+-    setWindowTitle(QStringLiteral("%1 - %2").arg(m_windowTitle, name));
++    AppSettings settings;
++    const auto ioEngine = settings.getIOEngineName();
++    if (!ioEngine.isEmpty()) {
++        setWindowTitle(QStringLiteral("%1[fio:%2] - %3").arg(m_windowTitle, ioEngine, name));
++    } else {
++        setWindowTitle(QStringLiteral("%1 - %2").arg(m_windowTitle, name));
++    }
+ }
+ 
+ void MainWindow::handleResults(QProgressBar *progressBar, const Benchmark::PerformanceResult &result)
 diff --git a/src/mainwindow.ui b/src/mainwindow.ui
 index a0e2f92..0a7c121 100644
 --- a/src/mainwindow.ui
