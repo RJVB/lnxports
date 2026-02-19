@@ -1,3 +1,15 @@
+commit a2c2285d19b07073339300d9fce54628f0bb9dee
+Author: René Bertin <rjvbertin@gmail.com>
+Date:   Thu Feb 19 15:42:54 2026 +0100
+
+    Allow the user to specify a target directory on the command line.
+    
+    Also, allow multiple instances. They may not be able to do
+    concurrent testing (haven't tried), but at least one can do
+    sequential side-by-side comparisons this way.
+    
+    Committed from host : Bola
+
 diff --git a/src/main.cpp b/src/main.cpp
 index 3621203..6f58804 100644
 --- a/src/main.cpp
@@ -41,10 +53,10 @@ index 3621203..6f58804 100644
  
      return a.exec();
 diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
-index a332d4a..c40f869 100644
+index ce10f4d..fcca0ea 100644
 --- a/src/mainwindow.cpp
 +++ b/src/mainwindow.cpp
-@@ -209,6 +278,23 @@ MainWindow::~MainWindow()
+@@ -278,6 +278,23 @@ MainWindow::~MainWindow()
      delete ui;
  }
  
