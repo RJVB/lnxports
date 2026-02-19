@@ -1,3 +1,176 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 70bb8da..99ef448 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -16,7 +16,11 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
+ include(FeatureSummary)
+ 
+ option(USE_QT5 "Use Qt5 instead of Qt6" OFF)
+-option(USE_PRIVILEGED_HELPER "The benchmarking helper process runs as root" ON)
++if (NOT APPLE)
++    option(USE_PRIVILEGED_HELPER "The benchmarking helper process runs as root" ON)
++else()
++    option(USE_PRIVILEGED_HELPER "The benchmarking helper process runs as root" OFF)
++endif()
+ 
+ if(USE_QT5)
+     find_package(Qt5 COMPONENTS Widgets LinguistTools DBus REQUIRED)
+@@ -68,7 +72,11 @@ include(CPack)
+ include(GNUInstallDirs)
+ include(ECMInstallIcons)
+ include(ECMConfiguredInstall)
++include(ECMAddAppIcon)
++include(ECMMarkNonGuiExecutable)
+ include(KDEInstallDirs)
++# this will take care of generating an AppBundle on Mac:
++include(KDECMakeSettings)
+ 
+ set(helper_interface_xml dev.jonmagon.kdiskmark.helperinterface.xml)
+ 
+@@ -166,6 +174,8 @@ set(APP_ICONS
+     data/icons/512-apps-kdiskmark.png
+ )
+ 
++ecm_add_app_icon(${PROJECT_NAME} ICONS ${APP_ICONS})
++
+ install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+ install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/${PROJECT_NAME}/translations)
+ install(FILES data/${DESKTOP_FILE} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
+@@ -177,6 +187,7 @@ add_executable(${PROJECT_NAME}_helper
+     src/helper.cpp
+     src/helper.h
+ )
++ecm_mark_nongui_executable(${PROJECT_NAME}_helper)
+ 
+ target_link_libraries(${PROJECT_NAME}_helper
+     ${QT_LIBS}
+@@ -186,6 +197,22 @@ if (USE_PRIVILEGED_HELPER)
+     set_target_properties(${PROJECT_NAME}_helper PROPERTIES
+         COMPILE_DEFINITIONS USE_PRIVILEGED_HELPER)
+ endif()
++if (APPLE)
++    # the MacOSX bundle display name property (CFBundleDisplayName) is not currently supported by cmake,
++    # so has to be set for all targets in this cmake file
++    set(MACOSX_BUNDLE_DISPLAY_NAME KDiskMark)
++    # We provide our own Info.plist to disable AppNap for KDiskMark:
++    set_target_properties(${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/data/Info.plist.in
++        MACOSX_BUNDLE_GUI_IDENTIFIER "dev.jonmagon.KDiskMark"
++        MACOSX_BUNDLE_BUNDLE_NAME "KDiskMark"
++        MACOSX_BUNDLE_DISPLAY_NAME "KDiskMark"
++        MACOSX_BUNDLE_INFO_STRING "An HDD and SSD benchmark tool with a very friendly graphical user interface"
++        MACOSX_BUNDLE_LONG_VERSION_STRING "KDiskMark ${PROJECT_VERSION}"
++        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
++        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
++        MACOSX_BUNDLE_ICON_FILE "kdiskmark.icns"
++        MACOSX_BUNDLE_COPYRIGHT "Dmitry Sidorov")
++endif (APPLE)
+ 
+ install(TARGETS ${PROJECT_NAME}_helper DESTINATION ${KDE_INSTALL_LIBEXECDIR})
+ 
+diff --git a/data/Info.plist.in b/data/Info.plist.in
+new file mode 100644
+index 0000000..dd3e912
+--- /dev/null
++++ b/data/Info.plist.in
+@@ -0,0 +1,42 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
++<plist version="1.0">
++<dict>
++    <key>CFBundleDevelopmentRegion</key>
++    <string>English</string>
++    <key>CFBundleExecutable</key>
++    <string>${MACOSX_BUNDLE_EXECUTABLE_NAME}</string>
++    <key>CFBundleGetInfoString</key>
++    <string>${MACOSX_BUNDLE_INFO_STRING}</string>
++    <key>CFBundleIconFile</key>
++    <string>${MACOSX_BUNDLE_ICON_FILE}</string>
++    <key>CFBundleIdentifier</key>
++    <string>${MACOSX_BUNDLE_GUI_IDENTIFIER}</string>
++    <key>CFBundleInfoDictionaryVersion</key>
++    <string>6.0</string>
++    <key>CFBundleLongVersionString</key>
++    <string>${MACOSX_BUNDLE_LONG_VERSION_STRING}</string>
++    <key>CFBundleName</key>
++    <string>${MACOSX_BUNDLE_BUNDLE_NAME}</string>
++    <key>CFBundleDisplayName</key>
++    <string>${MACOSX_BUNDLE_DISPLAY_NAME}</string>
++    <key>CFBundlePackageType</key>
++    <string>APPL</string>
++    <key>CFBundleShortVersionString</key>
++    <string>${MACOSX_BUNDLE_SHORT_VERSION_STRING}</string>
++    <key>CFBundleVersion</key>
++    <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
++    <key>NSAppSleepDisabled</key>
++    <true/>
++    <key>NSSupportsAutomaticTermination</key>
++    <false/>
++    <key>NSPrincipalClass</key>
++    <string>NSApplication</string>
++    <key>NSHighResolutionCapable</key>
++    <string>True</string>
++    <key>NSHumanReadableCopyright</key>
++    <string>${MACOSX_BUNDLE_COPYRIGHT}</string>
++    <key>LSMultipleInstancesProhibited</key>
++    <false/>
++</dict>
++</plist>
+diff --git a/src/appsettings.cpp b/src/appsettings.cpp
+index 570ae52..5ea21fd 100644
+--- a/src/appsettings.cpp
++++ b/src/appsettings.cpp
+@@ -47,24 +47,28 @@ void AppSettings::applyLocale(const QLocale &locale)
+     QCoreApplication::removeTranslator(&s_qtTranslator);
+ 
+     if (newLocale.language() != QLocale::English) {
+-        bool appTranslatorLoaded = s_appTranslator.load(newLocale, QStringLiteral(PROJECT_NAME), QStringLiteral("_"), QStandardPaths::locate(QStandardPaths::AppDataLocation, QStringLiteral("translations"), QStandardPaths::LocateDirectory));
++        const auto translationsLocation = QStandardPaths::locate(QStandardPaths::AppDataLocation, QStringLiteral("translations"), QStandardPaths::LocateDirectory);
++        bool appTranslatorLoaded = s_appTranslator.load(newLocale, QStringLiteral(PROJECT_NAME), QStringLiteral("_"), translationsLocation);
+         if (appTranslatorLoaded) {
+             QCoreApplication::installTranslator(&s_appTranslator);
+         } else {
+-            qWarning() << "Failed to load application translations for locale" << newLocale;
++            qWarning() << "Failed to load application translations for locale" << newLocale << "from" << QStandardPaths::locate(QStandardPaths::AppDataLocation, QStringLiteral("translations"), QStandardPaths::LocateDirectory);
++            qWarning() << "\t" << QStandardPaths::locate(QStandardPaths::AppDataLocation, QStringLiteral("translations"), QStandardPaths::LocateDirectory);;
+         }
+     }
+ 
+ #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+-    bool qtTranslatorLoaded = s_qtTranslator.load(newLocale, QStringLiteral("qt"), QStringLiteral("_"), QLibraryInfo::path(QLibraryInfo::TranslationsPath));
++    const auto translationsLocation = QLibraryInfo::path(QLibraryInfo::TranslationsPath);
++    bool qtTranslatorLoaded = s_qtTranslator.load(newLocale, QStringLiteral("qt"), QStringLiteral("_"), translationsLocation);
+ #else
+-    bool qtTranslatorLoaded = s_qtTranslator.load(newLocale, QStringLiteral("qt"), QStringLiteral("_"), QLibraryInfo::location(QLibraryInfo::TranslationsPath));
++    const auto translationsLocation = QLibraryInfo::location(QLibraryInfo::TranslationsPath);
++    bool qtTranslatorLoaded = s_qtTranslator.load(newLocale, QStringLiteral("qt"), QStringLiteral("_"), translationsLocation);
+ #endif
+ 
+     if (qtTranslatorLoaded) {
+         QCoreApplication::installTranslator(&s_qtTranslator);
+     } else {
+-        qWarning() << "Failed to load Qt translations for locale" << newLocale;
++        qDebug() << "Failed to load Qt translations for locale" << newLocale << "from" << translationsLocation;
+     }
+ }
+ 
+diff --git a/src/benchmark.cpp b/src/benchmark.cpp
+index 504848b..b5efcdd 100644
+--- a/src/benchmark.cpp
++++ b/src/benchmark.cpp
+@@ -329,7 +329,12 @@ void Benchmark::initSession()
+     m_helperAuthorized = false;
+ 
+     auto interface = helperInterface();
+-    if (interface) handleDbusPendingCall(interface->initSession());
++    if (interface) {
++        // initialise a session in the helper, handing it our PATH env. var
++	   // as it will have been started via DBus and thus is likely to
++	   // have a different PATH that the one the user defined for him/herself.
++        handleDbusPendingCall(interface->initSession(qgetenv("PATH")));
++    }
+ 
+     // Process was not stopped by handleDbusPendingCall, consider that the authorization was successful
+     if (isRunning()) m_helperAuthorized = true;
 diff --git a/src/diskdriveinfo.cpp b/src/diskdriveinfo.cpp
 index 9245769..e17ee57 100644
 --- a/src/diskdriveinfo.cpp
@@ -11,3 +184,234 @@ index 9245769..e17ee57 100644
  #endif
  
      return model;
+diff --git a/src/helper.cpp b/src/helper.cpp
+index 9abdc65..3afaf18 100644
+--- a/src/helper.cpp
++++ b/src/helper.cpp
+@@ -13,10 +13,16 @@
+ #include <signal.h>
+ 
+ #include <sys/ioctl.h>
++#ifdef __linux__
+ #include <sys/statfs.h>
+ #include <linux/fs.h>
++#elif defined(__APPLE__)
++#include <sys/param.h>
++#include <sys/mount.h>
++#endif
+ #include <fcntl.h>
+ #include <unistd.h>
++#include <errno.h>
+ 
+ #include <QLoggingCategory>
+ #include <syslog.h>
+@@ -75,9 +81,9 @@ HelperAdaptor::HelperAdaptor(Helper *parent) :
+     m_parentHelper = parent;
+ }
+ 
+-QVariantMap HelperAdaptor::initSession()
++QVariantMap HelperAdaptor::initSession(const QString &PATH)
+ {
+-    return m_parentHelper->initSession();
++    return m_parentHelper->initSession(PATH);
+ }
+ 
+ QVariantMap HelperAdaptor::endSession()
+@@ -150,14 +156,18 @@ Helper::Helper() : m_helperAdaptor(new HelperAdaptor(this))
+             oldHandler = qInstallMessageHandler(theMessageOutput);
+             QLoggingCategory::defaultCategory()->setEnabled(QtInfoMsg, true);
+             QLoggingCategory::defaultCategory()->setEnabled(QtWarningMsg, true);
++        } else {
++            qWarning() << "Can't open logfile" << logFile->fileName();
+         }
++    } else {
++        qWarning() << "Can't create logging facility";
+     }
+ }
+ 
+-QVariantMap Helper::initSession()
++QVariantMap Helper::initSession(const QString &PATH)
+ {
+     if (!calledFromDBus()) {
+-	   qWarning() << Q_FUNC_INFO << "not called via DBus!";
++        qWarning() << Q_FUNC_INFO << "not called via DBus!";
+         return {};
+     }
+ 
+@@ -169,6 +179,12 @@ QVariantMap Helper::initSession()
+         return {{"success", false}, {"error", "There are already registered DBus connection."}};
+     }
+ 
++    if (!PATH.isEmpty()) {
++        // KDiskMark handed us its PATH, set it so that we can find the same `fio`.
++	   // NB: we're started via DBus, so there's no guarantee we get the same PATH!!
++        qputenv("PATH", PATH.toUtf8());
++    }
++
+ #ifdef USE_PRIVILEGED_HELPER
+     PolkitQt1::SystemBusNameSubject subject(message().service());
+     PolkitQt1::Authority *authority = PolkitQt1::Authority::instance();
+@@ -258,6 +274,7 @@ QVariantMap Helper::prepareBenchmarkFile(const QString &benchmarkPath, int fileS
+     if (!m_benchmarkFile.open()) {
+         return {{"success", false}, {"error", QStringLiteral("An error occurred while creating the benchmark file: %1").arg(m_benchmarkFile.errorString())}};
+     }
++    m_benchmarkFile.close();
+ 
+     m_process = new QProcess();
+     m_process->start("fio", QStringList()
+@@ -278,9 +295,14 @@ QVariantMap Helper::prepareBenchmarkFile(const QString &benchmarkPath, int fileS
+         emit taskFinished(exitStatus == QProcess::NormalExit, allStdout, allStderr);
+     });
+ 
+-    qInfo() << Q_FUNC_INFO << m_process->program() + " " + m_process->arguments().join(" ");
+-
+-    return {{"success", true}};
++    if (m_process->waitForStarted()) {
++        qInfo() << Q_FUNC_INFO << m_process->program() + " " + m_process->arguments().join(" ");
++        return {{"success", true}};
++    } else {
++        qCritical() << Q_FUNC_INFO << "failed to start:" << m_process->program() + " " + m_process->arguments().join(" ")
++            << "PATH=" << qgetenv("PATH");
++        return {{"success", false}};
++    }
+ }
+ 
+ QVariantMap Helper::startBenchmarkTest(int measuringTime, int fileSize, int randomReadPercentage, bool fillZeros, bool cacheBypass, bool continuousGeneration,
+@@ -328,7 +350,11 @@ QVariantMap Helper::startBenchmarkTest(int measuringTime, int fileSize, int rand
+         emit taskFinished(exitStatus == QProcess::NormalExit, allStdout, allStderr);
+     });
+ 
+-    return {{"success", true}};
++    if (m_process->waitForStarted()) {
++        return {{"success", true}};
++    } else {
++        return {{"success", false}};
++    }
+ }
+ 
+ QVariantMap Helper::flushPageCache()
+@@ -341,6 +367,7 @@ QVariantMap Helper::flushPageCache()
+         return {{"success", false}, {"error", "A benchmark file must first be created."}};
+     }
+ 
++#ifdef __linux__
+     QFile file("/proc/sys/vm/drop_caches");
+ 
+     if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+@@ -352,6 +379,9 @@ QVariantMap Helper::flushPageCache()
+     }
+ 
+     return {{"success", true}};
++#else
++    return {{"success", false}};
++#endif
+ }
+ 
+ QVariantMap Helper::removeBenchmarkFile()
+@@ -405,6 +435,7 @@ QVariantMap Helper::checkCowStatus(const QString &path)
+     switch (fs_info.f_type) {
+         case 0x9123683E: // BTRFS_SUPER_MAGIC
+         case 0xca451a4e: // BCACHEFS_SUPER_MAGIC
++        // APFS?
+             break;
+         default:
+             return {{"success", true}, {"hasCow", false}};
+@@ -417,9 +448,12 @@ QVariantMap Helper::checkCowStatus(const QString &path)
+ 
+     unsigned long flags = 0;
+     bool hasCow = false;
++#ifdef __linux__
+     if (ioctl(fd, FS_IOC_GETFLAGS, &flags) >= 0) {
+         hasCow = !(flags & FS_NOCOW_FL);
+-    } else {
++    } else
++#endif
++    {
+         qWarning() << QStringLiteral("Failed to get FS flags for") << path << QStringLiteral(":") << strerror(errno);
+     }
+ 
+@@ -450,6 +484,7 @@ QVariantMap Helper::createNoCowDirectory(const QString &path)
+     }
+ 
+     unsigned long flags = 0;
++#ifdef __linux__
+     if (ioctl(fd, FS_IOC_GETFLAGS, &flags) < 0) {
+         close(fd);
+         return {{"success", false}, {"error", QStringLiteral("Cannot get flags: %1").arg(strerror(errno))}};
+@@ -457,6 +492,9 @@ QVariantMap Helper::createNoCowDirectory(const QString &path)
+ 
+     flags |= FS_NOCOW_FL;
+     bool success = (ioctl(fd, FS_IOC_SETFLAGS, &flags) >= 0);
++#else
++    bool success = false;
++#endif
+     close(fd);
+ 
+     if (!success) {
+diff --git a/src/helper.h b/src/helper.h
+index d693cec..009458c 100644
+--- a/src/helper.h
++++ b/src/helper.h
+@@ -18,7 +18,7 @@ public:
+     explicit HelperAdaptor(Helper *parent);
+ 
+ public slots:
+-    Q_SCRIPTABLE QVariantMap initSession();
++    Q_SCRIPTABLE QVariantMap initSession(const QString &PATH);
+     Q_SCRIPTABLE QVariantMap endSession();
+     Q_SCRIPTABLE QVariantMap prepareBenchmarkFile(const QString &benchmarkPath, int fileSize, bool fillZeros);
+     Q_SCRIPTABLE QVariantMap startBenchmarkTest(
+@@ -46,7 +46,7 @@ public:
+     Helper();
+ 
+ public:
+-    QVariantMap initSession();
++    QVariantMap initSession(const QString &PATH);
+     QVariantMap endSession();
+     QVariantMap prepareBenchmarkFile(const QString &benchmarkPath, int fileSize, bool fillZeros);
+     QVariantMap startBenchmarkTest(int measuringTime, int fileSize,
+diff --git a/src/main.cpp b/src/main.cpp
+index 6f58804..82e97d0 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -3,6 +3,7 @@
+ #include <QApplication>
+ #include <QCommandLineParser>
+ #include <QStorageInfo>
++#include <QSettings>
+ 
+ // #include "singleapplication.h"
+ #include "cmake.h"
+@@ -13,6 +14,11 @@ int main(int argc, char *argv[])
+     QCoreApplication::setApplicationVersion(QStringLiteral("%1.%2.%3").arg(PROJECT_VERSION_MAJOR)
+                                             .arg(PROJECT_VERSION_MINOR).arg(PROJECT_VERSION_PATCH));
+     QCoreApplication::setOrganizationName(QStringLiteral(PROJECT_NAME));
++#if defined(__APPLE__)
++    // RJVB's prefs for cross-platform operability:
++    QSettings::setDefaultFormat(QSettings::IniFormat);
++//     QCoreApplication::setOrganizationDomain(QStringLiteral("jonmagon.dev"));
++#endif
+ 
+ #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+     QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+index fcca0ea..132e1d7 100644
+--- a/src/mainwindow.cpp
++++ b/src/mainwindow.cpp
+@@ -182,9 +182,15 @@ MainWindow::MainWindow(QWidget *parent)
+ #else
+     ui->actionFlush_Pagecache->setChecked(false);
+     ui->actionFlush_Pagecache->setEnabled(false);
+-    ui->actionFlush_Pagecache->setToolTip(tr("Only available in builds that require root privileges"));
++    ui->actionFlush_Pagecache->setToolTip(tr("Only available in Linux builds that require root privileges"));
+ #endif
++#ifdef __linux__
+     ui->actionCoW_detection->setChecked(settings.getCoWDetectionState());
++#else
++    // disable control over the feature for now.
++    ui->actionCoW_detection->setChecked(false);
++    ui->actionCoW_detection->setEnabled(false);
++#endif
+     ui->loopsCount->setValue(settings.getLoopsCount());
+ 
+     ui->actionTheme_Stylesheet_Light->setChecked(settings.getTheme() == Global::Theme::StyleSheetLight);
