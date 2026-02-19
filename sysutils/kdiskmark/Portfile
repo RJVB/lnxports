@@ -51,6 +51,19 @@ if {${os.platform} ne "darwin"} {
     }
 
     destroot.violate_mtree yes
+} else {
+
+    pre-fetch {
+        ui_error "This port is a WIP and disabled for now"
+        return -code error "port not ready, sorry"
+    }
+
+    if {[variant_exists qt5kde] && [variant_isset qt5kde]} {
+        configure.cppflags-append \
+                    -DQT_USE_EXTSTANDARDPATHS -DQT_EXTSTANDARDPATHS_ALT_DEFAULT=true
+    }
+    configure.args-append \
+                    -DBUNDLE_INSTALL_DIR=${destroot}${qt_apps_dir}
 }
 
 build.post_args-append -wk
@@ -77,7 +90,7 @@ post-destroot {
             ln -s ${prefix}/share/dbus-1/services/dev.jonmagon.kdiskmark.helperinterface.service \
                 ${destroot}/usr/share/dbus-1/services/
         }
+        file rename ${destroot}${prefix}/bin/kdiskmark ${destroot}${prefix}/bin/kdiskmark.bin
+        qt5.add_app_wrapper kdiskmark kdiskmark.bin "" ${prefix}/bin
     }
-    file rename ${destroot}${prefix}/bin/kdiskmark ${destroot}${prefix}/bin/kdiskmark.bin
-    qt5.add_app_wrapper kdiskmark kdiskmark.bin "" ${prefix}/bin
 }
