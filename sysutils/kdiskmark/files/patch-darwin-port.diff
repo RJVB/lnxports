@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 70bb8da..99ef448 100644
+index 70bb8da..c4ab62b 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -16,7 +16,11 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
+@@ -16,7 +16,12 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
  include(FeatureSummary)
  
  option(USE_QT5 "Use Qt5 instead of Qt6" OFF)
@@ -12,10 +12,22 @@ index 70bb8da..99ef448 100644
 +else()
 +    option(USE_PRIVILEGED_HELPER "The benchmarking helper process runs as root" OFF)
 +endif()
++option(SINGLE_INSTANCE_ONLY "Allow only a single instance" OFF)
  
  if(USE_QT5)
      find_package(Qt5 COMPONENTS Widgets LinguistTools DBus REQUIRED)
-@@ -68,7 +72,11 @@ include(CPack)
+@@ -59,7 +64,9 @@ set(CPACK_RPM_COMPRESSION_TYPE lzma)
+ set(CPACK_NSIS_DISPLAY_NAME ${APPLICATION_NAME})
+ 
+ set(QAPPLICATION_CLASS QApplication)
+-add_subdirectory(src/singleapplication)
++if (SINGLE_INSTANCE_ONLY)
++    add_subdirectory(src/singleapplication)
++endif()
+ 
+ find_package(ECM REQUIRED NO_MODULE)
+ list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
+@@ -68,7 +75,11 @@ include(CPack)
  include(GNUInstallDirs)
  include(ECMInstallIcons)
  include(ECMConfiguredInstall)
@@ -27,7 +39,27 @@ index 70bb8da..99ef448 100644
  
  set(helper_interface_xml dev.jonmagon.kdiskmark.helperinterface.xml)
  
-@@ -166,6 +174,8 @@ set(APP_ICONS
+@@ -150,8 +161,18 @@ if (USE_PRIVILEGED_HELPER)
+         APPEND PROPERTY COMPILE_DEFINITIONS USE_PRIVILEGED_HELPER)
+ endif()
+ 
++if (SINGLE_INSTANCE_ONLY)
++    set_property(SOURCE
++        src/main.cpp
++        APPEND PROPERTY COMPILE_DEFINITIONS SINGLE_INSTANCE_ONLY)
++    target_link_libraries(${PROJECT_NAME} PRIVATE
++        SingleApplication::SingleApplication)
++else()
++    set_property(SOURCE
++        src/main.cpp
++        APPEND PROPERTY COMPILE_DEFINITIONS QAPPLICATION_CLASS=${QAPPLICATION_CLASS})
++endif()
+ target_link_libraries(${PROJECT_NAME} PRIVATE
+-    SingleApplication::SingleApplication
+     ${QT_LIBS}
+ )
+ 
+@@ -166,6 +187,8 @@ set(APP_ICONS
      data/icons/512-apps-kdiskmark.png
  )
  
@@ -36,7 +68,7 @@ index 70bb8da..99ef448 100644
  install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
  install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/${PROJECT_NAME}/translations)
  install(FILES data/${DESKTOP_FILE} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
-@@ -177,6 +187,7 @@ add_executable(${PROJECT_NAME}_helper
+@@ -177,6 +200,7 @@ add_executable(${PROJECT_NAME}_helper
      src/helper.cpp
      src/helper.h
  )
@@ -44,7 +76,7 @@ index 70bb8da..99ef448 100644
  
  target_link_libraries(${PROJECT_NAME}_helper
      ${QT_LIBS}
-@@ -186,6 +197,22 @@ if (USE_PRIVILEGED_HELPER)
+@@ -186,6 +210,22 @@ if (USE_PRIVILEGED_HELPER)
      set_target_properties(${PROJECT_NAME}_helper PROPERTIES
          COMPILE_DEFINITIONS USE_PRIVILEGED_HELPER)
  endif()
@@ -371,18 +403,27 @@ index d693cec..009458c 100644
      QVariantMap prepareBenchmarkFile(const QString &benchmarkPath, int fileSize, bool fillZeros);
      QVariantMap startBenchmarkTest(int measuringTime, int fileSize,
 diff --git a/src/main.cpp b/src/main.cpp
-index 6f58804..82e97d0 100644
+index 6f58804..df7dd12 100644
 --- a/src/main.cpp
 +++ b/src/main.cpp
-@@ -3,6 +3,7 @@
+@@ -3,8 +3,15 @@
  #include <QApplication>
  #include <QCommandLineParser>
  #include <QStorageInfo>
 +#include <QSettings>
++
++#ifdef SINGLE_INSTANCE_ONLY
++#include "singleapplication.h"
++using ApplicationClass = SingleApplication;
++#else
++using ApplicationClass = QAPPLICATION_CLASS;
++#endif
  
- // #include "singleapplication.h"
+-// #include "singleapplication.h"
  #include "cmake.h"
-@@ -13,6 +14,11 @@ int main(int argc, char *argv[])
+ 
+ int main(int argc, char *argv[])
+@@ -13,12 +20,17 @@ int main(int argc, char *argv[])
      QCoreApplication::setApplicationVersion(QStringLiteral("%1.%2.%3").arg(PROJECT_VERSION_MAJOR)
                                              .arg(PROJECT_VERSION_MINOR).arg(PROJECT_VERSION_PATCH));
      QCoreApplication::setOrganizationName(QStringLiteral(PROJECT_NAME));
@@ -394,8 +435,15 @@ index 6f58804..82e97d0 100644
  
  #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
      QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+ #endif
+ 
+-    QApplication a(argc, argv);
++    ApplicationClass a(argc, argv);
+ 
+     QCommandLineParser parser;
+     parser.setApplicationDescription("Disk benchmark application");
 diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
-index fcca0ea..132e1d7 100644
+index fcca0ea..8dd3a04 100644
 --- a/src/mainwindow.cpp
 +++ b/src/mainwindow.cpp
 @@ -182,9 +182,15 @@ MainWindow::MainWindow(QWidget *parent)
@@ -415,3 +463,56 @@ index fcca0ea..132e1d7 100644
      ui->loopsCount->setValue(settings.getLoopsCount());
  
      ui->actionTheme_Stylesheet_Light->setChecked(settings.getTheme() == Global::Theme::StyleSheetLight);
+@@ -416,7 +422,7 @@ void MainWindow::updateStoragesList()
+ 
+ void MainWindow::addItemToStoragesList(const Global::Storage &storage)
+ {
+-    if (ui->comboBox_Storages->findText(storage.path, Qt::MatchContains) != -1)
++    if (ui->comboBox_Storages->findText(storage.path, Qt::MatchFixedString|Qt::MatchCaseSensitive) != -1)
+          return;
+ 
+     ui->comboBox_Storages->addItem(
+@@ -467,7 +473,6 @@ void MainWindow::resizeComboBoxItemsPopup(QComboBox *combobox)
+ #else
+         int width = fontMetrics.width(combobox->itemText(i));
+ #endif
+-
+         if (width > maxWidth)
+             maxWidth = width;
+     }
+diff --git a/src/storageitemdelegate.cpp b/src/storageitemdelegate.cpp
+index 1f82357..e34691b 100644
+--- a/src/storageitemdelegate.cpp
++++ b/src/storageitemdelegate.cpp
+@@ -27,6 +27,7 @@ void StorageItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
+ 
+         QStyleOptionViewItem opt = option;
+         initStyleOption(&opt, index);
++        painter->save();
+         opt.text = QString();
+         style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, option.widget);
+ 
+@@ -79,6 +80,7 @@ void StorageItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
+         style->drawControl(QStyle::CE_ProgressBar, &progressBarOption, painter);
+ 
+         painter->drawText(progressBarRect, option.displayAlignment | Qt::AlignRight, QString::number(percent) + "%");
++        painter->restore();
+     }
+ #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+     else if (index.data(Qt::DecorationRole).typeId() == QVariant::Icon) {
+@@ -89,6 +91,7 @@ void StorageItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
+ 
+         QStyleOptionViewItem opt = option;
+         initStyleOption(&opt, index);
++        painter->save();
+         opt.icon = QIcon();
+         opt.text = QString();
+         style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, option.widget);
+@@ -124,6 +127,7 @@ void StorageItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
+         palette.setColor(QPalette::Text, painter->pen().color());
+         opt.palette = palette;
+ 
++        painter->restore();
+         QStyledItemDelegate::paint(painter, opt, index);
+     }
+     else {
