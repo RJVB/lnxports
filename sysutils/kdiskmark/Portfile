@@ -65,12 +65,18 @@ if {${os.platform} ne "darwin"} {
                     -DQT_USE_EXTSTANDARDPATHS -DQT_EXTSTANDARDPATHS_ALT_DEFAULT=true
     }
     configure.args-append \
-                    -DBUNDLE_INSTALL_DIR=${destroot}${qt_apps_dir}
+                    -DBUNDLE_INSTALL_DIR=${qt_apps_dir}
 }
 
 build.post_args-append -wk
 
-langselect_qm_dir   ${destroot}${prefix}/share/${name}/${name}/translations
+if {${os.platform} ne "darwin"} {
+    langselect_qm_dir \
+                    ${destroot}${prefix}/share/${name}/${name}/translations
+} else {
+    langselect_qm_dir \
+                    ${destroot}${qt_apps_dir}/${name}.app/Contents/Resources/translations
+}
 langselect_qm_basename ${name}_
 
 post-destroot {
@@ -94,5 +100,7 @@ post-destroot {
         }
         file rename ${destroot}${prefix}/bin/kdiskmark ${destroot}${prefix}/bin/kdiskmark.bin
         qt5.add_app_wrapper kdiskmark kdiskmark.bin "" ${prefix}/bin
+    } else {
+        qt5.add_app_wrapper kdiskmark5 kdiskmark
     }
 }

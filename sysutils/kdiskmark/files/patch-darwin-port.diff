@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 70bb8da..c4ab62b 100644
+index 70bb8da..be44600 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -16,7 +16,12 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -16,7 +16,7 @@ index 70bb8da..c4ab62b 100644
  
  if(USE_QT5)
      find_package(Qt5 COMPONENTS Widgets LinguistTools DBus REQUIRED)
-@@ -59,7 +64,9 @@ set(CPACK_RPM_COMPRESSION_TYPE lzma)
+@@ -59,16 +64,25 @@ set(CPACK_RPM_COMPRESSION_TYPE lzma)
  set(CPACK_NSIS_DISPLAY_NAME ${APPLICATION_NAME})
  
  set(QAPPLICATION_CLASS QApplication)
@@ -27,7 +27,11 @@ index 70bb8da..c4ab62b 100644
  
  find_package(ECM REQUIRED NO_MODULE)
  list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
-@@ -68,7 +75,11 @@ include(CPack)
+ 
++if (NOT BUNDLE_INSTALL_DIR)
++    set(BUNDLE_INSTALL_DIR "/Applications")
++endif()
+ include(CPack)
  include(GNUInstallDirs)
  include(ECMInstallIcons)
  include(ECMConfiguredInstall)
@@ -39,7 +43,7 @@ index 70bb8da..c4ab62b 100644
  
  set(helper_interface_xml dev.jonmagon.kdiskmark.helperinterface.xml)
  
-@@ -150,8 +161,18 @@ if (USE_PRIVILEGED_HELPER)
+@@ -150,8 +164,18 @@ if (USE_PRIVILEGED_HELPER)
          APPEND PROPERTY COMPILE_DEFINITIONS USE_PRIVILEGED_HELPER)
  endif()
  
@@ -59,27 +63,14 @@ index 70bb8da..c4ab62b 100644
      ${QT_LIBS}
  )
  
-@@ -166,6 +187,8 @@ set(APP_ICONS
+@@ -166,8 +190,30 @@ set(APP_ICONS
      data/icons/512-apps-kdiskmark.png
  )
  
+-install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
+-install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/${PROJECT_NAME}/translations)
 +ecm_add_app_icon(${PROJECT_NAME} ICONS ${APP_ICONS})
 +
- install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
- install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/${PROJECT_NAME}/translations)
- install(FILES data/${DESKTOP_FILE} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
-@@ -177,6 +200,7 @@ add_executable(${PROJECT_NAME}_helper
-     src/helper.cpp
-     src/helper.h
- )
-+ecm_mark_nongui_executable(${PROJECT_NAME}_helper)
- 
- target_link_libraries(${PROJECT_NAME}_helper
-     ${QT_LIBS}
-@@ -186,6 +210,22 @@ if (USE_PRIVILEGED_HELPER)
-     set_target_properties(${PROJECT_NAME}_helper PROPERTIES
-         COMPILE_DEFINITIONS USE_PRIVILEGED_HELPER)
- endif()
 +if (APPLE)
 +    # the MacOSX bundle display name property (CFBundleDisplayName) is not currently supported by cmake,
 +    # so has to be set for all targets in this cmake file
@@ -95,6 +86,29 @@ index 70bb8da..c4ab62b 100644
 +        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}"
 +        MACOSX_BUNDLE_ICON_FILE "kdiskmark.icns"
 +        MACOSX_BUNDLE_COPYRIGHT "Dmitry Sidorov")
++    set_source_files_properties(${QM_FILES} PROPERTIES 
++        MACOSX_PACKAGE_LOCATION "Resources/translations")
++    install(TARGETS ${PROJECT_NAME} BUNDLE DESTINATION ${BUNDLE_INSTALL_DIR})
++else()
++    install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_BINDIR})
++    install(FILES ${QM_FILES} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/${PROJECT_NAME}/translations)
++endif()
+ install(FILES data/${DESKTOP_FILE} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
+ 
+ ecm_install_icons(ICONS ${APP_ICONS} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
+@@ -177,6 +223,7 @@ add_executable(${PROJECT_NAME}_helper
+     src/helper.cpp
+     src/helper.h
+ )
++ecm_mark_nongui_executable(${PROJECT_NAME}_helper)
+ 
+ target_link_libraries(${PROJECT_NAME}_helper
+     ${QT_LIBS}
+@@ -186,6 +233,8 @@ if (USE_PRIVILEGED_HELPER)
+     set_target_properties(${PROJECT_NAME}_helper PROPERTIES
+         COMPILE_DEFINITIONS USE_PRIVILEGED_HELPER)
+ endif()
++if (APPLE)
 +endif (APPLE)
  
  install(TARGETS ${PROJECT_NAME}_helper DESTINATION ${KDE_INSTALL_LIBEXECDIR})
@@ -148,22 +162,26 @@ index 0000000..dd3e912
 +</dict>
 +</plist>
 diff --git a/src/appsettings.cpp b/src/appsettings.cpp
-index 570ae52..5ea21fd 100644
+index 570ae52..3e3f7a8 100644
 --- a/src/appsettings.cpp
 +++ b/src/appsettings.cpp
-@@ -47,24 +47,28 @@ void AppSettings::applyLocale(const QLocale &locale)
+@@ -47,24 +47,32 @@ void AppSettings::applyLocale(const QLocale &locale)
      QCoreApplication::removeTranslator(&s_qtTranslator);
  
      if (newLocale.language() != QLocale::English) {
 -        bool appTranslatorLoaded = s_appTranslator.load(newLocale, QStringLiteral(PROJECT_NAME), QStringLiteral("_"), QStandardPaths::locate(QStandardPaths::AppDataLocation, QStringLiteral("translations"), QStandardPaths::LocateDirectory));
++#ifdef __APPLE__
++        const auto translationsLocation = QCoreApplication::applicationDirPath() + QStringLiteral("/../Resources/translations/");
++#else
 +        const auto translationsLocation = QStandardPaths::locate(QStandardPaths::AppDataLocation, QStringLiteral("translations"), QStandardPaths::LocateDirectory);
++#endif
 +        bool appTranslatorLoaded = s_appTranslator.load(newLocale, QStringLiteral(PROJECT_NAME), QStringLiteral("_"), translationsLocation);
          if (appTranslatorLoaded) {
              QCoreApplication::installTranslator(&s_appTranslator);
          } else {
 -            qWarning() << "Failed to load application translations for locale" << newLocale;
-+            qWarning() << "Failed to load application translations for locale" << newLocale << "from" << QStandardPaths::locate(QStandardPaths::AppDataLocation, QStringLiteral("translations"), QStandardPaths::LocateDirectory);
-+            qWarning() << "\t" << QStandardPaths::locate(QStandardPaths::AppDataLocation, QStringLiteral("translations"), QStandardPaths::LocateDirectory);;
++            qWarning() << "Failed to load application translations for locale" << newLocale << "from" << translationsLocation;
++            qWarning() << "\t" << QStandardPaths::locateAll(QStandardPaths::AppDataLocation, QStringLiteral("translations"), QStandardPaths::LocateDirectory);;
          }
      }
  
