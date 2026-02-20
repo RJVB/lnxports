@@ -20,7 +20,7 @@ github.setup        JonMagon KDiskMark 9a6cd5f950af647043082cb4c0248e6b2a87541e
 fetch.type          git
 name                kdiskmark
 distname            ${name}-git
-version             3.2.0.4 ; revision 2
+version             3.2.0.4 ; revision 3
 
 depends_build-append \
                     path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
@@ -34,10 +34,9 @@ patch.pre_args      -Np1
 patchfiles-append   patch-allow-non-privileged.diff \
                     patch-log-fio-calls.diff \
                     patch-ioengine-selection.diff \
-                    patch-app-targetdir-option.diff
-# combined patch for darwin + general improvements
-# split those out later!!
-patchfiles-append   patch-darwin-port.diff
+                    patch-app-targetdir-option.diff \
+                    patch-various-tweaksnfixes.diff \
+                    patch-darwin-port.diff
 
 configure.args-append \
                     -DUSE_QT5=ON \
@@ -54,11 +53,6 @@ if {${os.platform} ne "darwin"} {
 
     destroot.violate_mtree yes
 } else {
-
-    pre-fetch {
-        ui_error "This port is a WIP and disabled for now"
-        return -code error "port not ready, sorry"
-    }
 
     if {[variant_exists qt5kde] && [variant_isset qt5kde]} {
         configure.cppflags-append \

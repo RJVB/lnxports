@@ -1,8 +1,26 @@
+commit 6c9a99e5f7e1bc065ba55cbe26510e34b7699784
+Author: René Bertin <rjvbertin@gmail.com>
+Date:   Fri Feb 20 16:47:38 2026 +0100
+
+    Minimal port to Darwin/Mac
+    
+    This makes an almost-standalone bundle of the application, but it will depend
+    
+    - on the Qt libraries installed in a central location as
+      they are not embedded in the app bundle
+    - on DBus and the kdiskmark_helper application that must be
+      installed in a pre-determined location. This could be inside
+      the app bundle, but the DBus service definition file has to
+      be installed in a dedicated, system-central location, so
+      for now we install the helper in the same location as on Linux.
+    
+    Committed from host : Bola
+
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 70bb8da..be44600 100644
+index 95aacac..992505f 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -16,7 +16,12 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
+@@ -16,7 +16,11 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
  include(FeatureSummary)
  
  option(USE_QT5 "Use Qt5 instead of Qt6" OFF)
@@ -12,19 +30,10 @@ index 70bb8da..be44600 100644
 +else()
 +    option(USE_PRIVILEGED_HELPER "The benchmarking helper process runs as root" OFF)
 +endif()
-+option(SINGLE_INSTANCE_ONLY "Allow only a single instance" OFF)
+ option(SINGLE_INSTANCE_ONLY "Allow only a single instance" OFF)
  
  if(USE_QT5)
-     find_package(Qt5 COMPONENTS Widgets LinguistTools DBus REQUIRED)
-@@ -59,16 +64,25 @@ set(CPACK_RPM_COMPRESSION_TYPE lzma)
- set(CPACK_NSIS_DISPLAY_NAME ${APPLICATION_NAME})
- 
- set(QAPPLICATION_CLASS QApplication)
--add_subdirectory(src/singleapplication)
-+if (SINGLE_INSTANCE_ONLY)
-+    add_subdirectory(src/singleapplication)
-+endif()
- 
+@@ -67,11 +71,18 @@ endif()
  find_package(ECM REQUIRED NO_MODULE)
  list(APPEND CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
  
@@ -43,27 +52,7 @@ index 70bb8da..be44600 100644
  
  set(helper_interface_xml dev.jonmagon.kdiskmark.helperinterface.xml)
  
-@@ -150,8 +164,18 @@ if (USE_PRIVILEGED_HELPER)
-         APPEND PROPERTY COMPILE_DEFINITIONS USE_PRIVILEGED_HELPER)
- endif()
- 
-+if (SINGLE_INSTANCE_ONLY)
-+    set_property(SOURCE
-+        src/main.cpp
-+        APPEND PROPERTY COMPILE_DEFINITIONS SINGLE_INSTANCE_ONLY)
-+    target_link_libraries(${PROJECT_NAME} PRIVATE
-+        SingleApplication::SingleApplication)
-+else()
-+    set_property(SOURCE
-+        src/main.cpp
-+        APPEND PROPERTY COMPILE_DEFINITIONS QAPPLICATION_CLASS=${QAPPLICATION_CLASS})
-+endif()
- target_link_libraries(${PROJECT_NAME} PRIVATE
--    SingleApplication::SingleApplication
-     ${QT_LIBS}
- )
- 
-@@ -166,8 +190,30 @@ set(APP_ICONS
+@@ -179,8 +190,30 @@ set(APP_ICONS
      data/icons/512-apps-kdiskmark.png
  )
  
@@ -96,7 +85,7 @@ index 70bb8da..be44600 100644
  install(FILES data/${DESKTOP_FILE} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)
  
  ecm_install_icons(ICONS ${APP_ICONS} DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/icons)
-@@ -177,6 +223,7 @@ add_executable(${PROJECT_NAME}_helper
+@@ -190,6 +223,7 @@ add_executable(${PROJECT_NAME}_helper
      src/helper.cpp
      src/helper.h
  )
@@ -104,15 +93,6 @@ index 70bb8da..be44600 100644
  
  target_link_libraries(${PROJECT_NAME}_helper
      ${QT_LIBS}
-@@ -186,6 +233,8 @@ if (USE_PRIVILEGED_HELPER)
-     set_target_properties(${PROJECT_NAME}_helper PROPERTIES
-         COMPILE_DEFINITIONS USE_PRIVILEGED_HELPER)
- endif()
-+if (APPLE)
-+endif (APPLE)
- 
- install(TARGETS ${PROJECT_NAME}_helper DESTINATION ${KDE_INSTALL_LIBEXECDIR})
- 
 diff --git a/data/Info.plist.in b/data/Info.plist.in
 new file mode 100644
 index 0000000..dd3e912
@@ -162,7 +142,7 @@ index 0000000..dd3e912
 +</dict>
 +</plist>
 diff --git a/src/appsettings.cpp b/src/appsettings.cpp
-index 570ae52..3e3f7a8 100644
+index eb95b56..3e3f7a8 100644
 --- a/src/appsettings.cpp
 +++ b/src/appsettings.cpp
 @@ -47,24 +47,32 @@ void AppSettings::applyLocale(const QLocale &locale)
@@ -198,29 +178,11 @@ index 570ae52..3e3f7a8 100644
      if (qtTranslatorLoaded) {
          QCoreApplication::installTranslator(&s_qtTranslator);
      } else {
--        qWarning() << "Failed to load Qt translations for locale" << newLocale;
+-        qDebug() << "Failed to load Qt translations for locale" << newLocale;
 +        qDebug() << "Failed to load Qt translations for locale" << newLocale << "from" << translationsLocation;
      }
  }
  
-diff --git a/src/benchmark.cpp b/src/benchmark.cpp
-index 504848b..b5efcdd 100644
---- a/src/benchmark.cpp
-+++ b/src/benchmark.cpp
-@@ -329,7 +329,12 @@ void Benchmark::initSession()
-     m_helperAuthorized = false;
- 
-     auto interface = helperInterface();
--    if (interface) handleDbusPendingCall(interface->initSession());
-+    if (interface) {
-+        // initialise a session in the helper, handing it our PATH env. var
-+	   // as it will have been started via DBus and thus is likely to
-+	   // have a different PATH that the one the user defined for him/herself.
-+        handleDbusPendingCall(interface->initSession(qgetenv("PATH")));
-+    }
- 
-     // Process was not stopped by handleDbusPendingCall, consider that the authorization was successful
-     if (isRunning()) m_helperAuthorized = true;
 diff --git a/src/diskdriveinfo.cpp b/src/diskdriveinfo.cpp
 index 9245769..e17ee57 100644
 --- a/src/diskdriveinfo.cpp
@@ -235,7 +197,7 @@ index 9245769..e17ee57 100644
  
      return model;
 diff --git a/src/helper.cpp b/src/helper.cpp
-index 9abdc65..3afaf18 100644
+index 0f8699f..3afaf18 100644
 --- a/src/helper.cpp
 +++ b/src/helper.cpp
 @@ -13,10 +13,16 @@
@@ -255,92 +217,7 @@ index 9abdc65..3afaf18 100644
  
  #include <QLoggingCategory>
  #include <syslog.h>
-@@ -75,9 +81,9 @@ HelperAdaptor::HelperAdaptor(Helper *parent) :
-     m_parentHelper = parent;
- }
- 
--QVariantMap HelperAdaptor::initSession()
-+QVariantMap HelperAdaptor::initSession(const QString &PATH)
- {
--    return m_parentHelper->initSession();
-+    return m_parentHelper->initSession(PATH);
- }
- 
- QVariantMap HelperAdaptor::endSession()
-@@ -150,14 +156,18 @@ Helper::Helper() : m_helperAdaptor(new HelperAdaptor(this))
-             oldHandler = qInstallMessageHandler(theMessageOutput);
-             QLoggingCategory::defaultCategory()->setEnabled(QtInfoMsg, true);
-             QLoggingCategory::defaultCategory()->setEnabled(QtWarningMsg, true);
-+        } else {
-+            qWarning() << "Can't open logfile" << logFile->fileName();
-         }
-+    } else {
-+        qWarning() << "Can't create logging facility";
-     }
- }
- 
--QVariantMap Helper::initSession()
-+QVariantMap Helper::initSession(const QString &PATH)
- {
-     if (!calledFromDBus()) {
--	   qWarning() << Q_FUNC_INFO << "not called via DBus!";
-+        qWarning() << Q_FUNC_INFO << "not called via DBus!";
-         return {};
-     }
- 
-@@ -169,6 +179,12 @@ QVariantMap Helper::initSession()
-         return {{"success", false}, {"error", "There are already registered DBus connection."}};
-     }
- 
-+    if (!PATH.isEmpty()) {
-+        // KDiskMark handed us its PATH, set it so that we can find the same `fio`.
-+	   // NB: we're started via DBus, so there's no guarantee we get the same PATH!!
-+        qputenv("PATH", PATH.toUtf8());
-+    }
-+
- #ifdef USE_PRIVILEGED_HELPER
-     PolkitQt1::SystemBusNameSubject subject(message().service());
-     PolkitQt1::Authority *authority = PolkitQt1::Authority::instance();
-@@ -258,6 +274,7 @@ QVariantMap Helper::prepareBenchmarkFile(const QString &benchmarkPath, int fileS
-     if (!m_benchmarkFile.open()) {
-         return {{"success", false}, {"error", QStringLiteral("An error occurred while creating the benchmark file: %1").arg(m_benchmarkFile.errorString())}};
-     }
-+    m_benchmarkFile.close();
- 
-     m_process = new QProcess();
-     m_process->start("fio", QStringList()
-@@ -278,9 +295,14 @@ QVariantMap Helper::prepareBenchmarkFile(const QString &benchmarkPath, int fileS
-         emit taskFinished(exitStatus == QProcess::NormalExit, allStdout, allStderr);
-     });
- 
--    qInfo() << Q_FUNC_INFO << m_process->program() + " " + m_process->arguments().join(" ");
--
--    return {{"success", true}};
-+    if (m_process->waitForStarted()) {
-+        qInfo() << Q_FUNC_INFO << m_process->program() + " " + m_process->arguments().join(" ");
-+        return {{"success", true}};
-+    } else {
-+        qCritical() << Q_FUNC_INFO << "failed to start:" << m_process->program() + " " + m_process->arguments().join(" ")
-+            << "PATH=" << qgetenv("PATH");
-+        return {{"success", false}};
-+    }
- }
- 
- QVariantMap Helper::startBenchmarkTest(int measuringTime, int fileSize, int randomReadPercentage, bool fillZeros, bool cacheBypass, bool continuousGeneration,
-@@ -328,7 +350,11 @@ QVariantMap Helper::startBenchmarkTest(int measuringTime, int fileSize, int rand
-         emit taskFinished(exitStatus == QProcess::NormalExit, allStdout, allStderr);
-     });
- 
--    return {{"success", true}};
-+    if (m_process->waitForStarted()) {
-+        return {{"success", true}};
-+    } else {
-+        return {{"success", false}};
-+    }
- }
- 
- QVariantMap Helper::flushPageCache()
-@@ -341,6 +367,7 @@ QVariantMap Helper::flushPageCache()
+@@ -361,6 +367,7 @@ QVariantMap Helper::flushPageCache()
          return {{"success", false}, {"error", "A benchmark file must first be created."}};
      }
  
@@ -348,7 +225,7 @@ index 9abdc65..3afaf18 100644
      QFile file("/proc/sys/vm/drop_caches");
  
      if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-@@ -352,6 +379,9 @@ QVariantMap Helper::flushPageCache()
+@@ -372,6 +379,9 @@ QVariantMap Helper::flushPageCache()
      }
  
      return {{"success", true}};
@@ -358,29 +235,19 @@ index 9abdc65..3afaf18 100644
  }
  
  QVariantMap Helper::removeBenchmarkFile()
-@@ -405,6 +435,7 @@ QVariantMap Helper::checkCowStatus(const QString &path)
-     switch (fs_info.f_type) {
-         case 0x9123683E: // BTRFS_SUPER_MAGIC
-         case 0xca451a4e: // BCACHEFS_SUPER_MAGIC
-+        // APFS?
-             break;
-         default:
-             return {{"success", true}, {"hasCow", false}};
-@@ -417,9 +448,12 @@ QVariantMap Helper::checkCowStatus(const QString &path)
+@@ -438,9 +448,11 @@ QVariantMap Helper::checkCowStatus(const QString &path)
  
      unsigned long flags = 0;
      bool hasCow = false;
 +#ifdef __linux__
      if (ioctl(fd, FS_IOC_GETFLAGS, &flags) >= 0) {
          hasCow = !(flags & FS_NOCOW_FL);
--    } else {
-+    } else
+     } else
 +#endif
-+    {
+     {
          qWarning() << QStringLiteral("Failed to get FS flags for") << path << QStringLiteral(":") << strerror(errno);
      }
- 
-@@ -450,6 +484,7 @@ QVariantMap Helper::createNoCowDirectory(const QString &path)
+@@ -472,6 +484,7 @@ QVariantMap Helper::createNoCowDirectory(const QString &path)
      }
  
      unsigned long flags = 0;
@@ -388,7 +255,7 @@ index 9abdc65..3afaf18 100644
      if (ioctl(fd, FS_IOC_GETFLAGS, &flags) < 0) {
          close(fd);
          return {{"success", false}, {"error", QStringLiteral("Cannot get flags: %1").arg(strerror(errno))}};
-@@ -457,6 +492,9 @@ QVariantMap Helper::createNoCowDirectory(const QString &path)
+@@ -479,6 +492,9 @@ QVariantMap Helper::createNoCowDirectory(const QString &path)
  
      flags |= FS_NOCOW_FL;
      bool success = (ioctl(fd, FS_IOC_SETFLAGS, &flags) >= 0);
@@ -398,50 +265,11 @@ index 9abdc65..3afaf18 100644
      close(fd);
  
      if (!success) {
-diff --git a/src/helper.h b/src/helper.h
-index d693cec..009458c 100644
---- a/src/helper.h
-+++ b/src/helper.h
-@@ -18,7 +18,7 @@ public:
-     explicit HelperAdaptor(Helper *parent);
- 
- public slots:
--    Q_SCRIPTABLE QVariantMap initSession();
-+    Q_SCRIPTABLE QVariantMap initSession(const QString &PATH);
-     Q_SCRIPTABLE QVariantMap endSession();
-     Q_SCRIPTABLE QVariantMap prepareBenchmarkFile(const QString &benchmarkPath, int fileSize, bool fillZeros);
-     Q_SCRIPTABLE QVariantMap startBenchmarkTest(
-@@ -46,7 +46,7 @@ public:
-     Helper();
- 
- public:
--    QVariantMap initSession();
-+    QVariantMap initSession(const QString &PATH);
-     QVariantMap endSession();
-     QVariantMap prepareBenchmarkFile(const QString &benchmarkPath, int fileSize, bool fillZeros);
-     QVariantMap startBenchmarkTest(int measuringTime, int fileSize,
 diff --git a/src/main.cpp b/src/main.cpp
-index 6f58804..df7dd12 100644
+index 4eda82b..df7dd12 100644
 --- a/src/main.cpp
 +++ b/src/main.cpp
-@@ -3,8 +3,15 @@
- #include <QApplication>
- #include <QCommandLineParser>
- #include <QStorageInfo>
-+#include <QSettings>
-+
-+#ifdef SINGLE_INSTANCE_ONLY
-+#include "singleapplication.h"
-+using ApplicationClass = SingleApplication;
-+#else
-+using ApplicationClass = QAPPLICATION_CLASS;
-+#endif
- 
--// #include "singleapplication.h"
- #include "cmake.h"
- 
- int main(int argc, char *argv[])
-@@ -13,12 +20,17 @@ int main(int argc, char *argv[])
+@@ -20,6 +20,11 @@ int main(int argc, char *argv[])
      QCoreApplication::setApplicationVersion(QStringLiteral("%1.%2.%3").arg(PROJECT_VERSION_MAJOR)
                                              .arg(PROJECT_VERSION_MINOR).arg(PROJECT_VERSION_PATCH));
      QCoreApplication::setOrganizationName(QStringLiteral(PROJECT_NAME));
@@ -453,23 +281,13 @@ index 6f58804..df7dd12 100644
  
  #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
      QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
- #endif
- 
--    QApplication a(argc, argv);
-+    ApplicationClass a(argc, argv);
- 
-     QCommandLineParser parser;
-     parser.setApplicationDescription("Disk benchmark application");
 diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
-index fcca0ea..8dd3a04 100644
+index c952484..8dd3a04 100644
 --- a/src/mainwindow.cpp
 +++ b/src/mainwindow.cpp
-@@ -182,9 +182,15 @@ MainWindow::MainWindow(QWidget *parent)
- #else
-     ui->actionFlush_Pagecache->setChecked(false);
+@@ -184,7 +184,13 @@ MainWindow::MainWindow(QWidget *parent)
      ui->actionFlush_Pagecache->setEnabled(false);
--    ui->actionFlush_Pagecache->setToolTip(tr("Only available in builds that require root privileges"));
-+    ui->actionFlush_Pagecache->setToolTip(tr("Only available in Linux builds that require root privileges"));
+     ui->actionFlush_Pagecache->setToolTip(tr("Only available in Linux builds that require root privileges"));
  #endif
 +#ifdef __linux__
      ui->actionCoW_detection->setChecked(settings.getCoWDetectionState());
@@ -481,56 +299,3 @@ index fcca0ea..8dd3a04 100644
      ui->loopsCount->setValue(settings.getLoopsCount());
  
      ui->actionTheme_Stylesheet_Light->setChecked(settings.getTheme() == Global::Theme::StyleSheetLight);
-@@ -416,7 +422,7 @@ void MainWindow::updateStoragesList()
- 
- void MainWindow::addItemToStoragesList(const Global::Storage &storage)
- {
--    if (ui->comboBox_Storages->findText(storage.path, Qt::MatchContains) != -1)
-+    if (ui->comboBox_Storages->findText(storage.path, Qt::MatchFixedString|Qt::MatchCaseSensitive) != -1)
-          return;
- 
-     ui->comboBox_Storages->addItem(
-@@ -467,7 +473,6 @@ void MainWindow::resizeComboBoxItemsPopup(QComboBox *combobox)
- #else
-         int width = fontMetrics.width(combobox->itemText(i));
- #endif
--
-         if (width > maxWidth)
-             maxWidth = width;
-     }
-diff --git a/src/storageitemdelegate.cpp b/src/storageitemdelegate.cpp
-index 1f82357..e34691b 100644
---- a/src/storageitemdelegate.cpp
-+++ b/src/storageitemdelegate.cpp
-@@ -27,6 +27,7 @@ void StorageItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
- 
-         QStyleOptionViewItem opt = option;
-         initStyleOption(&opt, index);
-+        painter->save();
-         opt.text = QString();
-         style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, option.widget);
- 
-@@ -79,6 +80,7 @@ void StorageItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
-         style->drawControl(QStyle::CE_ProgressBar, &progressBarOption, painter);
- 
-         painter->drawText(progressBarRect, option.displayAlignment | Qt::AlignRight, QString::number(percent) + "%");
-+        painter->restore();
-     }
- #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-     else if (index.data(Qt::DecorationRole).typeId() == QVariant::Icon) {
-@@ -89,6 +91,7 @@ void StorageItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
- 
-         QStyleOptionViewItem opt = option;
-         initStyleOption(&opt, index);
-+        painter->save();
-         opt.icon = QIcon();
-         opt.text = QString();
-         style->drawControl(QStyle::CE_ItemViewItem, &opt, painter, option.widget);
-@@ -124,6 +127,7 @@ void StorageItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
-         palette.setColor(QPalette::Text, painter->pen().color());
-         opt.palette = palette;
- 
-+        painter->restore();
-         QStyledItemDelegate::paint(painter, opt, index);
-     }
-     else {
