@@ -1,0 +1,296 @@
+commit f6245070ad77622a2450f514074fa09fdcd78cb1
+Author: René J.V. Bertin <rjvbertin@gmail.com>
+Date:   Sat Feb 21 00:22:16 2026 +0100
+
+    Not all I/O engines support testing with multiple queues
+    
+    and fio will issue a note about how it capped the requested number
+    of queues to 1 when a synchronous engine is used. This commit
+    
+    * handles the presence of such a note via the statusbar
+    * implements and invokes a function to do the capping before fio
+      is called, in a similarly runtime fashion and for the engines
+      known to be involved (currently only "fio-default", aka "psync")
+      The UI is updated too (button texts).
+    
+    Committed from host : Portia.local
+
+diff --git a/src/appsettings.cpp b/src/appsettings.cpp
+index 3e3f7a8..9ed1ac4 100644
+--- a/src/appsettings.cpp
++++ b/src/appsettings.cpp
+@@ -312,6 +312,19 @@ Global::Theme AppSettings::defaultTheme()
+     return Global::Theme::UseFusion;
+ }
+ 
++bool AppSettings::adaptParamsForIOEngine(Global::BenchmarkParams &params) const
++{
++    if (getIOEngineName() == "fio-default") {
++        // this actually stands for "psync", a synchronous mode which
++        // makes fio warn about (but otherwise ignore) multiple queues.
++        // We do this in a separate function rather than in getBenchmarkParams()
++        // to ensure that this remains a pure runtime change.
++        params.Queues = 1;
++        return true;
++    }
++    return false;
++}
++
+ Global::BenchmarkParams AppSettings::getBenchmarkParams(Global::BenchmarkTest test, Global::PerformanceProfile profile) const
+ {
+     Global::BenchmarkParams defaultSet = defaultBenchmarkParams(test, profile, Global::BenchmarkPreset::Standard);
+@@ -374,7 +387,11 @@ Global::BenchmarkParams AppSettings::defaultBenchmarkParams(Global::BenchmarkTes
+                 return { Global::BenchmarkIOPattern::RND,    4, 32,  1 };
+                 else
+                 return { Global::BenchmarkIOPattern::RND,    4, 32, 16 };
++            default:
++                // dear compiler, there's nothing more to handle here
++                break;
+             }
++            break;
+         case Global::PerformanceProfile::RealWorld:
+             switch (test)
+             {
+@@ -382,13 +399,21 @@ Global::BenchmarkParams AppSettings::defaultBenchmarkParams(Global::BenchmarkTes
+                 return { Global::BenchmarkIOPattern::SEQ, 1024,  1,  1 };
+             case Global::BenchmarkTest::Test_2:
+                 return { Global::BenchmarkIOPattern::RND,    4,  1,  1 };
++            default:
++                // dear compiler, there's nothing more to handle here
++                break;
+             }
++            break;
+         case Global::PerformanceProfile::Demo:
+             switch (test)
+             {
+             case Global::BenchmarkTest::Test_1:
+                 return { Global::BenchmarkIOPattern::SEQ, 1024,  8,  1 };
++            default:
++                // dear compiler, there's nothing more to handle here
++                break;
+             }
++            break;
+     }
+     Q_UNREACHABLE();
+ }
+diff --git a/src/appsettings.h b/src/appsettings.h
+index 34eecc6..5a7e1b4 100644
+--- a/src/appsettings.h
++++ b/src/appsettings.h
+@@ -31,6 +31,7 @@ public:
+     void setMixedState(bool mixedState);
+     static bool defaultMixedState();
+ 
++    bool adaptParamsForIOEngine(Global::BenchmarkParams &params) const;
+     Global::BenchmarkParams getBenchmarkParams(Global::BenchmarkTest test, Global::PerformanceProfile profile = Global::PerformanceProfile::Default) const;
+     void setBenchmarkParams(Global::BenchmarkTest test, Global::PerformanceProfile profile, Global::BenchmarkParams params);
+     static Global::BenchmarkParams defaultBenchmarkParams(Global::BenchmarkTest test, Global::PerformanceProfile profile, Global::BenchmarkPreset preset);
+diff --git a/src/benchmark.cpp b/src/benchmark.cpp
+index b5efcdd..1c1ea29 100644
+--- a/src/benchmark.cpp
++++ b/src/benchmark.cpp
+@@ -148,7 +148,17 @@ void Benchmark::sendResult(const Benchmark::PerformanceResult &result, const int
+ 
+ Benchmark::ParsedJob Benchmark::parseResult(const QString &output, const QString &errorOutput)
+ {
+-    QJsonDocument jsonResponse = QJsonDocument::fromJson(output.toUtf8());
++    QByteArray json = output.toUtf8();
++    if (output.startsWith("note: ", Qt::CaseInsensitive)) {
++        // fio left us a note, and did that ahead of the json output...
++        const auto jStart = output.indexOf("\n{\n");
++        json = output.mid(jStart).toUtf8();
++        qWarning() << "Additional output from fio:\n" <<  output.left(jStart);
++        emit benchmarkNote(output.left(jStart));
++    } else {
++        emit benchmarkNote(QString());
++    }
++    QJsonDocument jsonResponse = QJsonDocument::fromJson(json);
+     QJsonObject jsonObject = jsonResponse.object();
+     QJsonArray jobs = jsonObject["jobs"].toArray();
+ 
+@@ -253,6 +263,9 @@ void Benchmark::runBenchmark(QList<QPair<QPair<Global::BenchmarkTest, Global::Be
+         m_progressBars = item.second;
+ 
+         Global::BenchmarkParams params = settings.getBenchmarkParams(item.first.first, settings.getPerformanceProfile());
++        if (settings.adaptParamsForIOEngine(params)) {
++            qDebug() << Q_FUNC_INFO << "The benchmark parameters were adapted for the chosen I/O engine!";
++        }
+ 
+         switch (item.first.second)
+         {
+diff --git a/src/benchmark.h b/src/benchmark.h
+index 8fb0f68..364a56c 100644
+--- a/src/benchmark.h
++++ b/src/benchmark.h
+@@ -100,6 +100,7 @@ private:
+ 
+ signals:
+     void benchmarkStatusUpdate(const QString &name);
++    void benchmarkNote(const QString &note);
+     void resultReady(QProgressBar *progressBar, const Benchmark::PerformanceResult &result);
+     void failed(const QString &error);
+     void finished();
+diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+index 8dd3a04..3edc451 100644
+--- a/src/mainwindow.cpp
++++ b/src/mainwindow.cpp
+@@ -61,6 +61,7 @@ MainWindow::MainWindow(QWidget *parent)
+     ui->extraIcon->setToolTip(tr("The device is encrypted. Performance may drop."));
+     ui->extraIcon->setVisible(false);
+ 
++    statusBar()->setSizeGripEnabled(false);
+     statusBar()->hide();
+ 
+     ui->loopsCount->findChild<QLineEdit*>()->setReadOnly(true);
+@@ -248,6 +249,8 @@ MainWindow::MainWindow(QWidget *parent)
+     connect(engineGroup, &QActionGroup::triggered, this, [=](QAction *act) {
+         AppSettings settings;
+         settings.setIOEngineName(act->text());
++        // the engine selected can have an implication on the number of queues we can use
++        updateBenchmarkButtonsContent();
+     });
+     // this will set the default IOEngine in the settings without
+     // having to duplicate any platform-specific code.
+@@ -265,6 +268,7 @@ MainWindow::MainWindow(QWidget *parent)
+     // Set callbacks
+     connect(m_benchmark, &Benchmark::runningStateChanged, this, &MainWindow::benchmarkStateChanged);
+     connect(m_benchmark, &Benchmark::benchmarkStatusUpdate, this, &MainWindow::benchmarkStatusUpdate);
++    connect(m_benchmark, &Benchmark::benchmarkNote, this, &MainWindow::benchmarkNote);
+     connect(m_benchmark, &Benchmark::resultReady, this, &MainWindow::handleResults);
+     connect(m_benchmark, &Benchmark::failed, this, &MainWindow::benchmarkFailed);
+     connect(m_benchmark, &Benchmark::cowCheckRequired, this, &MainWindow::handleCowCheck);
+@@ -510,6 +514,7 @@ void MainWindow::updateBenchmarkButtonsContent()
+     Global::BenchmarkParams params;
+ 
+     params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_1, settings.getPerformanceProfile());
++    settings.adaptParamsForIOEngine(params);
+     ui->pushButton_Test_1->setText(Global::getBenchmarkButtonText(params));
+ 
+     switch (settings.getPerformanceProfile())
+@@ -518,14 +523,17 @@ void MainWindow::updateBenchmarkButtonsContent()
+         ui->pushButton_Test_1->setToolTip(Global::getBenchmarkButtonToolTip(params));
+ 
+         params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_2);
++        settings.adaptParamsForIOEngine(params);
+         ui->pushButton_Test_2->setText(Global::getBenchmarkButtonText(params));
+         ui->pushButton_Test_2->setToolTip(Global::getBenchmarkButtonToolTip(params));
+ 
+         params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_3);
++        settings.adaptParamsForIOEngine(params);
+         ui->pushButton_Test_3->setText(Global::getBenchmarkButtonText(params));
+         ui->pushButton_Test_3->setToolTip(Global::getBenchmarkButtonToolTip(params));
+ 
+         params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_4);
++        settings.adaptParamsForIOEngine(params);
+         ui->pushButton_Test_4->setText(Global::getBenchmarkButtonText(params));
+         ui->pushButton_Test_4->setToolTip(Global::getBenchmarkButtonToolTip(params));
+         break;
+@@ -534,6 +542,7 @@ void MainWindow::updateBenchmarkButtonsContent()
+         ui->pushButton_Test_1->setToolTip(Global::getBenchmarkButtonToolTip(params, true).arg(tr("MB/s")));
+ 
+         params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_2, settings.getPerformanceProfile());
++        settings.adaptParamsForIOEngine(params);
+         ui->pushButton_Test_2->setText(Global::getBenchmarkButtonText(params));
+         ui->pushButton_Test_2->setToolTip(Global::getBenchmarkButtonToolTip(params, true).arg(tr("MB/s")));
+ 
+@@ -657,13 +666,16 @@ void MainWindow::updateLabels()
+ QString MainWindow::combineOutputTestResult(const QProgressBar *progressBar, const Global::BenchmarkParams &params)
+ {
+     QMetaEnum metaEnum = QMetaEnum::fromType<Global::ComparisonUnit>();
++    const AppSettings settings;
++    Global::BenchmarkParams prms = params;
++    settings.adaptParamsForIOEngine(prms);
+ 
+     return QStringLiteral("%1 %2 %3 (Q=%4, T=%5): %6 MB/s [ %7 IOPS] < %8 us>")
+-           .arg(params.Pattern == Global::BenchmarkIOPattern::SEQ ? "Sequential" : "Random")
+-           .arg(QString::number(params.BlockSize >= 1024 ? params.BlockSize / 1024 : params.BlockSize).rightJustified(3, ' '))
+-           .arg(params.BlockSize >= 1024 ? "MiB" : "KiB")
+-           .arg(QString::number(params.Queues).rightJustified(3, ' '))
+-           .arg(QString::number(params.Threads).rightJustified(2, ' '))
++           .arg(prms.Pattern == Global::BenchmarkIOPattern::SEQ ? "Sequential" : "Random")
++           .arg(QString::number(prms.BlockSize >= 1024 ? prms.BlockSize / 1024 : prms.BlockSize).rightJustified(3, ' '))
++           .arg(prms.BlockSize >= 1024 ? "MiB" : "KiB")
++           .arg(QString::number(prms.Queues).rightJustified(3, ' '))
++           .arg(QString::number(prms.Threads).rightJustified(2, ' '))
+            .arg(QString::number(
+                     progressBar->property(metaEnum.valueToKey(Global::ComparisonUnit::MBPerSec)).toFloat(), 'f', 3)
+                 .rightJustified(9, ' '))
+@@ -1078,6 +1090,18 @@ void MainWindow::benchmarkStatusUpdate(const QString &name)
+     }
+ }
+ 
++void MainWindow::benchmarkNote(const QString &note)
++{
++    if (!note.isEmpty()) {
++        ui->statusbar->show();
++        ui->statusbar->setVisible(true);
++        ui->statusbar->showMessage(note);
++    } else {
++        ui->statusbar->clearMessage();
++        ui->statusbar->hide();
++    }
++}
++
+ void MainWindow::handleResults(QProgressBar *progressBar, const Benchmark::PerformanceResult &result)
+ {
+     QMetaEnum metaEnum = QMetaEnum::fromType<Global::ComparisonUnit>();
+@@ -1214,6 +1238,7 @@ bool MainWindow::runCombinedRandomTest()
+             { { Global::Test_2, Global::Mix   }, {  ui->mixBar_2,  ui->mixBar_3,   ui->mixBar_4   } };
+         }
+ 
++        statusBar()->hide();
+         m_benchmark->runBenchmark(set);
+ 
+         return true;
+@@ -1235,6 +1260,7 @@ void MainWindow::on_pushButton_Test_1_clicked()
+             { { Global::Test_1, Global::Mix   }, { ui->mixBar_1   } };
+         }
+ 
++        statusBar()->hide();
+         m_benchmark->runBenchmark(set);
+     });
+ }
+@@ -1254,6 +1280,7 @@ void MainWindow::on_pushButton_Test_2_clicked()
+             { { Global::Test_2, Global::Mix   }, { ui->mixBar_2   } };
+         }
+ 
++        statusBar()->hide();
+         m_benchmark->runBenchmark(set);
+     });
+ }
+@@ -1273,6 +1300,7 @@ void MainWindow::on_pushButton_Test_3_clicked()
+             { { Global::Test_3, Global::Mix   }, { ui->mixBar_3   } };
+         }
+ 
++        statusBar()->hide();
+         m_benchmark->runBenchmark(set);
+     });
+ }
+@@ -1292,6 +1320,7 @@ void MainWindow::on_pushButton_Test_4_clicked()
+             { { Global::Test_4, Global::Mix   }, { ui->mixBar_4   } };
+         }
+ 
++        statusBar()->hide();
+         m_benchmark->runBenchmark(set);
+     });
+ }
+@@ -1346,6 +1375,7 @@ void MainWindow::on_pushButton_All_clicked()
+             }
+         }
+ 
++        statusBar()->hide();
+         m_benchmark->runBenchmark(set);
+     });
+ }
+diff --git a/src/mainwindow.h b/src/mainwindow.h
+index 41c8d58..abb3b30 100644
+--- a/src/mainwindow.h
++++ b/src/mainwindow.h
+@@ -89,6 +89,7 @@ private:
+ 
+ public slots:
+     void benchmarkStatusUpdate(const QString &name);
++    void benchmarkNote(const QString &note);
+     void benchmarkFailed(const QString &error);
+     void handleResults(QProgressBar *progressBar, const Benchmark::PerformanceResult &result);
+     void localeSelected(QAction* act);
