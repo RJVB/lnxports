@@ -38,7 +38,8 @@ patchfiles-append   patch-allow-non-privileged.diff \
                     patch-various-tweaksnfixes.diff \
                     patch-darwin-port.diff \
                     patch-handle-fio-notes-and-sync-engines.diff \
-                    patch-remember-savedir.diff
+                    patch-remember-savedir.diff \
+                    patch-adapt-posixaio-darwin.diff
 
 configure.args-append \
                     -DUSE_QT5=ON \

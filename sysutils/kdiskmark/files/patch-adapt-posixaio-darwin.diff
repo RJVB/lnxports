@@ -1,0 +1,138 @@
+commit b9e164630274b4d42532b21c8b6c5cb248cf2ad2
+Author: René J.V. Bertin <rjvbertin@gmail.com>
+Date:   Sat Feb 21 23:57:03 2026 +0100
+
+    Cap the number of test queues on Mac when using the posixaio engine
+    
+    Also, give more visual feedback via the benchmark test buttons when
+    parameters where adapted relative to those configured in the
+    selected testing profile (bold test, addition text in the tooltip).
+    
+    Committed from host : Portia.local
+
+diff --git a/src/appsettings.cpp b/src/appsettings.cpp
+index 9ed1ac4..545e989 100644
+--- a/src/appsettings.cpp
++++ b/src/appsettings.cpp
+@@ -11,6 +11,12 @@
+ 
+ #include <QDebug>
+ 
++#ifdef __APPLE__
++// for sysctl
++#include <sys/types.h>
++#include <sys/sysctl.h>
++#endif
++
+ QTranslator AppSettings::s_appTranslator;
+ QTranslator AppSettings::s_qtTranslator;
+ 
+@@ -319,9 +325,29 @@ bool AppSettings::adaptParamsForIOEngine(Global::BenchmarkParams &params) const
+         // makes fio warn about (but otherwise ignore) multiple queues.
+         // We do this in a separate function rather than in getBenchmarkParams()
+         // to ensure that this remains a pure runtime change.
+-        params.Queues = 1;
+-        return true;
++        if (params.Queues > 1) {
++            qDebug() << Q_FUNC_INFO << "Using" << getIOEngineName() << "=> capping Queues=" << params.Queues << "to 1";
++            params.Queues = 1;
++            return true;
++        }
+     }
++#ifdef __APPLE__
++    if (getIOEngineName() == "posixaio") {
++        uint32_t aioprocmax = 0;
++        size_t len = sizeof(aioprocmax);
++        int sysret = sysctlbyname("kern.aioprocmax", &aioprocmax, &len, nullptr, 0);
++        // fio's iodepth should not exceed kern.aioprocmax, at least for smaller blocksizes.
++        // For larger ones there is a margin (of approx. Queues=BlockSize/8 it seems), probably
++        // before the iodepth no longer translates directly to a "number of concurrently open AIO queues".
++        if (params.BlockSize < 256
++                && sysret == 0 && aioprocmax > 0
++                && params.Queues > aioprocmax) {
++            qDebug() << Q_FUNC_INFO << "Using" << getIOEngineName() << "on Mac => capping Queues=" << params.Queues << "to 1";
++            params.Queues = aioprocmax;
++            return true;
++        }
++    }
++#endif
+     return false;
+ }
+ 
+diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+index 96b3c2b..b290e9b 100644
+--- a/src/mainwindow.cpp
++++ b/src/mainwindow.cpp
+@@ -512,45 +512,67 @@ void MainWindow::updateBenchmarkButtonsContent()
+     const AppSettings settings;
+ 
+     Global::BenchmarkParams params;
++    // highlight the button text to draw user attention, e.g. to the
++    // fact that test parameters may not be as expected.
++    auto markButton = [](QPushButton *button, bool highlight) {
++        auto font = button->font();
++        if ((highlight && !font.bold()) || (!highlight && font.bold())) {
++            font.setBold(highlight);
++            button->setFont(font);
++        }
++        if (highlight) {
++            button->setToolTip(button->toolTip()
++                + QStringLiteral("\nTest parameters adapted to the I/O engine in use!"));
++        }
++    };
+ 
+     params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_1, settings.getPerformanceProfile());
+-    settings.adaptParamsForIOEngine(params);
++    auto needsHighlight = settings.adaptParamsForIOEngine(params);
+     ui->pushButton_Test_1->setText(Global::getBenchmarkButtonText(params));
+ 
+     switch (settings.getPerformanceProfile())
+     {
+     case Global::PerformanceProfile::Default:
+         ui->pushButton_Test_1->setToolTip(Global::getBenchmarkButtonToolTip(params));
++        markButton(ui->pushButton_Test_1, needsHighlight);
+ 
+         params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_2);
+-        settings.adaptParamsForIOEngine(params);
++        needsHighlight = settings.adaptParamsForIOEngine(params);
+         ui->pushButton_Test_2->setText(Global::getBenchmarkButtonText(params));
+         ui->pushButton_Test_2->setToolTip(Global::getBenchmarkButtonToolTip(params));
++        markButton(ui->pushButton_Test_2, needsHighlight);
+ 
+         params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_3);
+-        settings.adaptParamsForIOEngine(params);
++        needsHighlight = settings.adaptParamsForIOEngine(params);
+         ui->pushButton_Test_3->setText(Global::getBenchmarkButtonText(params));
+         ui->pushButton_Test_3->setToolTip(Global::getBenchmarkButtonToolTip(params));
++        markButton(ui->pushButton_Test_3, needsHighlight);
+ 
+         params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_4);
+-        settings.adaptParamsForIOEngine(params);
++        needsHighlight = settings.adaptParamsForIOEngine(params);
+         ui->pushButton_Test_4->setText(Global::getBenchmarkButtonText(params));
+         ui->pushButton_Test_4->setToolTip(Global::getBenchmarkButtonToolTip(params));
++        markButton(ui->pushButton_Test_4, needsHighlight);
+         break;
+     case Global::PerformanceProfile::Peak:
+     case Global::PerformanceProfile::RealWorld:
+         ui->pushButton_Test_1->setToolTip(Global::getBenchmarkButtonToolTip(params, true).arg(tr("MB/s")));
++        markButton(ui->pushButton_Test_1, needsHighlight);
+ 
+         params = settings.getBenchmarkParams(Global::BenchmarkTest::Test_2, settings.getPerformanceProfile());
+-        settings.adaptParamsForIOEngine(params);
++        needsHighlight = settings.adaptParamsForIOEngine(params);
++
+         ui->pushButton_Test_2->setText(Global::getBenchmarkButtonText(params));
+         ui->pushButton_Test_2->setToolTip(Global::getBenchmarkButtonToolTip(params, true).arg(tr("MB/s")));
++        markButton(ui->pushButton_Test_2, needsHighlight);
+ 
+         ui->pushButton_Test_3->setText(Global::getBenchmarkButtonText(params, tr("IOPS")));
+         ui->pushButton_Test_3->setToolTip(Global::getBenchmarkButtonToolTip(params, true).arg(tr("IOPS")));
++        markButton(ui->pushButton_Test_3, needsHighlight);
+ 
+         ui->pushButton_Test_4->setText(Global::getBenchmarkButtonText(params, tr("μs")));
+         ui->pushButton_Test_4->setToolTip(Global::getBenchmarkButtonToolTip(params, true).arg(tr("μs")));
++        markButton(ui->pushButton_Test_4, needsHighlight);
+         break;
+     case Global::PerformanceProfile::Demo:
+         ui->label_Demo->setText(QStringLiteral("%1 %2 %3, Q=%4, T=%5")
