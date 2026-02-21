@@ -1,0 +1,32 @@
+commit a602f64df8204c3fa6d9759bd1af10691f7760b8
+Author: René Bertin <rjvbertin@gmail.com>
+Date:   Sat Feb 21 16:23:10 2026 +0100
+
+    Remember where we last save a file, and reopen the save dialog there.
+    
+    Committed from host : Bola
+
+diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+index 3edc451..96b3c2b 100644
+--- a/src/mainwindow.cpp
++++ b/src/mainwindow.cpp
+@@ -790,9 +790,10 @@ void MainWindow::on_actionCopy_triggered()
+ 
+ void MainWindow::on_actionSave_triggered()
+ {
++    static QString dir = QStringLiteral("");
+     QString fileName =
+             QFileDialog::getSaveFileName(this, QString(),
+-                                         QStringLiteral("KDM_%1%2.txt").arg(QDate::currentDate().toString("yyyyMMdd"))
++                                         dir + QStringLiteral("KDM_%1%2.txt").arg(QDate::currentDate().toString("yyyyMMdd"))
+                                          .arg(QTime::currentTime().toString("hhmmss")));
+     if (!fileName.isEmpty()) {
+         QFile file(fileName);
+@@ -801,6 +802,7 @@ void MainWindow::on_actionSave_triggered()
+             out << getTextBenchmarkResult();
+             file.close();
+         }
++        dir = QFileInfo(fileName).canonicalPath() + "/";
+     }
+ }
+ 

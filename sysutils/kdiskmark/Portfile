@@ -20,7 +20,7 @@ github.setup        JonMagon KDiskMark 9a6cd5f950af647043082cb4c0248e6b2a87541e
 fetch.type          git
 name                kdiskmark
 distname            ${name}-git
-version             3.2.0.4 ; revision 4
+version             3.2.0.4 ; revision 5
 
 depends_build-append \
                     path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
@@ -37,7 +37,8 @@ patchfiles-append   patch-allow-non-privileged.diff \
                     patch-app-targetdir-option.diff \
                     patch-various-tweaksnfixes.diff \
                     patch-darwin-port.diff \
-                    patch-handle-fio-notes-and-sync-engines.diff
+                    patch-handle-fio-notes-and-sync-engines.diff \
+                    patch-remember-savedir.diff
 
 configure.args-append \
                     -DUSE_QT5=ON \
