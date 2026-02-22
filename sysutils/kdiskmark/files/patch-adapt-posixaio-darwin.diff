@@ -1,4 +1,4 @@
-commit b9e164630274b4d42532b21c8b6c5cb248cf2ad2
+commit 2b1657d15b29c26154f018f554c58041ebebbad5
 Author: René J.V. Bertin <rjvbertin@gmail.com>
 Date:   Sat Feb 21 23:57:03 2026 +0100
 
@@ -8,10 +8,14 @@ Date:   Sat Feb 21 23:57:03 2026 +0100
     parameters where adapted relative to those configured in the
     selected testing profile (bold test, addition text in the tooltip).
     
+    Contrary to what I thought (naively) at first, aioprocmax IS a hard
+    limit and even if the kernel will log less warnings with bigger
+    blocksizes one will still not get more than 16 queues...
+    
     Committed from host : Portia.local
 
 diff --git a/src/appsettings.cpp b/src/appsettings.cpp
-index 9ed1ac4..545e989 100644
+index 9ed1ac4..b9ed4a5 100644
 --- a/src/appsettings.cpp
 +++ b/src/appsettings.cpp
 @@ -11,6 +11,12 @@
@@ -27,7 +31,7 @@ index 9ed1ac4..545e989 100644
  QTranslator AppSettings::s_appTranslator;
  QTranslator AppSettings::s_qtTranslator;
  
-@@ -319,9 +325,29 @@ bool AppSettings::adaptParamsForIOEngine(Global::BenchmarkParams &params) const
+@@ -319,9 +325,27 @@ bool AppSettings::adaptParamsForIOEngine(Global::BenchmarkParams &params) const
          // makes fio warn about (but otherwise ignore) multiple queues.
          // We do this in a separate function rather than in getBenchmarkParams()
          // to ensure that this remains a pure runtime change.
@@ -44,13 +48,11 @@ index 9ed1ac4..545e989 100644
 +        uint32_t aioprocmax = 0;
 +        size_t len = sizeof(aioprocmax);
 +        int sysret = sysctlbyname("kern.aioprocmax", &aioprocmax, &len, nullptr, 0);
-+        // fio's iodepth should not exceed kern.aioprocmax, at least for smaller blocksizes.
-+        // For larger ones there is a margin (of approx. Queues=BlockSize/8 it seems), probably
-+        // before the iodepth no longer translates directly to a "number of concurrently open AIO queues".
-+        if (params.BlockSize < 256
-+                && sysret == 0 && aioprocmax > 0
-+                && params.Queues > aioprocmax) {
-+            qDebug() << Q_FUNC_INFO << "Using" << getIOEngineName() << "on Mac => capping Queues=" << params.Queues << "to 1";
++        // fio's iodepth should not exceed kern.aioprocmaxl; the kernel won't give you more
++        // and it'll log complaints about it, a LOT for older OS version.
++        if (sysret == 0 && aioprocmax > 0 && params.Queues > aioprocmax) {
++            qDebug() << Q_FUNC_INFO << "Using" << getIOEngineName() << "on Mac => capping Queues="
++                << params.Queues << "to" << aioprocmax;
 +            params.Queues = aioprocmax;
 +            return true;
 +        }
