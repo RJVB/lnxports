@@ -1,0 +1,23 @@
+commit 377d542585593e73dd9a9e4213186421370c698d
+Author: René J.V. Bertin <rjvbertin@gmail.com>
+Date:   Tue Feb 24 21:37:43 2026 +0100
+
+    Use fio's "group reporting" option to get the results from the
+    configured group of jobs (aka Threads) as a whole.
+    
+    Committed from host : Portia.local
+
+diff --git a/src/helper.cpp b/src/helper.cpp
+index 3afaf18..410367b 100644
+--- a/src/helper.cpp
++++ b/src/helper.cpp
+@@ -336,7 +336,8 @@ QVariantMap Helper::startBenchmarkTest(int measuringTime, int fileSize, int rand
+                      << QStringLiteral("--runtime=%1").arg(measuringTime)
+                      << QStringLiteral("--rw=%1").arg(rw)
+                      << QStringLiteral("--iodepth=%1").arg(queueDepth)
+-                     << QStringLiteral("--numjobs=%1").arg(threads));
++                     << QStringLiteral("--numjobs=%1").arg(threads)
++                     << QStringLiteral("--group_reporting"));
+ 
+     connect(m_process, static_cast<void(QProcess::*)(int, QProcess::ExitStatus)>(&QProcess::finished),
+             [=] (int exitCode, QProcess::ExitStatus exitStatus) {

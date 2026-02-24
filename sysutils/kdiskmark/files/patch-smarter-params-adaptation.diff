@@ -1,0 +1,56 @@
+commit 1c97b0efc6ec47a9c15dd16372f255f9157def70
+Author: René J.V. Bertin <rjvbertin@gmail.com>
+Date:   Tue Feb 24 22:40:32 2026 +0100
+
+    When capping the number of Queues, try to make up for it with the
+    number of Threads to use for the concerned test.
+    
+    This should be a slightly more clever adaptation than just capping
+    the number of queues (and possibly ending up with repeated identical
+    tests as in the default profile with the "fio-default" engine).
+    
+    Committed from host : Portia.local
+
+diff --git a/src/appsettings.cpp b/src/appsettings.cpp
+index b9ed4a5..297c4f4 100644
+--- a/src/appsettings.cpp
++++ b/src/appsettings.cpp
+@@ -326,8 +326,18 @@ bool AppSettings::adaptParamsForIOEngine(Global::BenchmarkParams &params) const
+         // We do this in a separate function rather than in getBenchmarkParams()
+         // to ensure that this remains a pure runtime change.
+         if (params.Queues > 1) {
+-            qDebug() << Q_FUNC_INFO << "Using" << getIOEngineName() << "=> capping Queues=" << params.Queues << "to 1";
++            long newThreads = params.Threads * params.Queues;
++#ifdef __APPLE__
++            if (newThreads > 8) {
++                // --numjobs=9 or higher is likely to give an error
++                // "failed to setup shm segment" from fio.
++                newThreads = 8;
++            }
++#endif
++            qDebug() << Q_FUNC_INFO << "Using" << getIOEngineName() << "=> capping Queues=" << params.Queues << "to 1"
++                << "and setting Threads=" << params.Threads << "to" << newThreads;
+             params.Queues = 1;
++            params.Threads = newThreads;
+             return true;
+         }
+     }
+@@ -339,9 +349,17 @@ bool AppSettings::adaptParamsForIOEngine(Global::BenchmarkParams &params) const
+         // fio's iodepth should not exceed kern.aioprocmaxl; the kernel won't give you more
+         // and it'll log complaints about it, a LOT for older OS version.
+         if (sysret == 0 && aioprocmax > 0 && params.Queues > aioprocmax) {
++            long newThreads = std::lround((double)params.Queues / (double) aioprocmax);
++            if (newThreads > 8) {
++                // --numjobs=9 or higher is likely to give an error
++                // "failed to setup shm segment" from fio.
++                newThreads = 8;
++            }
+             qDebug() << Q_FUNC_INFO << "Using" << getIOEngineName() << "on Mac => capping Queues="
+-                << params.Queues << "to" << aioprocmax;
++                << params.Queues << "to" << aioprocmax
++                << "and setting Threads=" << params.Threads << "to" << newThreads;
+             params.Queues = aioprocmax;
++            params.Threads = newThreads;
+             return true;
+         }
+     }
