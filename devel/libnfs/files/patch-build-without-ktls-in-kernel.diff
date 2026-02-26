@@ -26,7 +26,7 @@ index cb88a78..b96b5f9 100644
  		return 0;
  	}
 +#else
-+	// let's not take chances that our the value for SOL_TLS does something else,
++	// let's not take chances that a self-define value for SOL_TLS does something else,
 +	// but just set the appropriate errno directly.
 +	errno = ENOPROTOOPT;
 +#endif
