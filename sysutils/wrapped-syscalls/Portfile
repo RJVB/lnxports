@@ -6,8 +6,8 @@ set LTO.allow_ThinLTO no
 set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
 
-github.setup        RJVB wrapped-syscalls 55dd6f75b0051063c7f90cf165285d2be8d3c69b
-version             1.0.0.16 ; revision 1
+github.setup        RJVB wrapped-syscalls 55b9e74f0e55b0428cf9f7511be0ef6a2fd179c1
+version             1.0.0.18
 fetch.type          git
 distname            wrapped-syscalls-git
 
@@ -35,7 +35,9 @@ if {${subport} eq "${name}-headers"} {
 
     destroot {
         xinstall -m 755 -d ${destroot}${prefix}/include/sys
+        xinstall -m 755 -d ${destroot}${prefix}/include/linux
         xinstall -m 644 ${worksrcpath}/sys/mman.h ${destroot}${prefix}/include/sys/
+        xinstall -m 644 ${worksrcpath}/linux/falloc.h ${destroot}${prefix}/include/linux/
     }
 
     # we don't care about anything that follows,
