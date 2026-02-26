@@ -1,0 +1,55 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem                  1.0
+PortGroup                   github 1.1
+PortGroup                   LTO 1.0
+PortGroup                   save_configure_cmd 1.0
+
+github.provider             git.kernel.org/pub/scm/linux/kernel/git
+fetch.type                  git
+github.setup                jaegeuk f2fs-tools 3ab67256d83a8323b92992155b99c3365c0964f6
+version                     1.16.0.256
+distname                    ${name}-git
+
+categories                  sysutils
+platforms                   linux
+maintainers                 openmaintainer
+license                     GPL-2 LGPL-2.1
+
+description                 F2FS format utility
+
+long_description            Utilities to create, check and manipulate F2FS \
+                            filesystems on Linux
+
+homepage                    https://www.kernel.org/doc/html/latest/filesystems/f2fs.html
+
+depends_build               port:pkgconfig \
+                            port:autoconf \
+                            port:automake \
+                            port:libtool \
+                            port:wrapped-syscalls-headers
+depends_lib-append          port:wrapped-syscalls
+
+patch.pre_args              -Np1
+
+# use_autoreconf              yes
+# autoreconf.args             -fvi
+pre-configure {
+    if {![file exists ${worksrcpath}/configure]} {
+        if {![file exists ${worksrcpath}/build-aux]} {
+            # ?!
+            xinstall -m 755 -d ${worksrcpath}/build-aux
+            ln -s ${prefix}/share/libtool/build-aux/ltmain.sh \
+                            ${worksrcpath}/build-aux/
+        }
+        system -W ${worksrcpath} "./autogen.sh"
+    }
+}
+
+configure.args-append       --without-selinux
+configure.env-append        "LIBS=-lwrapped_syscalls"
+
+# Enable verbose build messages
+build.post_args-append      -wk V=1
+
+
