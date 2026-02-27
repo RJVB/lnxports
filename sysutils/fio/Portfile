@@ -27,6 +27,9 @@ fetch.type          git
 name                fio
 distname            ${name}-git
 version             3.41.110 ; revision 1
+platform linux {
+    revision        [expr ${revision} +1]
+}
 platforms           linux darwin
 
 depends_build-append \
@@ -46,6 +49,14 @@ if {${os.platform} eq "darwin" && ${os.major} >= 15} {
 
 patch.pre_args      -Np1
 platform linux {
+    depends_build-append \
+                    port:libaio-dev \
+                    port:wrapped-syscalls-headers
+    depends_lib-append \
+                    port:wrapped-syscalls
+    configure.ldflags-append \
+                    -lwrapped_syscalls
+
     variant kcompat description {restores libaio compatibility with older kernels} {
         patchfiles-append \
                     patch-restore-older-kernel-compat.diff
