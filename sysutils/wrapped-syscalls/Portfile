@@ -6,8 +6,8 @@ set LTO.allow_ThinLTO no
 set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
 
-github.setup        RJVB wrapped-syscalls 55b9e74f0e55b0428cf9f7511be0ef6a2fd179c1
-version             1.0.0.18
+github.setup        RJVB wrapped-syscalls a8e7251da7046805617e62651e78624519de7688
+version             1.0.0.20
 fetch.type          git
 distname            wrapped-syscalls-git
 
@@ -23,23 +23,12 @@ maintainers         gmail.com:rjvbertin openmaintainer
 use_configure       no
 
 ####################
-subport "${name}-headers" {}
-if {${subport} eq "${name}-headers"} {
-    description     headers for the syscall wrapper library
-    long_description {*}${description}
+PortGroup           devport 1.0
+devport_name        "${name}-headers"
 
-    patchfiles
-    patch {}
+create_devport port:${name} auto
 
-    build {}
-
-    destroot {
-        xinstall -m 755 -d ${destroot}${prefix}/include/sys
-        xinstall -m 755 -d ${destroot}${prefix}/include/linux
-        xinstall -m 644 ${worksrcpath}/sys/mman.h ${destroot}${prefix}/include/sys/
-        xinstall -m 644 ${worksrcpath}/linux/falloc.h ${destroot}${prefix}/include/linux/
-    }
-
+if {${subport} eq "${name}-dev"} {
     # we don't care about anything that follows,
     # return here to avoid having to add more subport checks.
     return
@@ -70,8 +59,10 @@ pre-build {
 
 configure.save_build_cmd "install"
 
-destroot {
-    xinstall -m 755 ${worksrcpath}/libwrapped_syscalls.so ${destroot}${prefix}/lib/
+destroot.args       PREFIX=${prefix}
+
+post-destroot {
+    #xinstall -m 755 ${worksrcpath}/libwrapped_syscalls.so ${destroot}${prefix}/lib/
     xinstall -m 755 -d ${destroot}${prefix}/share/doc/${subport}
     xinstall -m 644 ${worksrcpath}/README.md ${destroot}${prefix}/share/doc/${subport}
 }
