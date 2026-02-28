@@ -20,7 +20,7 @@ github.setup        JonMagon KDiskMark 9a6cd5f950af647043082cb4c0248e6b2a87541e
 fetch.type          git
 name                kdiskmark
 distname            ${name}-git
-version             3.2.0.4 ; revision 6
+version             3.2.0.4 ; revision 7
 
 depends_build-append \
                     path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
@@ -42,7 +42,8 @@ patchfiles-append   patch-allow-non-privileged.diff \
                     patch-adapt-posixaio-darwin.diff \
                     patch-no-usenglish.diff \
                     patch-use-group_reporting.diff \
-                    patch-smarter-params-adaptation.diff
+                    patch-smarter-params-adaptation.diff \
+                    patch-support-offload-iomode.diff
 
 configure.args-append \
                     -DUSE_QT5=ON \

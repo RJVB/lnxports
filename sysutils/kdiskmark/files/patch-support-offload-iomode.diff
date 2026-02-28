@@ -1,0 +1,139 @@
+commit 6c15784e8258febc57592ae8256874a122d29c43
+Author: René Bertin <rjvbertin@gmail.com>
+Date:   Sat Feb 28 20:22:35 2026 +0100
+
+    Support offloaded IO mode
+    
+    A rather well-hidden option (--io_submit_mode=offload) makes it
+    possible to use multiple queues (iodepth>1) with synchronous IO
+    engines. Thus removing the need for parameter adaptation.
+    
+    Since it is absolutely not clear to me which approach gives the
+    most comparable results for, say, a Q8T1 test between async and
+    sync IO engines (i.e. Q8T1 vs. Q1T8 "direct mode" or Q8T1 vs.
+    Q8T1 "offload mode"), I decided to support both by adding the
+    choice directly in the IO Engine submenu.
+    NB: offload mode should not be used with async. engines, so that
+    choice was easy to make.
+    
+    This also adds support for the "vsync" engine.
+    
+    Committed from host : Bola
+
+diff --git a/src/appsettings.cpp b/src/appsettings.cpp
+index 297c4f4..2c9653b 100644
+--- a/src/appsettings.cpp
++++ b/src/appsettings.cpp
+@@ -224,7 +224,12 @@ int AppSettings::defaultRandomReadPercentage()
+ 
+ QString AppSettings::getIOEngineName() const
+ {
+-    return m_settings->value(QStringLiteral("Benchmark/IOEngine"), QStringLiteral("")).toString();
++    const auto eng = m_settings->value(QStringLiteral("Benchmark/IOEngine"), QStringLiteral("")).toString();
++    if (eng == "fio-default") {
++        // migrate from the earlier implementation
++        return QStringLiteral("fio-default (direct mode)");
++    }
++    return eng;
+ }
+ 
+ void AppSettings::setIOEngineName(const QString &engineName)
+@@ -232,6 +237,16 @@ void AppSettings::setIOEngineName(const QString &engineName)
+     m_settings->setValue(QStringLiteral("Benchmark/IOEngine"), engineName);
+ }
+ 
++bool AppSettings::isSyncIOEngine() const
++{
++    const auto eng = getIOEngineName();
++    // NB: keep this up-to-date!
++    if (eng.startsWith("fio-default") || eng == "vsync") {
++        return true;
++    }
++    return false;
++}
++
+ bool AppSettings::getCacheBypassState() const
+ {
+     return m_settings->value(QStringLiteral("Benchmark/BypassCache"), defaultCacheBypassState()).toBool();
+@@ -320,7 +335,8 @@ Global::Theme AppSettings::defaultTheme()
+ 
+ bool AppSettings::adaptParamsForIOEngine(Global::BenchmarkParams &params) const
+ {
+-    if (getIOEngineName() == "fio-default") {
++    const auto eng = getIOEngineName();
++    if (eng == "fio-default (direct mode)" || eng == "vsync (direct mode)") {
+         // this actually stands for "psync", a synchronous mode which
+         // makes fio warn about (but otherwise ignore) multiple queues.
+         // We do this in a separate function rather than in getBenchmarkParams()
+diff --git a/src/appsettings.h b/src/appsettings.h
+index 5a7e1b4..9334c48 100644
+--- a/src/appsettings.h
++++ b/src/appsettings.h
+@@ -66,6 +66,7 @@ public:
+ 
+     QString getIOEngineName() const;
+     void setIOEngineName(const QString &engineName);
++    bool isSyncIOEngine() const;
+ 
+     bool getCacheBypassState() const;
+     void setCacheBypassState(bool cacheBypassState);
+diff --git a/src/helper.cpp b/src/helper.cpp
+index 410367b..1b0bdf9 100644
+--- a/src/helper.cpp
++++ b/src/helper.cpp
+@@ -317,8 +317,11 @@ QVariantMap Helper::startBenchmarkTest(int measuringTime, int fileSize, int rand
+     }
+ 
+     QStringList arguments = {QStringLiteral("--output-format=json")};
+-    if (engine != "fio-default") {
+-        arguments << QStringLiteral("--ioengine=") + engine;
++    if (!engine.startsWith("fio-default")) {
++        arguments << QStringLiteral("--ioengine=") + engine.split(QStringLiteral(" ")).at(0);
++    }
++    if (engine.contains("(offload mode)")) {
++        arguments << QStringLiteral("--io_submit_mode=offload");
+     }
+ 
+     m_process = new QProcess();
+diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+index 4d550bf..4a6159a 100644
+--- a/src/mainwindow.cpp
++++ b/src/mainwindow.cpp
+@@ -243,13 +243,27 @@ MainWindow::MainWindow(QWidget *parent)
+         defaultIOAction = ioAction;
+     }
+ #endif
+-    ioAction = ui->menuIOEngines->addAction("fio-default");
++    ioAction = ui->menuIOEngines->addAction("vsync (direct mode)");
++    ioAction->setActionGroup(engineGroup);
++    ioAction->setCheckable(true);
++    ioAction->setWhatsThis("Basic readv()/writev() engine, with io_submit_mode=direct");
++    ioAction = ui->menuIOEngines->addAction("vsync (offload mode)");
++    ioAction->setActionGroup(engineGroup);
++    ioAction->setCheckable(true);
++    ioAction->setWhatsThis("Basic readv()/writev() engine, with io_submit_mode=offload");
++    // ###
++    ioAction = ui->menuIOEngines->addAction("fio-default (direct mode)");
+     ioAction->setActionGroup(engineGroup);
+     ioAction->setCheckable(true);
+     ioAction->setWhatsThis("Let fio use its default ioengine");
+     if (!defaultIOAction) {
+         defaultIOAction = ioAction;
+     }
++    ioAction = ui->menuIOEngines->addAction("fio-default (offload mode)");
++    ioAction->setActionGroup(engineGroup);
++    ioAction->setCheckable(true);
++    ioAction->setWhatsThis("Let fio use its default ioengine, with io_submit_mode=offload");
++
+     // restore the previous setting
+     if (!settings.getIOEngineName().isEmpty()) {
+         const auto actions = engineGroup->actions();
+@@ -785,7 +799,7 @@ QString MainWindow::getTextBenchmarkResult()
+     QString profiles[] = { "Default", "Peak Performance", "Real World Performance", "Demo" };
+ 
+     auto ioengine = settings.getIOEngineName();
+-    if (ioengine != "fio-default") {
++    if (!ioengine.startsWith("fio-default")) {
+         ioengine = QStringLiteral("fio-") + ioengine;
+     }
+     output << QString()
