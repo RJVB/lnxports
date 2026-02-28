@@ -1,4 +1,4 @@
-commit 6c15784e8258febc57592ae8256874a122d29c43
+commit a7ee2f16d82eeda652b0002e727ed90b318b1d67
 Author: René Bertin <rjvbertin@gmail.com>
 Date:   Sat Feb 28 20:22:35 2026 +0100
 
@@ -17,8 +17,6 @@ Date:   Sat Feb 28 20:22:35 2026 +0100
     choice was easy to make.
     
     This also adds support for the "vsync" engine.
-    
-    Committed from host : Bola
 
 diff --git a/src/appsettings.cpp b/src/appsettings.cpp
 index 297c4f4..2c9653b 100644
@@ -96,39 +94,44 @@ index 410367b..1b0bdf9 100644
  
      m_process = new QProcess();
 diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
-index 4d550bf..4a6159a 100644
+index 4d550bf..59f5b68 100644
 --- a/src/mainwindow.cpp
 +++ b/src/mainwindow.cpp
-@@ -243,13 +243,27 @@ MainWindow::MainWindow(QWidget *parent)
+@@ -243,13 +243,31 @@ MainWindow::MainWindow(QWidget *parent)
          defaultIOAction = ioAction;
      }
  #endif
 -    ioAction = ui->menuIOEngines->addAction("fio-default");
 +    ioAction = ui->menuIOEngines->addAction("vsync (direct mode)");
-+    ioAction->setActionGroup(engineGroup);
-+    ioAction->setCheckable(true);
-+    ioAction->setWhatsThis("Basic readv()/writev() engine, with io_submit_mode=direct");
+     ioAction->setActionGroup(engineGroup);
+     ioAction->setCheckable(true);
+-    ioAction->setWhatsThis("Let fio use its default ioengine");
++    ioAction->setWhatsThis("Basic readv()/writev() engine with io_submit_mode=direct;\n"
++        "IO depth achieved via jobs (processes)");
 +    ioAction = ui->menuIOEngines->addAction("vsync (offload mode)");
 +    ioAction->setActionGroup(engineGroup);
 +    ioAction->setCheckable(true);
-+    ioAction->setWhatsThis("Basic readv()/writev() engine, with io_submit_mode=offload");
++    ioAction->setWhatsThis("Basic readv()/writev() engine with io_submit_mode=offload;\n"
++        "IO depth achieved via multithreading");
 +    // ###
 +    ioAction = ui->menuIOEngines->addAction("fio-default (direct mode)");
-     ioAction->setActionGroup(engineGroup);
-     ioAction->setCheckable(true);
-     ioAction->setWhatsThis("Let fio use its default ioengine");
++    ioAction->setActionGroup(engineGroup);
++    ioAction->setCheckable(true);
++    ioAction->setWhatsThis("Let fio use its default ioengine with io_submit_mode=direct;\n"
++        "IO depth achieved via jobs (processes)");
      if (!defaultIOAction) {
          defaultIOAction = ioAction;
      }
 +    ioAction = ui->menuIOEngines->addAction("fio-default (offload mode)");
 +    ioAction->setActionGroup(engineGroup);
 +    ioAction->setCheckable(true);
-+    ioAction->setWhatsThis("Let fio use its default ioengine, with io_submit_mode=offload");
++    ioAction->setWhatsThis("Let fio use its default ioengine with io_submit_mode=offload;\n"
++        "IO depth achieved via multithreading");
 +
      // restore the previous setting
      if (!settings.getIOEngineName().isEmpty()) {
          const auto actions = engineGroup->actions();
-@@ -785,7 +799,7 @@ QString MainWindow::getTextBenchmarkResult()
+@@ -785,7 +803,7 @@ QString MainWindow::getTextBenchmarkResult()
      QString profiles[] = { "Default", "Peak Performance", "Real World Performance", "Demo" };
  
      auto ioengine = settings.getIOEngineName();
