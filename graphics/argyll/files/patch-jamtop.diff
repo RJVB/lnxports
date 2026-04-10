@@ -1,0 +1,15 @@
+diff --git orig.Jamtop Jamtop
+index 8d377ca..6755270 100755
+--- orig.Jamtop
++++ Jamtop
+@@ -105,8 +105,8 @@ if $(UNIX) {
+ 				LibWinD = /usr/lib64 ;
+ 			} else if [ GLOB /usr/lib : libX11.so libX11.a ] {
+ 				LibWinD = /usr/lib ;
+-			} else if [ GLOB /usr/local/lib : libX11.so libX11.a ] {
+-				LibWinD = /usr/local/lib ;
++			} else if [ GLOB $(PREFIX)/lib : libX11.so libX11.a ] {
++				LibWinD = $(PREFIX)/lib ;
+ 			} else {
+ 				ECHO Unable to locate the 64 bit X11 library files ;
+ 			}

@@ -1,41 +1,59 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem              1.0
+set LTO.fat_LTO_Objects yes
+PortGroup               LTO 1.0
+PortGroup               save_configure_cmd 1.0
 
 name                    argyll
-version                 2.1.2
+version                 3.4.1
+
+checksums               rmd160  9b3f2e6223bac14df6ae5c9ba33f6e420775481e \
+                        sha256  41ad51e02a3ec6981611be473221a3877fd359d3c1fa2172b4265dbe55f8b746
+#                         size    14810106
+
 categories              graphics
-platforms               darwin
-maintainers             {lbschenkel @lbschenkel} openmaintainer
+maintainers             nomaintainer
+platforms               linux darwin
 license                 AGPL-3
 
-description             Argyll Color Management System
-long_description        ArgyllCMS is an ICC compatible color management \
+description             Argyll Colour Management System
+long_description        ArgyllCMS is an ICC compatible colour management \
 system. It supports accurate ICC profile creation for scanners, cameras \
 and film recorders, and calibration and profiling of displays and RGB \& \
 CMYK printers. Argyll includes a general purpose ICC V2 profile format \
 access library, icclib, and a general purpose CGATS file format I/O library.
 
-homepage                http://www.argyllcms.com/
+homepage                https://www.argyllcms.com/
 master_sites            ${homepage}
 use_zip                 yes
 distname                Argyll_V${version}_src
-
-checksums               rmd160  101fb5f2dd3965cdeb4ac4a61bfe67239c94615b \
-                        sha256  be378ca836b17b8684db05e9feaab138d711835ef00a04a76ac0ceacd386a3e3 \
-                        size    13837056
-
 worksrcdir              Argyll_V${version}
 
-platform darwin {
-    depends_build       port:jam
-}
+depends_build           bin:jam:jam
+
+catch {if {[option configure.ar] ne ""} {
+    configure.ar-append ru
+}}
 
 depends_lib-append      path:include/turbojpeg.h:libjpeg-turbo
 depends_lib-append      port:libpng
 depends_lib-append      path:lib/pkgconfig/libusb-1.0.pc:libusb
 depends_lib-append      port:tiff
 depends_lib-append      port:zlib
+platform linux {
+    depends_lib-append  port:xorg-libX11 \
+                        port:xorg-libXext \
+                        port:xorg-libXrandr \
+                        port:xorg-libXinerama \
+                        port:xorg-libXext \
+                        port:xorg-libXdmcp \
+                        port:xorg-libXau \
+                        port:xorg-libXxf86vm
+}
+
+patchfiles-append       patch-ppc.diff \
+                        patch-jamtop.diff
 
 post-extract {
     # To make sure that in case of problems the build will fail instead
@@ -48,14 +66,26 @@ post-extract {
 }
 
 use_configure           no
+configure.ldflags-append \
+                        -ljpeg ${prefix}/lib/libpng.so -ltiff -lusb-1.0 -lz
+
+build.env-append        PREFIX=${prefix}
 build.env-append        HAVE_JPEG=true
 build.env-append        HAVE_PNG=true
 build.env-append        HAVE_TIFF=true
 build.env-append        HAVE_Z=true HAVE_ZLIB=true
-build.env-append        CC=${configure.cc}
-build.env-append        PREF_CCFLAGS=${configure.cflags}
-build.env-append        "PREF_LINKFLAGS=${configure.ldflags} \
-                                        -ljpeg ${prefix}/lib/libpng.so -ltiff -lusb-1.0 -lz -lssl"
+if {[tbool configure.ccache] || [tbool configureccache]} {
+    build.env-append    "CC=ccache ${configure.cc}"
+} else {
+    build.env-append    "CC=${configure.cc}"
+}
+build.env-append        "PREF_CCFLAGS=${configure.cflags} [get_canonical_archflags]"
+build.env-append        "PREF_LINKFLAGS=${configure.ldflags} [get_canonical_archflags]"
+
+build.post_args-append  -wk V=1 VERBOSE=1
+
+configure.save_build_cmd "install"
+
 destroot.env            {*}${build.env}
 destroot.destdir        DESTDIR=${worksrcpath}
 
@@ -63,14 +93,15 @@ post-destroot {
     # Install documentation.
     xinstall -m 755 -d ${destroot}${prefix}/share/doc/${name}
     xinstall -m 644 -W ${worksrcpath} \
-        notes.txt Readme.txt ttbd.txt \
+        License.txt License2.txt License3.txt log.txt ReadMe.txt \
         ${destroot}${prefix}/share/doc/${name}
     system "cp -r ${worksrcpath}/doc/* \
         ${destroot}${prefix}/share/doc/${name} && \
-        chmod 0644 ${destroot}${prefix}/share/doc/${name}/*"
+        find ${destroot}${prefix}/share/doc/${name} -type f -print0 | xargs -0 chmod 644 && \
+        find ${destroot}${prefix}/share/doc/${name} -type d -print0 | xargs -0 chmod 755"
     # Install binaries
     delete ${worksrcpath}/bin/License.txt
-    xinstall -m 755 {*}[glob ${worksrcpath}/bin/*] \
+    xinstall -m 755 {*}[glob ${worksrcpath}/${prefix}/bin/*] \
         ${destroot}${prefix}/bin
     # Install references
     xinstall -m 755 -d ${destroot}${prefix}/share/${name}/ref
