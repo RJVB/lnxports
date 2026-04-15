@@ -7,7 +7,7 @@ PortGroup           save_configure_cmd 1.0
 PortGroup           locale_select 1.0
 
 name                upower
-version             0.99.11 ; revision 1
+version             0.99.11 ; revision 2
 license             GPL-2+
 description         UPower is an abstraction for enumerating power devices, \
                     listening to device events and querying history and statistics.
@@ -79,6 +79,18 @@ if {${os.platform} eq "darwin"} {
     configure.args-replace \
                     --disable-tests \
                     --enable-tests
+}
+
+post-destroot {
+    file rename ${destroot}${prefix}/etc/UPower/UPower.conf \
+        ${destroot}${prefix}/etc/UPower/UPower.conf.sample
+}
+
+post-activate {
+    if {![file exists ${prefix}/etc/UPower/UPower.conf]} {
+        xinstall -m 644 ${prefix}/etc/UPower/UPower.conf.sample \
+            ${prefix}/etc/UPower/UPower.conf
+    }
 }
 
 variant docs description {install the documentation} {
