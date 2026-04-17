@@ -1,66 +1,60 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 142556 2015-11-15 09:45:06Z mk@macports.org $
 
 PortSystem          1.0
-PortGroup           cmake 1.0
+PortGroup           cmake 1.1
 PortGroup           github 1.0
+PortGroup           LTO 1.0
+PortGroup           preserve_runtime_libraries 1.0
 
-cmake.out_of_source yes
 
-name                libical
-
-if {${subport} eq "${name}"} {
-    github.setup    libical libical 2.0.0 v
-    conflicts       libical-devel
-} else {
-    # libical-devel:
-    github.setup    libical libical 1b8338520a39d6a168855389b31224a205672d0b
-    version         2.0.0.115
-    conflicts       libical
+if {(${os.platform} eq "linux" && [file exists ${prefix}/lib/libical.so.2])} {
+    default_variants-append +preserve_runtime_libraries
 }
+
+github.setup        libical libical 3.0.18 v ; revision 1
+checksums           rmd160  3169ffbee16545db4b73f0168b8a1845bbb3278c \
+                    sha256  72b7dc1a5937533aee5a2baefc990983b66b141dd80d43b51f80aced4aae219c
+#                    size    908948
+github.tarball_from archive
 
 categories          devel
-license             {LGPL-2.1 MPL-1}
 maintainers         nomaintainer
+license             {LGPL-2.1 MPL-2}
+
 description         An implementation of iCalendar protocols and data formats
-long_description    ${description}
-platforms           darwin
-homepage            https://github.com/libical
+long_description    {*}${description}
 
-subport libical-devel {
-    description-append \
-                    . Follows the development version.
-    long_description \
-                    ${description}
-}
+depends_build-append \
+                    port:libxml2 \
+                    path:bin/perl:perl5 \
+                    path:bin/pkg-config:pkgconfig
 
-if {${subport} eq "${name}"} {
-    # v 2.0.0
-    checksums       rmd160  1901573af1fb57be8feca3b3dd9db758c3e136ee \
-                    sha256  c9c076153867cd6ebac23febb276036597443eabd30ba4534d38950a2cbb889e
-} else {
-    # v2.0.0-115-g1b83385
-    checksums       rmd160  a0eaea0741f81e7e39bad1e1bd211d6ef35278d9 \
-                    sha256  0e2723b2d8f843fc66dca76ec83578c06a9767ba59d3525a0d15896f13acccfb
+depends_lib-append  path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                    path:lib/pkgconfig/icu-uc.pc:icu
 
-    maintainers     gmail.com:rjvbertin openmaintainer
-    distname        ${name}-git
-}
+configure.args      -DGOBJECT_INTROSPECTION=OFF \
+                    -DICAL_GLIB_VAPI=OFF \
+                    -DICAL_BUILD_DOCS=OFF
 
-depends_lib-append \
-                    port:libxml2
+# C++ compiler is used for C++ bindings
+compiler.cxx_standard   2011
 
-variant docs description {install the API documentation} {
+# https://github.com/libical/libical/issues/723
+use_parallel_build  no
+
+variant vala description {install the GObject Introspection and Vala components} {
     depends_build-append \
-                    port:doxygen
+                    path:bin/vala:vala
+    depends_lib-append \ 
+                    path:lib/pkgconfig/gobject-introspection-1.0.pc:gobject-introspection
+    configure.args-replace \
+                    -DGOBJECT_INTROSPECTION=OFF \
+                    -DGOBJECT_INTROSPECTION=ON \
+                    -DICAL_GLIB_VAPI=OFF \
+                    -DICAL_GLIB_VAPI=ON
 }
 
-patch.pre_args      -p1
-
-if {![variant_isset docs]} {
-    patchfiles-append \
-                    patch-nodocs.diff
+platform linux {
+    build.env-append \
+                    LD_LIBRARY_PATH=${build.dir}/lib
 }
-
-livecheck.url       https://github.com/libical/libical/releases
-livecheck.regex     "${name}-(\\d+(?:\\.\\d+)*)${extract.suffix}"
