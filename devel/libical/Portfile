@@ -6,8 +6,9 @@ PortGroup           github 1.0
 PortGroup           LTO 1.0
 PortGroup           preserve_runtime_libraries 1.0
 
-
-if {(${os.platform} eq "linux" && [file exists ${prefix}/lib/libical.so.2])} {
+if {(${os.platform} eq "linux" && [file exists ${prefix}/lib/libical.so.2]) \
+        || (${os.platform} eq "darwin" && [file exists ${prefix}/lib/libical.2.dylib]) \
+    } {
     default_variants-append +preserve_runtime_libraries
 }
 
@@ -23,6 +24,9 @@ license             {LGPL-2.1 MPL-2}
 
 description         An implementation of iCalendar protocols and data formats
 long_description    {*}${description}
+
+conflicts-append    ${name}-devel
+preserve_runtime_libraries_ports ${name}-devel
 
 depends_build-append \
                     port:libxml2 \
