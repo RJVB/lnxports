@@ -34,22 +34,21 @@ depends_build       port:pkgconfig \
 # to have the GNU make jobserver:
 build.cmd           gmake
 
+subport "${basename}-ucm-conf" {}
 subport "${basename}-plugins" {}
 subport "${basename}-tools" {}
 subport "${basename}-utils" {}
 
-configure.save_configure_cmd "install log"
-
 switch ${subport} {
     alsa-lib {
-        version         1.2.15.2
+        version         1.2.15.3
         set branch      [join [lrange [split ${version} .] 0 1] .]
         description     alsa-lib contains the user space library that developers compile ALSA applications against.
         long_description-append \n${description}
         master_sites    https://www.alsa-project.org/files/pub/lib/
-        checksums       rmd160  8db08f61d4f4cc1ba482efc333eba047ecf05128 \
-                        sha256  637eefd4966ce738da44464494df2b2894e19778fac2f9e7c47277e2af9297f4
-#                         size    1126565
+        checksums       rmd160  df44adea0fdee4b6c09c1e9910d29b4a4dfb02c9 \
+                        sha256  7b079d614d582cade7ab8db2364e65271d0877a37df8757ac4ac0c8970be861e
+    #                     size    1126411
         configure.args-append \
                         --disable-dependency-tracking \
                         --disable-silent-rules \
@@ -86,6 +85,33 @@ switch ${subport} {
         }
         test.run        yes
         test.target     check
+    }
+    alsa-ucm-conf {
+        version         1.2.15.3
+        set branch      [join [lrange [split ${version} .] 0 1] .]
+        description     ALSA Use Case Manager configuration
+        long_description \
+                        UCM configuration profiles for many audio interfaces.
+        installs_libs   no
+        master_sites    https://www.alsa-project.org/files/pub/lib/
+        distname        ${subport}-${version}
+        checksums       rmd160  3ba45b04b2895c4de53386e0a0151bf8567ad5b9 \
+                        sha256  9f79e813c08fc86cfa46dd75c4fcda1a4a51b482db2607e1fcfaafb92f588a31
+#                         size    78290
+
+        depends_build
+        depends_lib     port:alsa-lib
+
+        use_configure   no
+
+        build           {}
+
+        set tarball     ${distpath}/${distname}${extract.suffix}
+        destroot {
+            xinstall -m 755 -d ${destroot}${prefix}/share/alsa
+            system -W ${destroot}${prefix}/share/alsa \
+                        "tar xvjf ${tarball} --strip-components=1 --wildcards \"*/ucm\" \"*/ucm2\""
+        }
     }
     alsa-plugins {
         version         1.2.12
