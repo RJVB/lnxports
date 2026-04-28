@@ -35,7 +35,7 @@ if {${subport} eq "libnvme"} {
 
     meson.save_configure_cmd "install log"
 }
-if {${subport} eq "nvmw"} {
+if {${subport} eq "nvme"} {
     github.setup    linux-nvme nvme-cli 9e532bbc0952b6689e0db4c6cce90be9b3f6d0d2
     name            nvme
     version         2.5.50
