@@ -71,7 +71,7 @@ if {${subport} eq "nvme"} {
     }
 }
 if {${subport} eq "xnvme"} {
-    github.setup    xnvme xnvme HEAD
+    github.setup    xnvme xnvme be52a634c139647b14940ba8a3ff254d6b1ca8c4
     name            xnvme
     version         0.7.5
     distname        ${name}-git
