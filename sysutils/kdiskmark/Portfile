@@ -16,11 +16,11 @@ long_description    KDiskMark is an HDD and SSD benchmark tool with a very \
                     comprehensive benchmark result. 
 maintainers         gmail.com:rjvbertin openmaintainer
 
-github.setup        JonMagon KDiskMark 9a6cd5f950af647043082cb4c0248e6b2a87541e
+github.setup        JonMagon KDiskMark 8a3ad488970e4d27bab35eecafcc934b86c17580
 fetch.type          git
 name                kdiskmark
 distname            ${name}-git
-version             3.2.0.4 ; revision 7
+version             3.2.0.9
 
 depends_build-append \
                     path:share/ECM/cmake/ECMConfig.cmake:kde-extra-cmake-modules
@@ -43,7 +43,8 @@ patchfiles-append   patch-allow-non-privileged.diff \
                     patch-no-usenglish.diff \
                     patch-use-group_reporting.diff \
                     patch-smarter-params-adaptation.diff \
-                    patch-support-offload-iomode.diff
+                    patch-support-offload-iomode.diff \
+                    patch-fix-kversion-detection.diff
 
 configure.args-append \
                     -DUSE_QT5=ON \

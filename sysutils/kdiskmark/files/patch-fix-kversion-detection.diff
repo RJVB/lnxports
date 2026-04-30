@@ -1,0 +1,22 @@
+diff --git a/src/mainwindow.cpp b/src/mainwindow.cpp
+index 59f5b68..6a443cd 100644
+--- a/src/mainwindow.cpp
++++ b/src/mainwindow.cpp
+@@ -17,6 +17,7 @@
+ #include <QActionGroup>
+ #include <QStandardPaths>
+ #include <QTranslator>
++#include <QDebug>
+ 
+ #include "math.h"
+ #include "about.h"
+@@ -224,7 +225,8 @@ MainWindow::MainWindow(QWidget *parent)
+     defaultIOAction = ioAction;
+     struct utsname u;
+     uname(&u);
+-    auto kversion = QString::fromLatin1(u.version).split(".").mid(0,1).join(".").toDouble();
++    auto kversion = QString::fromLatin1(u.release).split(".").mid(0,2).join(".").toDouble();
++    qDebug() << "uname.release=" << QString::fromLatin1(u.release) << "->" << kversion;
+     ioAction = ui->menuIOEngines->addAction("io_uring");
+     ioAction->setActionGroup(engineGroup);
+     if (kversion >= 5.1) {
