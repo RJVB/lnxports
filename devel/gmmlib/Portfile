@@ -6,12 +6,12 @@ PortGroup           cmake 1.1
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 
-github.setup        intel gmmlib 246fa363c772d90575357e08900a4431f1374673
-version             12.8.0
+github.setup        intel gmmlib 0246660b2ade17afc1c9c4c510368fa649ca809f
+version             12.10.0
 
-checksums           rmd160  78fc2230cbf51bdd22e5b750768977e4ddc2071d \
-                    sha256  c30eae6305378709387de11fdf2f6244f909c23fd932717b89dcef07f19659dd
-#                     size    873502
+checksums           rmd160  a5b7bd144397a82db9b3c7993ee56ff444eeb28a \
+                    sha256  565ec58aec35d19aff3a89aa040e48814c19f69a3905f0306da00881827c5b53
+#                    size    887910
 
 categories          devel
 platforms           linux
