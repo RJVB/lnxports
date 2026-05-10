@@ -6,14 +6,16 @@ PortGroup           cmake 1.1
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 
-github.setup        intel media-driver eb51af235749f8d8e06dc113a3f1b51e81305d46
+github.setup        intel media-driver a6799c709f234282cfa6f9707e016e1d83fc3a33
 name                intel-media-driver
-version             25.3.2.1
-distname            imd-git
+version             26.2.0.1
+## out-comment the following 2 lines before committing!
+# fetch.type          git
+# distname            imd-git
 
-checksums           rmd160  082ee4a5cc32fa077430d0a3a711d15da4720cbd \
-                    sha256  5f10c2839e386be2ad73365bbea4ce70a0491b0c8751ab50c1847d4f61bbcc30
-#                     size    28434609
+checksums           rmd160  50aff1a66c671284bce93803c897a8dcff69a6e6 \
+                    sha256  7eeb89df4cadc447c06b13dbd6fe293f5e1a1a838cc96b94f2a4306cf7ed2052
+#                     size    29401265
 
 categories          x11 multimedia
 platforms           linux
@@ -54,7 +56,8 @@ compiler.cxx_standard 2014
 
 configure.args-append \
                 -DBUILD_TYPE=${cmake.build_type} \
-                -DINSTALL_DRIVER_SYSCONF=ON
+                -DINSTALL_DRIVER_SYSCONF=ON \
+                -DENABLE_PRODUCTION_KMD=ON
 
 configure.save_configure_cmd "install log"
 
