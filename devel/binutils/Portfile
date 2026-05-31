@@ -1,21 +1,26 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
-PortGroup           locale_select 1.0
+
+configure.ccache    no
+
+set LTO.configure_option \
+                    --enable-pgo-build=lto
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 PortGroup           conflicts_build 1.0
+PortGroup           locale_select 1.0
 platform linux {
     PortGroup       preserve_runtime_libraries 1.0
 }
 
 name                binutils
 #if {${build_arch} eq "x86_64"} {
-    version         2.43.1
+    version         2.46.0
 
-    checksums       rmd160  6f8ed9d308d81752726f80939826621ed441d11b \
-                    sha256  13f74202a3c4c51118b797a39ea4200d3f6cfbe224da6d1d95bb938480132dfd
-#                     size    28174300
+    checksums       rmd160  cf936fe24a82aa43696ea442b6f52441af4015e2 \
+                    sha256  d75a94f4d73e7a4086f7513e67e439e8fcdcbb726ffe63f4661744e6256b2cf2
+#                    size    28548776
 # } else {
 #     version         2.42
 #  
@@ -38,8 +43,12 @@ homepage            https://www.gnu.org/software/binutils/binutils.html
 master_sites        gnu:binutils
 use_xz              yes
 
+build.cmd           gmake
+
 depends_build-append \
-                    port:gettext
+                    port:gettext \
+                    port:gmake
+
 # isl is a build dependency, apparently to enable support for GCC's graphite optimisation
 # feature. I can find no evidence for any other kind of dependency, nor even of use of
 # any of port:isl's headerfiles, but let's just play along with the configure script:
@@ -64,14 +73,11 @@ depends_lib-append  port:gettext-runtime \
                     port:zlib \
                     port:zstd
 
-# Source unconditionally includes a header which may not exist.
-# It was added in https://github.com/torvalds/linux/commit/ea3de9ce8aa280c5175c835bd3e94a3a9b814b74
-patchfiles-append   patch-fix-riscv.diff
-
 # bfd.c: error: expected ‘=’, ‘,’, ‘;’, ‘asm’ or ‘__attribute__’ before ‘bfd_error_type’
 compiler.thread_local_storage yes
 
-configure.args      --enable-option-checking \
+configure.args-append \
+                    --enable-option-checking \
                     --infodir='${prefix}/share/info' \
                     --mandir='${prefix}/share/man' \
                     --enable-year2038 \
@@ -96,7 +102,8 @@ configure.args      --enable-option-checking \
 if {${os.platform} eq "linux"} {
     configure.args-append \
                     --enable-objc-gc \
-                    --enable-host-shared
+                    --enable-host-shared \
+                    --enable-plugins
     # --enable-shared is no longer available but the `enable_shared` variable still consulted in configure
     configure.env-append \
                     "enable_shared=yes" \
@@ -155,11 +162,13 @@ post-destroot {
     register_devport_standard_content
     create_devport_content_archive
     platform linux {
-        # now preserve the shared libraries installed by previous version(s) of the port.
+        # now we can preserve the shared libraries installed by previous version(s) of the port.
         # These aren't versioned so devport left them alone in those versions because they
         # were regular files. Preserving them turns them into symlinks and devport would
-        # thus move them if we did the step before populating  the devport.
+        # move those if we did the step before populating the devport.
         preserve_libraries ${prefix}/lib {libbfd*.so libopcodes*.so}
     }
 }
 
+test.run            yes
+test.target         check -w -k -j${build.jobs} V=1 VERBOSE=1
