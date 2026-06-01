@@ -47,6 +47,7 @@ depends_lib         port:gtk3 \
 
 ####################
 PortGroup           devport 1.0
+devport_not_on_platform darwin
 create_devport      port:${name}
 ####################
 

@@ -30,6 +30,7 @@ checksums           rmd160  1d8cfb5504ac71a50dc4c9372dee56fa721f5ac4 \
 
 ####################
     PortGroup devport 1.0
+    devport_not_on_platform darwin
 
     create_devport port:${name} auto
 

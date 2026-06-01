@@ -79,6 +79,7 @@ test.target             check
 
 ####################
 PortGroup devport 1.0
+devport_not_on_platform darwin
 ####################
 
 destroot.delete_la_files no
@@ -117,7 +118,11 @@ if {${subport} eq "${name}"} {
     }
 }
 
-set stubports {libasprintf libtextstyle libasprintf-dev libtextstyle-dev gettext-runtime gettext-tools-libs}
+if {${os.platform} ne "darwin"} {
+    set stubports {libasprintf libtextstyle libasprintf-dev libtextstyle-dev gettext-runtime gettext-tools-libs}
+} else {
+    set stubports {libasprintf libtextstyle gettext-runtime gettext-tools-libs}
+}
 
 foreach p ${stubports} {
     subport ${p} {

@@ -105,6 +105,7 @@ patchfiles-append   patch-allow-ignoring-X11errors.diff
 
 ####################
 PortGroup           devport 1.0
+devport_not_on_platform darwin
 create_devport      port:${name}
 ####################
 

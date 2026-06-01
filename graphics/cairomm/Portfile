@@ -34,6 +34,7 @@ depends_lib         path:lib/pkgconfig/cairo.pc:cairo \
 
 ####################
 PortGroup           devport 1.0
+devport_not_on_platform darwin
 create_devport      port:${name}
 ####################
 

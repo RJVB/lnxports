@@ -184,6 +184,7 @@ if {${universal_possible} && [variant_isset universal]} {
 
 ####################
 PortGroup devport 1.0
+devport_not_on_platform darwin
 ####################
 
 

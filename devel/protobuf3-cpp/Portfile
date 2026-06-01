@@ -50,6 +50,7 @@ depends_lib     port:zlib
 
 ####################
 PortGroup devport 1.0
+devport_not_on_platform darwin
 
 devport_long_description ${long_description}\nThis installs the headers, link libraries and the protoc utility.
 create_devport port:${name}
