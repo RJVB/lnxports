@@ -6,22 +6,25 @@ PortGroup           meson 1.0
 PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 
-github.setup        intel libva-utils 50f5f6b916290a2c2d310819e1a65ba0fad43a6d
+github.setup        intel libva-utils ffed6539562e02b12bb9b0a81bdee0517280df41
 # after `git tag -a v2.22.0 -m "release 2.22.0" bbf09fa9f6a191eed504fd3d4d507ebcbdf51dd2`
-version             2.22.0.5
-distname            lvautils-git
+# after `git tag -a v2.23.0 -m "release 2.23.0" 1edde43697cd9acbbecde4a95ea8003a4e03cae0`
+version             2.23.0.3
+# fetch.type          git
+# distname            lvautils-git
 
-checksums           rmd160  870ae1cce6091be5289c86ceb14a983aab0f65ba \
-                    sha256  b510cb5a61ba72a174bb2b18ff2794d7df22bfcf13d72b6f592d88de49eaf407
-#                     size    1282036
+checksums           rmd160  8f6609166fe9e481532747767eea8f0e1e1c5cb4 \
+                    sha256  f79bf69569a3aee17f337f45195c321041ff555e8e815ddcaa32186c73259e87
+#                     size    1282081
 
 categories          x11 multimedia
 platforms           linux
 maintainers         gmail.com:rjvbertin
 license             Permissive
 
-description         Libva-utils is a collection of tests for VA-API (VIdeo Acceleration API) 
-long_description    libva-utils is a collection of utilities and examples to exercise VA-API in accordance with the libva project and provides a suite of unit-tests.
+description         Libva-utils is a collection of utilities for the VA-API (VIdeo Acceleration API) 
+long_description    libva-utils is a collection of utilities and examples to exercise the VA-API in \
+                    accordance with the libva project and provides a suite of unit-tests.
 
 depends_build-append \
                 port:xorg-libX11 \
