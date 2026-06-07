@@ -1,0 +1,68 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           locale_select 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+PortGroup           github 1.1
+
+github.tarball_from archive
+github.setup        rockowitz ddcutil 2.2.7 v
+maintainers         gmail.com:rjvbertin openmaintainer
+
+categories          sysutils
+description         Control monitor settings using DDC/CI and USB
+long_description    ddcutil is a Linux program for querying and changing monitor settings, \
+                    such as brightness, colour levels, and input connector. \
+                    Most monitors, other than laptop displays, have a Virtual Control Panel (VCP), \
+                    which implements features defined in the Monitor Control Command Set (MCCS). \
+                    Typically, ddcutil communicates with the monitor's VCP over an I2C bus, as per \
+                    the Display Data Channel/Command Interface Standard (DDC/CI). \
+                    Alternatively, some monitors (e.g. Eizo ColorEdge, Apple Cinema) provide a USB \
+                    interface to the VCP, as described in the USB Monitor Control Class Specification. \
+                    ddcutil can communicate with these monitors over USB instead of I2C.
+
+platforms           linux
+license             GPL-2
+
+homepage            http://www.ddcutil.com/
+
+checksums           rmd160  4c8a450d5c99c04c7400a4a6434546ff23fd1c67 \
+                    sha256  7b5cb9824c23974241146f4a696abc65f8e9d1e950198c8dc00e4a5c6a2f41ee
+#                     size    1062177
+
+depends_build-append \
+                    port:autoconf \
+                    port:automake \
+                    port:libtool \
+                    port:pkgconfig
+
+depends_lib-append  port:glib2 \
+                    port:hwdata \
+                    port:i2c-tools \
+                    port:libdrm \
+                    port:jansson \
+                    port:systemd \
+                    port:libusb \
+                    port:xorg-libX11 \
+                    port:xorg-libXrandr \
+                    port:dbus \
+                    port:acl \
+                    port:attr \
+                    port:zlib
+
+if {![file exists ${worksrcpath}/config.log]} {
+    configure.cmd   ${worksrcpath}/autogen.sh
+}
+pre-configure {
+    if {![file exists ${worksrcpath}/config/ltmain.sh]} {
+        xinstall -m 644 ${prefix}/share/libtool/build-aux/ltmain.sh ${worksrcpath}/config/
+    }
+}
+
+# this is for doing reproducible builds:
+configure.args-append \
+                    --disable-build-timestamp
+
+build.post_args-append -k
+
