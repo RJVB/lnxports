@@ -6,13 +6,31 @@ PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 PortGroup           github 1.1
 
+name                ddcutil
+version             0.0
+
 github.tarball_from archive
-github.setup        rockowitz ddcutil 2.2.7 v
+platforms           linux
+license             GPL-2
+
 maintainers         gmail.com:rjvbertin openmaintainer
 
 categories          sysutils
-description         Control monitor settings using DDC/CI and USB
-long_description    ddcutil is a Linux program for querying and changing monitor settings, \
+
+homepage            http://www.ddcutil.com/
+
+fetch.type          git
+
+patch.pre_args      -Np1
+
+subport ${name} {
+    github.setup    rockowitz ddcutil de592627099f840a93bbf99f8993ee5c5809b9b3
+    version         2.2.7.172
+    distname        ${subport}-git
+
+    description     Control monitor settings using DDC/CI and USB
+    long_description \
+                    ddcutil is a Linux program for querying and changing monitor settings, \
                     such as brightness, colour levels, and input connector. \
                     Most monitors, other than laptop displays, have a Virtual Control Panel (VCP), \
                     which implements features defined in the Monitor Control Command Set (MCCS). \
@@ -22,22 +40,19 @@ long_description    ddcutil is a Linux program for querying and changing monitor
                     interface to the VCP, as described in the USB Monitor Control Class Specification. \
                     ddcutil can communicate with these monitors over USB instead of I2C.
 
-platforms           linux
-license             GPL-2
 
-homepage            http://www.ddcutil.com/
+#     checksums       rmd160  4c8a450d5c99c04c7400a4a6434546ff23fd1c67 \
+#                     sha256  7b5cb9824c23974241146f4a696abc65f8e9d1e950198c8dc00e4a5c6a2f41ee
+#     #                 size    1062177
 
-checksums           rmd160  4c8a450d5c99c04c7400a4a6434546ff23fd1c67 \
-                    sha256  7b5cb9824c23974241146f4a696abc65f8e9d1e950198c8dc00e4a5c6a2f41ee
-#                     size    1062177
-
-depends_build-append \
+    depends_build-append \
                     port:autoconf \
                     port:automake \
                     port:libtool \
                     port:pkgconfig
 
-depends_lib-append  port:glib2 \
+    depends_lib-append \
+                    port:glib2 \
                     port:hwdata \
                     port:i2c-tools \
                     port:libdrm \
@@ -51,18 +66,52 @@ depends_lib-append  port:glib2 \
                     port:attr \
                     port:zlib
 
-if {![file exists ${worksrcpath}/config.log]} {
-    configure.cmd   ${worksrcpath}/autogen.sh
-}
-pre-configure {
-    if {![file exists ${worksrcpath}/config/ltmain.sh]} {
-        xinstall -m 644 ${prefix}/share/libtool/build-aux/ltmain.sh ${worksrcpath}/config/
+    patchfiles-append \
+                    ddcutil/patch-less-logging.diff
+
+    if {![file exists ${worksrcpath}/config.log]} {
+        configure.cmd \
+                    ${worksrcpath}/autogen.sh
     }
+    pre-configure {
+        if {![file exists ${worksrcpath}/config/ltmain.sh]} {
+            xinstall -m 644 ${prefix}/share/libtool/build-aux/ltmain.sh ${worksrcpath}/config/
+        }
+    }
+
+    # this is for doing reproducible builds:
+    configure.args-append \
+                    --disable-build-timestamp
 }
 
-# this is for doing reproducible builds:
-configure.args-append \
-                    --disable-build-timestamp
+subport ddcui {
+    PortGroup       qt5 1.0
+    PortGroup       cmake 1.1
+
+    github.setup    rockowitz ddcui f08bc70bb510f04dc143dc9da34228e82543240d
+    version         0.6.0.216
+
+    description     Control monitor settings using DDC/CI and USB
+    long_description \
+                    ddcui is a graphical user interface for ddcutil
+
+    depends_lib-append \
+                    port:glib2 \
+                    port:ddcutil
+    qt5.depends_component \
+                    qttools
+
+    patchfiles-append \
+                    ddcui/patch-cmakelists.diff
+
+    configure.args-append \
+                    -DUSE_QT5=ON \
+                    -DUSE_QT6=OFF
+
+    post-destroot {
+        file delete -force ${destroot}${prefix}/lib/modules-load.d
+    }
+}
 
 build.post_args-append -k
 

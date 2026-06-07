@@ -1,0 +1,50 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a297e39..da256e6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -46,7 +46,7 @@ message(STATUS "DDCUTIL_PROJECT_DIR:       ${DDCUTIL_PROJECT_DIR}"  )
+ 
+ string(APPEND CMAKE_MODULE_PATH  ${CMAKE_SOURCE_DIR} ) 
+ 
+-include(validate_CMAKE_BUILD_TYPE)
++# include(validate_CMAKE_BUILD_TYPE)
+ 
+ project(ddcui VERSION ${ddcui_version} LANGUAGES C CXX)
+ 
+@@ -69,21 +69,21 @@ message(${VERBOSE} "   CMAKE_C_FLAGS_RELEASE:          ${CMAKE_C_FLAGS_RELEASE}"
+ message(STATUS "Source directory: ${CMAKE_SOURCE_DIR} (CMAKE_SOURCE_DIR)" )
+ message(STATUS "Build directory:  ${CMAKE_BINARY_DIR} (CMAKE_BINARY_DIR)" )
+ 
+-execute_process(
+-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+-    COMMAND git branch --show-current 2>/dev/null
+-    OUTPUT_VARIABLE DDCUI_GIT_BRANCH
+-    RESULT_VARIABLE GIT_CMD_STATUS
+-)
+-# message (${VERBOSE} " result_variable: ${GIT_CMD_STATUS}")
+-if (${GIT_CMD_STATUS} STREQUAL "0")
+-   string(LENGTH ${DDCUI_GIT_BRANCH} N)
+-   math(EXPR lastpos "${N}-1")
+-   string(SUBSTRING ${DDCUI_GIT_BRANCH} 0 ${lastpos} DDCUI_GIT_BRANCH)
+-   message( ${VERBOSE} "ddcui git branch:   ${DDCUI_GIT_BRANCH}")
+-else() 
+-   message( ${VERBOSE} "ddcui source is not managed by git")
+-endif()
++# execute_process(
++#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
++#     COMMAND git branch --show-current 2>/dev/null
++#     OUTPUT_VARIABLE DDCUI_GIT_BRANCH
++#     RESULT_VARIABLE GIT_CMD_STATUS
++# )
++# # message (${VERBOSE} " result_variable: ${GIT_CMD_STATUS}")
++# if (${GIT_CMD_STATUS} STREQUAL "0")
++#    string(LENGTH ${DDCUI_GIT_BRANCH} N)
++#    math(EXPR lastpos "${N}-1")
++#    string(SUBSTRING ${DDCUI_GIT_BRANCH} 0 ${lastpos} DDCUI_GIT_BRANCH)
++#    message( ${VERBOSE} "ddcui git branch:   ${DDCUI_GIT_BRANCH}")
++# else() 
++#    message( ${VERBOSE} "ddcui source is not managed by git")
++# endif()
+ 
+ if ( ${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR} ) 
+    message(WARNING "Attempting to build in source directory.")

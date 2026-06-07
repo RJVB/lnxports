@@ -1,0 +1,47 @@
+diff --git a/src/dw/dw_recheck.c b/src/dw/dw_recheck.c
+index 6e0872c2..1a8bf9b4 100644
+--- a/src/dw/dw_recheck.c
++++ b/src/dw/dw_recheck.c
+@@ -89,12 +89,9 @@ static void dw_free_recheck_queue_entry(Recheck_Queue_Entry * entry) {
+ GAsyncQueue *  recheck_queue = NULL;
+ // GMutex *  recheck_queue_mutex = NULL;
+ 
++
+ static GAsyncQueue *
+ init_recheck_queue() {
+-   bool debug = false;
+-   DBGTRC_EXECUTED(debug, TRACE_GROUP, "");
+-   DECORATED_SYSLOG(DDCA_SYSLOG_NOTICE, "Executing");
+-
+    recheck_queue = g_async_queue_new();
+    return recheck_queue;
+ }
+@@ -102,7 +99,6 @@ init_recheck_queue() {
+ 
+ static void destroy_recheck_queue() {
+    bool debug = true;
+-   DBGTRC_EXECUTED(debug, TRACE_GROUP,"recheck_queue=%p", recheck_queue);
+    if (recheck_queue) {
+       Recheck_Queue_Entry * rqe;
+       while ((rqe = g_async_queue_try_pop(recheck_queue)) != NULL)
+@@ -585,7 +581,6 @@ gpointer dw_recheck_displays_func(gpointer data) {
+ 
+ void init_dw_recheck() {
+    bool debug = true;
+-   DBGTRC_EXECUTED(debug, TRACE_GROUP, "");
+    init_recheck_queue();
+    RTTI_ADD_FUNC(dw_put_recheck_queue);
+    RTTI_ADD_FUNC(dw_recheck_dref);
+diff --git a/src/util/pnp_ids.c b/src/util/pnp_ids.c
+index d8a446b1..005b3219 100644
+--- a/src/util/pnp_ids.c
++++ b/src/util/pnp_ids.c
+@@ -2363,7 +2363,7 @@ static void load_pnp_ids_from_hwdata_file() {
+             bool new_key = g_hash_table_insert(ids_hash, id, name);
+             if (!new_key) {
+                DBGF(debug, "g_hash_table_insert(%s,%s) returned true", id, name);
+-               syslog(LOG_ERR, "g_hash_table_insert(%s,%s) returned true", id, name);
++//                syslog(LOG_ERR, "g_hash_table_insert(%s,%s) returned true", id, name);
+             }
+          }
+          g_ptr_array_free(lines, true);
