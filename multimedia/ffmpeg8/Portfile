@@ -155,6 +155,7 @@ patchfiles-append   patch-ladspa-path-@PREFIX@.diff
 patchfiles-append   patch-84fa37f2e4138f1ef943685870bda894e79c3fe1.diff
 
 # fix multivalue tag support in MP4/AAC files
+# see https://code.ffmpeg.org/FFmpeg/FFmpeg/commit/c75701a62f6ee6267b4a1d5c3ec72f13aa799704
 patchfiles-append   patch-multival-tags-PR22781.diff
 
 # enable auto configure of asm optimizations
