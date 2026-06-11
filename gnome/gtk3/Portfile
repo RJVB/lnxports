@@ -4,7 +4,7 @@ PortSystem          1.0
 PortGroup           muniversal 1.0
 #PortGroup           xcodeversion 1.0
 PortGroup           active_variants 1.1
-#PortGroup           legacysupport 1.1
+PortGroup           legacysupport 1.1
 PortGroup           LTO 1.0
 PortGroup           meson 1.0
 PortGroup           debug 1.0
@@ -13,7 +13,7 @@ PortGroup           locale_select 1.0
 name                gtk3
 conflicts           gtk3-devel
 set my_name         gtk3
-version             3.24.38 ; revision 1
+version             3.24.52
 epoch               1
 
 ## upgrading from 3.24.20 WITHOUT +broadway gives a build failure when generating
@@ -24,12 +24,12 @@ epoch               1
 ## There is a variant scanner for that purpose at the end of this Portfile.
 PortGroup           conflicts_build 1.0
 
-set proj_name       gtk+
+set proj_name       gtk
 set branch          [join [lrange [split ${version} .] 0 1] .]
 categories          gnome x11
 license             LGPL-2.1+
 maintainers         {mascguy @mascguy} openmaintainer
-platforms           darwin
+platforms           linux
 
 description         GTK+ widget toolkit
 long_description    GTK+ is a highly usable, feature-rich toolkit for creating graphical user \
@@ -43,9 +43,12 @@ dist_subdir         ${my_name}
 use_xz              yes
 master_sites        gnome:sources/${proj_name}/${branch}/
 
-checksums           rmd160  4b48beab01bc1337c5e5120a68c390ab95e9af16 \
-                    sha256  ce11decf018b25bdd8505544a4f87242854ec88be054d9ade5f3a20444dd8ee7
-#                     size    12398104
+checksums           rmd160  3bae1f5944c429db20fee810c9ea9ad3db74b83a \
+                    sha256  80931fa472a77b9a164f6740e3c0b444fac6770054632d35a7ff9d679e5e7b9f
+#                     size    13578032
+
+# Disable unexpected download of subprojects
+meson.wrap_mode     nodownload
 
 # minimum_xcodeversions {9 3.1}
 
@@ -72,36 +75,45 @@ depends_lib-append \
 depends_lib-append  port:mesa
                     
 depends_run-append \
-                    port:shared-mime-info \
-                    port:hicolor-icon-theme
+                    port:hicolor-icon-theme \
+                    port:shared-mime-info
 
 # highly recommended to the point it should be a runtime dependency
 depends_run-append  port:dconf
 compiler.cxx_standard 2011
 
-# # darwin 10 and earlier requires legacy support for O_CLOEXEC
-# legacysupport.newest_darwin_requires_legacy 10
-# 
-# # Upstream disables X11 for macOS; disable that behavior
-# patchfiles-append   patch-meson.build-x11-enabled.diff
-# 
-# # Quartz patch to fix QuartzCore linking and compiling with 10.11
-# # Upstream merge request: https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/4298
-# patchfiles-append   patch-quartz-calayer-contentsformat.diff
-# 
-# # Quartz patch to eliminate hard-coded use of NSEventTypeApplicationDefined
-# # Upstream merge request: https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/5958
-# patchfiles-append   patch-quartz-nseventtype.diff
-# 
-# # Quartz patch to make CoreGraphics optional; not available for 10.7 and earlier
-# # Upstream merge request: https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/5959
-# patchfiles-append   patch-quartz-meson-appleframeworks.diff
+# darwin 10 and earlier requires legacy support for O_CLOEXEC
+## legacysupport.newest_darwin_requires_legacy 10
+
+# Quartz patch to fix QuartzCore linking and compiling with 10.11
+# Upstream merge request: https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/4298
+## patchfiles-append   patch-quartz-calayer-contentsformat.diff
+
+# Quartz patch to make CoreGraphics optional; not available for 10.7 and earlier
+# Upstream merge request: https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/5959
+## patchfiles-append   patch-quartz-meson-appleframeworks.diff
+
+# implicit declaration of function 'sincos'
+patchfiles-append   patch-tests-gdkgears.diff
+
+# https://github.com/mesonbuild/meson/issues/7652
+patchfiles-append   patch-sincos.diff
+
+# When removing menu items, this prevents dereferencing a null pointer (from lukaso)
+# https://gitlab.gnome.org/GNOME/gtk/-/issues/6304
+# *NOT* merged merge request: https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/8136
+patchfiles-append   patch-gtk-menu-crash.diff
+
+# Upstream patch
+# https://gitlab.gnome.org/GNOME/gtk/-/merge_requests/8342
+patchfiles-append   patch-gtk-menu-scale.diff
 
 # RJVB : relax the at_spi2 requirement (seems to play at runtime anyway)
 patchfiles-append   patch-relax-atspi-req.diff
-
 # RJVB : allow user to opt to continue after X11 errors
 patchfiles-append   patch-allow-ignoring-X11errors.diff
+# RJVB : don't print a warning when a location (filesystem) doesn't support measuring available space
+patchfiles-append   patch-nowarn-unsupported-location.diff
 
 ####################
 PortGroup           devport 1.0
@@ -137,6 +149,22 @@ if {[is_mainport]} {
             error "Either +x11 or +quartz is required"
         }
     }
+
+    pre-activate {
+        # Old versions of the gtk2{-devel} port provide the `gtk-update-icon-cache` binary,
+        # now this is provided by the gtk3{-devel} port, and the gtk2{-devel} port provides
+        # `gtk-update-icon-cache-2.0` instead.
+        if {[file exists ${prefix}/bin/gtk-update-icon-cache]} {
+            set oport [registry_file_registered ${prefix}/bin/gtk-update-icon-cache]
+            if {${oport} eq "gtk2"} {
+                ui_warn "File ${prefix}/bin/gtk-update-icon-cache] exists and belongs to port:${oport} - deactivating"
+                registry_deactivate_composite gtk2 "" [list ports_nodepcheck 1]
+            } elseif {${oport} eq "gtk2-devel"} {
+                ui_warn "File ${prefix}/bin/gtk-update-icon-cache] exists and belongs to port:${oport} - deactivating"
+                registry_deactivate_composite gtk2-devel "" [list ports_nodepcheck 1]
+            }
+        }
+    }
 }
 
 configure.cppflags-append \
@@ -166,10 +194,6 @@ if {[is_mainport]} {
         xinstall -m 644 -W ${worksrcpath} CONTRIBUTING.md COPYING NEWS README.md \
             ${destroot}${docdir}
 
-        # avoid conflict with the gtk-update-icon-cache installed by gtk2
-        move ${destroot}${prefix}/bin/gtk-update-icon-cache \
-             ${destroot}${prefix}/bin/gtk-update-icon-cache-3.0
-        
         ui_debug "Creating gtk.immodules..."
         system "LD_LIBRARY_PATH=${destroot}${prefix}/lib \
             ${destroot}${prefix}/bin/gtk-query-immodules-3.0 \
@@ -282,7 +306,7 @@ if {${universal_possible} && [variant_isset universal]} {
     
     merger_arch_compiler yes
 } else {
-    configure.cc "${configure.cc} ${configure.cc_archflags}"
+    configure.cc-append ${configure.cc_archflags}
 }
 
 pre-build {
@@ -326,6 +350,8 @@ variant quartz conflicts x11 {
     return -code error "Variant quartz not supported"
     require_active_variants path:lib/pkgconfig/cairo.pc:cairo quartz
     require_active_variants path:lib/pkgconfig/pango.pc:pango quartz
+    require_active_variants path:lib/pkgconfig/glib-2.0.pc:glib2 quartz
+    require_active_variants libepoxy quartz
 
     configure.args-append \
                             -Dx11_backend=false \
@@ -336,18 +362,23 @@ variant quartz conflicts x11 {
 variant x11 conflicts quartz {
 #     require_active_variants path:lib/pkgconfig/cairo.pc:cairo x11
 #     require_active_variants path:lib/pkgconfig/pango.pc:pango x11
-# 
-#     depends_lib-append \
-#                             port:at-spi2-atk \
-#                             port:fontconfig \
-#                             port:libxkbcommon-x11 \
-#                             port:xorg-libXi \
-#                             port:xorg-libXrandr \
-#                             port:xorg-libXcursor \
-#                             port:xorg-libXinerama \
-#                             port:xorg-libXdamage \
-#                             port:xorg-libXcomposite \
-#                             port:xorg-libXfixes
+#     require_active_variants path:lib/pkgconfig/glib-2.0.pc:glib2 x11
+#     require_active_variants libepoxy x11
+
+    depends_lib-append \
+                            port:at-spi2-atk \
+                            port:fontconfig \
+                            port:libxkbcommon-x11 \
+                            port:xorg-libXi \
+                            port:xorg-libXrandr \
+                            port:xorg-libXcursor \
+                            port:xorg-libXinerama \
+                            port:xorg-libXdamage \
+                            port:xorg-libXcomposite \
+                            port:xorg-libXfixes
+
+    # Upstream disables X11 for macOS; disable that behaviour
+#     patchfiles-append       patch-meson.build-x11-enabled.diff
 
     configure.args-append \
                             -Dx11_backend=true \
@@ -390,6 +421,8 @@ if {![catch {set installed [lindex [registry_active ${subport}] 0]}]} {
     }
 }
 
+langselect_qm_dir  ${destroot}${prefix}/share/gtk-3.0/emoji
+langselect_qm_ext   gresource
 
 if {${subport} eq "${name}"} {
     post-activate {

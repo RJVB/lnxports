@@ -1,0 +1,14 @@
+diff --git gtk/orig.gtkplacesviewrow.c gtk/gtkplacesviewrow.c
+index 61dd1f5..1adf58e 100644
+--- gtk/orig.gtkplacesviewrow.c
++++ gtk/gtkplacesviewrow.c
+@@ -102,7 +102,8 @@ measure_available_space_finished (GObject      *object,
+   if (error)
+     {
+       if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED) &&
+-          !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_MOUNTED))
++          !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_MOUNTED) &&
++          !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED))
+         {
+           g_warning ("Failed to measure available space: %s", error->message);
+         }
