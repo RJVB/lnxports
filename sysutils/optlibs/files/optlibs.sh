@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-DIRS="@PREFIX@"
+MPPREFIX="@PREFIX@"
+DIRS="${MPPREFIX}"
 LIBDIRS=""
 
 for d in ${DIRS} ;do
@@ -22,9 +23,14 @@ for d in ${DIRS} ;do
 	done
 done
 
+if [[ "${PATH}" != *"${MPPREFIX}"* ]]; then
+	echo "adding ${MPPREFIX} to PATH" 1>&2
+	export PATH="${MPPREFIX}/bin:${MPPREFIX}/sbin:${PATH}"
+fi
+
 case $0 in
 	kdeinit*|klaunch*|kded*)
-		LIBDIRS="${LIBDIRS}:@PREFIX@/lib/samba"
+		LIBDIRS="${LIBDIRS}:${MPPREFIX}/lib/samba"
 		;;
 esac
 if [ "${LD_LIBRARY_PATH}" != "" ] ;then
@@ -32,11 +38,11 @@ if [ "${LD_LIBRARY_PATH}" != "" ] ;then
 else
 	export LD_LIBRARY_PATH="${LIBDIRS}"
 fi
-if [ -x @PREFIX@/lib/libwrapped_syscalls.so ] ;then
+if [ -x ${MPPREFIX}/lib/libwrapped_syscalls.so ] ;then
 	if [ "${LD_PRELOAD}" != "" ] ;then
-		export LD_PRELOAD="@PREFIX@/lib/libwrapped_syscalls.so:${LD_PRELOAD}"
+		export LD_PRELOAD="${MPPREFIX}/lib/libwrapped_syscalls.so:${LD_PRELOAD}"
 	else
-		export LD_PRELOAD="@PREFIX@/lib/libwrapped_syscalls.so"
+		export LD_PRELOAD="${MPPREFIX}/lib/libwrapped_syscalls.so"
 	fi
 fi
 

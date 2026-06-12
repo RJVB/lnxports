@@ -3,7 +3,7 @@
 PortSystem          1.0
 
 name                optlibs
-version             1.0
+version             1.1
 
 description         launcher script that injects LinuxPorts library paths
 
