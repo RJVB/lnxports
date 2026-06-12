@@ -1,0 +1,41 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.1
+PortGroup           meson 1.0
+PortGroup           fuse 1.0
+
+github.setup        Netatalk netatalk_client d35a1220aed01dea683bbb2a0f4a40ae0fba10a0
+version             0.9.4.44
+
+fetch.type          git
+distname            ${name}-git
+
+categories          net fuse
+platforms           linux darwin
+maintainers         gmail.com:rjvbertin
+license             GPL2.0
+
+description         Free and Open Source AFP file sharing client 
+long_description    Netatalk Client is a file sharing client written in C which can be used \
+                    to access AFP shares exposed by multiple devices, notably personal file \
+                    sharing on older Mac OS X and Classic Mac OS computers, Netatalk servers \
+                    hosted on Linux/*BSD/Solaris/macOS, Apple AirPort and Time Capsule products \
+                    as well as other AFP enabled NAS devices from various vendors. \
+                    It is an improved for of afps_ng.
+
+configure.save_configure_cmd "install log"
+
+if {${os.platform} ne "darwin"} {
+    depends_lib-append \
+                    port:libbsd \
+                    port:libedit
+} else {
+    depends_lib-append \
+                    port:readline
+}
+
+depends_lib-append  port:libiconv \
+                    port:libgcrypt
+
+test.run        yes
