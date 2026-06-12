@@ -13,7 +13,7 @@ PortGroup           locale_select 1.0
 name                gtk3
 conflicts           gtk3-devel
 set my_name         gtk3
-version             3.24.52
+version             3.24.52 ; revision 1
 epoch               1
 
 ## upgrading from 3.24.20 WITHOUT +broadway gives a build failure when generating
@@ -200,6 +200,9 @@ if {[is_mainport]} {
             ${destroot}${prefix}/lib/gtk-3.0/3.0.0/immodules/*.so \
             >${destroot}${prefix}/etc/gtk-3.0/gtk.immodules"
         reinplace "s|${destroot}||" ${destroot}${prefix}/etc/gtk-3.0/gtk.immodules
+
+        # don't force an update of all gtk3 dependent port files...
+        ln -s gtk-update-icon-cache ${destroot}${prefix}/bin/gtk-update-icon-cache-3.0
 
         ####################
         register_devport_standard_content
