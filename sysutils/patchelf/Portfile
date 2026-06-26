@@ -2,17 +2,18 @@
 
 PortSystem          1.0
 PortGroup           github 1.0
+PortGroup           LTO 1.0
 PortGroup           save_configure_cmd 1.0
 
-github.setup        NixOS patchelf 5908e16cd562bcb1909be4de0409c4912a8afc52
-version             0.16.1
+github.setup        NixOS patchelf 1e279e99b952c765824fa0401abb8dc0d944e4ea
+version             0.19.0
 epoch               2
 # fetch.type          git
 # worksrcdir          ${name}-git
 # distname            ${name}-git
 
-checksums           rmd160  40bada41bf1b684640bca1cf10bec64b7a936f83 \
-                    sha256  372b04d72268cf46f0e5c76dbc1d8a21a822810fce02707e8a75acca03afbb30
+checksums           rmd160  199885072d2bc432817f69ed5f5249d49ef5a0af \
+                    sha256  80c46760ed33a0290e91d69c9a84ba2b671185c0a0f18ca642968307b285175b
 
 name                patchelf
 categories          sysutils
@@ -28,10 +29,11 @@ long_description    PatchELF is a simple utility for modifying existing ELF exec
 depends_build       port:autoconf \
                     port:automake \
                     port:libtool
-# depends_build-append \
-#                     port:gawk
 
 patch.pre_args      -Np1
+
+compiler.cxx_standard \
+                    2017
 
 pre-configure {
     if {![file exists ${worksrcpath}/configure]} {
