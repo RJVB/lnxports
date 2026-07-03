@@ -1,0 +1,98 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+
+PortGroup           github 1.1
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+PortGroup           locale_select 1.0
+
+fetch.type          git
+github.provider     sourceware.org
+github.setup        git elfutils 67093ba40c8231acba0b3c80c6156087d4bb297a
+version             0.195.37
+distname            ${name}-git
+
+description         Utilities and libraries to read, create and modify ELF binary files
+long_description    A collection of utilities and libraries to read, create and modify ELF binary files, \
+                    find and handle DWARF debug data, symbols, thread state and stacktraces for processes \
+                    and core files on GNU/Linux. 
+
+platforms           darwin linux
+categories          devel
+license             GLP2+ LGPL2+ GPL-3+
+maintainers         openmaintainer
+homepage            https://sourceware.org/elfutils/
+# master_sites        https://sourceware.org/${name}/ftp/${version}
+# use_bzip2           yes
+
+build.cmd           gmake
+
+use_autoreconf      yes
+autoreconf.args     -i -f -v
+
+pre-configure {
+    if {[file exists ${worksrcpath}/configure] && [file exists ${worksrcpath}/config.log]} {
+        use_autoreconf no
+    }
+}
+
+depends_build-append \
+                    port:gmake
+
+depends_lib-append  port:gettext \
+                    port:libiconv \
+                    port:zlib \
+                    port:bzip2 \
+                    port:libarchive \
+                    port:xz \
+                    port:zstd
+
+patch.pre_args      -Np1
+patchfiles-append   patch-no-Werror.diff
+
+compiler.cxx_standard \
+                    2011
+
+# prevent a conflict with the existing port:libelf; install the libraries into ${prefix}/lib/elfutils!
+configure.args-append \
+                    --libdir=${prefix}/lib/elfutils \
+                    --enable-maintainer-mode \
+                    --disable-dependency-tracking \
+                    --disable-silent-rules \
+                    --with-zlib \
+                    --with-bzlib \
+                    --with-lzma \
+                    --with-zstd \
+                    --with-libarchive \
+                    --enable-install-elfh \
+                    --with-libintl-prefix=${prefix}
+
+configure.env-append "LIBS=-L${prefix}/lib -lintl"
+configure.ldflags-append \
+                    -lintl -Wl,-rpath,${prefix}/lib/elfutils
+
+    ###############################
+    PortGroup       devport 1.0
+    create_devport  port:${name}
+
+    devport_lib_dir lib/elfutils
+
+    if {![is_mainport]} {
+        # nothing else to be done
+        return
+    }
+    ###############################
+
+configure.save_configure_cmd "install log"
+
+universal_variant   no
+
+post-destroot {
+    register_devport_standard_content
+    append_to_devport_standard_content ${prefix}/share/man/man3
+    create_devport_content_archive
+}
+
+test.run            yes
+test.target         check -w -k -j${build.jobs} V=1 VERBOSE=1

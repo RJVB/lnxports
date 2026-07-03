@@ -1,0 +1,57 @@
+diff --git a/config/eu.am b/config/eu.am
+index 321591f7..51359248 100644
+--- a/config/eu.am
++++ b/config/eu.am
+@@ -135,7 +135,7 @@ AM_CFLAGS = -Wall -Wshadow -Wformat=2 \
+ 	    $(NULL_DEREFERENCE_WARNING) $(IMPLICIT_FALLTHROUGH_WARNING) \
+ 	    $(USE_AFTER_FREE3_WARNING) $(MISSING_PARAMETER_NAME_WARNING) \
+ 	    $(DEPRECATED_NON_PROTOTYPE_WARNING) $(FREE_LABELS_WARNING) \
+-	    $(if $($(*F)_no_Werror),,-Werror) \
++	     \
+ 	    $(if $($(*F)_no_Wunused),,-Wunused -Wextra) \
+ 	    $(if $($(*F)_no_Wstack_usage),,$(STACK_USAGE_WARNING)) \
+ 	    $(if $($(*F)_no_Wpacked_not_aligned),$(NO_PACKED_NOT_ALIGNED_WARNING),) \
+@@ -145,7 +145,7 @@ AM_CXXFLAGS = -std=c++11 -Wall -Wshadow \
+ 	   $(TRAMPOLINES_WARNING) \
+ 	   $(LOGICAL_OP_WARNING) $(DUPLICATED_COND_WARNING) \
+ 	   $(NULL_DEREFERENCE_WARNING) $(IMPLICIT_FALLTHROUGH_WARNING) \
+-	   $(if $($(*F)_no_Werror),,-Werror) \
++	    \
+ 	   $(if $($(*F)_no_Wunused),,-Wunused -Wextra) \
+ 	   $(if $($(*F)_no_Wstack_usage),,$(STACK_USAGE_WARNING)) \
+ 	   $(if $($(*F)_no_Wpacked_not_aligned),$(NO_PACKED_NOT_ALIGNED_WARNING),) \
+diff --git a/configure.ac b/configure.ac
+index 29440f29..70e28f20 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -261,7 +261,7 @@ case "$CFLAGS" in
+   *)
+     save_CFLAGS="$CFLAGS"
+     # Try 3 first.
+-    CFLAGS="-D_FORTIFY_SOURCE=3 $save_CFLAGS -Werror"
++    CFLAGS="-D_FORTIFY_SOURCE=3 $save_CFLAGS"
+     fortified_cflags=""
+     AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+       #include <string.h>
+@@ -271,7 +271,7 @@ case "$CFLAGS" in
+ 
+     # If that didn't work, try 2.
+     if test -z "$fortified_cflags"; then
+-      CFLAGS="-D_FORTIFY_SOURCE=2 $save_CFLAGS -Werror"
++      CFLAGS="-D_FORTIFY_SOURCE=2 $save_CFLAGS"
+       AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+         #include <string.h>
+         int main() { return 0; }
+diff --git a/libcpu/Makefile.am b/libcpu/Makefile.am
+index df16439c..16a1df02 100644
+--- a/libcpu/Makefile.am
++++ b/libcpu/Makefile.am
+@@ -85,7 +85,7 @@ endif
+ 	$(AM_V_GEN)sed '1,/^%%/d;/^#/d;/^[[:space:]]*$$/d;s/[^:]*:\([^[:space:]]*\).*/MNE(\1)/;s/{[^}]*}//g;/INVALID/d' \
+ 	  $< | sort -u > $@
+ 
+-i386_lex_no_Werror = yes
++i386_lex_no_Werror = no
+ 
+ libeu = ../lib/libeu.a
+ 
