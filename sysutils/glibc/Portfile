@@ -9,7 +9,10 @@ PortGroup       locale_select 1.0
 name            glibc
 set baseversion 2.29
 set urev        3
-set thePrefix   /opt/glibc/${baseversion}
+set opt_libc    /opt/glibc
+set thePrefix   ${opt_libc}/${baseversion}
+set thePrefixBranch \
+                ${opt_libc}/[lindex [split ${baseversion} .] 0]
 version         ${baseversion}.${urev} ; revision 1
 description     The GNU C library
 long_description \
@@ -167,6 +170,16 @@ platform linux {
         build.env-append LDFLAGS=-Wl,-rpath=${thePrefix}/lib -L${thePrefix}/lib
         destroot.env-append LDFLAGS=-Wl,-rpath=${thePrefix}/lib -L${thePrefix}/lib
         destroot.violate_mtree yes
+        notes-append \
+"port:glibc has been installed in ${thePrefix}, accessible also via ${thePrefixBranch}.
+Making applications run against it is tricky and requires using `patchelf` to change
+the ld.so loader used:
+> patchelf --set-interpreter ${thePrefixBranch}/lib/ld-linux-x86-64.so.2 /path/to/someApplication
+A dedicated copy of the `ldd` utility has been installed as ${prefix}/bin/gldd and it
+can be used to check if an application is likely to run against this libc version:
+> ${prefix}/bin/gldd -r /path/to/someApplication
+(best do this before changing the interpreter, of course).
+"
     }
     configure.ldflags-delete -Wl,--enable-new-dtags
 }
@@ -207,6 +220,11 @@ if {[is_mainport]} {
         system "echo ${thePrefix}/lib > ${destroot}${thePrefix}/etc/ld.so.conf.d/000-port:${subport}.conf"
         file rename ${destroot}${thePrefix}/etc/ld.so.cache ${destroot}${thePrefix}/etc/ld.so.cache.stock
 
+        if {[variant_isset opt_libc]} {
+            ln -s ${baseversion} ${thePrefixBranch}
+            ln -s ${thePrefixBranch}/bin/ldd ${destroot}${prefix}/bin/gldd
+        }
+
         ####################
         register_devport_standard_content
         append_to_devport_standard_content ${thePrefix}/lib/*.map ${thePrefix}/lib/*.o ${thePrefix}/lib/libc.so ${thePrefix}/lib/libm.so
@@ -216,6 +234,19 @@ if {[is_mainport]} {
         create_devport_content_archive
         ####################
     }
+
+    if {[variant_isset opt_libc]} {
+        pre-activate {
+            # remove symlinks I created for testing
+            if {[file exists ${thePrefixBranch}]} {
+                file delete ${thePrefixBranch}
+            }
+            if {[file exists ${prefix}/bin/gldd]} {
+                file delete ${prefix}/bin/gldd
+            }
+        }
+    }
+
     post-activate {
         if {[variant_isset opt_libc]} {
             if {![file exists ${thePrefix}/etc/ld.so.cache]} {
