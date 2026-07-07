@@ -16,14 +16,11 @@ platform linux {
 
 name                binutils
 #if {${build_arch} eq "x86_64"} {
-    version         2.46.0
-    platform linux {
-        revision    [expr ${revision} +1]
-    }
+    version         2.46.1
 
-    checksums       rmd160  cf936fe24a82aa43696ea442b6f52441af4015e2 \
-                    sha256  d75a94f4d73e7a4086f7513e67e439e8fcdcbb726ffe63f4661744e6256b2cf2
-#                    size    28548776
+    checksums       rmd160  f617d2a1b62aff9c2d4f3f8ae6722d501563c2e0 \
+                    sha256  e127a709cba24c76de8936cb7083dd768f28cd37eb010492e2f19b71eb1294e4
+#                     size    28636456
 # } else {
 #     version         2.42
 #  
@@ -163,8 +160,12 @@ post-destroot {
         ln -s ${prefix}/lib/bfd-plugins ${destroot}${archdir}/lib/bfd-plugins
     }
 
+    # ansidecl.h seems like a header that shouldn't be pushed to a port that will probably rarely be activated
+    file rename ${destroot}${prefix}/include/ansidecl.h ${destroot}/ansidecl.h
     register_devport_standard_content
     create_devport_content_archive
+    file rename ${destroot}/ansidecl.h ${destroot}${prefix}/include/ansidecl.h
+
     platform linux {
         # now we can preserve the shared libraries installed by previous version(s) of the port.
         # These aren't versioned so devport left them alone in those versions because they
