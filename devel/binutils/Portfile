@@ -175,5 +175,6 @@ post-destroot {
     }
 }
 
+depends_test-append port:dejagnu
 test.run            yes
 test.target         check -w -k -j${build.jobs} V=1 VERBOSE=1
