@@ -97,6 +97,10 @@ post-destroot {
     if {${configure.ccache}} {
         reinplace {/TCL_CC/s/ccache //} ${destroot}${libdir}/tclConfig.sh
     }
+    # do not export the location of our source/build directory!
+    # ports needing the TCL sources (like port:expect) will need to fetch a copy
+    # and set TCL_SRC_DIR themselves via configure.env
+    reinplace {s|TCL_SRC_DIR=|#TCL_SRC_DIR=|g} ${destroot}${libdir}/tclConfig.sh
 }
 
 if {$subport eq $name} {
