@@ -13,7 +13,7 @@ set opt_libc    /opt/glibc
 set thePrefix   ${opt_libc}/${baseversion}
 set thePrefixBranch \
                 ${opt_libc}/[lindex [split ${baseversion} .] 0]
-version         ${baseversion}.${urev} ; revision 1
+version         ${baseversion}.${urev} ; revision 2
 description     The GNU C library
 long_description \
                 The GNU C library. Corresponds to the following Ubuntu packages: \
@@ -133,6 +133,15 @@ patchfiles-append \
     ubuntu/localedata/sd_PK.diff \
     ubuntu/localedata/ug_CN@latin.diff
 
+# allow opening executables with dlopen(2) :
+## For this to work:
+## #define __RTLD_OPENEXEC 0x20000000
+## and add the flag to the dlopen `flag` argument.
+## NB: This is a hack that tries to overload the running executable
+## with the binary to dlopen, which is of course bound to crash ;)
+patchfiles-append \
+    patch-dlopen-allow-execs.diff
+
 configure.dir   ${workpath}/build
 build.dir       ${configure.dir}
 configure.cmd   ${worksrcpath}/configure
@@ -221,7 +230,7 @@ if {[is_mainport]} {
         file rename ${destroot}${thePrefix}/etc/ld.so.cache ${destroot}${thePrefix}/etc/ld.so.cache.stock
 
         if {[variant_isset opt_libc]} {
-            ln -s ${baseversion} ${thePrefixBranch}
+            ln -s ${baseversion} ${destroot}${thePrefixBranch}
             ln -s ${thePrefixBranch}/bin/ldd ${destroot}${prefix}/bin/gldd
         }
 
@@ -233,18 +242,6 @@ if {[is_mainport]} {
 #         devport_content-append ${thePrefix}/lib/libc.so ${thePrefix}/lib/libm.so
         create_devport_content_archive
         ####################
-    }
-
-    if {[variant_isset opt_libc]} {
-        pre-activate {
-            # remove symlinks I created for testing
-            if {[file exists ${thePrefixBranch}]} {
-                file delete ${thePrefixBranch}
-            }
-            if {[file exists ${prefix}/bin/gldd]} {
-                file delete ${prefix}/bin/gldd
-            }
-        }
     }
 
     post-activate {

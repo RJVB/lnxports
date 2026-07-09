@@ -1,0 +1,26 @@
+diff --git b/dlfcn/orig.dlopen.c a/dlfcn/dlopen.c
+index 7fd3348..389c651 100644
+--- b/dlfcn/orig.dlopen.c
++++ a/dlfcn/dlopen.c
+@@ -60,7 +60,7 @@ dlopen_doit (void *a)
+ 
+   if (args->mode & ~(RTLD_BINDING_MASK | RTLD_NOLOAD | RTLD_DEEPBIND
+ 		     | RTLD_GLOBAL | RTLD_LOCAL | RTLD_NODELETE
+-		     | __RTLD_SPROF))
++		     | __RTLD_SPROF | __RTLD_OPENEXEC))
+     _dl_signal_error (0, NULL, NULL, _("invalid mode parameter"));
+ 
+   args->new = GLRO(dl_open) (args->file ?: "", args->mode | __RTLD_DLOPEN,
+diff --git b/elf/orig.dl-load.c a/elf/dl-load.c
+index cf79917..630f5be 100644
+--- b/elf/orig.dl-load.c
++++ a/elf/dl-load.c
+@@ -1308,7 +1308,7 @@ cannot enable executable stack as shared object requires");
+   fd = -1;
+ 
+   /* If this is ET_EXEC, we should have loaded it as lt_executable.  */
+-  assert (type != ET_EXEC || l->l_type == lt_executable);
++  assert (type != ET_EXEC || l->l_type == lt_executable || (mode & __RTLD_OPENEXEC));
+ 
+   l->l_entry += l->l_addr;
+ 
