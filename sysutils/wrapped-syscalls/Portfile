@@ -7,7 +7,7 @@ set LTO_needs_pre_build yes
 PortGroup           LTO 1.0
 
 github.setup        RJVB wrapped-syscalls a8e7251da7046805617e62651e78624519de7688
-version             1.0.0.20
+version             1.0.0.20 ; revision 1
 fetch.type          git
 distname            wrapped-syscalls-git
 
@@ -21,6 +21,7 @@ license             none
 maintainers         gmail.com:rjvbertin openmaintainer
 
 use_configure       no
+configure.ccache    no
 
 ####################
 PortGroup           devport 1.0
