@@ -1,0 +1,31 @@
+diff --git a/configure b/configure
+index e332f827..22e3eacc 100755
+--- a/configure
++++ b/configure
+@@ -103,6 +103,8 @@ for arg; do
+     eval "$opt='$val'"
+ done
+ 
++set -x
++
+ if [ -z "$ARCH" ]; then
+     uname_M=$(uname -m 2>/dev/null || echo not)
+     ARCH=$(echo $uname_M | sed -e s/i.86/i386/ -e s/arm.*/arm/ )
+@@ -190,7 +192,7 @@ check_command make
+ check_command ${CC}
+ 
+ make -siC ${srcdir}/check-deps O=${objdir} check-clean
+-make -siC ${srcdir}/check-deps O=${objdir} check-build
++make -iC ${srcdir}/check-deps O=${objdir} check-build V=1 VERBOSE=1
+ 
+ for dep in $IGNORE; do
+     TARGET=
+@@ -214,6 +216,8 @@ for dep in $IGNORE; do
+     fi
+ done
+ 
++set +x
++
+ echo "uftrace detected system features:"
+ 
+ print_feature()

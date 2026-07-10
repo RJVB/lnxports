@@ -1,0 +1,83 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           github 1.1
+PortGroup           python-required 1.0
+PortGroup           LTO 1.0
+PortGroup           save_configure_cmd 1.0
+
+github.setup        namhyung uftrace 34daaabf4c966bdd473e9117f6cd2d96fa8b9d3d
+version             0.19.92
+fetch.type          git
+worksrcdir          ${name}-git
+distname            ${name}-git
+
+categories          sysutils
+platforms           linux
+maintainers         gmail.com:rjvbertin openmaintainer
+license             GPL-2.0
+
+description         Function graph tracer for C/C++/Rust/Python
+
+long_description    uftrace is a function call graph tracer for C, C++, Rust and Python programs. \
+                    It hooks into the entry and exit of each function, recording timestamps as well \
+                    as the function's arguments and return values. uftrace is capable of tracing both \
+                    user and kernel functions, as well as library functions and system events providing \
+                    an integrated execution flow in a single timeline.
+
+find_new_enough_python3 11
+
+depends_build-append \
+                    port:patchelf
+
+depends_lib-append  port:gettext \
+                    port:elfutils \
+                    port:ncurses \
+                    port:libunwind \
+                    port:luajit \
+                    port:libgcc \
+                    port:python${py_ver_nodot} \
+                    port:xz 
+
+patch.pre_args      -Np1
+patchfiles-append   patch-verboser-configure.diff \
+                    patch-use-correct-libelf-@PREFIX@.diff \
+                    patch-no-python2.diff \
+                    patch-our-cflags.diff
+
+post-patch {
+    reinplace "s|@PREFIX@|${prefix}|g" \
+                    ${worksrcpath}/check-deps/Makefile.check \
+                    ${worksrcpath}/check-deps/Makefile
+}
+
+pre-configure {
+    if {[file exists ${prefix}/lib/pkgconfig/python-${py_ver}.pc] && ![file exists ${workpath}/pkgconfig]} {
+        xinstall -m 755 -d ${workpath}/pkgconfig
+        foreach pc [glob ${prefix}/lib/pkgconfig/python-${py_ver}*.pc] {
+            ln -sf ${pc} ${workpath}/pkgconfig/[string map [list -${py_ver} 3] [file tail ${pc}]]
+        }
+    }
+}
+
+configure.pkg_config_path-append \
+                    ${prefix}/lib/elfutils/pkgconfig \
+                    ${workpath}/pkgconfig
+
+configure.ldflags-append \
+                    -Wl,-rpath,${prefix}/lib/elfutils \
+                    -Wl,-rpath,${prefix}lib
+
+configure.args-append \
+                    --enable-dependency-tracking \
+                    --without-capstone
+
+# the build system will call pkg-config during the build also...
+build.env-append    "PKG_CONFIG_PATH=[join ${configure.pkg_config_path} :]"
+
+build.post_args-append \
+                    -wk V=1 VERBOSE=1
+
+post-destroot {
+    system "patchelf --add-rpath ${prefix}/lib ${destroot}${prefix}/lib/uftrace/uftrace_python.so"
+}

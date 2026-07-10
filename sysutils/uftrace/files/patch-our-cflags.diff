@@ -1,0 +1,26 @@
+diff --git a/Makefile b/Makefile
+index 5786e602..a99d985c 100644
+--- a/Makefile
++++ b/Makefile
+@@ -112,7 +112,7 @@ endif
+ ifeq ($(DEBUG), 1)
+   COMMON_CFLAGS += -O0 -g3 -DDEBUG_MODE=1 -Werror
+ else
+-  COMMON_CFLAGS += -O2 -g -DDEBUG_MODE=0
++  COMMON_CFLAGS += -DDEBUG_MODE=0
+ endif
+ 
+ ifeq ($(TRACE), 1)
+diff --git a/check-deps/Makefile b/check-deps/Makefile
+index 61e0734b..8cd33e91 100644
+--- a/check-deps/Makefile
++++ b/check-deps/Makefile
+@@ -22,7 +22,7 @@ CHECK_LIST += have_liblzma
+ # This is needed for checking build dependency
+ #
+ 
+-CHECK_CFLAGS  = $(CFLAGS)  $(CFLAGS_$@) -O2 -Werror
++CHECK_CFLAGS  = $(CFLAGS)  $(CFLAGS_$@) -Werror
+ CHECK_LDFLAGS = $(LDFLAGS) $(LDFLAGS_$@)
+ 
+ # libpython3 provides an embed version of pkg-config file since python3.8

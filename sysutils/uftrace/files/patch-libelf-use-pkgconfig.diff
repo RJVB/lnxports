@@ -1,0 +1,14 @@
+diff --git a/check-deps/Makefile.check b/check-deps/Makefile.check
+index cb0d1e16..eb7a90a2 100644
+--- a/check-deps/Makefile.check
++++ b/check-deps/Makefile.check
+@@ -58,7 +58,8 @@ endif
+ 
+ ifneq ($(wildcard $(objdir)/check-deps/have_libelf),)
+   COMMON_CFLAGS  += -DHAVE_LIBELF
+-  COMMON_LDFLAGS += -lelf
++  COMMON_CFLAGS  += $(shell pkg-config --cflags libelf 2> /dev/null)
++  COMMON_LDFLAGS += $(shell pkg-config --libs libelf 2> /dev/null || echo "-lelf")
+ endif
+ 
+ ifneq ($(wildcard $(objdir)/check-deps/have_libdw),)
