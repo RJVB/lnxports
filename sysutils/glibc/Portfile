@@ -13,19 +13,21 @@ set opt_libc    /opt/glibc
 set thePrefix   ${opt_libc}/${baseversion}
 set thePrefixBranch \
                 ${opt_libc}/[lindex [split ${baseversion} .] 0]
-version         ${baseversion}.${urev} ; revision 2
+version         ${baseversion}.${urev} ; revision 3
 description     The GNU C library
 long_description \
                 The GNU C library. Corresponds to the following Ubuntu packages: \
-                libc-bin libc6 and their -dev packages.\n\
-                NB this port is EXPERIMENTAL and should be installed ONLY as the very FIRST port to be installed. \
-                Even then it is likely that it will be extremely complicated to mix libraries from MacPorts \
-                with libraries from the host. For that reason this port installs only when you confirm having \
+                libc-bin libc6 and their -dev packages. \
+                This port is EXPERIMENTAL and dangerous and installs only when you confirm having \
                 read this by setting one of the two variants.
 
 variant opt_libc conflicts I_read_the_info description "Install into ${thePrefix}" {}
 variant I_read_the_info conflicts opt_libc description "use this variant to signal that you read `port info ${name}`" {}
-if {![variant_isset opt_libc]} {
+if { ! [variant_isset opt_libc] } {
+    long_description-append \n\
+                NB this port variant should be installed ONLY as the very FIRST port to be installed. \
+                Even then it is likely that it will be extremely complicated to mix libraries from MacPorts \
+                with libraries from the host.
     # correct!
     set thePrefix ${prefix}
     pre-fetch {
@@ -36,8 +38,11 @@ if {![variant_isset opt_libc]} {
     }
 } else {
     long_description-append \n\
-                Overload the used library with\n\
-${thePrefix}/lib/ld-${baseversion}.so /path/to/command \[args\]
+                This port variant installs in its own prefix under ${opt_libc}, from where it can be used \
+                by overloading the used libc runtime with\n\
+                > ${thePrefixBranch}/lib/ld-linux-x86-64.so.2 /path/to/command \[args\] \n\
+                or by changing an executable's "interpreter" using e.g.\n\
+                > patchelf --set-interpreter ${thePrefixBranch}/lib/ld-linux-x86-64.so.2 /path/to/command 
     configure.pre_args-replace \
         --prefix=${prefix} \
         --prefix=${thePrefix}
@@ -235,11 +240,14 @@ if {[is_mainport]} {
         }
 
         ####################
-        register_devport_standard_content
-        append_to_devport_standard_content ${thePrefix}/lib/*.map ${thePrefix}/lib/*.o ${thePrefix}/lib/libc.so ${thePrefix}/lib/libm.so
-#         append_to_devport_standard_content ${thePrefix}/lib/*.o
-        # these are ASCII file "links" that should also go into the -dev port
-#         devport_content-append ${thePrefix}/lib/libc.so ${thePrefix}/lib/libm.so
+        register_devport_standard_content ${thePrefix}
+        # lib[cm].so are ASCII file "links" that should also go into the -dev port
+        append_to_devport_standard_content \
+            ${thePrefix}/lib/*.map \
+            ${thePrefix}/lib/*.o \
+            ${thePrefix}/lib/*/*.o \
+            ${thePrefix}/lib/libc.so \
+            ${thePrefix}/lib/libm.so
         create_devport_content_archive
         ####################
     }
