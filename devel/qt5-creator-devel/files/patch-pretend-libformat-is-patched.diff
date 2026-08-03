@@ -1,0 +1,15 @@
+diff --git src/plugins/clangformat/clangformatplugin.cpp src/plugins/clangformat/clangformatplugin.cpp
+index 9b76a086..0ce38658 100644
+--- src/plugins/clangformat/clangformatplugin.cpp
++++ src/plugins/clangformat/clangformatplugin.cpp
+@@ -70,6 +70,10 @@ using namespace ProjectExplorer;
+ 
+ namespace ClangFormat {
+ 
++#ifndef KEEP_LINE_BREAKS_FOR_NON_EMPTY_LINES_BACKPORTED
++#define KEEP_LINE_BREAKS_FOR_NON_EMPTY_LINES_BACKPORTED pretend-it-is
++#endif
++
+ #ifdef KEEP_LINE_BREAKS_FOR_NON_EMPTY_LINES_BACKPORTED
+ class ClangFormatStyleFactory : public CppTools::CppCodeStylePreferencesFactory
+ {

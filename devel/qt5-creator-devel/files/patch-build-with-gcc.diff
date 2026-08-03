@@ -1,0 +1,71 @@
+diff --git src/libs/sqlite/sqlite-lib.pri src/libs/sqlite/sqlite-lib.pri
+index 1ab76313..d050fe68 100644
+--- src/libs/sqlite/sqlite-lib.pri
++++ src/libs/sqlite/sqlite-lib.pri
+@@ -1,3 +1,6 @@
++CONFIG -= c++14 c++1y
++CONFIG += c++17
++
+ shared {
+     DEFINES += BUILD_SQLITE_LIBRARY
+ } else {
+diff --git src/libs/clangsupport/clangsupport-lib.pri src/libs/clangsupport/clangsupport-lib.pri
+index fa4a06fe..0ad8818c 100644
+--- src/libs/clangsupport/clangsupport-lib.pri
++++ src/libs/clangsupport/clangsupport-lib.pri
+@@ -1,3 +1,6 @@
++CONFIG -= c++14 c++1y
++CONFIG += c++17
++
+ shared {
+     DEFINES += CLANGSUPPORT_BUILD_LIB
+ } else {
+diff --git src/plugins/clangformat/clangformat-source.pri src/plugins/clangformat/clangformat-source.pri
+index 4aafbe77..51403f1d 100644
+--- src/plugins/clangformat/clangformat-source.pri
++++ src/plugins/clangformat/clangformat-source.pri
+@@ -1,3 +1,6 @@
++CONFIG -= c++14 c++1y
++CONFIG += c++17
++
+ INCLUDEPATH += $$PWD
+ 
+ HEADERS += \
+diff --git src/plugins/plugins.pro src/plugins/plugins.pro
+index 12d87206..0fd8fda4 100644
+--- src/plugins/plugins.pro
++++ src/plugins/plugins.pro
+@@ -75,7 +75,7 @@ qtHaveModule(serialport) {
+ }
+ 
+ qtHaveModule(quick) {
+-    SUBDIRS += qmlprofiler perfprofiler ctfvisualizer
++    SUBDIRS += perfprofiler ctfvisualizer
+ } else {
+     warning("QmlProfiler, PerfProfiler and CTF Visualizer plugins have been disabled since the Qt Quick module is not available.")
+ }
+diff --git src/plugins/help/qlitehtml/litehtml/include/litehtml/os_types.h src/plugins/help/qlitehtml/litehtml/include/litehtml/os_types.h
+index 5e38c824..49465356 100644
+--- src/plugins/help/qlitehtml/litehtml/include/litehtml/os_types.h
++++ src/plugins/help/qlitehtml/litehtml/include/litehtml/os_types.h
+@@ -1,6 +1,8 @@
+ #ifndef LH_OS_TYPES_H
+ #define LH_OS_TYPES_H
+ 
++#include <cstdint>
++
+ namespace litehtml
+ {
+ #if defined( WIN32 ) || defined( _WIN32 ) || defined( WINCE )
+diff --git src/plugins/help/qlitehtml/litehtml/include/litehtml/types.h src/plugins/help/qlitehtml/litehtml/include/litehtml/types.h
+index 682fd735..aae53ed7 100644
+--- src/plugins/help/qlitehtml/litehtml/include/litehtml/types.h
++++ src/plugins/help/qlitehtml/litehtml/include/litehtml/types.h
+@@ -2,6 +2,7 @@
+ #define LH_TYPES_H
+ 
+ #include <stdlib.h>
++#include <cstdint>
+ #include <memory>
+ #include <map>
+ #include <vector>

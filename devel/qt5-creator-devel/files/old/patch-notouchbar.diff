@@ -1,0 +1,34 @@
+diff --git src/libs/utils/touchbar/touchbar.pri src/libs/utils/touchbar/touchbar.pri
+index 5f185957857..68ac8e1023d 100644
+--- src/libs/utils/touchbar/touchbar.pri
++++ src/libs/utils/touchbar/touchbar.pri
+@@ -1,6 +1,6 @@
+ HEADERS += $$PWD/touchbar.h
+ 
+-macos {
++macosNew {
+     HEADERS += \
+         $$PWD/touchbar_mac_p.h \
+         $$PWD/touchbar_appdelegate_mac_p.h
+diff --git src/libs/utils/utils.qbs src/libs/utils/utils.qbs
+index de630888885..8964cf05c6d 100644
+--- src/libs/utils/utils.qbs
++++ src/libs/utils/utils.qbs
+@@ -379,7 +379,7 @@ Project {
+             files: "touchbar.h"
+             Group {
+                 name: "TouchBar implementation"
+-                condition: qbs.targetOS.contains("macos")
++                condition: qbs.targetOS.contains("macosNew")
+                 files: [
+                     "touchbar_appdelegate_mac_p.h",
+                     "touchbar_mac_p.h",
+@@ -389,7 +389,7 @@ Project {
+             }
+             Group {
+                 name: "TouchBar stub"
+-                condition: !qbs.targetOS.contains("macos")
++                condition: !qbs.targetOS.contains("macosNew")
+                 files: "touchbar.cpp"
+             }
+         }

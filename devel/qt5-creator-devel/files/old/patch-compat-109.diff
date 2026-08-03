@@ -1,0 +1,26 @@
+diff --git src/libs/utils/theme/theme_mac.mm src/libs/utils/theme/theme_mac.mm
+index 8d95c88630b5e2ff19f412432d5d8c1fc3ffa4e8..60dce9ed782fa61ae333e3af599cc12c73e64750 100644
+--- src/libs/utils/theme/theme_mac.mm
++++ src/libs/utils/theme/theme_mac.mm
+@@ -31,8 +31,11 @@
+ #include <AppKit/AppKit.h>
+ 
+ #if !QT_MACOS_PLATFORM_SDK_EQUAL_OR_ABOVE(__MAC_10_14)
++// #ifndef __NSi_10_14
++//     #define __NSi_10_14 introduced=10.14
++// #endif
+ @interface NSApplication (MojaveForwardDeclarations)
+-@property (strong) NSAppearance *appearance NS_AVAILABLE_MAC(10_14);
++@property (strong) NSAppearance *appearance NS_AVAILABLE_MAC(10_9);
+ @end
+ #endif
+ 
+@@ -46,7 +49,7 @@ void forceMacOSLightAquaApperance()
+ #else // Xcode 8
+     if (QOperatingSystemVersion::current() >= QOperatingSystemVersion(QOperatingSystemVersion::MacOS, 10, 14, 0))
+ #endif
+-        NSApp.appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
++        static_cast<NSApplication*>(NSApp).appearance = [NSAppearance appearanceNamed:NSAppearanceNameAqua];
+ }
+ 
+ } // Internal

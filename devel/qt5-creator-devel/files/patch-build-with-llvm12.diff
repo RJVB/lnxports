@@ -1,0 +1,15 @@
+diff --git src/plugins/clangformat/clangformatutils.cpp src/plugins/clangformat/clangformatutils.cpp
+index e0eb2827..d6721bd9 100644
+--- src/plugins/clangformat/clangformatutils.cpp
++++ src/plugins/clangformat/clangformatutils.cpp
+@@ -51,8 +51,8 @@ static clang::format::FormatStyle qtcStyle()
+     style.Language = FormatStyle::LK_Cpp;
+     style.AccessModifierOffset = -4;
+     style.AlignAfterOpenBracket = FormatStyle::BAS_Align;
+-    style.AlignConsecutiveAssignments = false;
+-    style.AlignConsecutiveDeclarations = false;
++    style.AlignConsecutiveAssignments = FormatStyle::ACS_None;
++    style.AlignConsecutiveDeclarations = FormatStyle::ACS_None;
+     style.AlignEscapedNewlines = FormatStyle::ENAS_DontAlign;
+ #if LLVM_VERSION_MAJOR >= 11
+     style.AlignOperands = FormatStyle::OAS_Align;

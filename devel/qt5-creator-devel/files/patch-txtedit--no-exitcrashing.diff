@@ -1,0 +1,30 @@
+diff --git src/plugins/texteditor/texteditor.cpp src/plugins/texteditor/texteditor.cpp
+index fb5673aea38..af82b1f5a0f 100644
+--- src/plugins/texteditor/texteditor.cpp
++++ src/plugins/texteditor/texteditor.cpp
+@@ -375,13 +375,13 @@ public:
+         }
+     }
+ 
+-private:
+     void abortHandlers()
+     {
+         for (BaseHoverHandler *handler : m_handlers)
+             handler->abort();
+     }
+ 
++private:
+     TextEditorWidget *m_widget;
+     const QList<BaseHoverHandler *> &m_handlers;
+ 
+@@ -844,6 +844,10 @@ TextEditorWidgetPrivate::TextEditorWidgetPrivate(TextEditorWidget *parent)
+     m_fileEncodingLabelAction = m_toolBar->addWidget(m_fileEncodingLabel);
+ 
+     m_extraSelections.reserve(NExtraSelectionKinds);
++    connect(qApp, &QCoreApplication::aboutToQuit, this, [&]() {
++        m_hoverHandlerRunner.abortHandlers();
++        m_hoverHandlers.clear();
++    });
+ }
+ 
+ TextEditorWidgetPrivate::~TextEditorWidgetPrivate()
