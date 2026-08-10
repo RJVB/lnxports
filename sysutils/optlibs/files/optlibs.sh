@@ -5,7 +5,7 @@ DIRS="${MPPREFIX}"
 LIBDIRS=""
 
 for d in ${DIRS} ;do
-	for sd in lib lib/x86_64-linux-gnu libexec/qt5/lib ;do
+	for sd in lib lib/x86_64-linux-gnu lib/libgcc libexec/qt5/lib ;do
 		if [ -d ${d}/${sd} ] ;then
 			case ${LD_LIBRARY_PATH} in
 				*${d}/${sd}*)
