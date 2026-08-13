@@ -60,7 +60,9 @@ if {${os.platform} eq "darwin"} {
         github.setup    qt-creator qt-creator 2ddc75276212b7a8dccabbfede790023425afb3c
         # corresponding qbs branch obtained from `git pull --recurse-submodules ; git submodule update`:
         set qbs.branch  53c8000f034b68fae41d3f071be9ab5fe875827b
-        version         4.13.82.111
+        version         4.13.82.111 ; revision 1
+        ## NB: the post-destroot contains a recursive touch for all .qml files under ${prefix}/share/qtcreator/
+        ##     that shouldn't be required after a true version update
         distname        qt-creator-opensource-src-git
     }
     if {[string match *gcc* ${configure.compiler}]} {
@@ -247,6 +249,7 @@ if { ${subport} eq ${name} || ${subport} eq "${name}-devel" } {
             qt5.add_app_wrapper qtcreator5-remote qtcreator "" ${prefix}/bin
             reinplace "s|\"\$@\"|-noload Welcome \"\$@\"|g" ${destroot}${prefix}/bin/qtcreator5-remote
         }
+        system "touch `find ${destroot}${prefix}/share/qtcreator -name \"*.qml\"`]"
     }
 
     build.post_args-append -wk
