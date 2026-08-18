@@ -13,7 +13,7 @@ if {${os.platform} eq "linux" && [file exists /usr/bin/python3.4]} {
 #     our own site-packages directory to the path.
     maintainers     gmail.com:rjvbertin
     version         [exec /usr/bin/python3.4 -c "import sys ; print('%d.%d.%d' %(sys.version_info.major,sys.version_info.minor,sys.version_info.micro))"]
-    revision        1
+    revision        2
     set is_wrapper  yes
 } else {
     # Remember to keep py34-tkinter and py34-gdbm's versions sync'd with this
@@ -57,10 +57,6 @@ if {[tbool is_wrapper]} {
         reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/python${branch}
         reinplace "s|@SUFFIX@|${branch}|g" ${destroot}${prefix}/bin/python${branch}
         reinplace "s|@BRANCH@|${branch}|g" ${destroot}${prefix}/bin/python${branch}
-        xinstall -m 755 ${filespath}/python-wrapper.sh ${destroot}${prefix}/bin/python${major}
-        reinplace "s|@PREFIX@|${prefix}|g" ${destroot}${prefix}/bin/python${major}
-        reinplace "s|@SUFFIX@|${major}|g" ${destroot}${prefix}/bin/python${major}
-        reinplace "s|@BRANCH@|${branch}|g" ${destroot}${prefix}/bin/python${major}
         xinstall -m 755 -d ${destroot}${prefix}/lib/python${branch}/site-packages
         touch ${destroot}${prefix}/lib/python${branch}/site-packages/placeholder
         xinstall -m 755 -d ${destroot}${python.prefix}/bin
