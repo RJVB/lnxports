@@ -21,7 +21,7 @@ checksums               rmd160  01f76afac6ddc9267dda3a0510795b8d2df57247 \
 #                         size    3121036
 
 
-python.versions 27 34 35 36 37
+python.versions 27 34 35 36 37 38 39 310 311 312 313
 subport "${name}-common" {}
 
 if {${subport} eq "${name}-common"} {
