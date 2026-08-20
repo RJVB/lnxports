@@ -8,7 +8,7 @@ for d in ${DIRS} ;do
 	for sd in lib lib/x86_64-linux-gnu lib/libgcc libexec/qt5/lib ;do
 		if [ -d ${d}/${sd} ] ;then
 			case ${LD_LIBRARY_PATH} in
-				*${d}/${sd}*)
+				${d}/${sd}|:${d}/${sd}|${d}/${sd}:)
 					# already included
 					;;
 				*)
@@ -33,6 +33,7 @@ case $0 in
 		LIBDIRS="${LIBDIRS}:${MPPREFIX}/lib/samba"
 		;;
 esac
+
 if [ "${LD_LIBRARY_PATH}" != "" ] ;then
 	export LD_LIBRARY_PATH="${LIBDIRS}:${LD_LIBRARY_PATH}"
 else
