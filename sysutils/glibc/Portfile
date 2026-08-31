@@ -10,10 +10,11 @@ name            glibc
 set baseversion 2.29
 set urev        3
 set opt_libc    /opt/glibc
-set thePrefix   ${opt_libc}/${baseversion}
-set thePrefixBranch \
-                ${opt_libc}/[lindex [split ${baseversion} .] 0]
-version         ${baseversion}.${urev} ; revision 3
+set thePrefixVersioned \
+                ${opt_libc}/${baseversion}
+set branch      [lindex [split ${baseversion} .] 0]
+set thePrefix   ${opt_libc}/${branch}
+version         ${baseversion}.${urev} ; revision 4
 description     The GNU C library
 long_description \
                 The GNU C library. Corresponds to the following Ubuntu packages: \
@@ -23,6 +24,8 @@ long_description \
 
 variant opt_libc conflicts I_read_the_info description "Install into ${thePrefix}" {}
 variant I_read_the_info conflicts opt_libc description "use this variant to signal that you read `port info ${name}`" {}
+variant werror description {build with -Werror; may break builds with too-new compilers but also protect against errors} {}
+
 if { ! [variant_isset opt_libc] } {
     long_description-append \n\
                 NB this port variant should be installed ONLY as the very FIRST port to be installed. \
@@ -40,12 +43,12 @@ if { ! [variant_isset opt_libc] } {
     long_description-append \n\
                 This port variant installs in its own prefix under ${opt_libc}, from where it can be used \
                 by overloading the used libc runtime with\n\
-                > ${thePrefixBranch}/lib/ld-linux-x86-64.so.2 /path/to/command \[args\] \n\
+                > ${thePrefix}/lib/ld-linux-x86-64.so.2 /path/to/command \[args\] \n\
                 or by changing an executable's "interpreter" using e.g.\n\
-                > patchelf --set-interpreter ${thePrefixBranch}/lib/ld-linux-x86-64.so.2 /path/to/command 
+                > patchelf --set-interpreter ${thePrefix}/lib/ld-linux-x86-64.so.2 /path/to/command 
     configure.pre_args-replace \
-        --prefix=${prefix} \
-        --prefix=${thePrefix}
+                --prefix=${prefix} \
+                --prefix=${thePrefix}
     langselect_prefix \
         ${thePrefix}
 }
@@ -150,12 +153,18 @@ patchfiles-append \
 configure.dir   ${workpath}/build
 build.dir       ${configure.dir}
 configure.cmd   ${worksrcpath}/configure
-# our own gmake hangs on the stdio_common subdir?!
-#build.cmd       gmake
+# our own gmake v4.4 hangs on the stdio_common subdir, but v4.2 is OK?!
+build.cmd       gmake-4.2
 build.post_args-append \
-                -k PARALLELMFLAGS=-j${build.jobs}
+                -wk
 destroot.post_args-append \
-                -k -j${build.jobs} PARALLELMFLAGS=-j${build.jobs}
+                -wk
+if {${build.cmd} eq "gmake-4.2"} {
+    build.post_args-append \
+                PARALLELMFLAGS=-j${build.jobs}
+    destroot.post_args-append \
+                PARALLELMFLAGS=-j${build.jobs}
+}
 
 # set MAKEINFO to prevent build failures because of local-remove-manual.patch
 # If Ubuntu cannot distribute the manual for licensing reasons we'd probably
@@ -164,6 +173,11 @@ configure.env-append \
                 MAKEINFO=:
 build.env-append \
                 MAKEINFO=:
+
+configure.cflags-append \
+                 -no-pie -fno-PIE
+configure.cxxflags-append \
+                 -no-pie -fno-PIE
 
 configure.args-append \
                 --without-selinux \
@@ -174,6 +188,10 @@ configure.args-append \
                 --with-pkgversion="LinuxPorts GLIBC ${version}" \
                 --disable-static-pie --enable-cet --enable-systemtap \
                 --enable-rpath
+if {![variant_isset werror]} {
+    configure.args-append \
+                --disable-werror
+}
 
 platform linux {
     configure.ldflags-append -Wl,-rpath=${prefix}/lib -Wl,--dynamic-linker=${thePrefix}/lib/ld-${baseversion}.so
@@ -185,10 +203,10 @@ platform linux {
         destroot.env-append LDFLAGS=-Wl,-rpath=${thePrefix}/lib -L${thePrefix}/lib
         destroot.violate_mtree yes
         notes-append \
-"port:glibc has been installed in ${thePrefix}, accessible also via ${thePrefixBranch}.
+"port:glibc has been installed in ${thePrefix}, accessible also via ${thePrefixVersioned} .
 Making applications run against it is tricky and requires using `patchelf` to change
 the ld.so loader used:
-> patchelf --set-interpreter ${thePrefixBranch}/lib/ld-linux-x86-64.so.2 /path/to/someApplication
+> patchelf --set-interpreter ${thePrefix}/lib/ld-linux-x86-64.so.2 /path/to/someApplication
 A dedicated copy of the `ldd` utility has been installed as ${prefix}/bin/gldd and it
 can be used to check if an application is likely to run against this libc version:
 > ${prefix}/bin/gldd -r /path/to/someApplication
@@ -207,6 +225,7 @@ create_devport port:${name}
 if {[is_mainport]} {
 
     depends_build-append \
+                port:gmake-4.2 \
                 port:patchelf
     conflicts_build-append \
                 gettext-dev
@@ -222,10 +241,10 @@ if {[is_mainport]} {
         # provided by port:libiconv
         file delete ${destroot}${thePrefix}/bin/iconv
 
-        xinstall ${worksrcpath}/debian/local/etc/ld.so.conf ${destroot}${thePrefix}/etc/
+        xinstall ${filespath}/debian/local/etc/ld.so.conf ${destroot}${thePrefix}/etc/
         reinplace "s|/etc|${thePrefix}/etc|g" ${destroot}${thePrefix}/etc/ld.so.conf
         xinstall -m 755 -d ${destroot}${thePrefix}/etc/ld.so.conf.d
-        xinstall {*}[glob ${worksrcpath}/debian/local/etc/ld.so.conf.d/*] ${destroot}${thePrefix}/etc/ld.so.conf.d/
+        xinstall {*}[glob ${filespath}/debian/local/etc/ld.so.conf.d/*] ${destroot}${thePrefix}/etc/ld.so.conf.d/
         foreach c [glob -nocomplain /etc/ld.so.conf.d/*] {
             if {![file exists ${destroot}${thePrefix}/etc/ld.so.conf.d/[file tail ${c}]]} {
                 ln -s ${c} ${destroot}${thePrefix}/etc/ld.so.conf.d/
@@ -235,8 +254,8 @@ if {[is_mainport]} {
         file rename ${destroot}${thePrefix}/etc/ld.so.cache ${destroot}${thePrefix}/etc/ld.so.cache.stock
 
         if {[variant_isset opt_libc]} {
-            ln -s ${baseversion} ${destroot}${thePrefixBranch}
-            ln -s ${thePrefixBranch}/bin/ldd ${destroot}${prefix}/bin/gldd
+            ln -s ${branch} ${destroot}${thePrefixVersioned}
+            ln -s ${thePrefix}/bin/ldd ${destroot}${prefix}/bin/gldd
         }
 
         ####################
@@ -250,6 +269,19 @@ if {[is_mainport]} {
             ${thePrefix}/lib/libm.so
         create_devport_content_archive
         ####################
+    }
+
+    pre-activate {
+        if {[variant_isset opt_libc]} {
+            if {[file exists ${thePrefixVersioned}] && [file type ${thePrefixVersioned}] eq "directory"} {
+                # we might be able to deactivate the currently active version of ourselves here?
+                ui_warn "NB: activation will fail if ${thePrefixVersioned} is not emptied by deactiving port:glibc."
+                ui_msg "   In that case, you will need to deactivate the currently active port:glibc,"
+                ui_msg "   decide what to do with ${thePrefixVersioned} (e.g. rename it to ${thePrefix}!)"
+                ui_msg "   and then activate port:glibc@${version}_${revision} manually"
+                ui_warn "NB2: you will also need to install or \"archive\" port:glibc-dev manually!"
+            }
+        }
     }
 
     post-activate {
