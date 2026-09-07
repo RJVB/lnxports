@@ -56,7 +56,7 @@ if {${subport} eq ${name}} {
     variant gtk3 conflicts gtk2 description {} {}
     variant x11 conflicts quartz {}
     PortGroup               stub 1.0
-    depends_lib             port:wxWidgets-3.0
+    depends_run             port:wxWidgets-3.0
     return
 }
 set branch          [join [lrange [split ${version} .] 0 1] .]
