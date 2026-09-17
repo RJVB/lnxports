@@ -119,7 +119,7 @@ if {${subport} eq "${name}"} {
 }
 
 if {${os.platform} ne "darwin"} {
-    set stubports {libasprintf libtextstyle libasprintf-dev libtextstyle-dev gettext-runtime gettext-tools-libs}
+    set stubports {libasprintf libtextstyle gettext-runtime gettext-tools-libs}
 } else {
     set stubports {libasprintf libtextstyle gettext-runtime gettext-tools-libs}
 }
