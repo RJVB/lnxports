@@ -49,7 +49,7 @@ if {${subport} eq ${name}} {
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.12 ; revision 4
+version             3.0.23
 license             GPL-2
 
 platforms           darwin
@@ -59,9 +59,9 @@ dist_subdir         VLC
 distname            vlc-${version}
 use_xz              yes
 
-checksums           rmd160  5975ce21a183893ae2541ac38d5131329e539fbd \
-                    sha256  eff458f38a92126094f44f2263c2bf2c7cdef271b48192d0fe7b1726388cf879
-#                     size    25997468
+checksums           rmd160  426e98485e65a2c8ae95ff0b5fb9d17bc08b5181 \
+                    sha256  e891cae6aa3ccda69bf94173d5105cbc55c7a7d9b1d21b9b21666e69eff3e7e0
+#                     size    26486988
 
 platform darwin {
     # Enable HFS compression of the workdir if the compress_workdir PortGroup is installed
@@ -73,7 +73,7 @@ platform darwin {
 depends_build       port:pkgconfig \
                     port:protobuf-cpp \
                     port:protobuf-cpp-dev \
-				port:gettext-dev
+                    port:gettext-dev
 
 set vlcprefix       ${prefix}/libexec/vlc3
 configure.pre_args-replace \
@@ -168,6 +168,19 @@ depends_lib-append  port:libdvdread \
                     port:libebml
 depends_run-append  port:libaacs \
                     port:libbdplus
+
+variant ffmpeg8 description {build against ffmpeg8} {
+    PortGroup       conflicts_build 1.0
+    depends_lib-replace \
+                    path:lib/libavcodec.diff:ffmpeg \
+                    port:ffmpeg8
+    conflicts_build-append \
+                    ffmpeg-dev
+    configure.pkg_config_path-append \
+                    ${prefix}/libexec/ffmpeg8/lib/pkgconfig
+    configure.ldflags-append \
+                    -Wl,-rpath,${prefix}/libexec/ffmpeg8/lib
+}
 
 platform darwin {
     # VLC calls ibtools which isn't part of the commandline tools
@@ -305,7 +318,12 @@ pre-configure {
 }
 
 # do autoreconf only the first time around
-use_autoreconf      [expr ![file exists ${worksrcpath}/config.status]]
+use_autoreconf      yes
+pre-configure {
+    if {[file exists ${worksrcpath}/config.status]} {
+        use_autoreconf no
+    }
+}
 autoreconf.cmd      ./bootstrap
 autoreconf.pre_args
 autoreconf.args
@@ -471,6 +489,11 @@ if {${subport} ne "lib${name}"} {
     }
 }
 
+platform linux {
+    # ffsll detection is brittle, but we do have it, and the fixup file is likely to be wrong:
+    configure.args-append   ac_cv_have_decl_ffsll=yes
+}
+
 variant quartz description {just a placeholder on Linux} {
 #     depends_lib-delete      port:libsamplerate
 #     depends_lib-append      port:BGHUDAppKit
@@ -512,8 +535,8 @@ if {${subport} ne "lib${name}"} {
         description {Enable all variants except x11 (and except freerdp, currently)} {}
 }
 
+#                            patch-dav1dv1.diff
 patchfiles-append           patch-for-lua53.diff \
-                            patch-dav1dv1.diff \
                             patch-plugin_in_cpp.diff
 
 platform darwin {
