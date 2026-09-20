@@ -94,7 +94,7 @@ destroot.env-append "MAKEFLAGS=LIBTOOL=${prefix}/bin/rlibtool"
 ##################################################
 
 fromPorts::depends  lib-append \
-                    path:lib/libavcodec.diff:ffmpeg \
+                    path:bin/ffmpeg:ffmpeg \
                     port:a52dec \
                     port:avahi \
                     port:bzip2 \
@@ -172,7 +172,7 @@ depends_run-append  port:libaacs \
 variant ffmpeg8 description {build against ffmpeg8} {
     PortGroup       conflicts_build 1.0
     depends_lib-replace \
-                    path:lib/libavcodec.diff:ffmpeg \
+                    path:bin/ffmpeg:ffmpeg \
                     port:ffmpeg8
     conflicts_build-append \
                     ffmpeg-dev
