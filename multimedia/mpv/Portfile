@@ -8,7 +8,7 @@ PortGroup               active_variants 1.1
 PortGroup               LTO 1.0
 
 # Please revbump mpv whenever linked ffmpeg is updated!
-github.setup            mpv-player mpv 0.41.0 v
+github.setup            mpv-player mpv 0.41.0 v ; revision 1
 github.tarball_from     archive
 conflicts               mpv-legacy
 categories              multimedia
@@ -125,7 +125,7 @@ configure.cppflags-replace \
                         -isystem${prefix}/include
 
 platform macosx {
-    # Clear CPATH and LIBRARY_PATH because a ncurses include file
+    # Clear CPATH and LIBRARY_PATH because an ncurses include file
     # conflicts with the one in MacPorts. It doesn't matter much anyway
     # because the swift module in mpv doesn't have any dependencies to
     # link against.
@@ -537,6 +537,15 @@ variant bundle description {Enable the optional macOS bundle of mpv} {
         xinstall -d -m 0755 ${destroot}${applications_dir}
         copy ${build.dir}/mpv.app ${destroot}${applications_dir}
     }
+}
+
+platform linux {
+variant wayland description {Enable Wayland support} {
+    depends_lib-append  port:wayland
+    configure.args-replace \
+                        -Dwayland=disabled \
+                        -Dwayland=enabled
+}
 }
 
 build.pre_args-prepend -k 0
