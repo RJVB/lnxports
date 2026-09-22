@@ -17,18 +17,20 @@ depends_build-append \
 subport wayland-protocols {
     gitlab.instance     https://gitlab.freedesktop.org
     default gitlab.master_sites {${gitlab.homepage}/-/releases/${git.branch}/downloads}
-    gitlab.setup        wayland wayland-protocols 1.38
+    gitlab.setup        wayland wayland-protocols 1.49
     use_bzip2           no
     use_xz              yes
 
     description         wayland protocols
     long_description    ${description}
-    checksums           rmd160  eedac45ed4053e56aa5948403c565e3b24dc8465 \
-                        sha256  ff17292c05159d2b20ce6cacfe42d7e31a28198fa1429a769b03af7c38581dbe
-#                         size    102648
+    checksums           rmd160  ac2ed7866e9c52c685a927c2ae20ac3411c4d390 \
+                        sha256  ec4c8f74942d6dff7ace8b4ce4764f0ef9ff618a935d974ea77edee2ad240b14
+#                         size    150612
     supported_archs     noarch
     installs_libs       no
 
+    depends_build-append \
+                        port:wayland
     depends_run-append  port:wayland
 
     post-destroot {
@@ -41,7 +43,7 @@ subport wayland-protocols {
 subport wayland {
     gitlab.instance     https://gitlab.freedesktop.org
     default gitlab.master_sites {${gitlab.homepage}/-/releases/${git.branch}/downloads}
-    gitlab.setup        wayland wayland 1.23.0
+    gitlab.setup        wayland wayland 1.26.0
     homepage            https://wayland.freedesktop.org
     use_bzip2           no
     use_xz              yes
@@ -49,7 +51,6 @@ subport wayland {
     description         Wayland client libraries
     long_description    Wayland is intended as a simpler replacement for X11 \
                         easier to develop and maintain. GTk, Qt, GNOME and KDE have backends for it.
-#master_sites        https://gitlab.freedesktop.org/${name}/${name}/-/releases/${version}/downloads
 
     depends_lib-append  port:libffi
     depends_run-append  port:libxml2 \
@@ -66,10 +67,9 @@ subport wayland {
     }
 
     installs_libs       yes
-    version             1.23.0
-    checksums           rmd160  d70012060e8d5f9894d97a03a236524653bc4b18 \
-                        sha256  05b3e1574d3e67626b5974f862f36b5b427c7ceeb965cb36a4e6c2d342e45ab2
-#                     size    237900
+    checksums           rmd160  0c1b7b1cf510c1b34bcda8e7d4af8efa41122c1a \
+                        sha256  64176eaa46e4969903e286f8e5ef8331affc17fdf03ac9b58381d2b23162b7a3
+#                         size    612384
 
 
     livecheck.url       https://wayland.freedesktop.org/releases.html
