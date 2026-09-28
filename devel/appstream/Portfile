@@ -6,7 +6,8 @@ PortGroup           qt5 1.0
 PortGroup           locale_select 1.0
 
 name                AppStream
-version             0.16.4
+# revbump for systemd upgrade
+version             0.16.4 ; revision 1
 license             LGPL-2+
 categories          devel
 maintainers         gmail.com:rjvbertin openmaintainer
@@ -74,6 +75,10 @@ post-destroot {
         ln -s ../libappstream.so.4 ${destroot}${prefix}/lib/x86_64-linux-gnu/
         ln -s ../libAppStreamQt.so.2 ${destroot}${prefix}/lib/x86_64-linux-gnu/
     }
+    # don't let subsequent builds think libxmlb is provided by an independent port
+    # because that would cause the dependency to go missing.
+    xinstall -m 755 -d ${destroot}${prefix}/libexec/AppStream/pkgconfig
+    file rename ${destroot}${prefix}/lib/pkgconfig/xmlb.pc ${destroot}${prefix}/libexec/AppStream/pkgconfig/
 }
 
 destroot.violate_mtree yes

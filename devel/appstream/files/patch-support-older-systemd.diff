@@ -1,16 +1,23 @@
 diff --git src/orig.as-system-info.c src/as-system-info.c
-index 73e4746..40c3863 100644
+index f1f5671..f003d9a 100644
 --- src/orig.as-system-info.c
 +++ src/as-system-info.c
-@@ -50,8 +50,12 @@
+@@ -49,8 +49,19 @@
+ #include <sys/types.h>
  #include <sys/sysctl.h>
  #endif
- #ifdef HAVE_SYSTEMD
-+#if __has_include(<systemd/sd-hwdb.h>) && __has_include(<systemd/sd-device.h>)
++#ifdef HAVE_SYSTEMD
++#if __has_include(<systemd/sd-hwdb.h>)
  #include <systemd/sd-hwdb.h>
++#else
++#undef HAVE_SYSTEMD
++#warning "systemd/sd-hwdb.h not found"
++#endif
++#if __has_include(<systemd/sd-device.h>)
  #include <systemd/sd-device.h>
 +#else
 +#undef HAVE_SYSTEMD
++#warning "systemd/sd-device.h not found"
 +#endif
  #endif
  
