@@ -80,7 +80,6 @@ set py_nodot_ver 311
 
 depends_build-append \
                 port:pkgconfig \
-                port:m4 \
                 port:gperf \
                 port:perl5 \
                 port:python${py_nodot_ver} \
@@ -110,9 +109,9 @@ patchfiles-append \
 # patchfiles-append \
 #                 patch-include-order-fix.diff
 
-if {[file exists ${filespath}/debian/series]} {
-    foreach p [exec cat ${filespath}/debian/series] {
-        patchfiles-append debian/${p}
+if {[file exists ${filespath}/ubuntu/series]} {
+    foreach p [exec cat ${filespath}/ubuntu/series] {
+        patchfiles-append ubuntu/${p}
     }
 }
 
