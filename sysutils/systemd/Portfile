@@ -2,6 +2,7 @@
 
 PortSystem 1.0
 PortGroup       meson 1.0
+PortGroup       openssl 1.0
 PortGroup       LTO 1.0
 
 set realName    systemd
@@ -74,6 +75,8 @@ worksrcdir      ${realName}-stable-${orig.version}
 #                tzdata <!nocheck>,
 #                libcap2-bin <!nocheck>,
 #                iproute2 <!nocheck>,
+## TODO: make ports for
+# libcap2, libkmod
 
 set py_ver      3.11
 set py_nodot_ver 311
@@ -87,10 +90,13 @@ depends_build-append \
                 port:py${py_nodot_ver}-jinja2 \
                 port:py${py_nodot_ver}-pefile
 depends_lib-append \
+                port:acl \
                 port:gettext \
                 port:zlib \
                 port:bzip2 \
+                port:lz4 \
                 port:xz \
+                port:zstd \
                 port:libxslt \
                 port:curl \
                 port:lz4 \
