@@ -1,31 +1,36 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem 1.0
+PortGroup       meson 1.0
+PortGroup       LTO 1.0
 
-name            systemd
-set orig.version 234
-set ubuntu.version 2ubuntu5
-version         ${orig.version}.${ubuntu.version} ; revision 1
+set realName    systemd
+name            ${realName}
+
+set orig.version 255.4
+set ubuntu.version 1ubuntu8.17
+set ubuntu.name noble
+version         ${orig.version}.${ubuntu.version}
 description     The systemd meta-package
 long_description \
-                Corresponds to the following Ubuntu \"ArtVark\" packages: \
-                systemd systemd-sysv systemd-container systemd-journal-remote \
-                systemd-coredump systemd-tests libpam-systemd libnss-myhostname \
-                libnss-mymachines libnss-resolve libnss-systemd libsystemd0 \
-                libsystemd-dev udev libudev1 libudev-dev udev-udeb libudev1-udeb
+                Corresponds to the following Ubuntu \"${ubuntu.name}\" packages: \
+                systemd systemd-boot systemd-boot-efi systemd-container \
+                systemd-coredump systemd-dev systemd-homed systemd-journal-remote \
+                systemd-oomd systemd-resolved systemd-standalone-sysusers \
+                systemd-standalone-tmpfiles systemd-sysv systemd-tests systemd-timesyncd \
+                systemd-userdbd libnss-mymachines libnss-resolve libnss-systemd \
+                libpam-systemd libsystemd-dev libsystemd-shared libsystemd0 \
+                libudev-dev libudev1 udev
 
-homepage        https://launchpad.net/ubuntu/+source/${name}/${version}
+homepage        https://launchpad.net/ubuntu/${ubuntu.name}/+source/${realName}
 license         GPL-2
 platforms       linux
 
 master_sites    https://launchpad.net/ubuntu/+archive/primary/+files/
-distname        ${name}_${orig.version}.orig
-checksums       rmd160  499d645f6df29f59f8bc5b642773e678747feedb \
-                sha256  da3e69d10aa1c983d33833372ad4929037b411ac421fb085c8cee79ae1d80b6a
-worksrcdir      ${name}-${orig.version}
-
-configure.env-append \
-                LIBS="-L${prefix}/lib -lintl"
+distname        ${realName}_${orig.version}.orig
+checksums       rmd160 d165bc4647bc06a0eb2e2ea800c6c0ba82019559 \
+                sha256 96e75bd08c57ad401677456fb88ef54a9f05bb1695693013bc6ecce839640fd5
+worksrcdir      ${realName}-stable-${orig.version}
 
 # an undoubtedly tiny selection of all required dependencies; debian/control lists:
 #                pkg-config,
@@ -70,12 +75,18 @@ configure.env-append \
 #                libcap2-bin <!nocheck>,
 #                iproute2 <!nocheck>,
 
+set py_ver      3.11
+set py_nodot_ver 311
+
 depends_build-append \
                 port:pkgconfig \
                 port:m4 \
                 port:gperf \
                 port:perl5 \
-                port:py36-lxml
+                port:python${py_nodot_ver} \
+                port:py${py_nodot_ver}-lxml \
+                port:py${py_nodot_ver}-jinja2 \
+                port:py${py_nodot_ver}-pefile
 depends_lib-append \
                 port:gettext \
                 port:zlib \
@@ -87,7 +98,6 @@ depends_lib-append \
                 port:lzo2 \
                 port:libpcap \
                 port:gnutls \
-                port:python36 \
                 port:libgpg-error \
                 port:libgcrypt \
                 port:util-linux
@@ -95,70 +105,73 @@ depends_lib-append \
 # Ubuntu's patches:
 patch.pre_args  -Np1
 patchfiles-append \
-                patch-no-gold-linker.diff
-if {[file exists ${filespath}/series]} {
-    foreach p [exec cat ${filespath}/series] {
-        patchfiles-append ${p}
+                patch-use-python311.diff \
+                patch-resolvedmanager.diff
+# patchfiles-append \
+#                 patch-include-order-fix.diff
+
+if {[file exists ${filespath}/debian/series]} {
+    foreach p [exec cat ${filespath}/debian/series] {
+        patchfiles-append debian/${p}
     }
-}
-# fix a number of files that need to include sys/mount.h before linux/fs.h
-# somehow this wasn't necessary when I built this port before.
-patchfiles-append \
-                patch-include-order-fix.diff
-
-post-patch {
-    ui_msg "--->  Running autogen.sh"
-    system -W ${worksrcpath} "./autogen.sh"
-    reinplace "s|-Werror=format=2||g" ${worksrcpath}/configure.ac
-}
-
-configure.post_args-append "|& tee -a ${workpath}/.macports.${subport}.configure.log'"
-pre-configure {
-    set cmd [join "${configure.cmd} ${configure.pre_args} ${configure.args}"]
-    configure.pre_args-prepend "-cf '${configure.cmd} "
-    configure.cmd "/bin/csh"
-    ui_debug "configure command set to `${configure.cmd} ${configure.pre_args} ${configure.args} ${configure.post_args}`"
-    system "echo '## ${cmd}' > ${workpath}/.macports.${subport}.configure.log"
 }
 
 configure.cflags-append \
                 -ftrapv \
                 -Wno-error=nonnull
 
+## these were already non-recognised in systemd 234:
+#                 --enable-compat-libs
+#                 --enable-kdbus
+#                 --enable-tcpwrap
+#                 --disable-keymap
+## these have gone:
+#                 --with-efi-libdir=${prefix}/lib
+#                 --with-efi-ldsdir=${prefix}/lib
+#                 --with-efi-includedir=${prefix}/include
 configure.args-append \
-                --disable-lto \
-                --disable-selinux \
-                --disable-apparmor \
-                --enable-compat-libs \
-                --enable-kdbus \
-                --sysconfdir=${prefix}/etc \
-                --localstatedir=/var \
-                --libdir=${prefix}/lib \
-                --with-rootprefix=${prefix} \
-                --with-pamlibdir=/lib/security \
-                --with-pamconfdir=/etc/pam.d \
-                --with-bashcompletiondir=${prefix}/share/bash-completion/completions \
-                --with-efi-libdir=${prefix}/lib \
-                --with-efi-ldsdir=${prefix}/lib \
-                --with-efi-includedir=${prefix}/include \
-                --enable-tcpwrap \
-                --disable-keymap \
-                --enable-hwdb \
-                PYTHON=${prefix}/bin/python3.6
+                --sysconfdir ${prefix}/etc \
+                --localstatedir /var \
+                --libdir ${prefix}/lib \
+                --datadir ${prefix}/share \
+                -Dselinux=disabled \
+                -Dapparmor=disabled \
+                -Drootprefix=${prefix} \
+                -Ddbuspolicydir=${prefix}/share/dbus-1/system.d \
+                -Ddbussessionservicedir=${prefix}/share/dbus-1/services \
+                -Ddbussystemservicedir=${prefix}/share/dbus-1/system-services \
+                -Ddbus-interfaces-dir=${prefix}/share/dbus-1/interfaces \
+                -Dpamlibdir=/lib/security \
+                -Dpamconfdir=/etc/pam.d \
+                -Dbashcompletiondir=${prefix}/share/bash-completion/completions \
+                -Dhwdb=true \
+                -Dman=enabled
+# preserve the default hierarchy used in the previous port version:
+configure.args-append \
+                -Ddefault-hierarchy=hybrid
 
 platform linux {
-    configure.ldflags-append -Wl,-rpath=${prefix}/lib  -Wl,-rpath=${prefix}/lib/systemd
+    configure.ldflags-append -Wl,-rpath=${prefix}/lib  -Wl,-rpath=${prefix}/lib/systemd -lintl
     build.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib  -Wl,-rpath=${prefix}/lib/systemd
     destroot.env-append LDFLAGS=-Wl,-rpath=${prefix}/lib  -Wl,-rpath=${prefix}/lib/systemd
 }
 
-build.post_args-append      V=1 VERBOSE=1 -k
-destroot.violate_mtree      yes
+build.pre_args-prepend \
+                -k 0
+destroot.violate_mtree \
+                yes
 
 post-destroot {
     foreach b [glob -nocomplain ${destroot}/bin/*] {
         file rename ${b} ${destroot}${prefix}/bin
     }
+
+    # these I don't like to provide:
+    foreach b {telinit shutdown runlevel reboot poweroff init halt} {
+        file delete ${destroot}${prefix}/sbin/${b}
+        file delete ${destroot}${prefix}/share/man/man8/${b}.8
+    }
+
     file delete ${destroot}/etc/init.d/README
     file delete ${destroot}/var/log/README
 }

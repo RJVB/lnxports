@@ -1,0 +1,12 @@
+diff --git a/src/resolve/resolved-manager.c b/src/resolve/resolved-manager.c
+index b52619e..0cb3988 100644
+--- a/src/resolve/resolved-manager.c
++++ b/src/resolve/resolved-manager.c
+@@ -2,6 +2,7 @@
+ 
+ #include <fcntl.h>
+ #include <netinet/in.h>
++#include <linux/in.h>
+ #include <poll.h>
+ #include <sys/ioctl.h>
+ #include <sys/stat.h>

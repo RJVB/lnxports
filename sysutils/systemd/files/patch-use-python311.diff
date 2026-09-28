@@ -1,0 +1,51 @@
+diff --git a/meson.build b/meson.build
+index a577ac7..3f1ea6d 100644
+--- a/meson.build
++++ b/meson.build
+@@ -414,6 +414,11 @@ if cc.get_id() == 'gcc'
+         possible_common_cc_flags += '-Wno-unused-result'
+ endif
+ 
++# Disable -Wformat-overflow on gcc with -O3 to prevent false positives.
++if cc.get_id() == 'gcc' and '-O3' in c_args
++        possible_common_cc_flags += '-Wno-format-overflow'
++endif
++
+ # --as-needed and --no-undefined are provided by meson by default,
+ # run 'meson configure' to see what is enabled
+ possible_link_flags = [
+@@ -1656,7 +1661,7 @@ conf.set10('SYSTEMD_SLOW_TESTS_DEFAULT', slow_tests)
+ ############################################################
+ 
+ pymod = import('python')
+-python = pymod.find_installation('python3', required : true, modules : ['jinja2'])
++python = pymod.find_installation('python3.11', required : true, modules : ['jinja2'])
+ python_39 = python.language_version().version_compare('>=3.9')
+ 
+ ############################################################
+@@ -1784,7 +1789,7 @@ efi_arch = {
+         'x86'         : 'ia32',
+ }.get(host_machine.cpu_family(), '')
+ 
+-pyelftools = pymod.find_installation('python3',
++pyelftools = pymod.find_installation('python3.11',
+                                      required : get_option('bootloader'),
+                                      modules : ['elftools'])
+ 
+@@ -1805,7 +1810,7 @@ if have and efi_arch == 'x64' and cc.links('''
+         efi_cpu_family_alt = 'x86'
+ endif
+ 
+-pefile = pymod.find_installation('python3', required: false, modules : ['pefile'])
++pefile = pymod.find_installation('python3.11', required: false, modules : ['pefile'])
+ 
+ want_ukify = get_option('ukify').require(python_39 and (want_tests != 'true' or pefile.found()), error_message : 'Python >= 3.9 and pefile required').allowed()
+ conf.set10('ENABLE_UKIFY', want_ukify)
+@@ -2152,6 +2157,7 @@ subdir('src/environment-d-generator')
+ subdir('src/escape')
+ subdir('src/firstboot')
+ subdir('src/fsck')
++subdir('src/fsckd')
+ subdir('src/fstab-generator')
+ subdir('src/getty-generator')
+ subdir('src/gpt-auto-generator')
