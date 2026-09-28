@@ -1,0 +1,79 @@
+diff --git qt/orig.pool.h qt/pool.h
+index 64514fa..880d402 100644
+--- qt/orig.pool.h
++++ qt/pool.h
+@@ -75,11 +75,20 @@ public:
+         FlagPreferOsMetainfo   = 1 << 6,
+         FlagMonitor            = 1 << 7,
+ 
++#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
++#ifndef Q_MOC_RUN
+         // DEPRECATED
+         FlagLoadOsCollection   [[deprecated]] = FlagLoadOsCatalog,
+         FlagReadCollection   [[deprecated]] = FlagLoadOsCatalog,
+         FlagReadMetainfo     [[deprecated]] = FlagLoadOsMetainfo,
+         FlagReadDesktopFiles [[deprecated]] = FlagLoadOsDesktopFiles,
++#endif
++#else
++        #define FlagLoadOsCollection   FlagLoadOsCatalog
++        #define FlagReadCollection   FlagLoadOsCatalog
++        #define FlagReadMetainfo     FlagLoadOsMetainfo
++        #define FlagReadDesktopFiles FlagLoadOsDesktopFiles
++#endif
+     };
+ 
+     /**
+@@ -91,9 +100,17 @@ public:
+      * Flags on how caching should be used.
+      **/
+     enum CacheFlags {
++#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
++#ifndef Q_MOC_RUN
+         CacheFlagNone      [[deprecated]] = 0,
+         CacheFlagUseUser   [[deprecated]] = 1 << 0,
+         CacheFlagUseSystem [[deprecated]] = 1 << 1,
++#endif
++#else
++        CacheFlagNone      = 0,
++        CacheFlagUseUser   = 1 << 0,
++        CacheFlagUseSystem = 1 << 1,
++#endif
+     };
+ 
+     /**
+diff --git qt/orig.component.h qt/component.h
+index 21ff3c5..30f3938 100644
+--- qt/orig.component.h
++++ qt/component.h
+@@ -92,7 +92,13 @@ class APPSTREAMQT_EXPORT Component {
+             UrlKindContribute,
+ 
+             // deprecated
++#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
++#ifndef Q_MOC_RUN
+             UrlTranslate   [[deprecated]] = UrlKindTranslate,
++#endif
++#else
++            #define UrlTranslate   UrlKindTranslate
++#endif
+         };
+         Q_ENUM(UrlKind)
+ 
+diff --git qt/orig.metadata.h qt/metadata.h
+index a68b6bf..f7eb123 100644
+--- qt/orig.metadata.h
++++ qt/metadata.h
+@@ -41,7 +41,13 @@ class APPSTREAMQT_EXPORT Metadata {
+             FormatStyleCatalog,
+ 
+             // DEPRECATED
++#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
++#ifndef Q_MOC_RUN
+             FormatStyleCollection   [[deprecated]] = FormatStyleCatalog,
++#endif
++#else
++            #define FormatStyleCollection   = FormatStyleCatalog
++#endif
+         };
+         Q_ENUM(FormatStyle)
+ 

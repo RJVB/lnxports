@@ -6,7 +6,7 @@ PortGroup           qt5 1.0
 PortGroup           locale_select 1.0
 
 name                AppStream
-version             0.12.11
+version             0.16.4
 license             LGPL-2+
 categories          devel
 maintainers         gmail.com:rjvbertin openmaintainer
@@ -25,9 +25,9 @@ long_description    AppStream is a cross-distro effort for providing metadata fo
 master_sites        https://www.freedesktop.org/software/appstream/releases/
 use_xz              yes
 
-checksums           rmd160  bcbb746c36bd42891524142728caed548a17a0ea \
-                    sha256  194d871ae057c6bf2b5a95e98d77da2b0107996f593b2ac0b0b88fa8ba452f11
-#                     size    2120548
+checksums           rmd160  f926706d7b651753412c667f17d0f73aa66d6a7f \
+                    sha256  d4f722d79c6a2f29d9dc5c6f464927469543353f386581c778c9bed7c60a54ed
+#                     size    2570176
 
 depends_build-append  \
                     port:pkgconfig \
@@ -41,11 +41,22 @@ depends_lib-append \
                     port:libstemmer \
                     port:lmdb
 
+patchfiles-append   patch-support-gcc.diff \
+                    patch-support-older-qt5.diff \
+                    patch-support-older-systemd.diff
+
+compiler.cxx_standard   2014
+configure.cxxflags-append \
+                    -std=gnu++14
+
 # attempt to fix build on 10.6 by blacklisting troublesome compilers
 compiler.blacklist-append  *gcc-3.* *gcc-4.* {clang < 300}
 
-configure.ldflags-append -lintl \
-                    -Wl,-rpath,${prefix}/lib/x86_64-linux-gnu
+configure.ldflags-append -lintl
+# prevent a build conflict with the previous version:
+# (the current version no longer installs to that location)
+configure.ldflags-delete \
+                     -Wl,-rpath,${prefix}/lib/x86_64-linux-gnu
 
 # gobject-introspection uses g-ir-scanner, which uses $CC from env
 build.env-append    "CC=${configure.cc}"
@@ -56,6 +67,13 @@ configure.args      -Dqt=true \
                     -Dapidocs=false \
                     -Dapt-support=true
 
-meson.save_configure_cmd "log too"
+post-destroot {
+    if {[file exists ${prefix}/lib/x86_64-linux-gnu/libappstream.so.4]} {
+        # dependents may look for our libraries in this location:
+        xinstall -m 755 -d ${destroot}${prefix}/lib/x86_64-linux-gnu
+        ln -s ../libappstream.so.4 ${destroot}${prefix}/lib/x86_64-linux-gnu/
+        ln -s ../libAppStreamQt.so.2 ${destroot}${prefix}/lib/x86_64-linux-gnu/
+    }
+}
 
 destroot.violate_mtree yes

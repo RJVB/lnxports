@@ -1,0 +1,12 @@
+diff --git qt/tests/orig.asqt-pool-test.cpp qt/tests/asqt-pool-test.cpp
+index 8cbed9a..c080940 100644
+--- qt/tests/orig.asqt-pool-test.cpp
++++ qt/tests/asqt-pool-test.cpp
+@@ -20,6 +20,7 @@
+ #include <QtTest>
+ #include <QObject>
+ #include <QTemporaryFile>
++#include <memory>
+ #include "pool.h"
+ #include "testpaths.h"
+ 

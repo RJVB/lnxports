@@ -1,0 +1,17 @@
+diff --git src/orig.as-system-info.c src/as-system-info.c
+index 73e4746..40c3863 100644
+--- src/orig.as-system-info.c
++++ src/as-system-info.c
+@@ -50,8 +50,12 @@
+ #include <sys/sysctl.h>
+ #endif
+ #ifdef HAVE_SYSTEMD
++#if __has_include(<systemd/sd-hwdb.h>) && __has_include(<systemd/sd-device.h>)
+ #include <systemd/sd-hwdb.h>
+ #include <systemd/sd-device.h>
++#else
++#undef HAVE_SYSTEMD
++#endif
+ #endif
+ 
+ #include "as-utils-private.h"
