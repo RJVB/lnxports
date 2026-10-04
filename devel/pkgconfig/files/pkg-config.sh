@@ -1,7 +1,7 @@
 #!/bin/sh
 
 if [ "${PKG_CONFIG_MACPORTS_ONLY}" = "" ] ;then
-	if [ "${PKG_CONFIG}" = "" -o "${PKG_CONFIG}" = $0 ] ;then
+	if [ "${PKG_CONFIG}" = "" -o "${PKG_CONFIG}" = $0 -o "`which ${PKG_CONFIG}`" = $0 ] ;then
 		PKG_CONFIG_SYS="pkg-config-mp"
 		SYSPKG_PATH="`/usr/bin/pkg-config --variable pc_path pkg-config`"
 	else
