@@ -1,18 +1,20 @@
---- modules/gui/qt/components/orig.interface_widgets.cpp	2018-04-12 19:39:42.000000000 +0200
-+++ modules/gui/qt/components/interface_widgets.cpp	2018-05-11 15:32:19.440989999 +0200
-@@ -50,12 +50,12 @@
- #include <QBitmap>
- #include <QUrl>
- 
-+# if defined(QT5_HAS_XCB)
-+#  include <xcb/xcb.h>
-+# endif
- #if defined (QT5_HAS_X11)
- # include <X11/Xlib.h>
- # include <QX11Info>
--# if defined(QT5_HAS_XCB)
--#  include <xcb/xproto.h>
--# endif
+diff --git modules/gui/qt/components/interface_widgets.cpp.orig modules/gui/qt/components/interface_widgets.cpp
+index cb48dc5..0f699a0 100644
+--- modules/gui/qt/components/interface_widgets.cpp.orig
++++ modules/gui/qt/components/interface_widgets.cpp
+@@ -52,6 +52,15 @@ static inline int qrand() {
+ }
  #endif
- #ifdef QT5_HAS_WAYLAND
- # include QPNI_HEADER
+ 
++// RJVB
++#if defined(QT5_HAS_XCB)
++# include <xcb/xcb.h>
++#endif
++#if defined (QT5_HAS_X11)
++# include <X11/Xlib.h>
++# include <QX11Info>
++#endif
++
+ #if defined (QT_HAS_X11)
+ # include <X11/Xlib.h>
+ # include "qt_x11.hpp"

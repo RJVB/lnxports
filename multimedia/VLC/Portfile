@@ -8,6 +8,7 @@ variant qt5 conflicts qt4 description {Build using Qt5 UI.} {}
 if {[variant_isset qt5]} {
     PortGroup       qt5 1.0
 }
+set LTO.allow_ThinLTO no
 PortGroup           LTO 1.0
 PortGroup           locale_select 1.0
 PortGroup           save_configure_cmd 1.0
@@ -49,7 +50,7 @@ if {${subport} eq ${name}} {
 universal_variant   no
 supported_archs     x86_64
 
-version             3.0.23
+version             3.0.24
 license             GPL-2
 
 platforms           darwin
@@ -59,9 +60,9 @@ dist_subdir         VLC
 distname            vlc-${version}
 use_xz              yes
 
-checksums           rmd160  426e98485e65a2c8ae95ff0b5fb9d17bc08b5181 \
-                    sha256  e891cae6aa3ccda69bf94173d5105cbc55c7a7d9b1d21b9b21666e69eff3e7e0
-#                     size    26486988
+checksums           rmd160  67ac6835b27c754ae7519e02a25b7f77d361780a \
+                    sha256  e7cab503d1d7d5849b89d2cf0e1ee60d0ef6d012407791b644b9cfc0cc225fdf
+#                     size    27620304
 
 platform darwin {
     # Enable HFS compression of the workdir if the compress_workdir PortGroup is installed
@@ -146,7 +147,6 @@ fromPorts::depends  lib-append \
                     port:orc \
                     port:p11-kit \
                     port:readline \
-                    port:schroedinger \
                     port:speex \
                     port:taglib \
                     port:tiff \
@@ -232,7 +232,7 @@ platform linux {
 # # libmatroska-dev libmodplug-dev libmpcdec-dev libmpeg2-4-dev libmtp-dev libncursesw5-dev
 # # libnotify-dev libogg-dev libomxil-bellagio-dev libopus-dev libpng-dev libpulse-dev
 # # libqt4-dev libraw1394-dev libresid-builder-dev librsvg2-dev libsamplerate0-dev
-# # libschroedinger-dev libsdl-image1.2-dev libsdl1.2-dev libshout3-dev libsidplay2-dev
+# # libsdl-image1.2-dev libsdl1.2-dev libshout3-dev libsidplay2-dev
 # # libsmbclient-dev libspeex-dev libspeexdsp-dev libssh2-1-dev libtag1-dev libtar-dev
 # # libtheora-dev libtwolame-dev libudev-dev libupnp-dev libv4l-dev libva-dev libvcdinfo-dev
 # # libvdpau-dev libvorbis-dev libx11-dev libx264-dev libxcb-composite0-dev libxcb-keysyms1-dev
@@ -281,21 +281,14 @@ if {${configure.compiler} eq "macports-clang-5.0"} {
 }
 }
 
-pre-fetch {
-    if {${os.platform} eq "darwin" && ${os.major} < 10} {
-        ui_error "${name} ${version} requires Mac OS X 10.6 or greater."
-        return -code error "incompatible Mac OS X version"
-    }
-}
-
 depends_lib-append  port:lua
 
 # VLC doesn't currently build for me using port:clang-3.8
 compiler.blacklist-append \
                     gcc-4.2 llvm-gcc-4.2 macports-clang-3.8 {clang < 300}
 
-patchfiles-append   configure.ac-no-arch.patch \
-                    patch-soundfont-path.diff
+patchfiles-append   configure.ac-no-arch.patch
+#                     patch-soundfont-path.diff
 
 if {![info exists replaced_by]} {
     post-patch {
@@ -327,7 +320,11 @@ pre-configure {
 autoreconf.cmd      ./bootstrap
 autoreconf.pre_args
 autoreconf.args
-depends_build-append port:libtool port:autoconf port:automake
+depends_build-append \
+                    port:libtool \
+                    port:autoconf \
+                    port:automake \
+                    port:desktop-file-utils
 configure.env-append \
                     "CPP=${configure.cc} -E" \
                     "CXXCPP=${configure.cxx} -E" \
@@ -374,7 +371,7 @@ configure.args-append \
                     --enable-dca --enable-png --enable-twolame \
                     --enable-speex --enable-theora --enable-x264 --enable-x265 --enable-postproc \
                     --disable-gst-decode --enable-avcodec --enable-avformat --enable-swscale \
-                    --enable-fluidsynth --enable-schroedinger --enable-vpx
+                    --enable-fluidsynth --enable-vpx
 
 # Video Plugins. We do our best to deactivate X11 and disable its auto-detection by
 # claiming the headers and libs are somewhere they're not.
@@ -481,8 +478,8 @@ variant wayland description {enable experimental Wayland support} {
 
 if {${subport} ne "lib${name}"} {
     if {[variant_isset qt5]} {
-        patchfiles-append       patch-vlc-qt-configureac.diff \
-                                patch-vlc-qt-x11.diff
+        patchfiles-append       patch-vlc-qt-configureac.diff
+#                                patch-vlc-qt-x11.diff
 
         configure.args-replace  --disable-vlc --enable-vlc
         configure.args-replace  --disable-qt --enable-qt
@@ -519,6 +516,16 @@ variant freerdp description {Build the FreeRDP support; currently dysfunctional}
                                 -DFREERDP_VERSION_MAJOR=1 \
                                 -DFREERDP_VERSION_MINOR=1
     configure.args-replace      --disable-freerdp --enable-freerdp
+}
+
+variant rist description {include support for the RIST streaming protocol} {
+    depends_lib-append      port:librist
+    configure.args-append   --enable-librist
+    # see https://formulae.brew.sh/formula/librist for implementing port:librist
+    pre-fetch {
+        ui_error "port:librist is not yet available"
+        return -code error "unimplemented variant"
+    }
 }
 
 variant huge \
