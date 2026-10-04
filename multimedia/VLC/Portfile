@@ -3,18 +3,24 @@
 PortSystem          1.0
 PortGroup           active_variants 1.1
 
+set LTO.allow_ThinLTO no
+PortGroup           LTO 1.0
+
+name                VLC
+
+# subport librist {}
+# if {${subport} eq "librist"} {
+#     return
+# }
+# 
 variant qt5 conflicts qt4 description {Build using Qt5 UI.} {}
 
 if {[variant_isset qt5]} {
     PortGroup       qt5 1.0
 }
-set LTO.allow_ThinLTO no
-PortGroup           LTO 1.0
 PortGroup           locale_select 1.0
 PortGroup           save_configure_cmd 1.0
 PortGroup           from_ports_variant 1.0
-
-name                VLC
 
 categories          multimedia devel
 maintainers         gmail.com:rjvbertin openmaintainer
