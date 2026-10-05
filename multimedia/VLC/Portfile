@@ -15,11 +15,10 @@ maintainers         gmail.com:rjvbertin openmaintainer
 
 subport librist {}
 if {${subport} eq "librist"} {
-    PortGroup       github 1.1
+    PortGroup       gitlab 1.1
 
-    github.provider code.videolan.org
-    github.setup    rist librist 0.2.20 v
-    master_sites    https://${github.provider}/rist/librist/-/archive/v${version}
+    gitlab.instance https://code.videolan.org
+    gitlab.setup    rist librist 0.2.20 v
     distname        ${subport}-v${version}
     description     reliable internet stream protocol
     long_description \
@@ -28,9 +27,9 @@ if {${subport} eq "librist"} {
                     TR-06-1, TR-06-2, and TR-06-3. The protocol goes by the codename "RIST"
     license         BSD
     platforms       linux darwin
-    checksums       rmd160  f3c026002f2c7d194cf9b71f32d34d618d46a951 \
-                    sha256  9e40eeb87f014790531ad41326cc271b930a65962e4b15231b301fc59b29fe31
-#                     size    3507334
+    checksums       rmd160  54bee773fd691b5a3003381c38d612e103aebd74 \
+                    sha256  20a5cdce88ccaeab11cd8860c82c565472f21572705d9a476265c5148bf4aeb1
+#                     size    3019114
 
     depends_build-append \
                     port:binutils \
