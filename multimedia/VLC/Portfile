@@ -2,17 +2,63 @@
 
 PortSystem          1.0
 PortGroup           active_variants 1.1
+if {${subport} eq "librist"} {
+    PortGroup       meson 1.0
+}
 
 set LTO.allow_ThinLTO no
 PortGroup           LTO 1.0
 
 name                VLC
+categories          multimedia devel
+maintainers         gmail.com:rjvbertin openmaintainer
 
-# subport librist {}
-# if {${subport} eq "librist"} {
-#     return
-# }
-# 
+subport librist {}
+if {${subport} eq "librist"} {
+    PortGroup       github 1.1
+
+    github.provider code.videolan.org
+    github.setup    rist librist 0.2.20 v
+    master_sites    https://${github.provider}/rist/librist/-/archive/v${version}
+    distname        ${subport}-v${version}
+    description     reliable internet stream protocol
+    long_description \
+                    A {*}${description} library that can be used to easily add the RIST protocol to your application. \
+                    This code was written to comply with the Video Services Forum (VSF) Technical Recommendations \
+                    TR-06-1, TR-06-2, and TR-06-3. The protocol goes by the codename "RIST"
+    license         BSD
+    platforms       linux darwin
+    checksums       rmd160  f3c026002f2c7d194cf9b71f32d34d618d46a951 \
+                    sha256  9e40eeb87f014790531ad41326cc271b930a65962e4b15231b301fc59b29fe31
+#                     size    3507334
+
+    depends_build-append \
+                    port:binutils \
+                    port:pkgconfig
+    depends_lib-append \
+                    port:lz4 \
+                    port:libcjson \
+                    port:nettle \
+                    port:gnutls \
+                    port:gmp \
+                    port:libmicrohttpd
+
+    # build fails when forcing gnutls support?!
+    configure.args-append \
+                    -Dtest=false \
+                    -Duse_mbedtls=false \
+                    -Duse_nettle=true \
+                    -Dbuilt_tools=false
+
+    variant tools description {install the tools} {
+        configure.args-replace \
+                    -Dbuilt_tools=false \
+                    -Dbuilt_tools=true
+    }
+
+    return
+}
+
 variant qt5 conflicts qt4 description {Build using Qt5 UI.} {}
 
 if {[variant_isset qt5]} {
@@ -22,8 +68,6 @@ PortGroup           locale_select 1.0
 PortGroup           save_configure_cmd 1.0
 PortGroup           from_ports_variant 1.0
 
-categories          multimedia devel
-maintainers         gmail.com:rjvbertin openmaintainer
 
 description         VLC is a cross-platform media player and streaming server
 long_description    VLC media player is a highly portable multimedia player for \
@@ -527,15 +571,10 @@ variant freerdp description {Build the FreeRDP support; currently dysfunctional}
 variant rist description {include support for the RIST streaming protocol} {
     depends_lib-append      port:librist
     configure.args-append   --enable-librist
-    # see https://formulae.brew.sh/formula/librist for implementing port:librist
-    pre-fetch {
-        ui_error "port:librist is not yet available"
-        return -code error "unimplemented variant"
-    }
 }
 
 variant huge \
-    requires jack shout svg \
+    requires jack shout svg rist \
     description {Enable all variants except quartz, smb, freerdp and x11} {}
 
 if {${subport} ne "lib${name}"} {
