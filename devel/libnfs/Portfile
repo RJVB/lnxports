@@ -2,14 +2,14 @@
 
 PortSystem          1.0
 PortGroup           cmake   1.1
-PortGroup           github  1.1
+PortGroup           gitsrc  1.1
 PortGroup           LTO     1.0
 
-github.setup        sahlberg libnfs b7118586654f4aee2bd722fdca0d07b3d08683f5
+gitsrc.setup        sahlberg libnfs b7118586654f4aee2bd722fdca0d07b3d08683f5
 version             6.0.2.154
 fetch.type          git
 distname            ${name}-git
-github.tarball_from archive
+gitsrc.tarball_from archive
 
 description         NFS client library
 

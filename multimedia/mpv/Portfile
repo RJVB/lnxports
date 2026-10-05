@@ -1,15 +1,15 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem              1.0
-PortGroup               github 1.1
+PortGroup               gitsrc 1.1
 PortGroup               meson 1.0
 PortGroup               legacysupport 1.1
 PortGroup               active_variants 1.1
 PortGroup               LTO 1.0
 
 # Please revbump mpv whenever linked ffmpeg is updated!
-github.setup            mpv-player mpv 0.41.0 v ; revision 1
-github.tarball_from     archive
+gitsrc.setup            mpv-player mpv 0.41.0 v ; revision 1
+gitsrc.tarball_from     archive
 conflicts               mpv-legacy
 categories              multimedia
 license                 GPL-2+

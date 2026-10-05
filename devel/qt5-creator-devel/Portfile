@@ -11,7 +11,7 @@ if {![variant_isset qt5stock_kde]} {
 PortGroup           qmake5 1.0
 # this is just to keep portindex happy:
 PortGroup           locale_select 1.0
-PortGroup           github 1.1
+PortGroup           gitsrc 1.1
 
 if {${os.platform} ne "darwin"} {
     langselect_qm_dir \
@@ -57,7 +57,7 @@ if {${os.platform} eq "darwin"} {
                         no
 ## last commit to require 5.12 : 2ddc75276212b7a8dccabbfede790023425afb3c (QBS: 53c8000f034b68fae41d3f071be9ab5fe875827b)
 ## after `git tag rjvb-4.13.82 -a -m "tag 4.13.82" f4bc5df89e5b`: version 4.13.82.111
-        github.setup    qt-creator qt-creator 2ddc75276212b7a8dccabbfede790023425afb3c
+        gitsrc.setup    qt-creator qt-creator 2ddc75276212b7a8dccabbfede790023425afb3c
         # corresponding qbs branch obtained from `git pull --recurse-submodules ; git submodule update`:
         set qbs.branch  53c8000f034b68fae41d3f071be9ab5fe875827b
         version         4.13.82.111 ; revision 1

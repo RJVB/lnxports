@@ -1,7 +1,7 @@
 # -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
 PortSystem 1.0
 
-PortGroup       github 1.1
+PortGroup       gitsrc 1.1
 ## Not sure why (I thought that) this was necessary:
 #PortGroup       libstdcxxabi 1.0
 
@@ -19,7 +19,7 @@ PortGroup       LTO 1.0
 PortGroup       save_configure_cmd 1.0
 PortGroup       devport 1.0
 
-github.setup    gnustep libobjc2 aca3916553665f01550832d02462bcf137c94c39
+gitsrc.setup    gnustep libobjc2 aca3916553665f01550832d02462bcf137c94c39
 fetch.type      git
 name            gnustep-libobjc2
 # after `git tag -a 2.3 -m "release 2.3" 0030d01bc7456503f176c0df371fe8e246623564`

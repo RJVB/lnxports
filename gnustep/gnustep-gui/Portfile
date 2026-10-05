@@ -4,13 +4,13 @@ PortSystem      1.0
 PortGroup       gnustep 1.0
 
 
-PortGroup       github 1.1
+PortGroup       gitsrc 1.1
 set LTO.disable_LTO yes
 set LTO.allow_ThinLTO no
 PortGroup       LTO 1.0
 PortGroup       save_configure_cmd 1.0
 
-github.setup    gnustep libs-gui 5809b86dee42610871d4f7e66677f40d61f6b598
+gitsrc.setup    gnustep libs-gui 5809b86dee42610871d4f7e66677f40d61f6b598
 fetch.type      git
 name            gnustep-gui
 distname        ${name}-git

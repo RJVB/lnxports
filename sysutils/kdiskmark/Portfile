@@ -3,7 +3,7 @@
 
 PortSystem          1.0
 
-PortGroup           github 1.1
+PortGroup           gitsrc 1.1
 PortGroup           qt5 1.0
 PortGroup           cmake 1.1
 PortGroup           locale_select 1.0
@@ -16,7 +16,7 @@ long_description    KDiskMark is an HDD and SSD benchmark tool with a very \
                     comprehensive benchmark result. 
 maintainers         gmail.com:rjvbertin openmaintainer
 
-github.setup        JonMagon KDiskMark 8a3ad488970e4d27bab35eecafcc934b86c17580
+gitsrc.setup        JonMagon KDiskMark 8a3ad488970e4d27bab35eecafcc934b86c17580
 fetch.type          git
 name                kdiskmark
 distname            ${name}-git

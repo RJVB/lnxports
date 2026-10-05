@@ -1,11 +1,11 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
 
 PortSystem          1.0
-PortGroup           github 1.1
+PortGroup           gitsrc 1.1
 PortGroup           meson 1.0
 PortGroup           fuse 1.0
 
-github.setup        Netatalk netatalk_client d35a1220aed01dea683bbb2a0f4a40ae0fba10a0
+gitsrc.setup        Netatalk netatalk_client d35a1220aed01dea683bbb2a0f4a40ae0fba10a0
 version             0.9.4.44
 
 fetch.type          git

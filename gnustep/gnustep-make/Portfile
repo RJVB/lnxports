@@ -1,12 +1,12 @@
 # -*- coding: utf-8; mode: tcl; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 4; truncate-lines: t -*- vim:fenc=utf-8:et:sw=4:ts=4:sts=4
 PortSystem 1.0
 
-PortGroup       github 1.1
+PortGroup       gitsrc 1.1
 set LTO.disable_LTO yes
 PortGroup       LTO 1.0
 PortGroup       save_configure_cmd 1.0
 
-github.setup    gnustep tools-make 677264e7ee96f787bd1a1d9823ab43c6c4922750
+gitsrc.setup    gnustep tools-make 677264e7ee96f787bd1a1d9823ab43c6c4922750
 fetch.type      git
 name            gnustep-make
 version         2.9.3.24 ; revision 1
