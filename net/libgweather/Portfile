@@ -1,0 +1,84 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem          1.0
+PortGroup           meson 1.0
+PortGroup           LTO 1.0
+PortGroup           locale_select 1.0
+
+name                libgweather
+version             3.36.1
+set branch          [join [lrange [split ${version} .] 0 1] .]
+maintainers         {devans @dbevans} openmaintainer
+categories          net gnome
+license             GPL-2+ LGPL-2.1+
+platforms           darwin
+description         Library to accessing online weather informations.
+
+long_description    libgweather is a library to access weather \
+                    information from online services for numerous \
+                    locations.
+
+homepage            https://wiki.gnome.org/Projects/LibGWeather
+master_sites        gnome:sources/${name}/${branch}/
+
+use_xz              yes
+
+checksums           rmd160  3add156fc57585e4b59c0be384f72f189f4b18fb \
+                    sha256  de2709f0ee233b20116d5fa9861d406071798c4aa37830ca25f5ef2c0083e450 \
+                    size    2702144
+
+depends_build-append \
+                    port:pkgconfig \
+                    port:python39
+
+depends_lib         port:geocode-glib \
+                    port:gobject-introspection \
+                    port:gtk3 \
+                    port:libxml2 \
+                    port:libsoup-2.4 \
+                    port:vala
+
+post-patch {
+    reinplace -W ${worksrcpath} "s|^#!.*python3|#!${prefix}/bin/python3.9|" \
+        data/update-locations.py \
+        data/check-observations.py \
+        data/locations_diff.py \
+        meson/meson_post_install.py
+}
+
+configure.args      -Dglade_catalog=false \
+                    -Dgtk_doc=false \
+                    -Dzoneinfo_dir=${prefix}/share/zoneinfo
+
+if {![info exists universal_possible]} {
+    set universal_possible [expr {${os.universal_supported} && [llength ${configure.universal_archs}] >= 2}]
+}
+# uses g-ir-scanner, which uses $CC from env
+if {${universal_possible} && [variant_isset universal]} {
+    foreach arch ${configure.universal_archs} {
+        lappend merger_build_env(${arch})  "CC=${configure.cc} -arch ${arch}"
+        lappend merger_destroot_env(${arch})  "CC=${configure.cc} -arch ${arch}"
+    }
+} else {
+    build.env-append       "CC=${configure.cc} ${configure.cc_archflags}"
+    destroot.env-append    "CC=${configure.cc} ${configure.cc_archflags}"
+}
+
+variant glade description {Enable building of glade catalog items} {
+    depends_lib-append  port:glade
+    configure.args-replace -Dglade_catalog=false -Dglade_catalog=true
+}
+
+# glade expects catalog modules and libraries to have a .so suffix
+post-destroot {
+    if {[variant_isset glade]} {
+        set libdir ${prefix}/lib
+        ln -s ${libdir}/libgweather-3.dylib ${destroot}${libdir}/libgweather-3.so
+    }
+}
+
+post-activate {
+    system "${prefix}/bin/glib-compile-schemas ${prefix}/share/glib-2.0/schemas"
+}
+
+livecheck.type      gnome
