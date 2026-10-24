@@ -614,7 +614,6 @@ livecheck.url   ${homepage}
 livecheck.regex {relnotes/([0-9.]+)\.html}
 
 
-meson.save_configure_cmd "install log"
 test.run yes
 
 post-activate {
