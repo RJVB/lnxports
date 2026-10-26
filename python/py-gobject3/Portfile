@@ -2,92 +2,109 @@
 
 PortSystem          1.0
 PortGroup           python 1.0
-PortGroup           meson 1.0
 
 name                py-gobject3
-set my_name         pygobject
-version             3.36.1
-set branch          [join [lrange [split ${version} .] 0 1] .]
+set theName         pygobject
+version             3.58.1
+
 categories-append   gnome
 license             LGPL-2.1+
-maintainers         {devans @dbevans} openmaintainer
-platforms           darwin
-description         Python bindings for GObject, version 3
+maintainers         {devans @dbevans} {mascguy @mascguy} openmaintainer
 
+description         Python bindings for GObject, version 3
 long_description    PyGObject is a Python dynamic module that enables developers to use the \
                     power of GObject, which is part of the GNOME platform.
 
 homepage            https://pygobject.readthedocs.io/
-master_sites        gnome:sources/${my_name}/${branch}/
-distname            ${my_name}-${version}
-use_xz              yes
 
-checksums           rmd160  841eb0d9a4fb25d0c27dc8d25b0e38f2bbc3f387 \
-                    sha256  d1bf42802d1cec113b5adaa0e7bf7f3745b44521dc2163588d276d5cd61d718f
-#                     size    556568
+checksums           rmd160  1a5eb9d57e5ae51d87ce47eacb031a44301f0454 \
+                    sha256  4c80598ade17fbaa7798e01a25d0bf29ce109740786026a074c5c62bb3e79d23
+#                     size    1408671
 
-python.versions     27 35 36 37 38 39 310 311 312 313
+# Note: 3.6 needed for a few old Gnome ports, remove once those have been migrated to 3.10+
+python.versions     27 36 37 38 39 310 311 312 313 314
+set supports_curver 310
 
 if {${name} ne ${subport}} {
-    depends_build-append    port:pkgconfig
+    PortGroup       save_configure_cmd 1.0
+    configure.save_build_cmd "install"
+
+    if {${python.version} < ${supports_curver}} {
+        version     3.44.1
+        revision    0
+        use_xz      yes
+
+        checksums   rmd160  6c6eb71defdef6095371bcddc33faf4db4e856e9 \
+                    sha256  3c6805d1321be90cc32e648215a562430e0d3d6edcda8f4c5e7a9daffcad5710
+#                    size    559432
+
+        depends_build-append \
+                    port:py${python.version}-setuptools
+    }
+
+    set branch              [join [lrange [split ${version} .] 0 1] .]
+    master_sites            gnome:sources/${theName}/${branch}/
+    distname                ${theName}-${version}
+
+    depends_build-append    path:bin/pkg-config:pkgconfig
 
     depends_lib-append      path:lib/pkgconfig/glib-2.0.pc:glib2 \
+                            path:lib/pkgconfig/gobject-introspection-1.0.pc:gobject-introspection \
                             port:libffi \
-                            port:gobject-introspection
-    if {${python.version} ne 27} {
-        depends_lib-append \
                             port:py${python.version}-cairo
-        if {${python.version} >= 39} {
-            # somewhere after 3.8 the _PyUnicode_AsStringAndSize macro was removed,
-            # so replace it with the function that it pointed to.
-            patchfiles-append \
-                            patch-compat_h.diff
+
+    compiler.c_standard     2011
+
+    configure.args-append   --buildtype=plain
+
+    # uses g-ir-scanner, which uses $CC from env
+    ## AND uses the meson PEP backend which also requires controlling via the environment
+    if {${universal_possible} && [variant_isset universal]} {
+        foreach arch ${configure.universal_archs} {
+            lappend merger_build_env(${arch}) \
+                            "CC=${configure.cc} -arch ${arch}" \
+                            "LDFLAGS=${configure.ldflags}"
+            lappend merger_destroot_env(${arch}) \
+                            "CC=${configure.cc} -arch ${arch}" \
+                            "LDFLAGS=${configure.ldflags}"
+        }
+    } else {
+        build.env-append    "CC=${configure.cc} ${configure.cc_archflags}" \
+                            "LDFLAGS=${configure.ldflags}"
+        destroot.env-append "CC=${configure.cc} ${configure.cc_archflags}" \
+                            "LDFLAGS=${configure.ldflags}"
+    }
+
+    if {${python.version} >= ${supports_curver}} {
+        python.pep517_backend \
+                            meson
+
+        depends_build-append \
+                            port:py${python.version}-packaging
+
+        configure.args-append \
+                            -Dpython=${python.bin} \
+                            -Dtests=false
+
+        # Hack: For now, manually install pkgconfig, as a wheel-based build disables that
+        post-destroot {
+            set pc_src_file "${worksrcpath}/pygobject-3.0.pc.in"
+            set pc_dest_dir "${destroot}${python.prefix}/lib/pkgconfig"
+            set pc_dest_file "${pc_dest_dir}/pygobject-3.0.pc"
+
+            xinstall -d "${pc_dest_dir}"
+            copy "${pc_src_file}" "${pc_dest_file}"
+            reinplace "s|@prefix@|${python.prefix}|" ${pc_dest_file}
+            reinplace "s|@exec_prefix@|${python.prefix}|" ${pc_dest_file}
+            reinplace "s|@includedir@|${python.include}/pygobject|" ${pc_dest_file}
+            reinplace "s|@datadir@|\${prefix}/share|" ${pc_dest_file}
+            reinplace "s|@datarootdir@|\${prefix}/share|" ${pc_dest_file}
+            reinplace "s|@VERSION@|${version}|" ${pc_dest_file}
         }
     }
 
-    depends_test            port:py${python.version}-pytest
-
-# #   blacklist compilers that do not support C11
-#     compiler.blacklist  *gcc-3.* *gcc-4.* {clang < 300}
-
-
-    use_configure           yes
-    configure.python        ${python.bin}
-    configure.pkg_config_path \
-                            ${python.prefix}/lib/pkgconfig
-    configure.pre_args      --prefix='${python.prefix}'
-    configure.args-append   -Dpython=${prefix}/bin/python${python.branch}
-    configure.cppflags-append \
-                            -I${python.prefix}/include
-
-    meson.save_configure_cmd "install log"
-
-    destroot.cmd            ${build.cmd}
-    destroot.target         install
-    destroot.destdir        DESTDIR=${destroot}
-# 
-    test.run                yes
-    test.env                PYTHONPATH=[glob -nocomplain ${worksrcpath}/build/lib*]
-    test.target             check
-
-    post-destroot {
-        set docdir ${prefix}/share/doc/${subport}
-        xinstall -d ${destroot}${docdir}
-        xinstall -m 0644 -W ${worksrcpath} \
-            COPYING NEWS PKG-INFO README.rst \
-            ${destroot}${docdir}
-
-        # register the package as installed for dependents using pkg_resources
-        # this is a minimal dist-info directory.
-        set dinfodir ${python.pkgd}/PyGObject-${version}.dist-info
-        if {![file exists ${destroot}${dinfodir}/METADATA]} {
-            xinstall -m 755 -d ${destroot}${dinfodir}
-            xinstall -m 644 ${worksrcpath}/PKG-INFO ${destroot}${dinfodir}/METADATA
-        }
-    }
-
-    livecheck.type  none
+    livecheck.type          none
 } else {
-    livecheck.type  gnome
-    livecheck.name  ${my_name}
+    livecheck.type          gnome
+    livecheck.name          ${theName}
 }
