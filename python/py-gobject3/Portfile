@@ -55,7 +55,11 @@ if {${name} ne ${subport}} {
 
     compiler.c_standard     2011
 
+    configure.pkg_config_path \
+                            ${python.prefix}/lib/pkgconfig
     configure.args-append   --buildtype=plain
+    build.env-append        "PKG_CONFIG_PATH=[join ${configure.pkg_config_path} :]"
+    destroot.env-append     "PKG_CONFIG_PATH=[join ${configure.pkg_config_path} :]"
 
     # uses g-ir-scanner, which uses $CC from env
     ## AND uses the meson PEP backend which also requires controlling via the environment
