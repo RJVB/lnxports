@@ -6,7 +6,7 @@ PortGroup               LTO 1.0
 PortGroup               save_configure_cmd 1.0
 
 name                    argyll
-version                 3.5.0
+version                 3.5.0 ; revision 1
 checksums               rmd160  4084cbe0829b21bc4d1c74d9b397b76df120c2e8 \
                         sha256  f8576ce5589fd15620abb73ff049ea31f55ddbd1bba6d1ffa87452658e7bc85f
 #                         size    15352322
@@ -107,6 +107,9 @@ post-destroot {
     delete ${worksrcpath}/bin/License.txt
     xinstall -m 755 {*}[glob ${worksrcpath}/${prefix}/bin/*] \
         ${destroot}${prefix}/bin
+    xinstall -m 755 -d ${destroot}${prefix}/share/metainfo
+    file rename ${destroot}${prefix}/bin/com.argyllcms.metainfo.xml \
+        ${destroot}${prefix}/share/metainfo
     # Install references
     xinstall -m 755 -d ${destroot}${prefix}/share/${name}/ref
     xinstall -m 644 {*}[glob ${worksrcpath}/ref/*] \
