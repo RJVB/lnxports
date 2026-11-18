@@ -1,0 +1,25 @@
+diff --git orig.Jambase Jambase
+index fa592c6..e73ecfb 100755
+--- orig.Jambase
++++ Jambase
+@@ -1041,7 +1041,6 @@ else if $(UNIX)
+ 	# Add some good defaults for OS X
+ 	if $(OS) = MACOSX {
+ 		CCFLAGS   		+= -Wno-sign-compare ;		# supress new gcc4 warnings ?
+-		CCFLAGS   		+= -fpascal-strings ;		# for compatibility with the OSX API
+ 		LINKFLAGS 		+= -framework Carbon ;		# default for .c
+ 		LINKFLAGS       += -framework Cocoa ;		# default for .m
+ 
+diff --git spectro/orig.Makefile.OSX spectro/Makefile.OSX
+index 485cbf4..06ded05 100644
+--- spectro/orig.Makefile.OSX
++++ spectro/Makefile.OSX
+@@ -26,7 +26,7 @@ LIBU      = ar -r
+ LIBOF     = 
+ RANLIB    = ranlib
+ AS        = as
+-CCFLAGSDEF   = -DUNIX -Wno-sign-compare -fpascal-strings -c
++CCFLAGSDEF   = -DUNIX -Wno-sign-compare -c
+ CC        = cc $(CCFLAGS) $(STDHDRS)
+ CCOF      = -o
+ LINKFLAGSDEF = -lm -framework Carbon -framework Cocoa -framework IOKit -framework CoreFoundation -framework AudioToolbox -framework AppKit

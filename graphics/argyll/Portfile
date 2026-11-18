@@ -51,7 +51,8 @@ platform linux {
                         port:xorg-libXxf86vm
 }
 
-patchfiles-append       patch-jamtop.diff
+patchfiles-append       patch-jamtop.diff \
+                        patch-no-fpascalstrings.diff
 
 post-extract {
     # To make sure that in case of problems the build will fail instead
@@ -65,7 +66,12 @@ post-extract {
 
 use_configure           no
 configure.ldflags-append \
-                        -ljpeg ${prefix}/lib/libpng.so -ltiff -lusb-1.0 -lz
+                        -ljpeg -lpng -ltiff -lusb-1.0 -lz
+if {${os.platform} eq "linux"} {
+    configure.ldflags-replace \
+                        -lpng \
+                        ${prefix}/lib/libpng.so
+}
 
 build.env-append        PREFIX=${prefix}
 build.env-append        HAVE_JPEG=true
