@@ -1,0 +1,57 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem 1.0
+PortGroup       meson 1.0
+PortGroup       gobject_introspection 1.0
+PortGroup       LTO 1.0
+
+set realName    libgudev
+name            ${realName}
+
+set orig.version 238
+set ubuntu.version 5ubuntu1
+set ubuntu.name noble
+version         ${orig.version}.${ubuntu.version}
+description     GObject bindings for libudev
+long_description \
+                libgudev is a library providing GObject bindings for libudev.
+
+homepage        https://launchpad.net/ubuntu/${ubuntu.name}/+source/${realName}
+license         LGPL-2.1
+platforms       linux
+
+master_sites    https://launchpad.net/ubuntu/+archive/primary/+files/
+master_sites    https://launchpad.net/ubuntu/+archive/primary/+sourcefiles/${realName}/${orig.version}-${ubuntu.version}
+use_xz          yes
+distname        ${realName}_${orig.version}.orig
+# this used to be part of systemd
+dist_subdir     systemd
+checksums       rmd160  8adaf5ca40ae90a30dc70ded09b86f2741e7fd67 \
+                sha256  61266ab1afc9d73dbc60a8b2af73e99d2fdff47d99544d085760e4fa667b5dd1
+#                 size    30548
+
+worksrcdir      ${realName}-${orig.version}
+
+depends_build-append \
+                port:pkgconfig \
+                port:vala
+depends_lib-append \
+                port:glib2 \
+                port:systemd
+
+patch.pre_args  -Np1
+if {[file exists ${filespath}/ubuntu/series]} {
+    foreach p [exec cat ${filespath}/ubuntu/series] {
+        patchfiles-append ubuntu/${p}
+    }
+}
+
+gobject_introspection yes
+
+configure.args-append \
+                -Dgtk_doc=false
+
+build.pre_args-prepend \
+                -k 0
+
+livecheck.type none
