@@ -1,0 +1,71 @@
+# -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:ft=tcl:et:sw=4:ts=4:sts=4
+
+PortSystem      1.0
+PortGroup       gitsrc 1.1
+PortGroup       meson 1.0
+PortGroup       LTO 1.0
+PortGroup       locale_select 1.0
+
+PortGroup       gobject_introspection 1.0
+gobject_introspection.meson_type boolean
+
+description     Making colour management (on Linux) just work
+long_description \
+                colord is a system service that makes it easy to manage, install and generate colour \
+                profiles to accurately colour manage input and output devices. This functionality is \
+                implemented as a system activated daemon called colord. Being system activated means \
+                that it's only started when the user is using a text mode or graphical tool.
+
+gitsrc.setup    hughsie colord 78a33c9fb83ce4cca42864ec360ce6937d2ac1f4
+gitsrc.tarball_from archive
+version         1.4.8.79
+if {[file exists ${workpath}/${name}-git]} {
+    fetch.type  git
+    distname    ${name}-git
+}
+
+checksums       rmd160  c9331321563c92c55af8f6ed6adf6fb0a8efcf01 \
+                sha256  e63b5426dd0e0efd61759b0a00c9e55acbd4d0d8cf68fcfbf236586ddd6472e2
+#                 size    2718420
+
+maintainers     openmaintainer
+
+depends_build-append \
+                port:gettext \
+                port:vala \
+                port:argyll \
+                port:docbook-xsl-ns \
+                port:libxslt
+
+depends_lib-append \
+                port:glib2 \
+                port:libgusb \
+                port:lcms2 \
+                port:sqlite3 \
+                port:systemd \
+                port:dbus
+
+gobject_introspection yes
+
+# NB: Python is needed for the build, but the one used to run meson will be used.
+configure.args-append \
+                -Ddocs=false \
+                -Dlibcolordcompat=true \
+                -Dvapi=true \
+                -Dprint_profiles=false \
+                -Ddaemon_user=colord
+
+variant printer_profiles description {build and install additional printer profiles} {
+    configure.args-replace \
+                -Dprint_profiles=false \
+                -Dprint_profiles=true
+}
+
+post-destroot {
+    xinstall -m 755 -d ${destroot}${prefix}/share/bash-completion/
+    file rename ${destroot}/usr/share/bash-completion/completions \
+        ${destroot}${prefix}/share/bash-completion/completions
+}
+
+test.run        yes
+
