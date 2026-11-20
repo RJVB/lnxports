@@ -23,18 +23,16 @@ long_description    PortAudio is a free, cross platform, open-source, audio I/O 
                     Many applications use PortAudio for Audio I/O.
 
 homepage            http://www.portaudio.com/
+platforms           linux darwin
 
-github.setup        Portaudio portaudio adbf810825252d0c23c2223626b327425d05be3b
+## potential retro-CoreAudio alert: #1ca0eeedb678c3cca80f3306c474d69a7a4b5278
+github.setup        Portaudio portaudio e8138474e338f545361065776a30878022c26106
 # version             20210401-[string range ${github.version} 0 7]
 # RC(1) = 99; RC2 = 999 etc.
-version             19.7.0.999.236
+version             19.7.0.999.270
 epoch               230518
 fetch.type          git
 distname            ${name}-git
-
-notes-append "
-With ${name} version 19.7.0.999.236, Audacity will print out a lot of (seemingly harmless) errors about a dsnoop device.
-"
 
 if {${os.platform} eq "darwin" && ${os.major} >= 18} {
     configure.universal_archs i386 x86_64 arm64

@@ -1,19 +1,19 @@
 diff --git src/common/pa_debugprint.c src/common/pa_debugprint.c
-index 3e4024c..b5239eb 100644
+index 3c2f3ba..2958730 100644
 --- src/common/pa_debugprint.c
 +++ src/common/pa_debugprint.c
 @@ -64,6 +64,8 @@
- // User callback
+ /* User callback */
  static PaUtilLogCallback userCB = NULL;
  
 +static int outToStderr = -1;
 +
- // Sets user callback
+ /* Sets user callback */
  void PaUtil_SetDebugPrintFunction(PaUtilLogCallback cb)
  {
 @@ -114,10 +116,17 @@ void PaUtil_DebugPrint( const char *format, ... )
      else
-     // Standard output to stderr
+     /* Standard output to stderr */
      {
 -        va_list ap;
 -        va_start(ap, format);
