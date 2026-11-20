@@ -18,7 +18,7 @@ long_description \
 
 gitsrc.setup    hughsie colord 78a33c9fb83ce4cca42864ec360ce6937d2ac1f4
 gitsrc.tarball_from archive
-version         1.4.8.79
+version         1.4.8.79 ; revision 1
 if {[file exists ${workpath}/${name}-git]} {
     fetch.type  git
     distname    ${name}-git
@@ -44,6 +44,11 @@ depends_lib-append \
                 port:sqlite3 \
                 port:systemd \
                 port:dbus
+
+# prevent a crash due to freeing the target profile prematurely, when trying to fix it:
+# a simple workaround, leaking the objects that would cause the problem when freed.
+patchfiles-append \
+                patch-fix-fix-profile.c
 
 gobject_introspection yes
 
