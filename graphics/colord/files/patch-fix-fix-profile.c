@@ -1,5 +1,5 @@
 diff --git client/cd-fix-profile.c client/cd-fix-profile.c
-index 3e90e48..d806037 100644
+index 3e90e48..4c909da 100644
 --- client/cd-fix-profile.c
 +++ client/cd-fix-profile.c
 @@ -49,6 +49,8 @@ typedef struct {
@@ -11,18 +11,16 @@ index 3e90e48..d806037 100644
  static void
  cd_util_item_free (CdUtilItem *item)
  {
-@@ -306,7 +308,9 @@ out:
- 		g_object_unref (file);
- 	if (icc != NULL)
- 		g_object_unref (icc);
--	g_object_unref (icc_ref);
-+	if (profile_proof != lcmsProfile) {
-+		g_object_unref (icc_ref);
-+	}
- 	return ret;
- }
+@@ -285,7 +287,7 @@ cd_util_get_coverage (cmsHPROFILE profile_proof,
  
-@@ -565,10 +569,12 @@ cd_util_lcms_error_cb (cmsContext ContextID,
+ 	/* load proofing profile */
+ 	icc_ref = cd_icc_new ();
+-	ret = cd_icc_load_handle (icc_ref, profile_proof,
++	ret = cd_icc_load_borrowed_handle (icc_ref, profile_proof,
+ 				  CD_ICC_LOAD_FLAGS_NONE, error);
+ 	if (!ret)
+ 		goto out;
+@@ -565,10 +567,12 @@ cd_util_lcms_error_cb (cmsContext ContextID,
  	g_warning ("LCMS error %" G_GUINT32_FORMAT ": %s", errorcode, text);
  }
  
@@ -36,7 +34,7 @@ index 3e90e48..d806037 100644
  	gboolean ret = TRUE;
  	gboolean verbose = FALSE;
  	guint retval = 1;
-@@ -594,86 +600,86 @@ main (int argc, char *argv[])
+@@ -594,86 +598,86 @@ main (int argc, char *argv[])
  	cmsSetLogErrorHandler (cd_util_lcms_error_cb);
  
  	/* create helper object */
@@ -145,7 +143,7 @@ index 3e90e48..d806037 100644
  	if (!ret) {
  		/* TRANSLATORS: the user didn't read the man page */
  		g_print ("%s: %s\n", _("Failed to parse arguments"),
-@@ -682,7 +688,7 @@ main (int argc, char *argv[])
+@@ -682,7 +686,7 @@ main (int argc, char *argv[])
  	}
  
  	/* use explicit locale */
@@ -154,7 +152,7 @@ index 3e90e48..d806037 100644
  
  	/* set verbose? */
  	if (verbose) {
-@@ -700,8 +706,8 @@ main (int argc, char *argv[])
+@@ -700,8 +704,8 @@ main (int argc, char *argv[])
  
  	/* open file */
  	file = g_file_new_for_path (argv[1]);
@@ -165,7 +163,7 @@ index 3e90e48..d806037 100644
  				file,
  				CD_ICC_LOAD_FLAGS_ALL,
  				NULL,
-@@ -710,17 +716,18 @@ main (int argc, char *argv[])
+@@ -710,17 +714,18 @@ main (int argc, char *argv[])
  		g_print ("%s\n", error->message);
  		goto out;
  	}
@@ -187,7 +185,7 @@ index 3e90e48..d806037 100644
  					file,
  					CD_ICC_SAVE_FLAGS_NONE,
  					NULL,
-@@ -734,15 +741,15 @@ main (int argc, char *argv[])
+@@ -734,15 +739,15 @@ main (int argc, char *argv[])
  	/* success */
  	retval = 0;
  out:
@@ -212,3 +210,91 @@ index 3e90e48..d806037 100644
  	}
  	return retval;
  }
+diff --git lib/colord/cd-icc.c lib/colord/cd-icc.c
+index eeba0d3..c9677b3 100644
+--- lib/colord/cd-icc.c
++++ lib/colord/cd-icc.c
+@@ -81,6 +81,7 @@ typedef struct
+ 	CdColorXYZ		 red;
+ 	CdColorXYZ		 green;
+ 	CdColorXYZ		 blue;
++	gboolean		 borrowed_lcms_profile;
+ } CdIccPrivate;
+ 
+ G_DEFINE_TYPE_WITH_PRIVATE (CdIcc, cd_icc, G_TYPE_OBJECT)
+@@ -2123,6 +2124,46 @@ cd_icc_load_handle (CdIcc *icc,
+ 	return cd_icc_load (icc, flags, error);
+ }
+ 
++/**
++ * cd_icc_load_borrowed_handle:
++ * @icc: a #CdIcc instance.
++ * @handle: a cmsHPROFILE instance
++ * @flags: a set of #CdIccLoadFlags
++ * @error: A #GError or %NULL
++ *
++ * Like cd_icc_load_handle(), but does NOT take ownership (adopt) @handle.
++ **/
++gboolean
++cd_icc_load_borrowed_handle (CdIcc *icc,
++		    gpointer handle,
++		    CdIccLoadFlags flags,
++		    GError **error)
++{
++	CdIccPrivate *priv = GET_PRIVATE (icc);
++	cmsContext context;
++
++	g_return_val_if_fail (CD_IS_ICC (icc), FALSE);
++	g_return_val_if_fail (handle != NULL, FALSE);
++	g_return_val_if_fail (priv->lcms_profile == NULL, FALSE);
++
++	/* check the THR version has been correctly set up */
++	context = cmsGetProfileContextID (handle);
++	if (context == NULL) {
++		// don't close the handle here!
++		g_set_error_literal (error,
++				     CD_ICC_ERROR,
++				     CD_ICC_ERROR_FAILED_TO_CREATE,
++				     "lcms2 threadsafe version (THR) not used, "
++				     "or context not set");
++		return FALSE;
++	}
++
++	/* load profile */
++	priv->lcms_profile = handle;
++	priv->borrowed_lcms_profile = TRUE;
++	return cd_icc_load (icc, flags, error);
++}
++
+ /**
+  * cd_icc_get_size:
+  *
+@@ -4103,9 +4144,10 @@ cd_icc_finalize (GObject *object)
+ 	g_hash_table_destroy (priv->metadata);
+ 	for (i = 0; i < CD_MLUC_LAST; i++)
+ 		g_hash_table_destroy (priv->mluc_data[i]);
+-	if (priv->lcms_profile != NULL)
++	if (priv->lcms_profile != NULL && !priv->borrowed_lcms_profile) {
+ 		cmsCloseProfile (priv->lcms_profile);
+-	cd_context_lcms_free (priv->context_lcms);
++		cd_context_lcms_free (priv->context_lcms);
++	}
+ 
+ 	G_OBJECT_CLASS (cd_icc_parent_class)->finalize (object);
+ }
+diff --git lib/colord/cd-icc.h lib/colord/cd-icc.h
+index b6b27c5..2a43f71 100644
+--- lib/colord/cd-icc.h
++++ lib/colord/cd-icc.h
+@@ -153,6 +153,11 @@ gboolean	 cd_icc_load_handle			(CdIcc		*icc,
+ 							 CdIccLoadFlags	 flags,
+ 							 GError		**error)
+ 							 G_GNUC_WARN_UNUSED_RESULT;
++gboolean	 cd_icc_load_borrowed_handle			(CdIcc		*icc,
++							 gpointer	 handle,
++							 CdIccLoadFlags	 flags,
++							 GError		**error)
++							 G_GNUC_WARN_UNUSED_RESULT;
+ GBytes		*cd_icc_save_data			(CdIcc		*icc,
+ 							 CdIccSaveFlags	 flags,
+ 							 GError		**error)
