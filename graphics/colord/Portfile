@@ -40,6 +40,7 @@ depends_build-append \
 depends_lib-append \
                 port:glib2 \
                 port:libgusb \
+                port:libgudev \
                 port:lcms2 \
                 port:sqlite3 \
                 port:systemd \
